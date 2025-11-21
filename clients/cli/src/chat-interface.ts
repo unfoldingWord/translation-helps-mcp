@@ -10,6 +10,7 @@ import inquirer from "inquirer";
 import type { AIProvider, ChatMessage } from "./ai-provider.js";
 import type { MCPClient } from "./mcp-client.js";
 import type { ConfigManager } from "./config.js";
+import { mapLanguageToCatalogCode } from "./languageMapping.js";
 
 export class ChatInterface {
   private messages: ChatMessage[] = [];
@@ -17,20 +18,37 @@ export class ChatInterface {
   private mcpClient: MCPClient;
   private configManager: ConfigManager;
   private isOnline: boolean = true;
+  private selectedLanguage: string;
+  private selectedOrganization: string;
 
   constructor(
     aiProvider: AIProvider,
     mcpClient: MCPClient,
     configManager: ConfigManager,
+    language: string = "en",
+    organization: string = "unfoldingWord",
   ) {
     this.aiProvider = aiProvider;
     this.mcpClient = mcpClient;
     this.configManager = configManager;
+    // Map language to catalog code (e.g., es -> es-419)
+    this.selectedLanguage = mapLanguageToCatalogCode(language);
+    this.selectedOrganization = organization;
 
     // Add comprehensive system message (matching UI chat behavior)
+    const languageContext = `
+**CURRENT LANGUAGE AND ORGANIZATION SETTINGS:**
+- Language: ${this.selectedLanguage}
+- Organization: ${this.selectedOrganization}
+- All tool calls will automatically use these settings unless the user explicitly requests a different language/organization
+- If you detect the user switching languages mid-conversation, acknowledge this and suggest they update the language setting
+- You can inform users about the current language/organization settings if they ask
+`;
+    
     this.messages.push({
       role: "system",
       content: `You are a Bible study assistant that provides information EXCLUSIVELY from the Translation Helps MCP Server database. You have access to real-time data from unfoldingWord's translation resources.
+${languageContext}
 
 UNDERSTANDING TRANSLATION RESOURCES AND THEIR PURPOSE:
 
@@ -390,8 +408,8 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`;
             "fetch_translation_word",
             {
               term: term,
-              language: "en",
-              organization: "unfoldingWord",
+              language: this.selectedLanguage,
+              organization: this.selectedOrganization,
             },
           );
 
@@ -495,7 +513,11 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`;
         try {
           const data = await this.mcpClient.executePrompt(
             "translation-helps-for-passage",
-            { reference: bibleRef },
+            { 
+              reference: bibleRef,
+              language: this.selectedLanguage,
+              organization: this.selectedOrganization,
+            },
           );
 
           if (data) {

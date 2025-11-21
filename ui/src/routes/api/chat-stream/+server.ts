@@ -30,6 +30,8 @@ interface ChatRequest {
 	message: string;
 	chatHistory?: Array<{ role: string; content: string }>;
 	enableXRay?: boolean;
+	language?: string;
+	organization?: string;
 }
 
 // Prompts are now imported from the SDK
@@ -456,7 +458,9 @@ async function determineMCPCalls(
 	apiKey: string,
 	endpoints: any[],
 	prompts: any[],
-	chatHistory: Array<{ role: string; content: string }> = []
+	chatHistory: Array<{ role: string; content: string }> = [],
+	language: string = 'en',
+	organization: string = 'unfoldingWord'
 ): Promise<Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>> {
 	// Format endpoints for the LLM prompt
 	const endpointDescriptions = endpoints
@@ -765,7 +769,9 @@ function endpointToToolName(endpointName: string): string {
  */
 async function executeMCPCalls(
 	calls: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>,
-	baseUrl: string
+	baseUrl: string,
+	language: string = 'en',
+	organization: string = 'unfoldingWord'
 ): Promise<{ data: any[]; apiCalls: any[] }> {
 	const data: any[] = [];
 	const apiCalls: any[] = [];
@@ -796,6 +802,19 @@ async function executeMCPCalls(
 					const executePromptUrl = `${baseUrl}/api/execute-prompt`;
 					const startTime2 = Date.now();
 
+					// Inject language and organization into prompt parameters if not present
+					const promptParams = { ...call.params };
+					// Map language to catalog code (e.g., es -> es-419)
+					if (!promptParams.language) {
+						promptParams.language = catalogLanguage;
+					} else {
+						// Map existing language if present
+						promptParams.language = mapLanguageToCatalogCode(promptParams.language);
+					}
+					if (!promptParams.organization) {
+						promptParams.organization = organization;
+					}
+
 					const fetchResponse = await fetch(executePromptUrl, {
 						method: 'POST',
 						headers: {
@@ -803,7 +822,7 @@ async function executeMCPCalls(
 						},
 						body: JSON.stringify({
 							promptName: promptName,
-							parameters: call.params
+							parameters: promptParams
 						})
 					});
 
@@ -934,8 +953,15 @@ async function executeMCPCalls(
 			const normalizedParams: Record<string, any> = {
 				...call.params
 			};
-			if (!normalizedParams.language) normalizedParams.language = 'en';
-			if (!normalizedParams.organization) normalizedParams.organization = 'unfoldingWord';
+			// Use provided language/org from request, fallback to defaults
+			// Map language to catalog code (e.g., es -> es-419)
+			if (!normalizedParams.language) {
+				normalizedParams.language = catalogLanguage;
+			} else {
+				// Map existing language if present
+				normalizedParams.language = mapLanguageToCatalogCode(normalizedParams.language);
+			}
+			if (!normalizedParams.organization) normalizedParams.organization = organization;
 
 			// Clean up invalid parameters for fetch_translation_word
 			if (toolName === 'fetch_translation_word') {
@@ -1358,7 +1384,9 @@ async function callOpenAI(
 	context: string,
 	chatHistory: Array<{ role: string; content: string }> = [],
 	apiKey: string,
-	endpointCalls?: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>
+	endpointCalls?: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>,
+	catalogLanguage: string = 'en',
+	organization: string = 'unfoldingWord'
 ): Promise<{
 	response: string;
 	error?: string;
@@ -1376,9 +1404,19 @@ async function callOpenAI(
 		const requestType = endpointCalls
 			? detectRequestType(endpointCalls as EndpointCall[], message)
 			: undefined;
-		const systemPrompt = USE_OPTIMIZED_PROMPT
+		let systemPrompt = USE_OPTIMIZED_PROMPT
 			? getSystemPrompt(requestType, endpointCalls as EndpointCall[] | undefined, message)
 			: SYSTEM_PROMPT_LEGACY;
+
+		// Add language/org context to system prompt
+		const languageContext = `\n\n**CURRENT LANGUAGE AND ORGANIZATION SETTINGS:**
+- Language: ${catalogLanguage}
+- Organization: ${organization}
+- All tool calls will automatically use these settings unless the user explicitly requests a different language/organization
+- If you detect the user switching languages mid-conversation, acknowledge this and suggest they update the language setting in the chat header
+- You can inform users about the current language/organization settings if they ask`;
+		
+		systemPrompt = systemPrompt + languageContext;
 
 		const messages = [
 			{ role: 'system', content: systemPrompt },
@@ -1492,7 +1530,9 @@ async function callOpenAIStream(
 	xrayInit?: any,
 	preTimings?: Record<string, number>,
 	overallStartTime?: number,
-	endpointCalls?: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>
+	endpointCalls?: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>,
+	catalogLanguage: string = 'en',
+	organization: string = 'unfoldingWord'
 ): Promise<ReadableStream<Uint8Array>> {
 	const encoder = new TextEncoder();
 	const decoder = new TextDecoder();
@@ -1504,9 +1544,19 @@ async function callOpenAIStream(
 				const requestType = endpointCalls
 					? detectRequestType(endpointCalls as EndpointCall[], message)
 					: undefined;
-				const systemPrompt = USE_OPTIMIZED_PROMPT
+				let systemPrompt = USE_OPTIMIZED_PROMPT
 					? getSystemPrompt(requestType, endpointCalls as EndpointCall[] | undefined, message)
 					: SYSTEM_PROMPT_LEGACY;
+
+				// Add language/org context to system prompt
+				const languageContext = `\n\n**CURRENT LANGUAGE AND ORGANIZATION SETTINGS:**
+- Language: ${catalogLanguage}
+- Organization: ${organization}
+- All tool calls will automatically use these settings unless the user explicitly requests a different language/organization
+- If you detect the user switching languages mid-conversation, acknowledge this and suggest they update the language setting in the chat header
+- You can inform users about the current language/organization settings if they ask`;
+				
+				systemPrompt = systemPrompt + languageContext;
 
 				const messages = [
 					{ role: 'system', content: systemPrompt },
@@ -1686,10 +1736,13 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 	// via services like ZipResourceFetcher2 when fetching resources.
 
 	try {
-		const { message, chatHistory = [], enableXRay = false }: ChatRequest = await request.json();
+		const { message, chatHistory = [], enableXRay = false, language = 'en', organization = 'unfoldingWord' }: ChatRequest = await request.json();
 		const baseUrl = `${url.protocol}//${url.host}`;
 
-		logger.info('Chat stream request', { message, historyLength: chatHistory.length });
+		// Map language to catalog code (e.g., es -> es-419)
+		const catalogLanguage = mapLanguageToCatalogCode(language);
+
+		logger.info('Chat stream request', { message, historyLength: chatHistory.length, language: catalogLanguage, organization });
 
 		// Check for API key - try multiple sources
 		const apiKey =
@@ -1747,7 +1800,7 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 
 		// Step 2: Let the LLM decide which endpoints/prompts to call
 		const llmDecisionStart = Date.now();
-		const endpointCalls = await determineMCPCalls(message, apiKey, endpoints, prompts, chatHistory);
+		const endpointCalls = await determineMCPCalls(message, apiKey, endpoints, prompts, chatHistory, catalogLanguage, organization);
 		timings.llmDecision = Date.now() - llmDecisionStart;
 
 		// Log if no endpoints were selected
@@ -1757,7 +1810,7 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 
 		// Step 3: Execute the MCP calls
 		const mcpExecutionStart = Date.now();
-		const { data, apiCalls } = await executeMCPCalls(endpointCalls, baseUrl);
+		const { data, apiCalls } = await executeMCPCalls(endpointCalls, baseUrl, catalogLanguage, organization);
 		timings.mcpExecution = Date.now() - mcpExecutionStart;
 
 		// Step 4: Format data for OpenAI context, including any tool errors so the LLM can respond gracefully
@@ -1829,7 +1882,9 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 					contextFormatting: timings.contextFormatting || 0
 				},
 				startTime,
-				endpointCalls
+				endpointCalls,
+				language,
+				organization
 			);
 			const totalDuration = Date.now() - startTime;
 			return new Response(sseStream, {
@@ -1848,7 +1903,9 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			context,
 			chatHistory,
 			apiKey,
-			endpointCalls
+			endpointCalls,
+			catalogLanguage,
+			organization
 		);
 		timings.llmResponse = Date.now() - llmResponseStart;
 

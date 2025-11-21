@@ -98,6 +98,14 @@
 					default: 'en',
 					placeholder: 'Language code (default: en)',
 					description: 'Language for the resources'
+				},
+				{
+					name: 'organization',
+					type: 'text',
+					required: false,
+					default: 'unfoldingWord',
+					placeholder: 'Organization name (default: unfoldingWord)',
+					description: 'Organization/owner for the resources (e.g., unfoldingWord, es-419_gl)'
 				}
 			],
 			workflow: [
@@ -133,7 +141,15 @@
 					placeholder: 'e.g., Romans 1:1',
 					description: 'Bible reference'
 				},
-				{ name: 'language', type: 'text', required: false, default: 'en', placeholder: 'en' }
+				{ name: 'language', type: 'text', required: false, default: 'en', placeholder: 'en' },
+				{
+					name: 'organization',
+					type: 'text',
+					required: false,
+					default: 'unfoldingWord',
+					placeholder: 'Organization name (default: unfoldingWord)',
+					description: 'Organization/owner for the resources (e.g., unfoldingWord, es-419_gl)'
+				}
 			],
 			workflow: [
 				{ step: 1, tool: 'fetch_translation_word_links', description: 'Get word links' },
@@ -158,7 +174,15 @@
 					placeholder: 'e.g., Matthew 5:13',
 					description: 'Bible reference'
 				},
-				{ name: 'language', type: 'text', required: false, default: 'en', placeholder: 'en' }
+				{ name: 'language', type: 'text', required: false, default: 'en', placeholder: 'en' },
+				{
+					name: 'organization',
+					type: 'text',
+					required: false,
+					default: 'unfoldingWord',
+					placeholder: 'Organization name (default: unfoldingWord)',
+					description: 'Organization/owner for the resources (e.g., unfoldingWord, es-419_gl)'
+				}
 			],
 			workflow: [
 				{ step: 1, tool: 'fetch_translation_notes', description: 'Get translation notes' },

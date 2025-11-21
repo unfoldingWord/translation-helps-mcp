@@ -13,6 +13,7 @@ import { MCPClient } from "./mcp-client.js";
 import { AIProviderFactory } from "./ai-provider.js";
 import { ChatInterface } from "./chat-interface.js";
 import { config } from "./config.js";
+import { mapLanguageToCatalogCode } from "./languageMapping.js";
 
 const program = new Command();
 
@@ -31,10 +32,18 @@ program
   .command("config")
   .description("Show or update configuration")
   .option("--reset", "Reset to default configuration")
+  .option("--set-language <code>", "Set default language code")
+  .option("--set-organization <name>", "Set default organization name")
   .action(async (options) => {
     if (options.reset) {
       config.reset();
       console.log(chalk.green("✅ Configuration reset to defaults"));
+    } else if (options.setLanguage) {
+      config.setLanguage(options.setLanguage);
+      console.log(chalk.green(`✅ Language set to: ${options.setLanguage}`));
+    } else if (options.setOrganization) {
+      config.setOrganization(options.setOrganization);
+      console.log(chalk.green(`✅ Organization set to: ${options.setOrganization}`));
     } else {
       config.display();
     }
@@ -45,7 +54,9 @@ program
   .option("-m, --model <name>", "Ollama model to use")
   .option("-p, --provider <ollama|openai>", "AI provider (ollama or openai)")
   .option("--offline", "Force offline mode")
-  .option("--list-models", "List available Ollama models");
+  .option("--list-models", "List available Ollama models")
+  .option("-l, --language <code>", "Language code (e.g., 'en', 'es-419')")
+  .option("-o, --organization <name>", "Organization name (e.g., 'unfoldingWord', 'es-419_gl')");
 
 // Parse arguments
 program.parse();
@@ -88,6 +99,18 @@ async function startChat(options: any): Promise<void> {
     if (options.offline) {
       config.setOfflineMode(true);
     }
+    if (options.language) {
+      config.setLanguage(options.language);
+    }
+    if (options.organization) {
+      config.setOrganization(options.organization);
+    }
+
+    // Get language/org from config (may have been updated by options)
+    // Map language to catalog code (e.g., es -> es-419)
+    const rawLanguage = options.language || cfg.language || "en";
+    const selectedLanguage = mapLanguageToCatalogCode(rawLanguage);
+    const selectedOrganization = options.organization || cfg.organization || "unfoldingWord";
 
     console.log(chalk.bold.blue("\n🚀 Starting Translation Helps CLI...\n"));
 
@@ -109,7 +132,7 @@ async function startChat(options: any): Promise<void> {
     );
 
     // Start chat interface
-    const chatInterface = new ChatInterface(aiProvider, mcpClient, config);
+    const chatInterface = new ChatInterface(aiProvider, mcpClient, config, selectedLanguage, selectedOrganization);
 
     // Handle graceful shutdown
     process.on("SIGINT", async () => {

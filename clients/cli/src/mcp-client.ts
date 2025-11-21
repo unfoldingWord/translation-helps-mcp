@@ -245,6 +245,7 @@ export class MCPClient {
       return await this.fetchComprehensiveHelps(
         args.reference,
         args.language || "en",
+        args.organization || "unfoldingWord",
       );
     }
 
@@ -252,6 +253,7 @@ export class MCPClient {
       return await this.fetchTranslationWordsForPassage(
         args.reference,
         args.language || "en",
+        args.organization || "unfoldingWord",
       );
     }
 
@@ -259,6 +261,7 @@ export class MCPClient {
       return await this.fetchTranslationAcademyForPassage(
         args.reference,
         args.language || "en",
+        args.organization || "unfoldingWord",
       );
     }
 
@@ -273,6 +276,7 @@ export class MCPClient {
   private async fetchComprehensiveHelps(
     reference: string,
     language: string = "en",
+    organization: string = "unfoldingWord",
   ): Promise<any> {
     const result: any = {};
 
@@ -320,6 +324,7 @@ export class MCPClient {
       const wordLinks = await this.callTool("fetch_translation_word_links", {
         reference,
         language,
+        organization,
       });
 
       if (wordLinks.content?.[0]?.text) {
@@ -336,6 +341,7 @@ export class MCPClient {
                 {
                   reference,
                   language,
+                  organization,
                 },
               );
               if (wordArticle.content?.[0]?.text) {
@@ -358,6 +364,7 @@ export class MCPClient {
       const academy = await this.callTool("fetch_translation_academy", {
         reference,
         language,
+        organization,
       });
       result.academyArticles = academy.content?.[0]?.text
         ? JSON.parse(academy.content[0].text)
@@ -375,6 +382,7 @@ export class MCPClient {
   private async fetchTranslationWordsForPassage(
     reference: string,
     language: string = "en",
+    organization: string = "unfoldingWord",
   ): Promise<any> {
     const result: any = { words: [] };
 
@@ -383,6 +391,7 @@ export class MCPClient {
       const wordLinks = await this.callTool("fetch_translation_word_links", {
         reference,
         language,
+        organization,
       });
 
       if (wordLinks.content?.[0]?.text) {
@@ -398,6 +407,7 @@ export class MCPClient {
                 {
                   term: link.term,
                   language,
+                  organization,
                 },
               );
               if (wordArticle.content?.[0]?.text) {
@@ -424,6 +434,7 @@ export class MCPClient {
   private async fetchTranslationAcademyForPassage(
     reference: string,
     language: string = "en",
+    organization: string = "unfoldingWord",
   ): Promise<any> {
     const result: any = { academyArticles: [] };
 
@@ -454,6 +465,7 @@ export class MCPClient {
             const academy = await this.callTool("fetch_translation_academy", {
               rcLink,
               language,
+              organization,
             });
             if (academy.content?.[0]?.text) {
               articles.push(JSON.parse(academy.content[0].text));

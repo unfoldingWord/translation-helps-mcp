@@ -47,9 +47,21 @@ Examples:
         default=None,
         help="Override MCP server URL (default: from MCP_SERVER_URL env var or production server)"
     )
+    parser.add_argument(
+        "--language", "-l",
+        type=str,
+        default=None,
+        help="Language code (e.g., 'en', 'es-419'). If not provided, will prompt for selection."
+    )
+    parser.add_argument(
+        "--organization", "-o",
+        type=str,
+        default=None,
+        help="Organization name (e.g., 'unfoldingWord', 'es-419_gl'). If not provided, will prompt for selection."
+    )
     return parser.parse_args()
 
-async def main(verbose=False, debug=False, quiet=False, server_url_override=None):
+async def main(verbose=False, debug=False, quiet=False, server_url_override=None, language=None, organization=None):
     # Initialize clients
     # Use production server by default, allow override via environment variable or CLI
     server_url = server_url_override or os.getenv("MCP_SERVER_URL", "https://translation-helps-mcp-945.pages.dev/api/mcp")
@@ -79,7 +91,17 @@ async def main(verbose=False, debug=False, quiet=False, server_url_override=None
         openai_tools = prepare_tools_for_provider("openai", tools, prompts)
         
         # System prompt - matches the Svelte chat interface configuration
-        SYSTEM_PROMPT = """You are a Bible study assistant that provides information EXCLUSIVELY from the Translation Helps MCP Server database. You have access to real-time data from unfoldingWord's translation resources.
+        language_context = f"""
+**CURRENT LANGUAGE AND ORGANIZATION SETTINGS:**
+- Language: {selected_language}
+- Organization: {selected_organization}
+- All tool calls will automatically use these settings unless the user explicitly requests a different language/organization
+- If you detect the user switching languages mid-conversation, acknowledge this and suggest they update the language setting
+- You can inform users about the current language/organization settings if they ask
+"""
+        
+        SYSTEM_PROMPT = f"""You are a Bible study assistant that provides information EXCLUSIVELY from the Translation Helps MCP Server database. You have access to real-time data from unfoldingWord's translation resources.
+{language_context}
 
 UNDERSTANDING TRANSLATION RESOURCES AND THEIR PURPOSE:
 
@@ -515,6 +537,16 @@ When you receive MCP data, use it to provide accurate, helpful responses while m
                     """Execute a single tool call and return the result"""
                     tool_name = tool_call.function.name
                     tool_args = json.loads(tool_call.function.arguments)  # Parse JSON string
+                    
+                    # Inject language and organization if not already present
+                    # Map language to catalog code (e.g., es -> es-419)
+                    if "language" not in tool_args:
+                        tool_args["language"] = map_language_to_catalog_code(selected_language)
+                    else:
+                        # Map existing language if present
+                        tool_args["language"] = map_language_to_catalog_code(tool_args["language"])
+                    if "organization" not in tool_args:
+                        tool_args["organization"] = selected_organization
                     
                     if debug:
                         print(f"  → Calling {tool_name}...")

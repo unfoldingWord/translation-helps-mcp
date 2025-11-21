@@ -5,6 +5,8 @@
 	import { afterUpdate, onDestroy, onMount } from 'svelte';
 	import XRayPanel from './XRayPanel.svelte';
 	import DebugSidebar from './DebugSidebar.svelte';
+	import LanguageOrgSelector from './LanguageOrgSelector.svelte';
+	import { mapLanguageToCatalogCode } from '$lib/languageMapping.js';
 
 	// Configure marked for safe HTML rendering
 	marked.setOptions({
@@ -22,6 +24,11 @@
 	let currentXRayData = null;
 	let messagesContainer;
 	const USE_STREAM = true;
+
+	// Language/Organization selection state
+	let selectedLanguage = 'en';
+	let selectedOrganization = 'unfoldingWord';
+	let needsLanguageSelection = false;
 
 	// Debug console state - logs all MCP responses (successful and failed)
 	let debugLogs: Array<{
@@ -190,6 +197,25 @@
 
 	// Welcome message
 	onMount(() => {
+		// Load language/org from localStorage
+		if (browser) {
+			const savedLanguage = localStorage.getItem('translationHelps_language');
+			const savedOrganization = localStorage.getItem('translationHelps_organization');
+			
+			if (savedLanguage) {
+				// Map to catalog code (e.g., es -> es-419)
+				selectedLanguage = mapLanguageToCatalogCode(savedLanguage);
+			}
+			if (savedOrganization) {
+				selectedOrganization = savedOrganization;
+			}
+			
+			// Check if we need to prompt for selection
+			if (!savedLanguage || !savedOrganization) {
+				needsLanguageSelection = true;
+			}
+		}
+
 		messages = [
 			{
 				id: '0',
@@ -216,6 +242,20 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 			// document.addEventListener('click', handleRCLinkClick);
 		}
 	});
+
+	// Handle language/org selection change
+	function handleLanguageOrgChange(language: string, organization: string) {
+		// Map to catalog code (e.g., es -> es-419)
+		selectedLanguage = mapLanguageToCatalogCode(language);
+		selectedOrganization = organization;
+		needsLanguageSelection = false;
+		
+		// Save to localStorage (save the mapped version)
+		if (browser) {
+			localStorage.setItem('translationHelps_language', selectedLanguage);
+			localStorage.setItem('translationHelps_organization', organization);
+		}
+	}
 
 	onDestroy(() => {
 		// Clean up event listener - only in browser
@@ -318,7 +358,9 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 					body: JSON.stringify({
 						message: userMessage.content,
 						chatHistory: messages.slice(0, -2).map((m) => ({ role: m.role, content: m.content })),
-						enableXRay: true
+						enableXRay: true,
+						language: selectedLanguage,
+						organization: selectedOrganization
 					})
 				});
 				if (!response.ok) throw new Error('Failed to get response');
@@ -423,7 +465,9 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 		const body = JSON.stringify({
 			message: userMessage.content,
 			chatHistory: messages.slice(0, -2).map((m) => ({ role: m.role, content: m.content })),
-			enableXRay: false
+			enableXRay: false,
+			language: selectedLanguage,
+			organization: selectedOrganization
 		});
 
 		const response = await fetch('/api/chat-stream?stream=1', {
@@ -613,6 +657,18 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 </script>
 
 <div class="relative flex h-full flex-col" style="background-color: #0f172a;">
+	<!-- Header with Language/Org Selector -->
+	<div class="flex-shrink-0 border-b border-gray-800 px-4 py-2" style="background-color: #0f172a;">
+		<div class="mx-auto flex max-w-4xl items-center justify-between">
+			<div class="text-sm font-medium text-gray-300">Translation Helps Chat</div>
+			<LanguageOrgSelector
+				{selectedLanguage}
+				{selectedOrganization}
+				onSelectionChange={handleLanguageOrgChange}
+			/>
+		</div>
+	</div>
+
 	<div class="flex min-h-0 flex-1 overflow-hidden">
 		<!-- Main Chat Content -->
 		<div

@@ -25,6 +25,8 @@ export interface Config {
   cacheProvidersOrder: string[];
   zipFetcherProvider: "r2" | "fs" | "auto";
   languages: string[];
+  language: string;
+  organization: string;
 }
 
 const DEFAULT_CONFIG: Config = {
@@ -44,6 +46,8 @@ const DEFAULT_CONFIG: Config = {
   cacheProvidersOrder: ["memory", "fs", "door43"],
   zipFetcherProvider: "fs", // CLI uses file system for ZIP storage
   languages: [],
+  language: "en",
+  organization: "unfoldingWord",
 };
 
 export class ConfigManager {
@@ -448,6 +452,22 @@ export class ConfigManager {
   }
 
   /**
+   * Set language
+   */
+  setLanguage(language: string): void {
+    this.config.language = language;
+    this.save();
+  }
+
+  /**
+   * Set organization
+   */
+  setOrganization(organization: string): void {
+    this.config.organization = organization;
+    this.save();
+  }
+
+  /**
    * Display configuration
    */
   display(): void {
@@ -473,6 +493,8 @@ export class ConfigManager {
       `  Cache Order: ${this.config.cacheProvidersOrder.join(" → ")}`,
     );
     console.log(`  Languages: ${this.config.languages.join(", ") || "None"}`);
+    console.log(`  Language: ${this.config.language}`);
+    console.log(`  Organization: ${this.config.organization}`);
     console.log(`\n  Config file: ${this.projectConfigPath}`);
     console.log(`  .env file: ${this.envPath}\n`);
   }
