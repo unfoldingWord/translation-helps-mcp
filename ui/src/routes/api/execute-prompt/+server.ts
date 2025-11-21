@@ -92,17 +92,35 @@ export const POST: RequestHandler = async ({ request, fetch: eventFetch }) => {
 		switch (promptName) {
 			case 'translation-helps-for-passage':
 				console.log('[execute-prompt] Executing translation-helps-for-passage');
-				result = await executeTranslationHelpsPrompt(reference, language, organization, trackedFetchCall, tracer);
+				result = await executeTranslationHelpsPrompt(
+					reference,
+					language,
+					organization,
+					trackedFetchCall,
+					tracer
+				);
 				break;
 
 			case 'get-translation-words-for-passage':
 				console.log('[execute-prompt] Executing get-translation-words-for-passage');
-				result = await executeWordsPrompt(reference, language, organization, trackedFetchCall, tracer);
+				result = await executeWordsPrompt(
+					reference,
+					language,
+					organization,
+					trackedFetchCall,
+					tracer
+				);
 				break;
 
 			case 'get-translation-academy-for-passage':
 				console.log('[execute-prompt] Executing get-translation-academy-for-passage');
-				result = await executeAcademyPrompt(reference, language, organization, trackedFetchCall, tracer);
+				result = await executeAcademyPrompt(
+					reference,
+					language,
+					organization,
+					trackedFetchCall,
+					tracer
+				);
 				break;
 
 			default:
@@ -425,7 +443,7 @@ async function executeTranslationHelpsPrompt(
 	// Step 6: Fetch academy articles from supportReferences
 	const supportRefs = extractSupportReferences(results.notes);
 	console.log(`Found ${supportRefs.length} support references (limiting to 5)`);
-		for (const ref of supportRefs.slice(0, 5)) {
+	for (const ref of supportRefs.slice(0, 5)) {
 		// Limit to first 5
 		try {
 			const academyRes = await trackedFetchCall(
@@ -688,7 +706,7 @@ async function executeAcademyPrompt(
 	// Step 2: Fetch academy articles from supportReferences (same logic as main prompt)
 	const supportRefs = extractSupportReferences(notesData);
 	console.log(`Found ${supportRefs.length} support references (limiting to 5)`);
-		for (const ref of supportRefs.slice(0, 5)) {
+	for (const ref of supportRefs.slice(0, 5)) {
 		try {
 			const academyRes = await trackedFetchCall(
 				`/api/fetch-translation-academy?rcLink=${encodeURIComponent(ref)}&language=${language}&organization=${encodeURIComponent(organization)}`

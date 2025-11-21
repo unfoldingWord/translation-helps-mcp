@@ -8,37 +8,36 @@
  * Some languages use specific variants in the Door43 catalog (e.g., es -> es-419)
  */
 export function mapLanguageToCatalogCode(language: string): string {
-  const languageMap: Record<string, string> = {
-    // Spanish variants
-    'es': 'es-419', // Spanish -> Latin American Spanish
-    'es-MX': 'es-419',
-    'es-AR': 'es-419',
-    'es-CO': 'es-419',
-    'es-CL': 'es-419',
-    'es-PE': 'es-419',
-    // Add other mappings as needed
-  };
+	const languageMap: Record<string, string> = {
+		// Spanish variants
+		es: 'es-419', // Spanish -> Latin American Spanish
+		'es-MX': 'es-419',
+		'es-AR': 'es-419',
+		'es-CO': 'es-419',
+		'es-CL': 'es-419',
+		'es-PE': 'es-419'
+		// Add other mappings as needed
+	};
 
-  return languageMap[language] || language;
+	return languageMap[language] || language;
 }
 
 /**
  * Get the display name for a language code
  */
 export function getLanguageDisplayName(language: string): string {
-  const displayNames: Record<string, string> = {
-    'en': 'English',
-    'es': 'Spanish',
-    'es-419': 'Spanish (Latin America)',
-    'zh': 'Chinese',
-    'zh-Hans': 'Simplified Chinese',
-    'zh-Hant': 'Traditional Chinese',
-    'fr': 'French',
-    'pt': 'Portuguese',
-    'ar': 'Arabic',
-    'hi': 'Hindi',
-  };
+	const displayNames: Record<string, string> = {
+		en: 'English',
+		es: 'Spanish',
+		'es-419': 'Spanish (Latin America)',
+		zh: 'Chinese',
+		'zh-Hans': 'Simplified Chinese',
+		'zh-Hant': 'Traditional Chinese',
+		fr: 'French',
+		pt: 'Portuguese',
+		ar: 'Arabic',
+		hi: 'Hindi'
+	};
 
-  return displayNames[language] || language.toUpperCase();
+	return displayNames[language] || language.toUpperCase();
 }
-
