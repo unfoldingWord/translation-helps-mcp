@@ -20,6 +20,8 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { callTool, listTools, listPrompts } from '$lib/mcp/client.js';
+import { mapLanguageToCatalogCode } from '$lib/languageMapping.js';
+import { detectLanguageFromMessage, extractLanguageFromRequest } from '$lib/languageDetection.js';
 import {
 	getSystemPrompt,
 	detectRequestType,
@@ -186,6 +188,7 @@ User asks: "What does 'grace' mean in the Bible?" or "Who is Paul?" or "What is 
 → Use fetch_translation_word tool with term parameter (e.g., term="grace", term="paul", term="faith", term="god")
 → The tool searches across all categories (kt, names, other) to find matching articles
 → Try variations if exact term doesn't match (e.g., "paul" might be "apostlepaul" or "paul-apostle")
+→ If the term is not found in the current language, use search_translation_word_across_languages to discover which languages have that term available
 
 User asks: "What passages of the Bible mention this term?" or "Where is 'apostle' mentioned in the Bible?" or "Show me Bible references for 'grace'"
 → Use fetch_translation_word_links tool with reference parameter (e.g., reference="John 3:16") OR
@@ -451,6 +454,62 @@ async function discoverMCPEndpoints(
 }
 
 /**
+ * Detect language from user message and conversation history
+ * Note: We don't validate here - let the LLM decide whether to call list_languages or search_translation_word_across_languages
+ */
+async function detectAndValidateLanguage(
+	message: string,
+	chatHistory: Array<{ role: string; content: string }> = [],
+	currentLanguage: string = 'en',
+	baseUrl: string
+): Promise<{ detectedLanguage: string | null; needsValidation: boolean; languageVariants?: Array<{ code: string; name: string }> }> {
+	// Check if user explicitly requested a language change
+	const explicitLang = extractLanguageFromRequest(message);
+	if (explicitLang && explicitLang !== currentLanguage) {
+		// User explicitly requested a different language - mark it for LLM to validate
+		logger.info('Explicit language request detected', { requested: explicitLang, current: currentLanguage });
+		return { 
+			detectedLanguage: explicitLang, 
+			needsValidation: true,
+			languageVariants: [] // LLM will call list_languages to validate
+		};
+	}
+
+	// Check if user is speaking in a different language
+	const detectedLang = detectLanguageFromMessage(message);
+	if (detectedLang && detectedLang !== currentLanguage) {
+		// User is speaking in a different language - mark it for LLM to handle
+		// The LLM will decide whether to:
+		// 1. Call list_languages to find variants
+		// 2. Call search_translation_word_across_languages for term queries
+		logger.info('Language detected from message', { 
+			detected: detectedLang, 
+			current: currentLanguage 
+		});
+		return { 
+			detectedLanguage: detectedLang, 
+			needsValidation: true,
+			languageVariants: [] // LLM will handle validation/search
+		};
+	}
+
+	// Check conversation history for previously selected language
+	const lastAssistantMessage = chatHistory.filter(m => m.role === 'assistant').slice(-1)[0];
+	if (lastAssistantMessage?.content) {
+		// Look for language selection in assistant's previous response
+		const langMatch = lastAssistantMessage.content.match(/I'll use (?:language )?([a-z]{2}(?:-[A-Z0-9]+)?)/i);
+		if (langMatch) {
+			const selectedLang = mapLanguageToCatalogCode(langMatch[1]);
+			if (selectedLang !== currentLanguage) {
+				return { detectedLanguage: selectedLang, needsValidation: false };
+			}
+		}
+	}
+
+	return { detectedLanguage: null, needsValidation: false };
+}
+
+/**
  * Ask the LLM which endpoints/prompts to call based on the user's query
  */
 async function determineMCPCalls(
@@ -543,16 +602,78 @@ ${recentContext ? `Recent conversation:\n${recentContext}\n\n` : ''}**CRITICAL: 
 
 Before making any tool calls, check if the information was already fetched in previous responses. If the user is asking about something that was already shown (e.g., a translation concept, word article, or note that was mentioned), return an empty array [] and the assistant will use the existing information.
 
+**CRITICAL: LANGUAGE DETECTION AND VALIDATION**
+
+1. **Detect User Language**: If the user is speaking in a language different from the current language (${language}), you MUST call list_languages FIRST to discover available language variants.
+
+2. **Language Detection Workflow**:
+   - User speaks in Spanish → Call list_languages to find Spanish variants (es, es-419, es-MX, etc.)
+   - After list_languages returns:
+     * If ONLY ONE variant found → Respond to user: "I see you're speaking Spanish. I found resources in es-419. I'll use that to find [their query]." Then IMMEDIATELY make the actual tool call (e.g., fetch_translation_word with term="amor" and language="es-419")
+     * If MULTIPLE variants found → Respond to user: "I see you're speaking Spanish. I found resources in: es-419 (Latin American Spanish), es-MX (Mexican Spanish). Which would you prefer?" Then WAIT for user's response before making tool calls
+     * If NO variants found → Respond: "I don't see resources available in Spanish. Would you like to use English (en) instead?" Then proceed based on user's choice
+
+3. **Two-Step Process**:
+   - STEP 1: Call list_languages to discover available languages
+   - STEP 2: After responding to user about language options, make the actual tool call with the confirmed language
+
+4. **After Language Confirmed**: Once language is confirmed (single variant or user selected), use it for all subsequent tool calls unless the user explicitly requests a different language.
+
+**IMPORTANT**: 
+- If you detect the user is speaking in a language different from ${language}, you MUST call list_languages FIRST
+- After list_languages, respond to the user about available options
+- If only one variant exists, proceed immediately with the actual query
+- If multiple variants exist, wait for user's selection before proceeding
+
 Only make tool calls when:
 1. The information was NOT previously fetched
 2. The user is asking about a different passage/term/concept than what was already shown
 3. The user explicitly requests new/fresh data
+4. Language detection/validation is needed (see above)
 
 **AVAILABLE PROMPTS (Use ONLY for specific comprehensive cases - they chain multiple tools and take longer):**
 ${promptDescriptions}
 
 **Available endpoints:**
 ${endpointDescriptions}
+
+**RESOURCE DISCOVERY WORKFLOW (IMPORTANT - Use the Fast Approach):**
+
+When users want to discover available resources, guide them through this efficient workflow:
+
+**❌ SLOW: list-resources-by-language** (~4-5 seconds, makes 7 parallel API calls)
+- Use ONLY when user needs overview of ALL languages at once
+- Returns comprehensive data but slow on first call
+
+**✅ FAST & RECOMMENDED: Two-Step Discovery** (~2-3 seconds total)
+
+1. **First: list-languages** (~1 second)
+   - Shows all available languages with codes
+   - Example: en (English), es-419 (Spanish - Latin America), fr (French), ar (Arabic)
+   - User picks interesting language(s)
+
+2. **Then: list-resources-for-language** (~1-2 seconds per language)
+   - Takes language code as parameter (e.g., "es-419")
+   - Returns ALL resources for that language from ALL organizations
+   - Organized by subject type (Bible, Translation Words, etc.)
+   - Shows which organizations have resources (unfoldingWord, es-419_gl, Door43-Catalog, etc.)
+
+3. **Finally: Fetch specific resources**
+   - Use fetch_scripture, fetch_translation_notes, etc. with chosen language
+
+**Example conversation:**
+User: "What translation resources are available?"
+You: "Let me show you the available languages first..." [Call list_languages]
+You: "Here are 50+ languages with resources: English (en), Spanish Latin America (es-419), French (fr)... Which language interests you?"
+User: "Spanish"
+You: [Call list_resources_for_language with language="es-419"]
+You: "Here are the Spanish resources available: 23 resources from 6 organizations including es-419_gl, BSA, Door43-Catalog..."
+
+**TOPIC FILTER (NEW - Use for quality filtering):**
+- Both discovery tools now support topic parameter
+- topic="tc-ready" filters for translationCore-ready (production quality) resources
+- Example: list_resources_for_language with language="es-419" and topic="tc-ready"
+- Helps users find production-ready, quality-controlled content
 
 Current user query: "${message}"
 
@@ -806,7 +927,7 @@ async function executeMCPCalls(
 					const promptParams = { ...call.params };
 					// Map language to catalog code (e.g., es -> es-419)
 					if (!promptParams.language) {
-						promptParams.language = catalogLanguage;
+						promptParams.language = language;
 					} else {
 						// Map existing language if present
 						promptParams.language = mapLanguageToCatalogCode(promptParams.language);
@@ -956,7 +1077,7 @@ async function executeMCPCalls(
 			// Use provided language/org from request, fallback to defaults
 			// Map language to catalog code (e.g., es -> es-419)
 			if (!normalizedParams.language) {
-				normalizedParams.language = catalogLanguage;
+				normalizedParams.language = language;
 			} else {
 				// Map existing language if present
 				normalizedParams.language = mapLanguageToCatalogCode(normalizedParams.language);
@@ -1386,7 +1507,8 @@ async function callOpenAI(
 	apiKey: string,
 	endpointCalls?: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>,
 	catalogLanguage: string = 'en',
-	organization: string = 'unfoldingWord'
+	organization: string = 'unfoldingWord',
+	languageInfo?: { detectedLanguage: string | null; needsValidation: boolean; languageVariants?: Array<{ code: string; name: string }> }
 ): Promise<{
 	response: string;
 	error?: string;
@@ -1408,15 +1530,32 @@ async function callOpenAI(
 			? getSystemPrompt(requestType, endpointCalls as EndpointCall[] | undefined, message)
 			: SYSTEM_PROMPT_LEGACY;
 
-		// Add language/org context to system prompt
-		const languageContext = `\n\n**CURRENT LANGUAGE AND ORGANIZATION SETTINGS:**
+			// Add language/org context to system prompt
+			let languageContext = `\n\n**CURRENT LANGUAGE AND ORGANIZATION SETTINGS:**
 - Language: ${catalogLanguage}
 - Organization: ${organization}
-- All tool calls will automatically use these settings unless the user explicitly requests a different language/organization
-- If you detect the user switching languages mid-conversation, acknowledge this and suggest they update the language setting in the chat header
+- All tool calls will automatically use these settings unless the user explicitly requests a different language/organization`;
+
+				// Add language detection context
+				if (languageInfo?.detectedLanguage && languageInfo.detectedLanguage !== catalogLanguage) {
+					languageContext += `\n\n**LANGUAGE DETECTED FROM USER MESSAGE:**
+- User's language detected: ${languageInfo.detectedLanguage}
+- You MUST call list_languages FIRST to discover available variants for this language
+- After list_languages returns:
+  * If only ONE variant found → Confirm to user and IMMEDIATELY proceed with their query using that language
+  * If MULTIPLE variants found → Present options to user and wait for their selection
+  * If NO variants found → Suggest alternatives (e.g., English) and proceed based on user's choice
+- Example workflow:
+  1. User: "Hola, podrías definir amor?"
+  2. You call: list_languages
+  3. If es-419 found: "I see you're speaking Spanish. I found resources in es-419. I'll use that to find the definition of 'amor'." Then call fetch_translation_word with term="amor" and language="es-419"
+  4. If multiple found: "I see you're speaking Spanish. I found resources in: es-419, es-MX. Which would you prefer?" Then wait for user response`;
+				}
+
+			languageContext += `\n- If you detect the user switching languages mid-conversation, validate the new language using list_languages tool first
 - You can inform users about the current language/organization settings if they ask`;
-		
-		systemPrompt = systemPrompt + languageContext;
+			
+			systemPrompt = systemPrompt + languageContext;
 
 		const messages = [
 			{ role: 'system', content: systemPrompt },
@@ -1532,7 +1671,8 @@ async function callOpenAIStream(
 	overallStartTime?: number,
 	endpointCalls?: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>,
 	catalogLanguage: string = 'en',
-	organization: string = 'unfoldingWord'
+	organization: string = 'unfoldingWord',
+	languageInfo?: { detectedLanguage: string | null; needsValidation: boolean; languageVariants?: Array<{ code: string; name: string }> }
 ): Promise<ReadableStream<Uint8Array>> {
 	const encoder = new TextEncoder();
 	const decoder = new TextDecoder();
@@ -1549,11 +1689,28 @@ async function callOpenAIStream(
 					: SYSTEM_PROMPT_LEGACY;
 
 				// Add language/org context to system prompt
-				const languageContext = `\n\n**CURRENT LANGUAGE AND ORGANIZATION SETTINGS:**
+				let languageContext = `\n\n**CURRENT LANGUAGE AND ORGANIZATION SETTINGS:**
 - Language: ${catalogLanguage}
 - Organization: ${organization}
-- All tool calls will automatically use these settings unless the user explicitly requests a different language/organization
-- If you detect the user switching languages mid-conversation, acknowledge this and suggest they update the language setting in the chat header
+- All tool calls will automatically use these settings unless the user explicitly requests a different language/organization`;
+
+				// Add language detection context
+				if (languageInfo?.detectedLanguage && languageInfo.detectedLanguage !== catalogLanguage) {
+					languageContext += `\n\n**LANGUAGE DETECTED FROM USER MESSAGE:**
+- User's language detected: ${languageInfo.detectedLanguage}
+- You MUST call list_languages FIRST to discover available variants for this language
+- After list_languages returns:
+  * If only ONE variant found → Confirm to user and IMMEDIATELY proceed with their query using that language
+  * If MULTIPLE variants found → Present options to user and wait for their selection
+  * If NO variants found → Suggest alternatives (e.g., English) and proceed based on user's choice
+- Example workflow:
+  1. User: "Hola, podrías definir amor?"
+  2. You call: list_languages
+  3. If es-419 found: "I see you're speaking Spanish. I found resources in es-419. I'll use that to find the definition of 'amor'." Then call fetch_translation_word with term="amor" and language="es-419"
+  4. If multiple found: "I see you're speaking Spanish. I found resources in: es-419, es-MX. Which would you prefer?" Then wait for user response`;
+				}
+
+				languageContext += `\n- If you detect the user switching languages mid-conversation, validate the new language using list_languages tool first
 - You can inform users about the current language/organization settings if they ask`;
 				
 				systemPrompt = systemPrompt + languageContext;
@@ -1798,9 +1955,25 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			);
 		}
 
+		// Step 1.5: Detect and validate language if needed
+		const languageDetectionStart = Date.now();
+		const languageInfo = await detectAndValidateLanguage(message, chatHistory, catalogLanguage, baseUrl);
+		timings.languageDetection = Date.now() - languageDetectionStart;
+
+		// Update language if detected and validated
+		let finalLanguage = catalogLanguage;
+		if (languageInfo.detectedLanguage && !languageInfo.needsValidation) {
+			finalLanguage = languageInfo.detectedLanguage;
+			logger.info('Language detected and validated', { 
+				detected: languageInfo.detectedLanguage, 
+				previous: catalogLanguage 
+			});
+		}
+
 		// Step 2: Let the LLM decide which endpoints/prompts to call
+		// The LLM will handle language validation/search based on the languageInfo context
 		const llmDecisionStart = Date.now();
-		const endpointCalls = await determineMCPCalls(message, apiKey, endpoints, prompts, chatHistory, catalogLanguage, organization);
+		const endpointCalls = await determineMCPCalls(message, apiKey, endpoints, prompts, chatHistory, finalLanguage, organization, baseUrl);
 		timings.llmDecision = Date.now() - llmDecisionStart;
 
 		// Log if no endpoints were selected
@@ -1810,7 +1983,7 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 
 		// Step 3: Execute the MCP calls
 		const mcpExecutionStart = Date.now();
-		const { data, apiCalls } = await executeMCPCalls(endpointCalls, baseUrl, catalogLanguage, organization);
+		const { data, apiCalls } = await executeMCPCalls(endpointCalls, baseUrl, finalLanguage, organization);
 		timings.mcpExecution = Date.now() - mcpExecutionStart;
 
 		// Step 4: Format data for OpenAI context, including any tool errors so the LLM can respond gracefully
@@ -1883,8 +2056,9 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 				},
 				startTime,
 				endpointCalls,
-				language,
-				organization
+				finalLanguage,
+				organization,
+				languageInfo
 			);
 			const totalDuration = Date.now() - startTime;
 			return new Response(sseStream, {
@@ -1904,8 +2078,9 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			chatHistory,
 			apiKey,
 			endpointCalls,
-			catalogLanguage,
-			organization
+			finalLanguage,
+			organization,
+			languageInfo
 		);
 		timings.llmResponse = Date.now() - llmResponseStart;
 

@@ -56,6 +56,46 @@ function parseParams(
 	const errors: string[] = [];
 
 	for (const param of schema) {
+		// Special handling for organization parameter - can be array
+		if (param.name === 'organization') {
+			const orgValues = url.searchParams.getAll(param.name);
+			
+			// Check required
+			if (param.required && orgValues.length === 0) {
+				errors.push(`Missing required parameter: ${param.name}`);
+				continue;
+			}
+
+			// Apply default only if no values provided
+			if (orgValues.length === 0 && param.default !== undefined) {
+				params[param.name] = param.default;
+				continue;
+			}
+
+			// Skip if not provided and not required
+			if (orgValues.length === 0) continue;
+
+			// Parse organization: single value = string, multiple = array
+			let parsed: string | string[] | undefined;
+			if (orgValues.length === 0) {
+				parsed = undefined; // No org specified - search all
+			} else if (orgValues.length === 1) {
+				parsed = orgValues[0]; // Single organization
+			} else {
+				parsed = orgValues; // Multiple organizations
+			}
+
+			// Custom validation
+			if (param.validate && !param.validate(parsed)) {
+				errors.push(`Parameter ${param.name} is invalid`);
+				continue;
+			}
+
+			params[param.name] = parsed;
+			continue;
+		}
+
+		// Standard parameter handling
 		const value = url.searchParams.get(param.name);
 
 		// Check required
@@ -246,7 +286,11 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 				'Cache-Control': 'no-store, no-cache, max-age=0, must-revalidate',
 				Pragma: 'no-cache',
 				'X-Response-Time': `${responseTime}ms`,
-				'X-Endpoint': config.name
+				'X-Endpoint': config.name,
+				// CORS headers for cross-origin requests
+				'Access-Control-Allow-Origin': '*',
+				'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+				'Access-Control-Allow-Headers': 'Content-Type, Authorization'
 			};
 
 			// Add X-ray trace headers if available

@@ -64,12 +64,12 @@ export class UnifiedResourceFetcher {
 	}
 
 	/**
-	 * Fetch scripture - already works great!
+	 * Fetch scripture - supports single org, multiple orgs, or all orgs
 	 */
 	async fetchScripture(
 		reference: string,
 		language: string,
-		organization: string,
+		organization: string | string[] | undefined,
 		resources: string[]
 	): Promise<ScriptureResult[]> {
 		const parsed = parseReference(reference);
@@ -79,14 +79,29 @@ export class UnifiedResourceFetcher {
 			throw new Error(`Invalid reference format: ${reference}`);
 		}
 
-		// Fetch all requested resources
-		for (const resource of resources) {
-			try {
-				const data = await this.zipFetcher.getScripture(parsed, language, organization, resource);
-				results.push(...data);
-			} catch (error) {
-				logger.warn(`Failed to fetch ${resource} for ${reference}`, { error });
-				// Continue with other resources instead of failing completely
+		// Handle multiple organizations
+		// When organization is undefined, search all orgs (single call without owner param)
+		// When organization is array, make parallel calls for each org
+		const organizations = organization === undefined 
+			? [undefined] // Search all orgs - pass undefined to ZipResourceFetcher2
+			: Array.isArray(organization) 
+				? organization 
+				: [organization]; // Single org as array for uniform handling
+
+		// Fetch all requested resources for all organizations
+		for (const org of organizations) {
+			for (const resource of resources) {
+				try {
+					// zipFetcher.getScripture expects string, but we'll pass undefined for "all orgs"
+					// ZipResourceFetcher2 checks: if (organization && organization !== "all")
+					// So undefined or "all" will omit owner param and search all orgs
+					const orgParam = org || 'all'; // Use 'all' to indicate search all orgs
+					const data = await this.zipFetcher.getScripture(parsed, language, orgParam, resource);
+					results.push(...data);
+				} catch (error) {
+					logger.warn(`Failed to fetch ${resource} for ${reference} from ${org || 'all orgs'}`, { error });
+					// Continue with other resources instead of failing completely
+				}
 			}
 		}
 
@@ -94,7 +109,16 @@ export class UnifiedResourceFetcher {
 			throw new Error(`No scripture found for ${reference}`);
 		}
 
-		return results;
+		// Remove duplicates based on translation name
+		const uniqueResults = new Map<string, ScriptureResult>();
+		for (const result of results) {
+			const key = result.translation;
+			if (!uniqueResults.has(key)) {
+				uniqueResults.set(key, result);
+			}
+		}
+
+		return Array.from(uniqueResults.values());
 	}
 
 	/**

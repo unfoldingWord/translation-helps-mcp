@@ -615,9 +615,9 @@ export class ZipResourceFetcher2 {
         if (!reference.chapter && !reference.verse) {
           verseText = this.extractFullBookFromUSFM(contentStr);
         } else if (
-          (reference as any).verseEnd &&
+          reference.endChapter &&
           !reference.verse &&
-          (reference as any).verseEnd !== reference.chapter
+          reference.endChapter !== reference.chapter
         ) {
           verseText = this.extractChapterRangeFromUSFM(contentStr, reference);
         } else if (reference.chapter && !reference.verse) {
@@ -694,11 +694,11 @@ export class ZipResourceFetcher2 {
         if (!reference.chapter && !reference.verse) {
           verseText = this.extractFullBookFromUSFM(fileContent);
         } else if (
-          (reference as any).verseEnd &&
+          reference.endChapter &&
           !reference.verse &&
-          (reference as any).verseEnd !== reference.chapter
+          reference.endChapter !== reference.chapter
         ) {
-          // Chapter range: verseEnd is being used to store end chapter
+          // Chapter range: endChapter stores the end chapter
           verseText = this.extractChapterRangeFromUSFM(fileContent, reference);
         } else if (reference.chapter && !reference.verse) {
           verseText = this.extractVerseFromUSFM(fileContent, reference);
@@ -2463,7 +2463,7 @@ export class ZipResourceFetcher2 {
 
   private extractVerseFromUSFM(
     usfm: string,
-    reference: { chapter?: number; verse?: number; verseEnd?: number },
+    reference: { chapter?: number; verse?: number; endVerse?: number },
   ): string {
     if (!reference.chapter) return "";
 
@@ -2529,10 +2529,10 @@ export class ZipResourceFetcher2 {
 
       // Determine end point based on whether we have an endVerse
       let verseEnd: number;
-      if (reference.verseEnd && reference.verseEnd > reference.verse) {
-        // Find the verse AFTER the verseEnd to get the full range
+      if (reference.endVerse && reference.endVerse > reference.verse) {
+        // Find the verse AFTER the endVerse to get the full range
         const afterEndVersePattern = new RegExp(
-          `\\\\v\\s*${reference.verseEnd + 1}\\b`,
+          `\\\\v\\s*${reference.endVerse + 1}\\b`,
         );
         const afterEndMatch = chapterContent.match(afterEndVersePattern);
 
@@ -2556,8 +2556,8 @@ export class ZipResourceFetcher2 {
 
       // For verse ranges, keep verse numbers
       const isRange =
-        (reference as any).verseEnd &&
-        (reference as any).verseEnd > reference.verse;
+        reference.endVerse &&
+        reference.endVerse > reference.verse;
 
       if (isRange) {
         // Clean USFM but preserve verse markers for ranges
@@ -2776,7 +2776,7 @@ export class ZipResourceFetcher2 {
           `${reference.book} ${reference.chapter}:${reference.verse}${reference.endVerse ? `-${reference.endVerse}` : ""}`,
         chapter: reference.chapter,
         verse: reference.verse,
-        endVerse: reference.endVerse || (reference as any).verseEnd,
+        endVerse: reference.endVerse,
       });
 
       // Parse data rows
@@ -2829,9 +2829,8 @@ export class ZipResourceFetcher2 {
 
             // Check if chapter matches
             if (chapterNum === reference.chapter) {
-              // Handle verse range if endVerse or verseEnd is provided
-              const endVerse =
-                reference.endVerse || (reference as any).verseEnd;
+              // Handle verse range if endVerse is provided
+              const endVerse = reference.endVerse;
               if (endVerse) {
                 // Check if verse is within range
                 if (verseNum >= reference.verse && verseNum <= endVerse) {
@@ -2855,8 +2854,7 @@ export class ZipResourceFetcher2 {
               const rangeEnd = parseInt(verseRangeMatch[3]);
 
               if (chapterNum === reference.chapter) {
-                const endVerse =
-                  reference.endVerse || (reference as any).verseEnd;
+                const endVerse = reference.endVerse;
                 if (endVerse) {
                   // Check if the TSV verse range overlaps with requested range
                   if (rangeStart <= endVerse && rangeEnd >= reference.verse) {

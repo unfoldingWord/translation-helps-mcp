@@ -120,8 +120,20 @@ export const COMMON_PARAMS = {
 
 	organization: {
 		name: 'organization',
-		default: 'unfoldingWord',
-		validate: isValidOrganization
+		// No default - when omitted, searches all organizations
+		validate: (value: any) => {
+			if (value === undefined || value === null || value === '') {
+				return true; // Valid - means search all organizations
+			}
+			if (typeof value === 'string') {
+				return isValidOrganization(value);
+			}
+			if (Array.isArray(value)) {
+				// Validate all organizations in array
+				return value.every(org => typeof org === 'string' && isValidOrganization(org));
+			}
+			return false;
+		}
 	},
 
 	resource: {

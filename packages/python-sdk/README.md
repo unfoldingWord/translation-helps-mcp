@@ -188,6 +188,21 @@ articles = await client.fetch_translation_academy({
 })
 ```
 
+##### `async search_translation_word_across_languages(options: SearchTranslationWordAcrossLanguagesOptions) -> Dict`
+
+Search for a translation word term across multiple languages to discover which languages have that term available. Useful when a term is not found in the current language or when you want to find all languages that have a specific term.
+
+```python
+results = await client.search_translation_word_across_languages({
+    "term": "love",
+    "languages": ["en", "es-419", "fr"],  # optional: specific languages to search
+    "organization": "unfoldingWord",  # optional, defaults to "unfoldingWord"
+    "limit": 20  # optional, defaults to 20
+})
+
+print(f"Found in {len([r for r in results['results'] if r['found']])} languages")
+```
+
 ##### `async get_languages(options: Optional[GetLanguagesOptions] = None) -> Dict`
 
 Get available languages and organizations.
@@ -195,6 +210,81 @@ Get available languages and organizations.
 ```python
 languages = await client.get_languages({
     "organization": "unfoldingWord"
+})
+```
+
+##### `async list_languages(options: Optional[ListLanguagesOptions] = None) -> Dict`
+
+List all available languages from Door43 catalog (~1 second).
+
+```python
+languages = await client.list_languages({
+    "organization": "unfoldingWord",  # or omit for all orgs
+    "stage": "prod"
+})
+print(f"Found {len(languages['languages'])} languages")
+```
+
+##### `async list_subjects(options: Optional[ListSubjectsOptions] = None) -> Dict`
+
+List all available resource subjects/types from Door43 catalog.
+
+```python
+subjects = await client.list_subjects({
+    "language": "en",
+    "organization": "unfoldingWord",
+    "stage": "prod"
+})
+print(f"Found {len(subjects['subjects'])} resource types")
+```
+
+##### `async list_resources_by_language(options: Optional[ListResourcesByLanguageOptions] = None) -> Dict`
+
+List resources organized by language. Makes multiple parallel API calls (~4-5s first time, cached afterward).
+
+```python
+resources = await client.list_resources_by_language({
+    "subjects": "Translation Words,Translation Academy",  # or omit for 7 defaults
+    "organization": "",  # empty = all organizations
+    "stage": "prod",
+    "limit": 100,
+    "topic": "tc-ready"  # optional: production-ready resources only
+})
+print(f"Found {resources['summary']['totalResources']} resources across {resources['summary']['totalLanguages']} languages")
+```
+
+##### `async list_resources_for_language(options: ListResourcesForLanguageOptions) -> Dict` ⭐ RECOMMENDED
+
+List all resources for a specific language. Fast single API call (~1-2 seconds).
+
+```python
+# Discover what's available for Spanish (es-419)
+resources = await client.list_resources_for_language({
+    "language": "es-419",
+    "organization": "",  # empty = all orgs (es-419_gl, unfoldingWord, BSA, etc.)
+    "topic": "tc-ready"  # optional: quality-filtered
+})
+
+print(f"Found {resources['totalResources']} resources")
+print(f"Subjects: {', '.join(resources['subjects'])}")
+print(f"Organizations discovered: {len(set(r['organization'] for r in resources['resourcesBySubject'].values()))}")
+```
+
+**Recommended Discovery Workflow:**
+
+```python
+# Step 1: Discover available languages (~1s)
+langs = await client.list_languages()
+print("Available languages:", [l['code'] for l in langs['languages']])
+
+# Step 2: Get resources for chosen language (~1-2s)
+resources = await client.list_resources_for_language({"language": "es-419"})
+
+# Step 3: Fetch specific resources
+scripture = await client.fetch_scripture({
+    "reference": "John 3:16",
+    "language": "es-419",
+    "organization": "es-419_gl"
 })
 ```
 

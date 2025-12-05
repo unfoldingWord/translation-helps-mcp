@@ -1,0 +1,212 @@
+---
+description: Ensures SDK packages (JS and Python) stay synchronized with MCP tool changes
+globs: src/tools/**/*.ts, src/index.ts, packages/js-sdk/**/*, packages/python-sdk/**/*
+alwaysApply: true
+---
+
+# MCP Tool ↔ SDK Synchronization Rule
+
+**CRITICAL**: Whenever MCP tools are added, removed, or modified, the SDK packages MUST be updated to maintain consistency.
+
+## 🚨 When This Rule Applies
+
+This rule triggers when you:
+- ✅ Add a new tool in `src/tools/` or register it in `src/index.ts`
+- ✅ Remove a tool from `src/index.ts`
+- ✅ Modify tool parameters (add/remove/change) in `src/tools/*.ts`
+- ✅ Change tool response shapes or behavior
+- ✅ Update tool descriptions or documentation
+
+## 📋 Required Updates Checklist
+
+When modifying MCP tools, you MUST update:
+
+### 1. **JavaScript/TypeScript SDK** (`packages/js-sdk/`)
+
+#### **Type Definitions** (`src/types.ts`):
+- [ ] Add/update `Options` interface for the tool (e.g., `ListResourcesForLanguageOptions`)
+- [ ] Include all parameters with correct types
+- [ ] Mark required vs optional parameters correctly
+
+#### **Client Methods** (`src/client.ts`):
+- [ ] Add/update convenience method (e.g., `async listResourcesForLanguage()`)
+- [ ] Import the new type from `types.ts`
+- [ ] Map all parameters correctly
+- [ ] Handle response parsing (JSON.parse if needed)
+- [ ] Add helpful JSDoc comments with examples
+
+#### **Documentation** (`README.md`):
+- [ ] Add method to API Reference section
+- [ ] Include code examples showing usage
+- [ ] Document all parameters
+- [ ] Add performance notes if relevant
+- [ ] Include recommended workflows if applicable
+
+### 2. **Python SDK** (`packages/python-sdk/`)
+
+#### **Type Definitions** (`translation_helps/types.py`):
+- [ ] Add/update `Options` TypedDict class
+- [ ] Use `TypedDict, total=False` pattern
+- [ ] Mark required fields (no `Optional`) vs optional (`Optional[Type]`)
+
+#### **Client Methods** (`translation_helps/client.py`):
+- [ ] Import new type from `types.py`
+- [ ] Add/update async method (e.g., `async def list_resources_for_language()`)
+- [ ] Use snake_case for method names
+- [ ] Add comprehensive docstring with Args, Returns, Example
+- [ ] Handle parameter conversion (string vs list, etc.)
+- [ ] Parse JSON response correctly
+
+#### **Documentation** (`README.md`):
+- [ ] Add method to API Reference section
+- [ ] Include Python code examples
+- [ ] Document all parameters
+- [ ] Show async/await usage patterns
+
+## 🔍 Tool Discovery Pattern
+
+For **discovery tools** (list_languages, list_subjects, list_resources_*), follow this pattern:
+
+### JavaScript SDK:
+```typescript
+// types.ts
+export interface ListResourcesForLanguageOptions {
+  language: string;  // Required
+  organization?: string;
+  stage?: string;
+  subject?: string;
+  limit?: number;
+  topic?: string;  // NEW parameters go here
+}
+
+// client.ts
+async listResourcesForLanguage(options: ListResourcesForLanguageOptions): Promise<any> {
+  const params: Record<string, any> = {
+    language: options.language,
+    stage: options.stage || "prod",
+  };
+  
+  if (options.organization !== undefined) params.organization = options.organization;
+  if (options.topic) params.topic = options.topic;  // Add new params here
+  
+  const response = await this.callTool("list_resources_for_language", params);
+  // ... parse response
+}
+```
+
+### Python SDK:
+```python
+# types.py
+class ListResourcesForLanguageOptions(TypedDict, total=False):
+    language: str  # Required (no Optional)
+    organization: Optional[str]
+    stage: Optional[str]
+    topic: Optional[str]  # NEW parameters
+
+# client.py
+async def list_resources_for_language(
+    self, options: ListResourcesForLanguageOptions
+) -> Dict[str, Any]:
+    """
+    List all resources for a specific language.
+    
+    Args:
+        options: Language (required) and optional filters
+        
+    Returns:
+        Dictionary with resources organized by subject
+    """
+    if not options.get("language"):
+        raise ValueError("language parameter is required")
+    
+    params: Dict[str, Any] = {
+        "language": options["language"],
+        "stage": options.get("stage", "prod"),
+    }
+    
+    if options.get("organization") is not None:
+        params["organization"] = options["organization"]
+    if options.get("topic"):  # Add new params here
+        params["topic"] = options["topic"]
+    
+    response = await self.call_tool("list_resources_for_language", params)
+    # ... parse response
+```
+
+## ✅ Verification Steps
+
+After updating SDKs, verify:
+
+1. **Type Safety**: 
+   - [ ] TypeScript compiles without errors (`npm run build` in js-sdk)
+   - [ ] Python type hints are correct (mypy if available)
+
+2. **Parameter Mapping**:
+   - [ ] All tool parameters are exposed in SDK methods
+   - [ ] Required vs optional matches the tool definition
+   - [ ] Default values are applied correctly
+
+3. **Documentation**:
+   - [ ] README examples are accurate
+   - [ ] Code examples are runnable
+   - [ ] Parameter descriptions match tool descriptions
+
+4. **Consistency**:
+   - [ ] JS and Python SDKs have feature parity
+   - [ ] Method names follow language conventions (camelCase vs snake_case)
+   - [ ] Response handling is consistent
+
+## 🎯 Quick Reference: Tool → SDK Mapping
+
+| MCP Tool Name | JS Method | Python Method | Notes |
+|--------------|-----------|---------------|-------|
+| `list_languages` | `listLanguages()` | `list_languages()` | Discovery tool |
+| `list_subjects` | `listSubjects()` | `list_subjects()` | Discovery tool |
+| `list_resources_by_language` | `listResourcesByLanguage()` | `list_resources_by_language()` | Discovery tool |
+| `list_resources_for_language` | `listResourcesForLanguage()` | `list_resources_for_language()` | Discovery tool ⭐ |
+| `fetch_scripture` | `fetchScripture()` | `fetch_scripture()` | Fetch tool |
+| `fetch_translation_notes` | `fetchTranslationNotes()` | `fetch_translation_notes()` | Fetch tool |
+| `fetch_translation_questions` | `fetchTranslationQuestions()` | `fetch_translation_questions()` | Fetch tool |
+| `fetch_translation_word` | `fetchTranslationWord()` | `fetch_translation_word()` | Fetch tool |
+| `fetch_translation_word_links` | `fetchTranslationWordLinks()` | `fetch_translation_word_links()` | Fetch tool |
+| `fetch_translation_academy` | `fetchTranslationAcademy()` | `fetch_translation_academy()` | Fetch tool |
+
+## 🚀 When Adding a New Tool
+
+1. **Create tool handler** in `src/tools/[tool-name].ts`
+2. **Register tool** in `src/index.ts`
+3. **Add to ToolRegistry** in `src/contracts/ToolContracts.ts`
+4. **Create endpoint** in `ui/src/routes/api/[tool-name]/+server.ts`
+5. **Update JS SDK**:
+   - Add type to `packages/js-sdk/src/types.ts`
+   - Add method to `packages/js-sdk/src/client.ts`
+   - Update `packages/js-sdk/README.md`
+6. **Update Python SDK**:
+   - Add type to `packages/python-sdk/translation_helps/types.py`
+   - Add method to `packages/python-sdk/translation_helps/client.py`
+   - Update `packages/python-sdk/README.md`
+7. **Test both SDKs** to ensure they work correctly
+
+## ⚠️ Common Mistakes to Avoid
+
+- ❌ **Forgetting to update both SDKs** - Always update JS AND Python
+- ❌ **Missing parameter mapping** - Every tool param must be exposed
+- ❌ **Incorrect optional/required** - Match the tool's Zod schema
+- ❌ **Outdated documentation** - README must reflect current API
+- ❌ **Type mismatches** - Ensure types match between tool and SDK
+- ❌ **Missing error handling** - SDK methods should handle invalid responses
+
+## 📝 Example: Adding a New Parameter
+
+If you add `topic` parameter to `list_resources_for_language`:
+
+1. ✅ Update tool handler (`src/tools/listResourcesForLanguage.ts`) - Add to Zod schema
+2. ✅ Update JS SDK type (`packages/js-sdk/src/types.ts`) - Add `topic?: string`
+3. ✅ Update JS SDK method (`packages/js-sdk/src/client.ts`) - Add `if (options.topic) params.topic = options.topic`
+4. ✅ Update Python SDK type (`packages/python-sdk/translation_helps/types.py`) - Add `topic: Optional[str]`
+5. ✅ Update Python SDK method (`packages/python-sdk/translation_helps/client.py`) - Add parameter handling
+6. ✅ Update both READMEs with examples showing `topic` usage
+
+---
+
+**Remember**: SDK packages are the public API. They must always stay in sync with MCP tool changes to provide a consistent developer experience! 🎯

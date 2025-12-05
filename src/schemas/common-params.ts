@@ -29,13 +29,15 @@ export const LanguageParam = z
 
 /**
  * Common organization parameter
- * Organization providing the translation resources
+ * Organization(s) providing the translation resources
+ * Can be a single organization (string), multiple organizations (array), or omitted to search all organizations
  */
 export const OrganizationParam = z
-  .string()
+  .union([z.string(), z.array(z.string()), z.undefined()])
   .optional()
-  .default("unfoldingWord")
-  .describe('Organization (default: "unfoldingWord")');
+  .describe(
+    'Organization(s) to search. Can be a single organization (string), multiple organizations (array), or omitted to search all organizations. Examples: "unfoldingWord", ["unfoldingWord", "es-419_gl"], or undefined for all.'
+  );
 
 /**
  * Common format parameter

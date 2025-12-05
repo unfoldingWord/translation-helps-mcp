@@ -18,6 +18,11 @@ from .types import (
     FetchTranslationWordLinksOptions,
     FetchTranslationAcademyOptions,
     GetLanguagesOptions,
+    ListLanguagesOptions,
+    ListSubjectsOptions,
+    ListResourcesByLanguageOptions,
+    ListResourcesForLanguageOptions,
+    SearchTranslationWordAcrossLanguagesOptions,
 )
 
 DEFAULT_SERVER_URL = "https://translation-helps-mcp-945.pages.dev/api/mcp"
@@ -307,6 +312,179 @@ class TranslationHelpsClient:
             return json.loads(response["content"][0]["text"])
 
         raise ValueError("Invalid response format from get_languages")
+
+    async def list_languages(
+        self, options: Optional[ListLanguagesOptions] = None
+    ) -> Dict[str, Any]:
+        """
+        List available languages from Door43 catalog.
+        
+        Args:
+            options: Optional filtering options (organization, stage)
+            
+        Returns:
+            Dictionary with languages array and metadata
+        """
+        options = options or {}
+        response = await self.call_tool("list_languages", {
+            "organization": options.get("organization"),
+            "stage": options.get("stage", "prod"),
+        })
+
+        if response.get("content") and response["content"][0].get("text"):
+            return json.loads(response["content"][0]["text"])
+
+        raise ValueError("Invalid response format from list_languages")
+
+    async def list_subjects(
+        self, options: Optional[ListSubjectsOptions] = None
+    ) -> Dict[str, Any]:
+        """
+        List available resource subjects from Door43 catalog.
+        
+        Args:
+            options: Optional filtering options (language, organization, stage)
+            
+        Returns:
+            Dictionary with subjects array and metadata
+        """
+        options = options or {}
+        response = await self.call_tool("list_subjects", {
+            "language": options.get("language"),
+            "organization": options.get("organization"),
+            "stage": options.get("stage", "prod"),
+        })
+
+        if response.get("content") and response["content"][0].get("text"):
+            return json.loads(response["content"][0]["text"])
+
+        raise ValueError("Invalid response format from list_subjects")
+
+    async def list_resources_by_language(
+        self, options: Optional[ListResourcesByLanguageOptions] = None
+    ) -> Dict[str, Any]:
+        """
+        List resources organized by language.
+        
+        NOTE: Makes multiple parallel API calls (~4-5s first time, cached afterward).
+        For faster single-language discovery, use list_resources_for_language instead.
+        
+        Args:
+            options: Optional filtering options (subjects, organization, stage, limit, topic)
+            
+        Returns:
+            Dictionary with resources grouped by language
+        """
+        options = options or {}
+        params: Dict[str, Any] = {
+            "stage": options.get("stage", "prod"),
+        }
+        
+        if options.get("subjects"):
+            # Handle both string and list
+            subjects = options["subjects"]
+            params["subjects"] = subjects if isinstance(subjects, str) else ",".join(subjects)
+        if options.get("organization") is not None:
+            params["organization"] = options["organization"]
+        if options.get("limit"):
+            params["limit"] = options["limit"]
+        if options.get("topic"):
+            params["topic"] = options["topic"]
+
+        response = await self.call_tool("list_resources_by_language", params)
+
+        if response.get("content") and response["content"][0].get("text"):
+            return json.loads(response["content"][0]["text"])
+
+        raise ValueError("Invalid response format from list_resources_by_language")
+
+    async def list_resources_for_language(
+        self, options: ListResourcesForLanguageOptions
+    ) -> Dict[str, Any]:
+        """
+        List all resources for a specific language (RECOMMENDED - much faster!).
+        
+        Single API call (~1-2 seconds). Use this after list_languages() to discover
+        what's available for a chosen language.
+        
+        Args:
+            options: Language (required) and optional filters (organization, stage, subject, limit, topic)
+            
+        Returns:
+            Dictionary with resources for the specified language organized by subject
+            
+        Example:
+            >>> resources = await client.list_resources_for_language({
+            ...     "language": "es-419",
+            ...     "topic": "tc-ready"
+            ... })
+            >>> print(f"Found {resources['totalResources']} resources")
+        """
+        if not options.get("language"):
+            raise ValueError("language parameter is required for list_resources_for_language")
+        
+        params: Dict[str, Any] = {
+            "language": options["language"],
+            "stage": options.get("stage", "prod"),
+        }
+        
+        if options.get("organization") is not None:
+            params["organization"] = options["organization"]
+        if options.get("subject"):
+            params["subject"] = options["subject"]
+        if options.get("limit"):
+            params["limit"] = options["limit"]
+        if options.get("topic"):
+            params["topic"] = options["topic"]
+
+        response = await self.call_tool("list_resources_for_language", params)
+
+        if response.get("content") and response["content"][0].get("text"):
+            return json.loads(response["content"][0]["text"])
+
+        raise ValueError("Invalid response format from list_resources_for_language")
+
+    async def search_translation_word_across_languages(
+        self, options: SearchTranslationWordAcrossLanguagesOptions
+    ) -> Dict[str, Any]:
+        """
+        Search for a translation word term across multiple languages.
+        
+        Useful when a term is not found in the current language or when you want
+        to find all languages that have a specific term available.
+        
+        Args:
+            options: Term (required) and optional filters (languages, organization, limit)
+            
+        Returns:
+            Dictionary with search results showing which languages have the term
+            
+        Example:
+            >>> results = await client.search_translation_word_across_languages({
+            ...     "term": "love",
+            ...     "languages": ["en", "es-419", "fr"],
+            ...     "limit": 10
+            ... })
+            >>> print(f"Found in {len([r for r in results['results'] if r['found']])} languages")
+        """
+        if not options.get("term"):
+            raise ValueError("term parameter is required for search_translation_word_across_languages")
+        
+        params: Dict[str, Any] = {
+            "term": options["term"],
+            "organization": options.get("organization", "unfoldingWord"),
+            "limit": options.get("limit", 20),
+        }
+        
+        if options.get("languages"):
+            params["languages"] = options["languages"]
+
+        response = await self.call_tool("search_translation_word_across_languages", params)
+
+        if response.get("content") and response["content"][0].get("text"):
+            return json.loads(response["content"][0]["text"])
+
+        raise ValueError("Invalid response format from search_translation_word_across_languages")
 
     async def get_system_prompt(
         self, include_implementation_details: bool = False

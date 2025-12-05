@@ -193,6 +193,86 @@
 					multiple: true
 				}
 			]
+		},
+		{
+			id: 'discover-resources-for-language',
+			title: 'Discover Resources by Language',
+			icon: '🌍',
+			description:
+				'Discover what translation resources are available for a specific language. Shows available languages (if not specified), available resource types for that language, and provides example tool calls.',
+			parameters: [
+				{
+					name: 'language',
+					type: 'text',
+					required: false,
+					placeholder: 'e.g., en, es-419 (optional - shows all if omitted)',
+					description: 'Language code. If not provided, will show all available languages first.'
+				},
+				{
+					name: 'organization',
+					type: 'text',
+					required: false,
+					placeholder: 'Organization name (optional - searches all if omitted)',
+					description: 'Organization/owner to filter by (e.g., unfoldingWord, es-419_gl). Omit to search all organizations.'
+				}
+			],
+			workflow: [
+				{
+					step: 1,
+					tool: 'list_languages',
+					description: 'List available languages (if language not specified)'
+				},
+				{
+					step: 2,
+					tool: 'list_subjects',
+					description: 'List available resource types (subjects) for the language'
+				},
+				{
+					step: 3,
+					tool: 'example_tool_calls',
+					description: 'Provide example tool calls using discovered language parameter'
+				}
+			]
+		},
+		{
+			id: 'discover-languages-for-subject',
+			title: 'Discover Languages by Resource Type',
+			icon: '🔍',
+			description:
+				'Discover which languages have a specific resource type (subject) available. Shows available subjects (if not specified), then lists languages that have that resource type, and provides example tool calls.',
+			parameters: [
+				{
+					name: 'subject',
+					type: 'text',
+					required: false,
+					placeholder: 'e.g., Translation Words, Translation Notes (optional)',
+					description: 'Resource subject/type. If not provided, will show all available subjects first.'
+				},
+				{
+					name: 'organization',
+					type: 'text',
+					required: false,
+					placeholder: 'Organization name (optional - searches all if omitted)',
+					description: 'Organization/owner to filter by (e.g., unfoldingWord, es-419_gl). Omit to search all organizations.'
+				}
+			],
+			workflow: [
+				{
+					step: 1,
+					tool: 'list_subjects',
+					description: 'List available subjects (if subject not specified)'
+				},
+				{
+					step: 2,
+					tool: 'list_languages',
+					description: 'Discover which languages have the selected subject available'
+				},
+				{
+					step: 3,
+					tool: 'example_tool_calls',
+					description: 'Provide example tool calls using discovered languages'
+				}
+			]
 		}
 	];
 
@@ -290,8 +370,16 @@
 						promptParameters[param.name] = 'John 3:16';
 					} else if (prompt.id === 'get-translation-words-for-passage') {
 						promptParameters[param.name] = 'Romans 1:1';
-					} else if (prompt.id === 'get-translation-academy-for-passage') {
+					} else 					if (prompt.id === 'get-translation-academy-for-passage') {
 						promptParameters[param.name] = 'Matthew 5:13';
+					} else if (prompt.id === 'discover-resources-for-language') {
+						if (param.name === 'language') {
+							promptParameters[param.name] = 'en';
+						}
+					} else if (prompt.id === 'discover-languages-for-subject') {
+						if (param.name === 'subject') {
+							promptParameters[param.name] = 'Translation Words';
+						}
 					}
 				}
 			});
@@ -418,7 +506,22 @@
 			else if (name === 'fetch-translation-word' || name === 'fetch-translation-academy') {
 				groups.rcLinked.push(endpoint);
 			}
-			// Everything else goes to discovery (should be none for core)
+		// Discovery/Browsing Tools
+		else if (
+			name === 'list-languages' ||
+			name === 'list_languages' ||
+			name === 'list-subjects' ||
+			name === 'list_subjects' ||
+			name === 'list-resources-by-language' ||
+			name === 'list_resources_by_language' ||
+			name === 'list-resources-for-language' ||
+			name === 'list_resources_for_language' ||
+			name === 'search-translation-word-across-languages' ||
+			name === 'search_translation_word_across_languages'
+		) {
+			groups.discovery.push(endpoint);
+		}
+			// Everything else goes to discovery
 			else {
 				groups.discovery.push(endpoint);
 			}
@@ -432,7 +535,18 @@
 				'fetch-translation-word-links'
 			],
 			rcLinked: ['fetch-translation-word', 'fetch-translation-academy'],
-			discovery: [] // No discovery endpoints in core
+		discovery: [
+			'list-languages',
+			'list_languages',
+			'list-subjects',
+			'list_subjects',
+			'list-resources-by-language',
+			'list_resources_by_language',
+			'list-resources-for-language',
+			'list_resources_for_language',
+			'search-translation-word-across-languages',
+			'search_translation_word_across_languages'
+		]
 		};
 
 		// Sort each group according to custom order
@@ -441,12 +555,16 @@
 				groups[key].sort((a, b) => {
 					const aIndex = sortOrder[key].indexOf(a.name);
 					const bIndex = sortOrder[key].indexOf(b.name);
+					// If not in sort order, put at end
+					if (aIndex === -1 && bIndex === -1) return 0;
+					if (aIndex === -1) return 1;
+					if (bIndex === -1) return -1;
 					return aIndex - bIndex;
 				});
 			}
 		});
 
-		return {
+		const result: Record<string, { icon: string; description: string; endpoints: any[] }> = {
 			'Scripture Resources': {
 				icon: '📖',
 				description: 'Access Bible texts in original and simplified languages',
@@ -464,6 +582,18 @@
 				endpoints: groups.rcLinked
 			}
 		};
+
+		// Only add Discovery section if there are discovery endpoints
+		if (groups.discovery.length > 0) {
+			result['Discovery & Browsing'] = {
+				icon: '🔍',
+				description:
+					'Tools to discover available languages, resource types, and search across languages',
+				endpoints: groups.discovery
+			};
+		}
+
+		return result;
 	}
 
 	// Copy example to clipboard
@@ -507,9 +637,25 @@
 		} else if (endpoint.name === 'fetch-translation-academy') {
 			testParams.language = 'en';
 			testParams.organization = 'unfoldingWord';
-		}
+		} else if (endpoint.name === 'list-languages' || endpoint.name === 'list_languages') {
+			testParams.organization = 'unfoldingWord';
+			testParams.stage = 'prod';
+		} else if (endpoint.name === 'list-subjects' || endpoint.name === 'list_subjects') {
+			testParams.language = 'en';
+			testParams.organization = 'unfoldingWord';
+			testParams.stage = 'prod';
+	} else if (endpoint.name === 'list-resources-by-language' || endpoint.name === 'list_resources_by_language') {
+		testParams.organization = 'unfoldingWord';
+		testParams.stage = 'prod';
+		testParams.limit = '100';
+	} else if (endpoint.name === 'list-resources-for-language' || endpoint.name === 'list_resources_for_language') {
+		testParams.language = 'en';
+		testParams.organization = '';
+		testParams.stage = 'prod';
+		// Don't set limit - omitting it fetches all resources
+	}
 
-		// Convert endpoint name to MCP tool name
+	// Convert endpoint name to MCP tool name
 		const toolName = endpointToToolName(endpoint.name);
 		const serverUrl = '/api/mcp'; // Use local MCP server
 
@@ -861,9 +1007,25 @@
 			} else if (endpoint.name === 'fetch-translation-academy') {
 				testParams.language = 'en';
 				testParams.organization = 'unfoldingWord';
-			}
+			} else if (endpoint.name === 'list-languages' || endpoint.name === 'list_languages') {
+				testParams.organization = 'unfoldingWord';
+				testParams.stage = 'prod';
+			} else if (endpoint.name === 'list-subjects' || endpoint.name === 'list_subjects') {
+				testParams.language = 'en';
+				testParams.organization = 'unfoldingWord';
+				testParams.stage = 'prod';
+		} else if (endpoint.name === 'list-resources-by-language' || endpoint.name === 'list_resources_by_language') {
+			testParams.organization = 'unfoldingWord';
+			testParams.stage = 'prod';
+			testParams.limit = '100';
+		} else if (endpoint.name === 'list-resources-for-language' || endpoint.name === 'list_resources_for_language') {
+			testParams.language = 'en';
+			testParams.organization = '';
+			testParams.stage = 'prod';
+			// Don't set limit - omitting it fetches all resources
+		}
 
-			// Build query string
+		// Build query string
 			const params = new URLSearchParams();
 			Object.entries(testParams).forEach(([key, value]) => {
 				if (value !== null && value !== undefined && value !== '') {

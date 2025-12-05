@@ -16,6 +16,11 @@ import type {
   FetchTranslationWordLinksOptions,
   FetchTranslationAcademyOptions,
   GetLanguagesOptions,
+  ListLanguagesOptions,
+  ListSubjectsOptions,
+  ListResourcesByLanguageOptions,
+  ListResourcesForLanguageOptions,
+  SearchTranslationWordAcrossLanguagesOptions,
 } from "./types.js";
 
 const DEFAULT_SERVER_URL =
@@ -427,6 +432,131 @@ export class TranslationHelpsClient {
     }
 
     throw new Error("Invalid response format from get_system_prompt");
+  }
+
+  /**
+   * List available languages from Door43 catalog
+   */
+  async listLanguages(options: ListLanguagesOptions = {}): Promise<any> {
+    const response = await this.callTool("list_languages", {
+      organization: options.organization,
+      stage: options.stage || "prod",
+    });
+
+    if (response.content && response.content[0]?.text) {
+      return JSON.parse(response.content[0].text);
+    }
+
+    throw new Error("Invalid response format from list_languages");
+  }
+
+  /**
+   * List available resource subjects from Door43 catalog
+   */
+  async listSubjects(options: ListSubjectsOptions = {}): Promise<any> {
+    const response = await this.callTool("list_subjects", {
+      language: options.language,
+      organization: options.organization,
+      stage: options.stage || "prod",
+    });
+
+    if (response.content && response.content[0]?.text) {
+      return JSON.parse(response.content[0].text);
+    }
+
+    throw new Error("Invalid response format from list_subjects");
+  }
+
+  /**
+   * List resources organized by language
+   * NOTE: Makes multiple parallel API calls (~4-5s first time, cached afterward)
+   * For faster single-language discovery, use listResourcesForLanguage instead
+   */
+  async listResourcesByLanguage(
+    options: ListResourcesByLanguageOptions = {},
+  ): Promise<any> {
+    const params: Record<string, any> = {
+      stage: options.stage || "prod",
+    };
+
+    if (options.subjects) {
+      params.subjects = Array.isArray(options.subjects)
+        ? options.subjects.join(",")
+        : options.subjects;
+    }
+    if (options.organization !== undefined)
+      params.organization = options.organization;
+    if (options.limit) params.limit = options.limit;
+    if (options.topic) params.topic = options.topic;
+
+    const response = await this.callTool("list_resources_by_language", params);
+
+    if (response.content && response.content[0]?.text) {
+      return JSON.parse(response.content[0].text);
+    }
+
+    throw new Error("Invalid response format from list_resources_by_language");
+  }
+
+  /**
+   * List all resources for a specific language (RECOMMENDED - much faster!)
+   * Single API call (~1-2 seconds)
+   * Use this after listLanguages() to discover what's available for a chosen language
+   */
+  async listResourcesForLanguage(
+    options: ListResourcesForLanguageOptions,
+  ): Promise<any> {
+    const params: Record<string, any> = {
+      language: options.language,
+      stage: options.stage || "prod",
+    };
+
+    if (options.organization !== undefined)
+      params.organization = options.organization;
+    if (options.subject) params.subject = options.subject;
+    if (options.limit) params.limit = options.limit;
+    if (options.topic) params.topic = options.topic;
+
+    const response = await this.callTool("list_resources_for_language", params);
+
+    if (response.content && response.content[0]?.text) {
+      return JSON.parse(response.content[0].text);
+    }
+
+    throw new Error("Invalid response format from list_resources_for_language");
+  }
+
+  /**
+   * Search for a translation word term across multiple languages
+   * to discover which languages have that term available.
+   * Useful when a term is not found in the current language or when
+   * you want to find all languages that have a specific term.
+   */
+  async searchTranslationWordAcrossLanguages(
+    options: SearchTranslationWordAcrossLanguagesOptions,
+  ): Promise<any> {
+    const params: Record<string, any> = {
+      term: options.term,
+      organization: options.organization || "unfoldingWord",
+      limit: options.limit || 20,
+    };
+
+    if (options.languages && options.languages.length > 0) {
+      params.languages = options.languages;
+    }
+
+    const response = await this.callTool(
+      "search_translation_word_across_languages",
+      params,
+    );
+
+    if (response.content && response.content[0]?.text) {
+      return JSON.parse(response.content[0].text);
+    }
+
+    throw new Error(
+      "Invalid response format from search_translation_word_across_languages",
+    );
   }
 
   /**

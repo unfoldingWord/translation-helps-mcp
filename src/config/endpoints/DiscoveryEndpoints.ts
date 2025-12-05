@@ -6,7 +6,7 @@
  */
 
 import type { EndpointConfig } from "../EndpointConfig.js";
-import { LANGUAGES_SHAPE, RESOURCES_SHAPE } from "../ResponseShapes.js";
+import { LANGUAGES_SHAPE, RESOURCES_SHAPE, SUBJECTS_SHAPE, RESOURCES_BY_LANGUAGE_SHAPE, RESOURCES_FOR_LANGUAGE_SHAPE } from "../ResponseShapes.js";
 
 /**
  * Get Languages - Discover available languages with resource metadata
@@ -357,9 +357,356 @@ export const LIST_AVAILABLE_RESOURCES_CONFIG: EndpointConfig = {
 } as EndpointConfig;
 
 /**
+ * List Languages - Discover available languages from Door43 catalog
+ */
+export const LIST_LANGUAGES_CONFIG: EndpointConfig = {
+  name: "list-languages",
+  path: "/api/list-languages",
+  title: "List Languages",
+  description:
+    "List all available languages from the Door43 catalog. Returns structured language data (codes, names, display names) that can be directly reused as language parameters in other tools.",
+  category: "core",
+  responseShape: LANGUAGES_SHAPE,
+
+  params: {
+    organization: {
+      type: "string" as const,
+      required: false,
+      description:
+        "Organization(s) to filter by. Can be a single organization (string), multiple organizations (comma-separated), or omitted to return all languages from all organizations.",
+      example: "unfoldingWord",
+    },
+    stage: {
+      type: "string" as const,
+      required: false,
+      default: "prod",
+      description: "Resource stage (default: prod)",
+      example: "prod",
+      options: ["prod", "preprod", "draft"],
+    },
+  },
+
+  dataSource: {
+    type: "computed",
+    transformation: "json-passthrough",
+    cacheTtl: 21600, // 6 hours (language availability changes infrequently)
+  },
+
+  enabled: true,
+  tags: ["discovery", "languages", "catalog", "core"],
+
+  examples: [
+    {
+      name: "All Languages",
+      description: "Get all available languages from all organizations",
+      params: {
+        stage: "prod",
+      },
+      expectedContent: {
+        contains: ["languages", "code", "name"],
+        minLength: 200,
+        fields: {
+          languages: "array",
+          metadata: "object",
+        },
+      },
+    },
+    {
+      name: "Languages by Organization",
+      description: "Get languages available from a specific organization",
+      params: {
+        organization: "unfoldingWord",
+        stage: "prod",
+      },
+      expectedContent: {
+        contains: ["languages", "unfoldingWord"],
+        minLength: 100,
+        fields: {
+          languages: "array",
+          filters: "object",
+        },
+      },
+    },
+  ],
+} as EndpointConfig;
+
+/**
+ * List Subjects - Discover available resource types from Door43 catalog
+ */
+export const LIST_SUBJECTS_CONFIG: EndpointConfig = {
+  name: "list-subjects",
+  path: "/api/list-subjects",
+  title: "List Subjects",
+  description:
+    "List all available resource subjects (resource types) from the Door43 catalog. Returns structured subject data (names, descriptions, resource types) that can be used to discover what resource types are available.",
+  category: "core",
+  responseShape: SUBJECTS_SHAPE,
+
+  params: {
+    language: {
+      type: "string" as const,
+      required: false,
+      description:
+        "Filter subjects by language code (e.g., 'en', 'es-419'). If not provided, returns all subjects.",
+      example: "en",
+    },
+    organization: {
+      type: "string" as const,
+      required: false,
+      description:
+        "Organization(s) to filter by. Can be a single organization (string), multiple organizations (comma-separated), or omitted to return all subjects from all organizations.",
+      example: "unfoldingWord",
+    },
+    stage: {
+      type: "string" as const,
+      required: false,
+      default: "prod",
+      description: "Resource stage (default: prod)",
+      example: "prod",
+      options: ["prod", "preprod", "draft"],
+    },
+  },
+
+  dataSource: {
+    type: "computed",
+    transformation: "json-passthrough",
+    cacheTtl: 43200, // 12 hours (resource types change very infrequently)
+  },
+
+  enabled: true,
+  tags: ["discovery", "subjects", "resource-types", "catalog", "core"],
+
+  examples: [
+    {
+      name: "All Subjects",
+      description: "Get all available resource subjects",
+      params: {
+        stage: "prod",
+      },
+      expectedContent: {
+        contains: ["subjects", "name", "resourceType"],
+        minLength: 200,
+        fields: {
+          subjects: "array",
+          metadata: "object",
+        },
+      },
+    },
+    {
+      name: "Subjects for Language",
+      description: "Get resource subjects available for a specific language",
+      params: {
+        language: "en",
+        organization: "unfoldingWord",
+        stage: "prod",
+      },
+      expectedContent: {
+        contains: ["subjects", "filters"],
+        minLength: 100,
+        fields: {
+          subjects: "array",
+          filters: "object",
+        },
+      },
+    },
+  ],
+} as EndpointConfig;
+
+/**
+ * List Resources by Language - Discover resources organized by language
+ */
+export const LIST_RESOURCES_BY_LANGUAGE_CONFIG: EndpointConfig = {
+  name: "list-resources-by-language",
+  path: "/api/list-resources-by-language",
+  title: "List Resources by Language",
+  description:
+    "List available resources organized by language. Searches 7 default subjects in parallel. First call: ~4-5s (uncached). Subsequent calls: ~50ms (cached). For faster single-language discovery, use list-resources-for-language instead.",
+  category: "core",
+  responseShape: RESOURCES_BY_LANGUAGE_SHAPE,
+
+  params: {
+    subjects: {
+      type: "string" as const,
+      required: false,
+      description:
+        "Comma-separated list of subjects to search for (e.g., 'Translation Words,Translation Academy'). If not provided, automatically searches 7 default subjects: Bible, Aligned Bible, Translation Words, Translation Academy, TSV Translation Notes, TSV Translation Questions, and TSV Translation Words Links.",
+      example: "Translation Words,Translation Academy",
+    },
+    organization: {
+      type: "string" as const,
+      required: false,
+      description:
+        "Organization(s) to filter by. Can be a single organization (string), multiple organizations (comma-separated), or omitted to search all organizations.",
+      example: "unfoldingWord",
+    },
+    stage: {
+      type: "string" as const,
+      required: false,
+      default: "prod",
+      description: "Resource stage (default: prod)",
+      example: "prod",
+      options: ["prod", "preprod", "draft"],
+    },
+    limit: {
+      type: "number" as const,
+      required: false,
+      default: 100,
+      description: "Maximum number of resources to return per subject (default: 100, max: 1000)",
+      example: 100,
+      min: 1,
+      max: 1000,
+    },
+    topic: {
+      type: "string" as const,
+      required: false,
+      description: 'Filter by topic tag (e.g., "tc-ready" for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.',
+      example: "tc-ready",
+    },
+  },
+
+  dataSource: {
+    type: "computed",
+    transformation: "json-passthrough",
+    cacheTtl: 3600, // 1 hour (resource availability changes moderately)
+  },
+
+  enabled: true,
+  tags: ["discovery", "resources", "languages", "catalog", "core"],
+
+  examples: [
+    {
+      name: "All Resources by Language",
+      description: "Get all available resources organized by language",
+      params: {
+        stage: "prod",
+      },
+      expectedContent: {
+        contains: ["resourcesByLanguage", "summary", "en", "es"],
+        minLength: 500,
+        fields: {
+          resourcesByLanguage: "array",
+          summary: "object",
+        },
+      },
+    },
+    {
+      name: "Specific Subjects by Language",
+      description: "Get specific resource types organized by language",
+      params: {
+        subjects: "Translation Words,Translation Notes",
+        organization: "unfoldingWord",
+        stage: "prod",
+      },
+      expectedContent: {
+        contains: ["resourcesByLanguage", "Translation Words", "Translation Notes"],
+        minLength: 200,
+        fields: {
+          resourcesByLanguage: "object",
+        },
+      },
+    },
+  ],
+} as EndpointConfig;
+
+/**
+ * List Resources for Language - Get all resources for a specific language
+ */
+export const LIST_RESOURCES_FOR_LANGUAGE_CONFIG: EndpointConfig = {
+  name: "list-resources-for-language",
+  path: "/api/list-resources-for-language",
+  title: "List Resources for Language (Recommended)",
+  description:
+    "FAST: List all available resources for a specific language (~1-2s). Given a language code (e.g., 'en', 'fr', 'es-419'), returns all resources organized by subject. Single API call, much faster than list-resources-by-language. Recommended workflow: 1) list-languages, 2) this tool for chosen language, 3) fetch specific resources.",
+  category: "core",
+  responseShape: RESOURCES_FOR_LANGUAGE_SHAPE,
+
+  params: {
+    language: {
+      type: "string" as const,
+      required: true,
+      description: "Language code (e.g., 'en', 'fr', 'es-419')",
+      example: "en",
+    },
+    organization: {
+      type: "string" as const,
+      required: false,
+      description:
+        "Organization(s) to filter by. Can be a single organization, multiple organizations (comma-separated), or omitted to search all organizations.",
+      example: "unfoldingWord",
+    },
+    stage: {
+      type: "string" as const,
+      required: false,
+      default: "prod",
+      description: "Resource stage (default: prod)",
+      example: "prod",
+      options: ["prod", "preprod", "draft"],
+    },
+    subject: {
+      type: "string" as const,
+      required: false,
+      description:
+        "Optional: Filter by specific subject/resource type (e.g., 'Bible', 'Translation Words')",
+      example: "Translation Words",
+    },
+    limit: {
+      type: "number" as const,
+      required: false,
+      description: "Maximum number of resources to return. If not specified, fetches all available resources (up to 10000).",
+      example: 200,
+    },
+    topic: {
+      type: "string" as const,
+      required: false,
+      description: 'Filter by topic tag (e.g., "tc-ready" for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.',
+      example: "tc-ready",
+    },
+  },
+
+  dataSource: {
+    type: "computed",
+    transformation: "json-passthrough",
+    cacheTtl: 3600, // 1 hour
+  },
+
+  enabled: true,
+  tags: ["discovery", "languages", "resources", "catalog", "core"],
+
+  examples: [
+    {
+      name: "All Resources for English",
+      description: "Get all English resources from all organizations",
+      params: {
+        language: "en",
+      },
+    },
+    {
+      name: "unfoldingWord Spanish Resources",
+      description: "Get Spanish resources from unfoldingWord only",
+      params: {
+        language: "es-419",
+        organization: "unfoldingWord",
+      },
+    },
+    {
+      name: "French Translation Words",
+      description: "Get only Translation Words resources in French",
+      params: {
+        language: "fr",
+        subject: "Translation Words",
+      },
+    },
+  ],
+} as EndpointConfig;
+
+/**
  * All Discovery Endpoint Configurations
  */
-// Discovery endpoints removed - not part of core 6 tools
-export const DISCOVERY_ENDPOINTS = [] as const;
+export const DISCOVERY_ENDPOINTS = [
+  LIST_LANGUAGES_CONFIG,
+  LIST_SUBJECTS_CONFIG,
+  LIST_RESOURCES_BY_LANGUAGE_CONFIG,
+  LIST_RESOURCES_FOR_LANGUAGE_CONFIG,
+] as const;
 
 export default DISCOVERY_ENDPOINTS;

@@ -287,4 +287,78 @@ export const ToolRegistry = {
     formatter: ToolFormatters.academy,
     requiredParams: [], // At least one of moduleId, path, or rcLink should be provided, but we don't enforce it here
   },
+  list_languages: {
+    endpoint: "/api/list-languages",
+    formatter: (data: any): string => {
+      // Format languages list for display
+      if (data.languages && Array.isArray(data.languages)) {
+        return data.languages
+          .map(
+            (lang: any) =>
+              `**${lang.name}** (${lang.code})${lang.displayName ? ` - ${lang.displayName}` : ""}`,
+          )
+          .join("\n");
+      }
+      return JSON.stringify(data, null, 2);
+    },
+    requiredParams: [],
+  },
+  list_subjects: {
+    endpoint: "/api/list-subjects",
+    formatter: (data: any): string => {
+      // Format subjects list for display
+      if (data.subjects && Array.isArray(data.subjects)) {
+        return data.subjects
+          .map(
+            (subject: any) =>
+              `**${subject.name}**${subject.resourceType ? ` (${subject.resourceType})` : ""}${subject.description ? ` - ${subject.description}` : ""}`,
+          )
+          .join("\n");
+      }
+      return JSON.stringify(data, null, 2);
+    },
+    requiredParams: [],
+  },
+  list_resources_by_language: {
+    endpoint: "/api/list-resources-by-language",
+    formatter: (data: any): string => {
+      // Format resources by language list for display
+      if (data.languages && Array.isArray(data.languages)) {
+        return data.languages
+          .map((lang: any) => {
+            const subjects = lang.subjects?.join(", ") || "No subjects";
+            const count = lang.resourceCount || 0;
+            return `**${lang.language}** (${count} resource${count !== 1 ? "s" : ""})\n  Subjects: ${subjects}`;
+          })
+          .join("\n\n");
+      }
+      return JSON.stringify(data, null, 2);
+    },
+    requiredParams: [],
+  },
+  list_resources_for_language: {
+    endpoint: "/api/list-resources-for-language",
+    formatter: (data: any): string => {
+      // Format resources for a specific language
+      if (data.resourcesBySubject && data.language) {
+        let output = `**Resources for ${data.language.toUpperCase()}**\n`;
+        output += `Total: ${data.totalResources} resources across ${data.subjectCount} subjects\n\n`;
+        
+        for (const subject of data.subjects || []) {
+          const resources = data.resourcesBySubject[subject] || [];
+          output += `**${subject}** (${resources.length})\n`;
+          resources.slice(0, 5).forEach((res: any) => {
+            output += `  - ${res.name} (${res.organization})${res.version ? ` v${res.version}` : ""}\n`;
+          });
+          if (resources.length > 5) {
+            output += `  ... and ${resources.length - 5} more\n`;
+          }
+          output += "\n";
+        }
+        return output;
+      }
+      return JSON.stringify(data, null, 2);
+    },
+    requiredParams: ["language"],
+  },
 };

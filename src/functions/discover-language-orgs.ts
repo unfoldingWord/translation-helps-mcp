@@ -5,21 +5,7 @@
 
 import { logger } from "../utils/logger.js";
 import { proxyFetch } from "../utils/httpClient.js";
-
-/**
- * Map a language code to its catalog equivalent
- */
-function mapLanguageToCatalogCode(language: string): string {
-  const languageMap: Record<string, string> = {
-    'es': 'es-419', // Spanish -> Latin American Spanish
-    'es-MX': 'es-419',
-    'es-AR': 'es-419',
-    'es-CO': 'es-419',
-    'es-CL': 'es-419',
-    'es-PE': 'es-419',
-  };
-  return languageMap[language] || language;
-}
+import { mapLanguageToCatalogCode } from "../utils/language-mapping.js";
 
 export interface LanguageOrgOption {
   language: string; // e.g., "en", "es-419"

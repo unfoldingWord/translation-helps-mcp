@@ -906,6 +906,190 @@ export const RESOURCES_SHAPE: ResponseShape = {
   },
 };
 
+// Subjects Response Shape (Discovery)
+export const SUBJECTS_SHAPE: ResponseShape = {
+  dataType: "subjects",
+  structure: {
+    required: ["subjects", "metadata"],
+    optional: ["_metadata", "filters"],
+    nested: {
+      metadata: {
+        dataType: "context",
+        structure: {
+          required: ["responseTime", "cached", "timestamp", "count"],
+          optional: ["filters"],
+        },
+        performance: {
+          maxResponseTime: 15,
+          cacheable: false,
+        },
+      },
+      filters: {
+        dataType: "context",
+        structure: {
+          required: [],
+          optional: ["language", "organization"],
+        },
+      },
+    },
+    arrayItems: {
+      dataType: "subjects",
+      structure: {
+        required: ["name"],
+        optional: ["description", "resourceType", "count"],
+        fieldDescriptions: [
+          {
+            name: "name",
+            type: "string",
+            description: "Subject name (e.g., 'Translation Words', 'Translation Notes')",
+            example: "Translation Words",
+          },
+          {
+            name: "description",
+            type: "string",
+            description: "Description of the subject/resource type",
+            example: "Dictionary entries for biblical terms",
+          },
+          {
+            name: "resourceType",
+            type: "string",
+            description: "Resource type abbreviation (e.g., 'tw', 'tn', 'tq')",
+            example: "tw",
+            semantics: {
+              options: ["tw", "tn", "tq", "ult", "ust", "ta", "twl"],
+            },
+          },
+          {
+            name: "count",
+            type: "number",
+            description: "Number of resources with this subject (if available)",
+            example: 42,
+          },
+        ],
+      },
+      performance: {
+        maxResponseTime: 2,
+        cacheable: false,
+      },
+    },
+  },
+  performance: {
+    maxResponseTime: 100,
+    cacheable: false,
+    expectedCacheHitRate: 0.95,
+  },
+};
+
+// Resources by Language Response Shape (Discovery)
+export const RESOURCES_BY_LANGUAGE_SHAPE: ResponseShape = {
+  dataType: "resources",
+  structure: {
+    required: ["resourcesByLanguage", "summary", "metadata"],
+    optional: ["_metadata"],
+    nested: {
+      metadata: {
+        dataType: "context",
+        structure: {
+          required: ["responseTime", "cached", "timestamp", "languagesFound", "resourcesFound"],
+          optional: ["subjectsSearched"],
+        },
+        performance: {
+          maxResponseTime: 15,
+          cacheable: false,
+        },
+      },
+      summary: {
+        dataType: "context",
+        structure: {
+          required: ["totalLanguages", "totalResources", "subjectsSearched", "organization", "stage"],
+        },
+      },
+    },
+    arrayItems: {
+      dataType: "resources",
+      structure: {
+        required: ["language", "subjects", "resources", "resourceCount"],
+        optional: ["languageName"],
+        fieldDescriptions: [
+          {
+            name: "language",
+            type: "string",
+            description: "Language code (e.g., 'en', 'es-419')",
+            example: "en",
+          },
+          {
+            name: "languageName",
+            type: "string",
+            description: "Full name of the language (if available)",
+            example: "English",
+          },
+          {
+            name: "subjects",
+            type: "array",
+            description: "List of resource subjects/types available for this language",
+            example: ["Translation Words", "Translation Notes"],
+          },
+          {
+            name: "resources",
+            type: "array",
+            description: "List of actual resources available for this language",
+            example: [
+              {
+                name: "en_ult",
+                subject: "Aligned Bible",
+                language: "en",
+                organization: "unfoldingWord",
+              },
+            ],
+          },
+          {
+            name: "resourceCount",
+            type: "number",
+            description: "Total number of resources for this language",
+            example: 5,
+          },
+        ],
+      },
+      performance: {
+        maxResponseTime: 2,
+        cacheable: false,
+      },
+    },
+  },
+  performance: {
+    maxResponseTime: 5000, // Can take longer due to multiple catalog searches
+    cacheable: false,
+    expectedCacheHitRate: 0.8,
+  },
+};
+
+// Resources for Language Response Shape
+export const RESOURCES_FOR_LANGUAGE_SHAPE: ResponseShape = {
+  dataType: "resources",
+  structure: {
+    required: ["language", "totalResources", "subjectCount", "subjects", "resourcesBySubject", "metadata"],
+    optional: ["organization", "stage", "_metadata"],
+    nested: {
+      metadata: {
+        dataType: "context",
+        structure: {
+          required: ["responseTime", "cached", "timestamp"],
+          optional: ["serviceMetadata"],
+        },
+        performance: {
+          maxResponseTime: 15,
+          cacheable: false,
+        },
+      },
+    },
+  },
+  performance: {
+    maxResponseTime: 3000, // Single language search is faster than multi-language
+    cacheable: true,
+    expectedCacheHitRate: 0.85,
+  },
+};
+
 // References Response Shape (Utility)
 export const REFERENCES_SHAPE: ResponseShape = {
   dataType: "references",
@@ -1070,6 +1254,9 @@ export const RESPONSE_SHAPES = {
   "translation-word-links": TRANSLATION_WORD_LINKS_SHAPE,
   languages: LANGUAGES_SHAPE,
   resources: RESOURCES_SHAPE,
+  subjects: SUBJECTS_SHAPE,
+  resourcesByLanguage: RESOURCES_BY_LANGUAGE_SHAPE,
+  resourcesForLanguage: RESOURCES_FOR_LANGUAGE_SHAPE,
   references: REFERENCES_SHAPE,
   context: CONTEXT_SHAPE,
   health: HEALTH_SHAPE,

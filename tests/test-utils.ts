@@ -45,6 +45,7 @@ export async function stopTestServer(): Promise<void> {
 export async function makeRequest(
   path: string,
   params: Record<string, any> = {},
+  format?: 'json' | 'markdown' | 'text',
   options: RequestInit = {},
 ): Promise<{
   status: number;
@@ -59,12 +60,24 @@ export async function makeRequest(
     }
   });
 
+  // Add format to URL if provided
+  if (format) {
+    url.searchParams.set('format', format === 'markdown' ? 'md' : format);
+  }
+
+  // Determine Accept header based on format parameter
+  const formatParam = format || params.format || 'json';
+  const acceptHeader = 
+    formatParam === 'md' || formatParam === 'markdown' ? 'text/markdown' :
+    formatParam === 'text' ? 'text/plain' :
+    'application/json';
+
   // Make the request
   const response = await fetch(url.toString(), {
     method: "GET",
     ...options,
     headers: {
-      Accept: "application/json",
+      Accept: acceptHeader,
       ...options.headers,
     },
   });

@@ -5,30 +5,45 @@
 	import { afterUpdate, onDestroy, onMount } from 'svelte';
 	import XRayPanel from './XRayPanel.svelte';
 	import DebugSidebar from './DebugSidebar.svelte';
-	import LanguageOrgSelector from './LanguageOrgSelector.svelte';
-	import { mapLanguageToCatalogCode } from '$lib/languageMapping.js';
+	// Language detection is now handled conversationally by the LLM
+	// No need for manual language selector
+
+	// Type definitions
+	interface Message {
+		id: string;
+		role: 'user' | 'assistant';
+		content: string;
+		timestamp: Date;
+		isLoading?: boolean;
+		isError?: boolean;
+		xrayData?: any;
+		isSetupGuide?: boolean;
+	}
+
+	interface XRayData {
+		totalTime?: number;
+		apiCalls?: Array<any>;
+		tools?: Array<any>;
+		[key: string]: any;
+	}
 
 	// Configure marked for safe HTML rendering
 	marked.setOptions({
 		breaks: true,
-		gfm: true,
-		headerIds: true,
-		mangle: false
+		gfm: true
 	});
 
 	// State
-	let messages = [];
+	let messages: Message[] = [];
 	let inputValue = '';
 	let isLoading = false;
 	let showXRay = false;
-	let currentXRayData = null;
-	let messagesContainer;
+	let currentXRayData: XRayData | null = null;
+	let messagesContainer: HTMLElement | null = null;
 	const USE_STREAM = true;
 
-	// Language/Organization selection state
-	let selectedLanguage = 'en';
-	let selectedOrganization = 'unfoldingWord';
-	let needsLanguageSelection = false;
+	// Language/Organization are now detected and managed conversationally by the LLM
+	// The LLM will detect the user's language and validate it using list_languages tool
 
 	// Debug console state - logs all MCP responses (successful and failed)
 	let debugLogs: Array<{
@@ -56,37 +71,49 @@
 	// Rich starter suggestions (shown before conversation starts)
 	const suggestions = [
 		{
-			title: 'Find a specific Bible verse with exact formatting',
+			title: '🌍 Discover available languages',
 			prompt:
-				'Show me John 3:16 in ULT. Use verse number without a period and no blank lines between verses.',
-			description: 'Ask for a verse with your preferred translation and formatting.'
+				'What languages have Bible translation resources available? Show me a list with language codes.',
+			description: 'Fast discovery: See all 50+ languages in ~1 second.'
 		},
 		{
-			title: 'Explore translation notes for a chapter',
+			title: '📚 Find resources for Spanish (es-419)',
 			prompt:
-				'What do the Translation Notes say about Titus 1? Summarize key translation issues and include links to the specific notes.',
-			description: 'Deep-dive notes with source links you can follow.'
+				'What translation resources are available for Spanish (es-419)? Show me all organizations and resource types.',
+			description: 'Single-language discovery: See resources from es-419_gl and other orgs in ~1-2 seconds.'
 		},
 		{
-			title: 'Define a biblical term from Translation Words',
+			title: '🔍 Explore resources for a specific language',
 			prompt:
-				"Define 'agape' from Translation Words and explain how it differs from 'phileo', with 2–3 scripture examples.",
-			description: 'Grounded definitions and distinctions from TW, with examples.'
+				'I want to see what translation resources are available for French. Show me the resources organized by type.',
+			description: 'Guided discovery: Pick any language and see all available resources.'
 		},
 		{
-			title: 'Study questions to guide a passage review',
+			title: '📖 Find a Bible verse with translation help',
 			prompt:
-				'Give me study questions for Genesis 1 that focus on literary structure, repeated words, and the order of creation.',
-			description: 'Structured prompts drawn from official resources.'
+				'Show me John 3:16 in ULT and UST, plus the translation notes explaining key terms.',
+			description: 'Complete package: Scripture text + translation guidance.'
+		},
+		{
+			title: '📝 Get translation notes for a passage',
+			prompt:
+				'What do the Translation Notes say about Romans 1:1-7? Include important terms and cultural context.',
+			description: 'Detailed notes with terminology and background information.'
+		},
+		{
+			title: '💡 Define a biblical term',
+			prompt:
+				"What does 'grace' mean in Translation Words? Give me the definition and 2-3 example verses.",
+			description: 'Grounded theological definitions with scripture examples.'
 		}
 	];
 
 	// Helper function to render markdown with proper styling
-	function renderMarkdown(content) {
+	function renderMarkdown(content: string): string {
 		if (!content) return '';
 
-		// First render the markdown
-		let html = marked(content);
+		// First render the markdown - marked() returns a string synchronously
+		let html: string = marked(content) as string;
 
 		// Apply Tailwind classes to HTML elements
 		html = html
@@ -119,7 +146,7 @@
 			);
 
 		// Then make RC links clickable with special handling
-		html = html.replace(/<a href="(rc:\/\/[^"]+)">([^<]+)<\/a>/g, (match, href, text) => {
+		html = html.replace(/<a href="(rc:\/\/[^"]+)">([^<]+)<\/a>/g, (_match: string, href: string, text: string) => {
 			return `<a href="${href}" data-rc-link="${href}" class="rc-link inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 underline cursor-pointer">${text}</a>`;
 		});
 
@@ -142,8 +169,9 @@
 	});
 
 	// Wrapper function for RC link click handling
-	function handleRCLinkClickWrapper(event) {
-		const href = event.target.getAttribute('data-rc-link');
+	function handleRCLinkClickWrapper(event: Event) {
+		const target = event.target as HTMLElement;
+		const href = target.getAttribute('data-rc-link');
 		if (href) {
 			handleRCLinkClick(event, href);
 		}
@@ -159,7 +187,7 @@
 	});
 
 	// Handle RC link clicks
-	async function handleRCLinkClick(event, href) {
+	async function handleRCLinkClick(event: Event, href: string) {
 		event.preventDefault();
 		console.log('RC link clicked:', href);
 
@@ -197,25 +225,6 @@
 
 	// Welcome message
 	onMount(() => {
-		// Load language/org from localStorage
-		if (browser) {
-			const savedLanguage = localStorage.getItem('translationHelps_language');
-			const savedOrganization = localStorage.getItem('translationHelps_organization');
-			
-			if (savedLanguage) {
-				// Map to catalog code (e.g., es -> es-419)
-				selectedLanguage = mapLanguageToCatalogCode(savedLanguage);
-			}
-			if (savedOrganization) {
-				selectedOrganization = savedOrganization;
-			}
-			
-			// Check if we need to prompt for selection
-			if (!savedLanguage || !savedOrganization) {
-				needsLanguageSelection = true;
-			}
-		}
-
 		messages = [
 			{
 				id: '0',
@@ -229,9 +238,11 @@ I can help you access:
 • **Study Questions** - "Questions for Genesis 1"
 • **Translation Academy** - "Article about metaphors"
 
+**Language Support**: I automatically detect the language you're speaking and will find the best available resources for you. If you're speaking Spanish, French, or another language, I'll check what's available and guide you through the selection process if multiple variants exist.
+
 Important: I only share what's available in our MCP database - no external biblical interpretations. All my responses come directly from unfoldingWord's translation resources.
 
-Just ask naturally - I'll fetch the exact resources you need! 📚`,
+Just ask naturally in any language - I'll detect your language and fetch the exact resources you need! 📚`,
 				timestamp: new Date()
 			}
 		];
@@ -242,20 +253,6 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 			// document.addEventListener('click', handleRCLinkClick);
 		}
 	});
-
-	// Handle language/org selection change
-	function handleLanguageOrgChange(language: string, organization: string) {
-		// Map to catalog code (e.g., es -> es-419)
-		selectedLanguage = mapLanguageToCatalogCode(language);
-		selectedOrganization = organization;
-		needsLanguageSelection = false;
-		
-		// Save to localStorage (save the mapped version)
-		if (browser) {
-			localStorage.setItem('translationHelps_language', selectedLanguage);
-			localStorage.setItem('translationHelps_organization', organization);
-		}
-	}
 
 	onDestroy(() => {
 		// Clean up event listener - only in browser
@@ -269,7 +266,9 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 	function scrollToBottom() {
 		if (messagesContainer) {
 			setTimeout(() => {
-				messagesContainer.scrollTop = messagesContainer.scrollHeight;
+				if (messagesContainer) {
+					messagesContainer.scrollTop = messagesContainer.scrollHeight;
+				}
 			}, 100);
 		}
 	}
@@ -319,7 +318,7 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 	async function sendMessage() {
 		if (!inputValue.trim() || isLoading) return;
 
-		const userMessage = {
+		const userMessage: Message = {
 			id: Date.now().toString(),
 			role: 'user',
 			content: inputValue.trim(),
@@ -336,7 +335,7 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 		currentRequestId = userMessage.id; // Use the user message ID as request ID
 
 		// Add loading message immediately
-		const loadingMessage = {
+		const loadingMessage: Message = {
 			id: (Date.now() + 1).toString(),
 			role: 'assistant',
 			content: '⚡ Fetching...',
@@ -358,9 +357,8 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 					body: JSON.stringify({
 						message: userMessage.content,
 						chatHistory: messages.slice(0, -2).map((m) => ({ role: m.role, content: m.content })),
-						enableXRay: true,
-						language: selectedLanguage,
-						organization: selectedOrganization
+						enableXRay: true
+						// Language and organization are now detected conversationally by the LLM
 					})
 				});
 				if (!response.ok) throw new Error('Failed to get response');
@@ -372,7 +370,7 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 						duration: data.metadata?.duration
 					});
 
-					const errorMessage = {
+					const errorMessage: Message = {
 						id: (Date.now() + 1).toString(),
 						role: 'assistant',
 						content: `❌ Error: ${data.error}\n\nDetails: ${data.details || 'No additional details'}${data.suggestion ? '\n\nSuggestion: ' + data.suggestion : ''}`,
@@ -425,7 +423,7 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 							return log;
 						});
 					}
-					const assistantMessage = {
+					const assistantMessage: Message = {
 						id: (Date.now() + 1).toString(),
 						role: 'assistant',
 						content: data.content || '',
@@ -446,7 +444,7 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 				error: errorMessage
 			});
 
-			const errorMessageObj = {
+			const errorMessageObj: Message = {
 				id: (Date.now() + 1).toString(),
 				role: 'assistant',
 				content: `❌ Network error: ${errorMessage}\n\nPlease check your connection and try again.`,
@@ -461,13 +459,12 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 	}
 
 	// Streaming via SSE
-	async function streamChat(userMessage) {
+	async function streamChat(userMessage: Message) {
 		const body = JSON.stringify({
 			message: userMessage.content,
 			chatHistory: messages.slice(0, -2).map((m) => ({ role: m.role, content: m.content })),
-			enableXRay: false,
-			language: selectedLanguage,
-			organization: selectedOrganization
+			enableXRay: false
+			// Language and organization are now detected conversationally by the LLM
 		});
 
 		const response = await fetch('/api/chat-stream?stream=1', {
@@ -637,8 +634,8 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 	}
 
 	// Show X-ray data for a message
-	function showXRayData(message) {
-		currentXRayData = message.xrayData;
+	function showXRayData(message: Message) {
+		currentXRayData = message.xrayData || null;
 		showXRay = true;
 	}
 
@@ -648,7 +645,7 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 	}
 
 	// Handle Enter key
-	function handleKeydown(event) {
+	function handleKeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
 			sendMessage();
@@ -657,15 +654,13 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 </script>
 
 <div class="relative flex h-full flex-col" style="background-color: #0f172a;">
-	<!-- Header with Language/Org Selector -->
+	<!-- Header -->
 	<div class="flex-shrink-0 border-b border-gray-800 px-4 py-2" style="background-color: #0f172a;">
 		<div class="mx-auto flex max-w-4xl items-center justify-between">
 			<div class="text-sm font-medium text-gray-300">Translation Helps Chat</div>
-			<LanguageOrgSelector
-				{selectedLanguage}
-				{selectedOrganization}
-				onSelectionChange={handleLanguageOrgChange}
-			/>
+			<div class="text-xs text-gray-500">
+				Language detection enabled - speak naturally in any language
+			</div>
 		</div>
 	</div>
 
@@ -910,10 +905,6 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 		50% {
 			opacity: 1;
 		}
-	}
-
-	.thinking-step {
-		animation: thinking-pulse 1.5s ease-in-out infinite;
 	}
 
 	:global(.markdown-content > *:first-child) {

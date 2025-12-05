@@ -138,3 +138,38 @@ export interface FetchTranslationAcademyOptions {
 export interface GetLanguagesOptions {
   organization?: string;
 }
+
+export interface ListLanguagesOptions {
+  organization?: string;
+  stage?: string;
+}
+
+export interface ListSubjectsOptions {
+  language?: string;
+  organization?: string;
+  stage?: string;
+}
+
+export interface ListResourcesByLanguageOptions {
+  subjects?: string | string[];
+  organization?: string;
+  stage?: string;
+  limit?: number;
+  topic?: string;
+}
+
+export interface ListResourcesForLanguageOptions {
+  language: string;
+  organization?: string;
+  stage?: string;
+  subject?: string;
+  limit?: number;
+  topic?: string;
+}
+
+export interface SearchTranslationWordAcrossLanguagesOptions {
+  term: string;
+  languages?: string[];
+  organization?: string;
+  limit?: number;
+}

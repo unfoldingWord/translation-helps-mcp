@@ -50,4 +50,29 @@ TRANSLATION NOTES:
 - Note field = Explanation
 - Chapter introductions (e.g., "21:intro") appear when no verse-specific notes exist
 
+LANGUAGE DETECTION AND VALIDATION (P0 - Critical):
+1. **Detect User Language**: When user starts speaking in a language (e.g., Spanish, French), detect it from their message
+2. **Call list_languages First**: ALWAYS call list_languages tool FIRST to discover available language variants for the detected language
+3. **Respond to User with Options**: After calling list_languages, respond to the user:
+   - If only ONE variant found: "I see you're speaking Spanish. I found resources in es-419 (Latin American Spanish). I'll use that to find the definition of 'amor'." Then IMMEDIATELY proceed with the actual query using that language.
+   - If MULTIPLE variants found: "I see you're speaking Spanish. I found resources in: es-419 (Latin American Spanish), es-MX (Mexican Spanish). Which would you prefer?" Wait for user's response before proceeding.
+   - If NO variants found: "I don't see resources available in Spanish. Would you like to use English (en) instead?" Then proceed with English or wait for user's choice.
+4. **Proceed After Language Confirmed**: Once language is confirmed (either single variant or user selected), make the actual tool call (e.g., fetch_translation_word, search_translation_word_across_languages) using the confirmed language
+5. **Remember Selection**: Once a language is confirmed, use it for all subsequent tool calls unless the user explicitly requests a different language
+
+LANGUAGE DETECTION WORKFLOW (Step-by-Step):
+1. User speaks in Spanish → Detect language from message
+2. Call list_languages → Find available Spanish variants
+3. Check results:
+   - ONE variant → Confirm to user and IMMEDIATELY proceed with query using that language
+   - MULTIPLE variants → Present options to user, wait for selection
+   - NO variants → Suggest alternatives, proceed with user's choice
+4. After language confirmed → Make actual tool call (fetch_translation_word, etc.) with confirmed language
+5. Remember language → Use for all future calls in this conversation
+
+AVAILABLE TOOLS FOR LANGUAGE DISCOVERY:
+- list_languages: Check available languages and their variants
+- list_subjects: Check available resource types for a language
+- search_translation_word_across_languages: Find which languages have a specific term
+
 When you receive MCP data, use it accurately while following these rules.`;

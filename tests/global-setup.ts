@@ -1,11 +1,33 @@
 /**
  * Global Test Setup
  *
- * Ensures Wrangler is running before ANY tests execute
- * This is the ONLY way to test KV/R2 functionality!
+ * Conditionally checks for Wrangler - only required for tests that need KV/R2.
+ * API endpoint tests (ui/tests/api) don't require Wrangler and will skip this check.
  */
 
 export async function setup() {
+  // Check if we're running API tests that don't need Wrangler
+  const allArgs = process.argv.join(' ');
+  const isApiTest = allArgs.includes('ui/tests/api') || 
+                    allArgs.includes('tests/api') ||
+                    process.env.VITEST_FILE_PATTERN?.includes('api');
+  
+  // Skip Wrangler check for API tests
+  if (isApiTest) {
+    console.log("\n✅ Running API tests - Wrangler not required\n");
+    return;
+  }
+
+  // For other tests, check if Wrangler is needed
+  // Only enforce if TEST_BASE_URL is set to Wrangler port
+  const testBaseUrl = process.env.TEST_BASE_URL || "http://localhost:8174";
+  const needsWrangler = testBaseUrl.includes(':8787');
+
+  if (!needsWrangler) {
+    console.log("\n✅ Using dev server - Wrangler not required\n");
+    return;
+  }
+
   console.log("\n🔧 Checking Wrangler dev server...\n");
 
   const WRANGLER_PORT = 8787;

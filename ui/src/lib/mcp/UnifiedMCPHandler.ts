@@ -45,7 +45,17 @@ export class UnifiedMCPHandler {
 		// Apply defaults based on common parameter patterns
 		const finalArgs = { ...args };
 		if (!finalArgs.language) finalArgs.language = 'en';
-		if (!finalArgs.organization) finalArgs.organization = 'unfoldingWord';
+		// Don't auto-default organization - empty string means "all organizations"
+		// Only set default if the parameter is completely missing (undefined)
+		if (finalArgs.organization === undefined) {
+			// For discovery tools, allow searching all organizations
+			if (['list_languages', 'list_subjects', 'list_resources_by_language', 'list_resources_for_language'].includes(toolName)) {
+				// Leave organization undefined to search all
+			} else {
+				// For other tools, default to unfoldingWord
+				finalArgs.organization = 'unfoldingWord';
+			}
+		}
 		if (!finalArgs.format) finalArgs.format = 'json'; // Default to JSON for structured data
 
 		// Log final parameters (after defaults)

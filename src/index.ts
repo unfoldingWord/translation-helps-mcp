@@ -43,6 +43,26 @@ import {
   GetTranslationWordArgs,
   handleGetTranslationWord,
 } from "./tools/getTranslationWord.js";
+import {
+  SearchTranslationWordAcrossLanguagesArgs,
+  handleSearchTranslationWordAcrossLanguages,
+} from "./tools/searchTranslationWordAcrossLanguages.js";
+import {
+  ListLanguagesArgs,
+  handleListLanguages,
+} from "./tools/listLanguages.js";
+import {
+  ListSubjectsArgs,
+  handleListSubjects,
+} from "./tools/listSubjects.js";
+import {
+  ListResourcesByLanguageArgs,
+  handleListResourcesByLanguage,
+} from "./tools/listResourcesByLanguage.js";
+import {
+  ListResourcesForLanguageArgs,
+  handleListResourcesForLanguage,
+} from "./tools/listResourcesForLanguage.js";
 import { logger } from "./utils/logger.js";
 import { getVersion } from "./version.js";
 
@@ -108,6 +128,36 @@ const tools = [
     description: "Fetch translation academy (tA) modules and training content",
     inputSchema: FetchTranslationAcademyArgs,
   },
+  {
+    name: "search_translation_word_across_languages",
+    description:
+      "Search for a translation word term across multiple languages to discover which languages have that term available. Useful when a term is not found in the current language or when you want to find all languages that have a specific term.",
+    inputSchema: SearchTranslationWordAcrossLanguagesArgs,
+  },
+  {
+    name: "list_languages",
+    description:
+      "List all available languages from the Door43 catalog. Returns structured language data (codes, names, display names) that can be directly reused as language parameters in other tools. Optionally filter by organization.",
+    inputSchema: ListLanguagesArgs,
+  },
+  {
+    name: "list_subjects",
+    description:
+      "List all available resource subjects (resource types) from the Door43 catalog. Returns structured subject data (names, descriptions, resource types) that can be used to discover what resource types are available. Optionally filter by language and/or organization.",
+    inputSchema: ListSubjectsArgs,
+  },
+  {
+    name: "list_resources_by_language",
+    description:
+      "List available resources organized by language. Searches across multiple subjects (7 default) and returns results grouped by language. NOTE: This makes multiple parallel API calls and takes ~4-5 seconds on first call (cached afterward). For faster discovery, consider using list_languages followed by list_resources_for_language for specific languages instead.",
+    inputSchema: ListResourcesByLanguageArgs,
+  },
+  {
+    name: "list_resources_for_language",
+    description:
+      "RECOMMENDED: List all available resources for a specific language. Fast single API call (~1-2 seconds). Given a language code (e.g., 'en', 'fr', 'es-419'), returns all resources available in that language organized by subject/resource type. Suggested workflow: 1) Use list_languages to discover available languages (~1s), 2) Use this tool to see what resources exist for a chosen language (~1-2s), 3) Use specific fetch tools to get the actual content.",
+    inputSchema: ListResourcesForLanguageArgs,
+  },
 ];
 
 // Prompt definitions
@@ -159,6 +209,42 @@ const prompts = [
       {
         name: "language",
         description: 'Language code (default: "en")',
+        required: false,
+      },
+    ],
+  },
+  {
+    name: "discover-resources-for-language",
+    description:
+      "Discover what translation resources are available for a specific language. Shows available languages (if not specified), available resource types for that language, and provides example tool calls using the discovered language parameter.",
+    arguments: [
+      {
+        name: "language",
+        description:
+          'Language code (e.g., "en", "es-419"). If not provided, will show all available languages first.',
+        required: false,
+      },
+      {
+        name: "organization",
+        description: 'Organization (default: "unfoldingWord")',
+        required: false,
+      },
+    ],
+  },
+  {
+    name: "discover-languages-for-subject",
+    description:
+      "Discover which languages have a specific resource type (subject) available. Shows available subjects (if not specified), then lists languages that have that resource type, and provides example tool calls using the discovered languages.",
+    arguments: [
+      {
+        name: "subject",
+        description:
+          'Resource subject/type (e.g., "Translation Words", "Translation Notes"). If not provided, will show all available subjects first.',
+        required: false,
+      },
+      {
+        name: "organization",
+        description: 'Organization (default: "unfoldingWord")',
         required: false,
       },
     ],
@@ -226,6 +312,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           args as z.infer<typeof FetchTranslationAcademyArgs>,
         );
 
+      case "search_translation_word_across_languages":
+        return await handleSearchTranslationWordAcrossLanguages(
+          args as z.infer<typeof SearchTranslationWordAcrossLanguagesArgs>,
+        );
+
+      case "list_languages":
+        return await handleListLanguages(
+          args as z.infer<typeof ListLanguagesArgs>,
+        );
+
+      case "list_subjects":
+        return await handleListSubjects(
+          args as z.infer<typeof ListSubjectsArgs>,
+        );
+
+      case "list_resources_by_language":
+        return await handleListResourcesByLanguage(
+          args as z.infer<typeof ListResourcesByLanguageArgs>,
+        );
+
+      case "list_resources_for_language":
+        return await handleListResourcesForLanguage(
+          args as z.infer<typeof ListResourcesForLanguageArgs>,
+        );
+
       default:
         throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
     }
@@ -263,6 +374,8 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 
   const language = (args?.language as string) || "en";
   const reference = (args?.reference as string) || "";
+  const organization = (args?.organization as string) || "unfoldingWord";
+  const subject = (args?.subject as string) || "";
 
   switch (name) {
     case "translation-helps-for-passage":
@@ -388,6 +501,101 @@ Follow these steps:
    - Let the user know they can request the full content of any article
    
 The goal is to show what translation concepts and training materials are relevant to understanding this passage.`,
+            },
+          },
+        ],
+      };
+
+    case "discover-resources-for-language":
+      return {
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Help the user discover what translation resources are available for ${language ? `language "${language}"` : "a language"}.
+
+Follow these steps:
+
+1. **List Available Languages (if language not specified):**
+   - If no language was provided, first use list_languages tool with organization="${organization}"
+   - Show the user the available languages with their codes and names
+   - Ask the user to select a language, or proceed with the most common one (usually "en")
+
+2. **List Available Subjects for the Language:**
+   - Use list_subjects tool with language="${language || "en"}" and organization="${organization}"
+   - This shows what resource types (subjects) are available for this language
+   - Common subjects include: "Translation Words", "TSV Translation Notes", "TSV Translation Questions", "Bible", "Aligned Bible", etc.
+
+3. **Present Discovery Results:**
+   - Show the user:
+     * The selected language: ${language || "[to be selected]"}
+     * Available resource types (subjects) for that language
+     * A summary of what resources are available
+
+4. **Provide Example Tool Calls:**
+   - Show the user how to use the discovered language parameter in other tools
+   - Examples:
+     * fetch_scripture with language="${language || "en"}" and reference="John 3:16"
+     * fetch_translation_notes with language="${language || "en"}" and reference="John 3:16"
+     * fetch_translation_word with language="${language || "en"}" and term="love"
+     * list_subjects with language="${language || "en"}" to see what's available
+
+5. **Guide Next Steps:**
+   - Explain that the user can now use any of the available tools with the discovered language parameter
+   - Suggest which tools might be most useful based on the available subjects
+
+The goal is to help users discover what's available and show them how to use that information in subsequent tool calls.`,
+            },
+          },
+        ],
+      };
+
+    case "discover-languages-for-subject":
+      return {
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Help the user discover which languages have the resource type "${subject || "[subject to be selected]"}" available.
+
+Follow these steps:
+
+1. **List Available Subjects (if subject not specified):**
+   - If no subject was provided, first use list_subjects tool with organization="${organization}"
+   - Show the user the available resource types (subjects)
+   - Common subjects include: "Translation Words", "TSV Translation Notes", "TSV Translation Questions", "Bible", "Aligned Bible", "Translation Word Links", "Translation Academy"
+   - Ask the user to select a subject, or proceed with a common one like "Translation Words"
+
+2. **Discover Languages with This Subject:**
+   - For the selected subject "${subject || "[to be selected]"}":
+     * Use list_subjects with organization="${organization}" to get all subjects
+     * Then, for each language you want to check, use list_subjects with language=<language_code> and organization="${organization}"
+     * OR use catalog search to find which languages have resources with this subject
+   - Alternatively, you can use list_languages to get all languages, then check each one
+   - The goal is to find which languages have the subject "${subject || "[selected subject]"}" available
+
+3. **Present Discovery Results:**
+   - Show the user:
+     * The selected subject: ${subject || "[to be selected]"}
+     * List of languages that have this resource type available
+     * For each language, show the language code and name
+
+4. **Provide Example Tool Calls:**
+   - Show the user how to use the discovered languages with the subject
+   - Examples for "Translation Words" subject:
+     * fetch_translation_word with language="en" and term="love"
+     * fetch_translation_word with language="es-419" and term="amor"
+   - Examples for "Translation Notes" subject:
+     * fetch_translation_notes with language="en" and reference="John 3:16"
+     * fetch_translation_notes with language="es-419" and reference="John 3:16"
+
+5. **Guide Next Steps:**
+   - Explain that the user can now use any of the discovered languages with tools that support that resource type
+   - Suggest trying the tools with different languages to compare resources
+
+The goal is to help users find which languages have specific resource types available and show them how to use those languages in subsequent tool calls.`,
             },
           },
         ],

@@ -1,29 +1,130 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import {
-		discoverLanguageOrgs,
-		getOrganizationsForLanguage,
-		getLanguageDisplayName,
-		type LanguageOrgDiscoveryResult
-	} from '$lib/languageOrgDiscovery.js';
+	import { TranslationHelpsClient } from '@translation-helps/mcp-client';
 	import { mapLanguageToCatalogCode } from '$lib/languageMapping.js';
 
 	export let selectedLanguage: string = 'en';
 	export let selectedOrganization: string = 'unfoldingWord';
 	export let onSelectionChange: (language: string, organization: string) => void = () => {};
 
-	let discoveryResult: LanguageOrgDiscoveryResult | null = null;
+	interface LanguageOption {
+		language: string;
+		displayName?: string;
+		organizations: string[];
+	}
+
+	interface DiscoveryResult {
+		options: LanguageOption[];
+		metadata: {
+			responseTime: number;
+			timestamp: string;
+			totalLanguages: number;
+			totalOrganizations: number;
+		};
+	}
+
+	let discoveryResult: DiscoveryResult | null = null;
 	let isLoading = true;
 	let error: string | null = null;
 	let availableOrgs: string[] = [];
 
-	// Load discovery data on mount
+	// Load discovery data on mount using new list_languages and list_subjects tools
 	onMount(async () => {
 		try {
-			discoveryResult = await discoverLanguageOrgs();
+			// Use the MCP client to call list_languages
+			const client = new TranslationHelpsClient({
+				serverUrl: '/api/mcp',
+				enableMetrics: false,
+			});
+
+			await client.connect();
+
+			// Get all languages (no organization filter to get all)
+			const languagesResponse = await client.listLanguages({
+				stage: 'prod',
+			});
+
+			// Transform the response to match the expected format
+			const languages = languagesResponse.languages || [];
+			
+			// Group languages and their organizations
+			const languageMap = new Map<string, { displayName?: string; organizations: Set<string> }>();
+
+			// Initialize all languages from the list
+			for (const lang of languages) {
+				languageMap.set(lang.code, {
+					displayName: lang.name || lang.displayName,
+					organizations: new Set(),
+				});
+			}
+
+			// Discover organizations per language by querying list_languages with organization filters
+			// We'll check common organizations to see which ones have resources for each language
+			const commonOrgs = ['unfoldingWord', 'Door43-Catalog'];
+			
+			// For each language, check which organizations have resources
+			// We do this by querying list_languages with each organization filter
+			// and seeing if the language appears in the results
+			const orgLanguageMap = new Map<string, Set<string>>();
+			
+			// Query each organization to see which languages it has
+			for (const org of commonOrgs) {
+				try {
+					const orgLanguagesResponse = await client.listLanguages({
+						organization: org,
+						stage: 'prod',
+					});
+					const orgLanguages = orgLanguagesResponse.languages || [];
+					const langCodes = new Set(orgLanguages.map((l: any) => l.code));
+					orgLanguageMap.set(org, langCodes);
+				} catch (err) {
+					console.warn(`Failed to get languages for organization ${org}:`, err);
+				}
+			}
+
+			// Map languages to organizations
+			for (const [langCode, data] of languageMap.entries()) {
+				for (const [org, langSet] of orgLanguageMap.entries()) {
+					if (langSet.has(langCode)) {
+						data.organizations.add(org);
+					}
+				}
+				// Always include unfoldingWord as a fallback (most common)
+				if (data.organizations.size === 0) {
+					data.organizations.add('unfoldingWord');
+				}
+			}
+
+			// Convert to options format
+			const options: LanguageOption[] = Array.from(languageMap.entries()).map(([language, data]) => ({
+				language,
+				displayName: data.displayName,
+				organizations: Array.from(data.organizations).sort(),
+			}));
+
+			// Sort by language code
+			options.sort((a, b) => a.language.localeCompare(b.language));
+
+			// Calculate totals
+			const allOrgs = new Set<string>();
+			options.forEach((opt) => {
+				opt.organizations.forEach((org) => allOrgs.add(org));
+			});
+
+			discoveryResult = {
+				options,
+				metadata: {
+					responseTime: languagesResponse.metadata?.responseTime || 0,
+					timestamp: languagesResponse.metadata?.timestamp || new Date().toISOString(),
+					totalLanguages: options.length,
+					totalOrganizations: allOrgs.size,
+				},
+			};
+
 			updateAvailableOrgs();
 			isLoading = false;
 		} catch (err) {
+			console.error('Failed to load languages:', err);
 			error = err instanceof Error ? err.message : 'Failed to load language options';
 			isLoading = false;
 		}
@@ -32,7 +133,10 @@
 	// Update available organizations when language changes
 	function updateAvailableOrgs() {
 		if (discoveryResult) {
-			availableOrgs = getOrganizationsForLanguage(discoveryResult, selectedLanguage);
+			const option = discoveryResult.options.find(
+				(opt) => opt.language === selectedLanguage,
+			);
+			availableOrgs = option?.organizations || [];
 			// If current org is not available for selected language, reset to first available
 			if (availableOrgs.length > 0 && !availableOrgs.includes(selectedOrganization)) {
 				selectedOrganization = availableOrgs[0];
@@ -57,9 +161,16 @@
 	}
 
 	// Get display text for current selection
-	$: displayText = discoveryResult
-		? `${getLanguageDisplayName(discoveryResult, selectedLanguage)} (${selectedOrganization})`
-		: `${selectedLanguage} (${selectedOrganization})`;
+	$: displayText = (() => {
+		if (discoveryResult) {
+			const option = discoveryResult.options.find(
+				(opt) => opt.language === selectedLanguage,
+			);
+			const displayName = option?.displayName || selectedLanguage.toUpperCase();
+			return `${displayName} (${selectedOrganization})`;
+		}
+		return `${selectedLanguage} (${selectedOrganization})`;
+	})();
 </script>
 
 <div class="flex items-center gap-2 text-sm">

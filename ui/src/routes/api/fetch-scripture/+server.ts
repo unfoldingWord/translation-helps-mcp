@@ -36,6 +36,10 @@ function parseResources(resourceParam: string | undefined): string[] {
  */
 async function fetchScripture(params: Record<string, any>, request: Request): Promise<any> {
 	const { reference, language, organization, resource: resourceParam } = params;
+	
+	// Handle organization as string, array, or undefined
+	// If array, we'll need to make parallel calls and merge results
+	const orgParam = organization;
 
 	// Create tracer for this request
 	const tracer = new EdgeXRayTracer(`scripture-${Date.now()}`, 'fetch-scripture');
