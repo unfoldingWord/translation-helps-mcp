@@ -31,7 +31,7 @@
 </script>
 
 <svelte:head>
-	<title>RAG Manifesto - The Aqueduct</title>
+	<title>RAG Manifesto - TC Helps | servant.bible</title>
 	<meta
 		name="description"
 		content="The right way to do Bible RAG. Learn why stateless, cache-first architecture is revolutionizing Bible AI applications."

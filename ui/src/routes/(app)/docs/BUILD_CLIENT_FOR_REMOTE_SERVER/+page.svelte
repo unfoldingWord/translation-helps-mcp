@@ -25,7 +25,7 @@
 	let codeElement: HTMLElement | null = null;
 	let completeCodeElement: HTMLElement | null = null;
 
-	const SERVER_URL = 'https://translation-helps-mcp-945.pages.dev/api/mcp';
+	const SERVER_URL = 'https://tc-helps.mcp.servant.bible/api/mcp';
 
 	function copyToClipboard(text: string, id: string) {
 		navigator.clipboard.writeText(text);

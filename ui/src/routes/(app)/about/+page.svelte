@@ -1,8 +1,8 @@
 <svelte:head>
-	<title>About - The Aqueduct</title>
+	<title>About - TC Helps | servant.bible</title>
 	<meta
 		name="description"
-		content="Learn more about The Aqueduct - our stateless RAG platform for Bible translation."
+		content="Learn more about TC Helps - MCP server and clients for developers working with Bible translation resources."
 	/>
 </svelte:head>
 
@@ -27,25 +27,25 @@
 			<h1 class="mb-8 text-5xl font-bold text-white md:text-6xl">
 				About
 				<span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-					The Aqueduct
+					TC Helps
 				</span>
 			</h1>
 			<p class="mx-auto max-w-3xl text-xl leading-relaxed text-gray-300">
-				<strong class="text-blue-300">Stateless RAG for Bible Translation.</strong>
-				Cache-first. LLM-native. Order without control.
+				<strong class="text-blue-300">MCP server and clients for developers</strong>
+				working with Bible translation resources. Translation Core Helps from servant.bible.
 			</p>
 		</div>
 
 		<!-- Content -->
 		<div class="space-y-8">
 			<div class="rounded-3xl border border-blue-500/30 bg-white/5 p-8 backdrop-blur-2xl">
-				<h2 class="mb-4 text-2xl font-bold text-white">What is The Aqueduct?</h2>
+				<h2 class="mb-4 text-2xl font-bold text-white">What is TC Helps?</h2>
 				<p class="text-lg leading-relaxed text-gray-300">
-					The Aqueduct is a <strong class="text-blue-300"
+					TC Helps (Translation Core Helps) is a <strong class="text-blue-300"
 						>Model Context Protocol (MCP) server and API</strong
 					>
-					that provides Bible translation resources with reliable caching and current data access. Built
-					with TypeScript and designed to work well with AI applications and translation tools.
+					that provides Bible translation resources for developers. Built with TypeScript and designed
+					to work well with AI applications, translation tools, and developer workflows.
 				</p>
 			</div>
 

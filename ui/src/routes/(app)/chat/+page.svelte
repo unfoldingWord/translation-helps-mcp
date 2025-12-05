@@ -3,10 +3,10 @@
 </script>
 
 <svelte:head>
-	<title>AI Bible Assistant - Translation Helps MCP</title>
+	<title>TC Helps Chat - AI Bible Assistant | servant.bible</title>
 	<meta
 		name="description"
-		content="Chat with our AI-powered Bible assistant. Experience sacred text constraints and full transparency."
+		content="Chat with our AI-powered Bible assistant. Access translation helps via TC Helps MCP server."
 	/>
 </svelte:head>
 

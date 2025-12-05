@@ -128,9 +128,9 @@
 		scripture: {
 			title: 'Fetch Scripture',
 			description: 'Get Bible text in multiple translations',
-			curl: `curl "https://translation-helps-mcp-945.pages.dev/api/fetch-scripture?reference=John+3:16&language=en"`,
+			curl: `curl "https://tc-helps.mcp.servant.bible/api/fetch-scripture?reference=John+3:16&language=en"`,
 			typescript: `const response = await fetch(
-  'https://translation-helps-mcp-945.pages.dev/api/fetch-scripture?' +
+  'https://tc-helps.mcp.servant.bible/api/fetch-scripture?' +
   new URLSearchParams({
     reference: 'John 3:16',
     language: 'en'
@@ -140,7 +140,7 @@ const data = await response.json();`,
 			python: `import requests
 
 response = requests.get(
-    'https://translation-helps-mcp-945.pages.dev/api/fetch-scripture',
+    'https://tc-helps.mcp.servant.bible/api/fetch-scripture',
     params={
         'reference': 'John 3:16',
         'language': 'en'
@@ -151,9 +151,9 @@ data = response.json()`
 		questions: {
 			title: 'Translation Questions',
 			description: 'Get comprehension questions for a passage',
-			curl: `curl "https://translation-helps-mcp-945.pages.dev/api/fetch-translation-questions?reference=John+3:16&language=en"`,
+			curl: `curl "https://tc-helps.mcp.servant.bible/api/fetch-translation-questions?reference=John+3:16&language=en"`,
 			typescript: `const response = await fetch(
-  'https://translation-helps-mcp-945.pages.dev/api/fetch-translation-questions?' +
+  'https://tc-helps.mcp.servant.bible/api/fetch-translation-questions?' +
   new URLSearchParams({
     reference: 'John 3:16',
     language: 'en'
@@ -163,7 +163,7 @@ const data = await response.json();`,
 			python: `import requests
 
 response = requests.get(
-    'https://translation-helps-mcp-945.pages.dev/api/fetch-translation-questions',
+    'https://tc-helps.mcp.servant.bible/api/fetch-translation-questions',
     params={
         'reference': 'John 3:16',
         'language': 'en'
@@ -174,9 +174,9 @@ data = response.json()`
 		words: {
 			title: 'Translation Words',
 			description: 'Get word definitions and links for a passage',
-			curl: `curl "https://translation-helps-mcp-945.pages.dev/api/fetch-translation-word-links?reference=John+3:16&language=en"`,
+			curl: `curl "https://tc-helps.mcp.servant.bible/api/fetch-translation-word-links?reference=John+3:16&language=en"`,
 			typescript: `const response = await fetch(
-  'https://translation-helps-mcp-945.pages.dev/api/fetch-translation-word-links?' +
+  'https://tc-helps.mcp.servant.bible/api/fetch-translation-word-links?' +
   new URLSearchParams({
     reference: 'John 3:16',
     language: 'en'
@@ -186,7 +186,7 @@ const data = await response.json();`,
 			python: `import requests
 
 response = requests.get(
-    'https://translation-helps-mcp-945.pages.dev/api/fetch-translation-word-links',
+    'https://tc-helps.mcp.servant.bible/api/fetch-translation-word-links',
     params={
         'reference': 'John 3:16',
         'language': 'en'
@@ -197,9 +197,9 @@ data = response.json()`
 		notes: {
 			title: 'Translation Notes',
 			description: 'Get translation notes for a passage',
-			curl: `curl "https://translation-helps-mcp-945.pages.dev/api/fetch-translation-notes?reference=John+3:16&language=en"`,
+			curl: `curl "https://tc-helps.mcp.servant.bible/api/fetch-translation-notes?reference=John+3:16&language=en"`,
 			typescript: `const response = await fetch(
-  'https://translation-helps-mcp-945.pages.dev/api/fetch-translation-notes?' +
+  'https://tc-helps.mcp.servant.bible/api/fetch-translation-notes?' +
   new URLSearchParams({
     reference: 'John 3:16',
     language: 'en'
@@ -209,7 +209,7 @@ const data = await response.json();`,
 			python: `import requests
 
 response = requests.get(
-    'https://translation-helps-mcp-945.pages.dev/api/fetch-translation-notes',
+    'https://tc-helps.mcp.servant.bible/api/fetch-translation-notes',
     params={
         'reference': 'John 3:16',
         'language': 'en'
@@ -220,7 +220,7 @@ data = response.json()`
 		prompts: {
 			title: 'MCP Prompts (HTTP)',
 			description: 'Execute multi-step prompts via REST API',
-			curl: `curl -X POST "https://translation-helps-mcp-945.pages.dev/api/execute-prompt" \\
+			curl: `curl -X POST "https://tc-helps.mcp.servant.bible/api/execute-prompt" \\
   -H "Content-Type: application/json" \\
   -d '{
     "promptName": "translation-helps-for-passage",
@@ -230,7 +230,7 @@ data = response.json()`
     }
   }'`,
 			typescript: `const response = await fetch(
-  'https://translation-helps-mcp-945.pages.dev/api/execute-prompt',
+  'https://tc-helps.mcp.servant.bible/api/execute-prompt',
   {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -247,7 +247,7 @@ const data = await response.json();`,
 			python: `import requests
 
 response = requests.post(
-    'https://translation-helps-mcp-945.pages.dev/api/execute-prompt',
+    'https://tc-helps.mcp.servant.bible/api/execute-prompt',
     json={
         'promptName': 'translation-helps-for-passage',
         'parameters': {
@@ -292,7 +292,7 @@ load_dotenv()
 
 async def main():
     # Initialize clients
-    server_url = os.getenv("MCP_SERVER_URL", "https://translation-helps-mcp-945.pages.dev/api/mcp")
+    server_url = os.getenv("MCP_SERVER_URL", "https://tc-helps.mcp.servant.bible/api/mcp")
     mcp_client = TranslationHelpsClient({
         "serverUrl": server_url
     })
@@ -536,7 +536,7 @@ if __name__ == "__main__":
 		<h1 class="mb-4 text-5xl font-bold text-white md:text-6xl">
 			Start Using
 			<span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-				Translation Helps
+				TC Helps
 			</span>
 		</h1>
 		<p class="mx-auto mb-8 max-w-3xl text-xl text-gray-300">
@@ -734,10 +734,10 @@ if __name__ == "__main__":
 			{#if activeSection === 'overview'}
 				<div class="space-y-8">
 					<div class="rounded-2xl border border-emerald-500/30 bg-white/5 p-8 backdrop-blur-xl">
-						<h2 class="mb-4 text-3xl font-bold text-white">Welcome to Translation Helps MCP</h2>
+						<h2 class="mb-4 text-3xl font-bold text-white">Welcome to TC Helps</h2>
 						<p class="mb-6 text-lg text-gray-300">
 							Get started with Bible translation resources through the Model Context Protocol (MCP)
-							or REST API.
+							or REST API. Built for developers working with Bible translation.
 						</p>
 						<div class="grid gap-6 md:grid-cols-3">
 							<div class="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-6">
@@ -825,7 +825,7 @@ if __name__ == "__main__":
 							<p class="text-sm text-emerald-300">
 								<strong>🌐 Server URL:</strong>
 								<code class="ml-2 rounded bg-gray-900 px-2 py-1 text-cyan-300"
-									>https://translation-helps-mcp-945.pages.dev/api/mcp</code
+									>https://tc-helps.mcp.servant.bible/api/mcp</code
 								>
 							</p>
 						</div>
@@ -899,7 +899,7 @@ if __name__ == "__main__":
 										<div class="flex-1">
 											<span class="mb-2 block">Enter the server URL:</span>
 											<code class="mt-2 block rounded bg-gray-900 px-3 py-2 text-cyan-300"
-												>https://translation-helps-mcp-945.pages.dev/api/mcp</code
+												>https://tc-helps.mcp.servant.bible/api/mcp</code
 											>
 										</div>
 									</li>
@@ -1051,7 +1051,7 @@ if __name__ == "__main__":
 								>
 								<p class="mt-2">
 									Then enter: <code class="rounded bg-gray-800 px-2 py-0.5 text-cyan-300"
-										>https://translation-helps-mcp-945.pages.dev/api/mcp</code
+										>https://tc-helps.mcp.servant.bible/api/mcp</code
 									>
 								</p>
 							</div>
@@ -1354,7 +1354,7 @@ load_dotenv()</code
 								<pre class="overflow-x-auto rounded-lg bg-gray-950 p-3 text-xs text-gray-300"><code
 										>async def main():
     # Get server URL from environment or use default
-    server_url = os.getenv("MCP_SERVER_URL", "https://translation-helps-mcp-945.pages.dev/api/mcp")
+    server_url = os.getenv("MCP_SERVER_URL", "https://tc-helps.mcp.servant.bible/api/mcp")
     
     # Initialize MCP client for accessing translation resources
     mcp_client = TranslationHelpsClient({'{'}"serverUrl": server_url{'}'})
@@ -2279,7 +2279,7 @@ npm install</code
 							<p class="text-sm text-blue-300">
 								<strong>🌐 Production API:</strong>
 								<code class="ml-2 rounded bg-gray-900 px-2 py-1 text-cyan-300"
-									>https://translation-helps-mcp-945.pages.dev</code
+									>https://tc-helps.mcp.servant.bible</code
 								>
 							</p>
 						</div>

@@ -1236,7 +1236,7 @@
 <div class="mx-auto max-w-7xl px-4 py-8">
 	<!-- Header -->
 	<div class="mb-8">
-		<h1 class="mb-4 text-4xl font-bold text-white">MCP Tools Interface</h1>
+		<h1 class="mb-4 text-4xl font-bold text-white">TC Helps MCP Tools</h1>
 		<p class="text-lg text-gray-300">
 			Complete visibility into all translation helps endpoints with real-time performance metrics
 		</p>

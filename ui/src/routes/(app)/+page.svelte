@@ -10,14 +10,14 @@
 </script>
 
 <svelte:head>
-	<title>Translation Helps MCP | unfoldingWord Strategic Language Resources</title>
+	<title>TC Helps - Translation Core Helps MCP Server | servant.bible</title>
 	<meta
 		name="description"
-		content="High-performance API platform providing instant access to unfoldingWord translation resources with word-level alignment precision for Mother Tongue Translators worldwide."
+		content="MCP server and clients for developers working with Bible translation resources. Access translation helps via Model Context Protocol."
 	/>
 	<meta
 		name="keywords"
-		content="unfoldingWord, Strategic Languages, ULT, UST, GLT, GST, Translation Notes, Translation Words, Mother Tongue Translator, Bible translation, word alignment, MCP server"
+		content="MCP server, Model Context Protocol, Bible translation, translation helps, translation notes, translation words, MCP client, servant.bible, TC Helps"
 	/>
 </svelte:head>
 
@@ -27,43 +27,42 @@
 		<div
 			class="mb-4 inline-block rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm text-blue-300 backdrop-blur-xl"
 		>
-			Translation Helps Platform
+			Translation Core Helps
 		</div>
 		<h1 class="mb-8 text-5xl font-bold text-white md:text-6xl">
 			<span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-				The Aqueduct
+				TC Helps
 			</span>
 			<br />
-			<span class="text-gray-300">Stateless RAG</span>
+			<span class="text-gray-300">MCP Server & Clients</span>
 		</h1>
 		<p class="mx-auto mb-8 max-w-4xl text-xl leading-relaxed text-gray-300">
-			High-performance API platform providing <strong class="text-blue-300"
-				>instant access to unfoldingWord translation resources</strong
+			MCP server and clients for <strong class="text-blue-300"
+				>developers working with Bible translation resources</strong
 			>
-			with <strong class="text-cyan-300">word-level alignment precision</strong> for Mother Tongue Translators
-			worldwide.
+			. Access translation helps via <strong class="text-cyan-300">Model Context Protocol</strong>.
 		</p>
 
 		<div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
 			<div class="rounded-3xl border border-blue-500/30 bg-white/5 p-6 backdrop-blur-2xl">
-				<h3 class="mb-2 text-lg font-semibold text-white">Strategic Language Bridge</h3>
+				<h3 class="mb-2 text-lg font-semibold text-white">MCP Server</h3>
 				<p class="text-sm text-gray-300">
-					Access comprehensive translation resources in Strategic Languages (English, Spanish,
-					French, etc.) to translate Scripture into heart languages
+					Remote MCP server accessible via HTTP. Connect from any MCP-compatible client to access
+					Bible translation resources.
 				</p>
 			</div>
 			<div class="rounded-3xl border border-green-500/30 bg-green-500/5 p-6 backdrop-blur-2xl">
-				<h3 class="mb-2 text-lg font-semibold text-white">Word-Level Precision</h3>
+				<h3 class="mb-2 text-lg font-semibold text-white">SDK Clients</h3>
 				<p class="text-sm text-gray-300">
-					USFM 3.0 alignment data connects every word between original languages and Strategic
-					Languages for precise translation guidance
+					JavaScript and Python SDKs for easy integration. Build applications that fetch translation
+					helps programmatically.
 				</p>
 			</div>
 			<div class="rounded-3xl border border-purple-500/30 bg-purple-500/5 p-6 backdrop-blur-2xl">
-				<h3 class="mb-2 text-lg font-semibold text-white">AI-Native Integration</h3>
+				<h3 class="mb-2 text-lg font-semibold text-white">Developer-Focused</h3>
 				<p class="text-sm text-gray-300">
-					MCP protocol enables AI assistants to provide contextual translation help with
-					comprehensive unfoldingWord resource access
+					Built for developers working with Bible translation. REST API and MCP protocol support for
+					flexible integration.
 				</p>
 			</div>
 		</div>
@@ -308,15 +307,14 @@
 	<!-- Footer -->
 	<footer class="border-t border-white/10 pt-8 text-center text-sm text-gray-400">
 		<div class="mb-4 flex items-center justify-center space-x-4">
-			<span class="text-blue-300">The Aqueduct</span>
+			<span class="text-blue-300">TC Helps</span>
 			<span>•</span>
 			<span>Version {version}</span>
 			<span>•</span>
-			<span>Powered by unfoldingWord</span>
+			<span>servant.bible</span>
 		</div>
 		<p class="text-xs text-gray-500">
-			Supporting Mother Tongue Translators worldwide with Strategic Language resources and
-			word-level alignment precision for accurate biblical translation.
+			MCP server and clients for developers working with Bible translation resources.
 		</p>
 	</footer>
 </div>

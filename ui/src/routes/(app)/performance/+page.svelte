@@ -325,7 +325,7 @@
 				</div>
 				<h1 class="mb-8 text-5xl font-bold text-white md:text-6xl">
 					<span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-						The Aqueduct
+						TC Helps
 					</span>
 					Performance
 				</h1>

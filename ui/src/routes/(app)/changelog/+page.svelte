@@ -48,10 +48,10 @@
 </script>
 
 <svelte:head>
-	<title>Changelog - The Aqueduct</title>
+	<title>Changelog - TC Helps | servant.bible</title>
 	<meta
 		name="description"
-		content="Complete version history and changelog for The Aqueduct translation helps API. Track all features, improvements, and fixes."
+		content="Complete version history and changelog for TC Helps MCP server. Track all features, improvements, and fixes."
 	/>
 </svelte:head>
 
@@ -119,7 +119,7 @@
 				</div>
 				<h1 class="mb-8 text-5xl font-bold text-white md:text-6xl">
 					<span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-						The Aqueduct
+						TC Helps
 					</span> Changelog
 				</h1>
 				<p class="mx-auto max-w-3xl text-xl leading-relaxed text-gray-300 md:text-2xl">

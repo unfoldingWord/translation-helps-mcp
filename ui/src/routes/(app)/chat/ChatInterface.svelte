@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { Droplets, Eye, EyeOff, Send, TrendingUp, User } from 'lucide-svelte';
+	import { Book, Eye, EyeOff, Send, TrendingUp, User } from 'lucide-svelte';
 	import { marked } from 'marked';
 	import { afterUpdate, onDestroy, onMount } from 'svelte';
 	import XRayPanel from './XRayPanel.svelte';
@@ -660,7 +660,7 @@ Just ask naturally in any language - I'll detect your language and fetch the exa
 	<!-- Header -->
 	<div class="flex-shrink-0 border-b border-gray-800 px-4 py-2" style="background-color: #0f172a;">
 		<div class="mx-auto flex max-w-4xl items-center justify-between">
-			<div class="text-sm font-medium text-gray-300">Translation Helps Chat</div>
+			<div class="text-sm font-medium text-gray-300">TC Helps Chat</div>
 			<div class="text-xs text-gray-500">
 				Language detection enabled - speak naturally in any language
 			</div>
@@ -710,7 +710,7 @@ Just ask naturally in any language - I'll detect your language and fetch the exa
 								<div
 									class="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-cyan-500"
 								>
-									<Droplets class="h-5 w-5 text-white" />
+									<Book class="h-5 w-5 text-white" />
 								</div>
 							</div>
 						{/if}

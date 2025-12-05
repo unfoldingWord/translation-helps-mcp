@@ -58,10 +58,10 @@
 </script>
 
 <svelte:head>
-	<title>Whitepaper Preview - The Aqueduct</title>
+	<title>Whitepaper Preview - TC Helps | servant.bible</title>
 	<meta
 		name="description"
-		content="Preview of The Aqueduct technical whitepaper: A Stateless RAG Architecture for Bible Translation. Get a sneak peek at the upcoming comprehensive technical documentation."
+		content="Preview of TC Helps technical whitepaper: MCP Server and Clients for Bible Translation Resources. Get a sneak peek at the upcoming comprehensive technical documentation."
 	/>
 </svelte:head>
 
@@ -135,7 +135,7 @@
 				</div>
 				<h1 class="mb-8 text-5xl font-bold text-white md:text-6xl">
 					<span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-						The Aqueduct
+						TC Helps
 					</span> Whitepaper Preview
 				</h1>
 				<p class="mx-auto max-w-3xl text-xl leading-relaxed text-gray-300 md:text-2xl">

@@ -2,9 +2,10 @@
 	import { page } from '$app/stores';
 	import { VERSION } from '$lib/version';
 	import {
+		Book,
 		BookOpen,
+		ChevronDown,
 		Code,
-		Droplets,
 		ExternalLink,
 		FileText,
 		Github,
@@ -19,19 +20,13 @@
 	import { onDestroy, onMount } from 'svelte';
 	import '../../app.css';
 
-	// Navigation items
-	const navItems = [
+	// Main navigation items (always visible)
+	const mainNavItems = [
 		{
 			href: '/',
 			label: 'Home',
 			icon: Zap,
 			description: 'Overview and features'
-		},
-		{
-			href: '/getting-started',
-			label: 'Get Started',
-			icon: BookOpen,
-			description: 'Quick start guide and examples'
 		},
 		{
 			href: '/chat',
@@ -46,10 +41,20 @@
 			description: 'MCP server tools and API documentation'
 		},
 		{
-			href: '/performance',
-			label: 'Performance',
-			icon: TrendingUp,
-			description: 'Performance & cost analysis'
+			href: '/about',
+			label: 'About',
+			icon: Info,
+			description: 'Learn more about TC Helps'
+		}
+	];
+
+	// Documentation dropdown items
+	const docsItems = [
+		{
+			href: '/getting-started',
+			label: 'Get Started',
+			icon: BookOpen,
+			description: 'Quick start guide and examples'
 		},
 		{
 			href: '/rag-manifesto',
@@ -58,30 +63,41 @@
 			description: 'The right way to do Bible RAG'
 		},
 		{
-			href: '/changelog',
-			label: 'Changelog',
-			icon: ScrollText,
-			description: 'Latest updates and improvements'
-		},
-		{
 			href: '/whitepaper',
 			label: 'Whitepaper',
 			icon: FileText,
 			description: 'Detailed technical explanation'
 		},
 		{
-			href: '/about',
-			label: 'About',
-			icon: Info,
-			description: 'Learn more about The Aqueduct'
+			href: '/changelog',
+			label: 'Changelog',
+			icon: ScrollText,
+			description: 'Latest updates and improvements'
 		}
 	];
+
+	// Resources dropdown items
+	const resourcesItems = [
+		{
+			href: '/performance',
+			label: 'Performance',
+			icon: TrendingUp,
+			description: 'Performance & cost analysis'
+		}
+	];
+
+	// All items for mobile menu
+	const allNavItems = [...mainNavItems, ...docsItems, ...resourcesItems];
 
 	// Mobile menu state
 	let mobileMenuOpen = false;
 	let currentPath = '';
 	let isNavigating = false;
 	let navigationError = false;
+
+	// Dropdown state
+	let docsDropdownOpen = false;
+	let resourcesDropdownOpen = false;
 
 	function toggleMobileMenu() {
 		mobileMenuOpen = !mobileMenuOpen;
@@ -139,10 +155,10 @@
 </script>
 
 <svelte:head>
-	<title>The Aqueduct - {VERSION}</title>
+	<title>TC Helps - Translation Core Helps MCP Server | servant.bible</title>
 	<meta
 		name="description"
-		content="Stateless RAG for Bible Translation. Cache-first. LLM-native. Order without control."
+		content="MCP server and clients for developers working with Bible translation resources. Access translation helps via Model Context Protocol."
 	/>
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -208,22 +224,22 @@
 						<div
 							class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-12"
 						>
-							<Droplets class="h-6 w-6 text-white" />
+							<Book class="h-6 w-6 text-white" />
 						</div>
 						<div class="hidden sm:block">
 							<div
 								class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-lg font-bold text-transparent"
 							>
-								The Aqueduct
+								TC Helps
 							</div>
-							<div class="text-xs text-blue-200">Stateless RAG • v{VERSION}</div>
+							<div class="text-xs text-blue-200">Translation Core Helps • v{VERSION}</div>
 						</div>
 					</a>
 				</div>
 
 				<!-- Desktop Navigation -->
 				<div class="hidden items-center space-x-1 md:flex">
-					{#each navItems as item}
+					{#each mainNavItems as item}
 						<a
 							href={item.href}
 							class="group relative rounded-xl px-4 py-2 text-sm font-medium transition-all duration-300 {$page
@@ -247,6 +263,90 @@
 							</div>
 						</a>
 					{/each}
+
+					<!-- Docs Dropdown -->
+					<div class="relative">
+						<button
+							on:click={() => (docsDropdownOpen = !docsDropdownOpen)}
+							on:blur={() => setTimeout(() => (docsDropdownOpen = false), 200)}
+							class="group relative flex items-center space-x-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-300 {docsDropdownOpen ||
+							docsItems.some((item) => $page.url.pathname === item.href)
+								? 'border-white/20 bg-white/20 text-white shadow-lg backdrop-blur-xl'
+								: 'border-transparent text-blue-200 backdrop-blur-xl hover:border-white/10 hover:bg-white/10 hover:text-white'}"
+						>
+							<BookOpen class="h-4 w-4" />
+							<span>Docs</span>
+							<ChevronDown
+								class="h-3 w-3 transition-transform duration-200 {docsDropdownOpen
+									? 'rotate-180'
+									: ''}"
+							/>
+						</button>
+
+						{#if docsDropdownOpen}
+							<div
+								class="absolute top-full right-0 z-50 mt-2 w-56 rounded-xl border border-blue-500/30 bg-black/95 p-2 shadow-xl backdrop-blur-2xl"
+							>
+								{#each docsItems as item}
+									<a
+										href={item.href}
+										class="group flex items-center space-x-3 rounded-lg px-3 py-2 text-sm transition-all duration-200 {$page
+											.url.pathname === item.href
+											? 'bg-white/20 text-white'
+											: 'text-blue-200 hover:bg-white/10 hover:text-white'}"
+									>
+										<svelte:component this={item.icon} class="h-4 w-4" />
+										<div class="flex-1">
+											<div class="font-medium">{item.label}</div>
+											<div class="text-xs text-blue-300/70">{item.description}</div>
+										</div>
+									</a>
+								{/each}
+							</div>
+						{/if}
+					</div>
+
+					<!-- Resources Dropdown -->
+					<div class="relative">
+						<button
+							on:click={() => (resourcesDropdownOpen = !resourcesDropdownOpen)}
+							on:blur={() => setTimeout(() => (resourcesDropdownOpen = false), 200)}
+							class="group relative flex items-center space-x-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-300 {resourcesDropdownOpen ||
+							resourcesItems.some((item) => $page.url.pathname === item.href)
+								? 'border-white/20 bg-white/20 text-white shadow-lg backdrop-blur-xl'
+								: 'border-transparent text-blue-200 backdrop-blur-xl hover:border-white/10 hover:bg-white/10 hover:text-white'}"
+						>
+							<TrendingUp class="h-4 w-4" />
+							<span>Resources</span>
+							<ChevronDown
+								class="h-3 w-3 transition-transform duration-200 {resourcesDropdownOpen
+									? 'rotate-180'
+									: ''}"
+							/>
+						</button>
+
+						{#if resourcesDropdownOpen}
+							<div
+								class="absolute top-full right-0 z-50 mt-2 w-56 rounded-xl border border-blue-500/30 bg-black/95 p-2 shadow-xl backdrop-blur-2xl"
+							>
+								{#each resourcesItems as item}
+									<a
+										href={item.href}
+										class="group flex items-center space-x-3 rounded-lg px-3 py-2 text-sm transition-all duration-200 {$page
+											.url.pathname === item.href
+											? 'bg-white/20 text-white'
+											: 'text-blue-200 hover:bg-white/10 hover:text-white'}"
+									>
+										<svelte:component this={item.icon} class="h-4 w-4" />
+										<div class="flex-1">
+											<div class="font-medium">{item.label}</div>
+											<div class="text-xs text-blue-300/70">{item.description}</div>
+										</div>
+									</a>
+								{/each}
+							</div>
+						{/if}
+					</div>
 				</div>
 
 				<!-- Right side actions -->
@@ -305,7 +405,7 @@
 						</div>
 					{/if}
 
-					{#each navItems as item}
+					{#each allNavItems as item}
 						<a
 							href={item.href}
 							on:click={(e) => handleNavigation(e, item.href)}
@@ -370,21 +470,21 @@
 						<div
 							class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-500 transition-transform duration-300 hover:scale-110"
 						>
-							<Droplets class="h-7 w-7 text-white" />
+							<Book class="h-7 w-7 text-white" />
 						</div>
 						<div>
 							<div
 								class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-xl font-bold text-transparent"
 							>
-								The Aqueduct
+								TC Helps
 							</div>
-							<div class="text-sm text-blue-200">Stateless RAG • MCP Server</div>
+							<div class="text-sm text-blue-200">Translation Core Helps • servant.bible</div>
 						</div>
 					</div>
 					<p class="mb-8 max-w-md text-lg leading-relaxed text-gray-300">
-						AI-powered Bible translation assistance through the Model Context Protocol.
+						MCP server and clients for developers working with Bible translation resources.
 						<strong class="text-blue-300"
-							>Supercharge your LLM with canonical Bible resources.</strong
+							>Build applications that access translation helps via Model Context Protocol.</strong
 						>
 					</p>
 					<div class="flex items-center space-x-4">
@@ -404,7 +504,7 @@
 				<div>
 					<h3 class="mb-6 text-lg font-semibold text-white">Quick Links</h3>
 					<div class="space-y-4">
-						{#each navItems as item}
+						{#each allNavItems as item}
 							<a
 								href={item.href}
 								class="group flex items-center space-x-3 text-gray-300 transition-all duration-300 hover:text-blue-300"
@@ -446,10 +546,10 @@
 				<div class="flex flex-col items-center justify-between space-y-6 md:flex-row md:space-y-0">
 					<div class="text-center md:text-left">
 						<div class="text-gray-300">
-							© 2025 Klappy • Built with ❤️ for the Bible translation community
+							© 2025 servant.bible • Built with ❤️ for developers working with Bible translation
 						</div>
 						<div class="mt-1 text-sm text-blue-300">
-							<span class="font-medium">The age of stateless RAG has arrived</span>
+							<span class="font-medium">Translation Core Helps • MCP Server & Clients</span>
 						</div>
 					</div>
 					<div class="flex items-center space-x-6">
