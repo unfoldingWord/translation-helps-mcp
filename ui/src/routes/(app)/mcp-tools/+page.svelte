@@ -213,7 +213,8 @@
 					type: 'text',
 					required: false,
 					placeholder: 'Organization name (optional - searches all if omitted)',
-					description: 'Organization/owner to filter by (e.g., unfoldingWord, es-419_gl). Omit to search all organizations.'
+					description:
+						'Organization/owner to filter by (e.g., unfoldingWord, es-419_gl). Omit to search all organizations.'
 				}
 			],
 			workflow: [
@@ -246,14 +247,16 @@
 					type: 'text',
 					required: false,
 					placeholder: 'e.g., Translation Words, Translation Notes (optional)',
-					description: 'Resource subject/type. If not provided, will show all available subjects first.'
+					description:
+						'Resource subject/type. If not provided, will show all available subjects first.'
 				},
 				{
 					name: 'organization',
 					type: 'text',
 					required: false,
 					placeholder: 'Organization name (optional - searches all if omitted)',
-					description: 'Organization/owner to filter by (e.g., unfoldingWord, es-419_gl). Omit to search all organizations.'
+					description:
+						'Organization/owner to filter by (e.g., unfoldingWord, es-419_gl). Omit to search all organizations.'
 				}
 			],
 			workflow: [
@@ -370,7 +373,7 @@
 						promptParameters[param.name] = 'John 3:16';
 					} else if (prompt.id === 'get-translation-words-for-passage') {
 						promptParameters[param.name] = 'Romans 1:1';
-					} else 					if (prompt.id === 'get-translation-academy-for-passage') {
+					} else if (prompt.id === 'get-translation-academy-for-passage') {
 						promptParameters[param.name] = 'Matthew 5:13';
 					} else if (prompt.id === 'discover-resources-for-language') {
 						if (param.name === 'language') {
@@ -506,21 +509,21 @@
 			else if (name === 'fetch-translation-word' || name === 'fetch-translation-academy') {
 				groups.rcLinked.push(endpoint);
 			}
-		// Discovery/Browsing Tools
-		else if (
-			name === 'list-languages' ||
-			name === 'list_languages' ||
-			name === 'list-subjects' ||
-			name === 'list_subjects' ||
-			name === 'list-resources-by-language' ||
-			name === 'list_resources_by_language' ||
-			name === 'list-resources-for-language' ||
-			name === 'list_resources_for_language' ||
-			name === 'search-translation-word-across-languages' ||
-			name === 'search_translation_word_across_languages'
-		) {
-			groups.discovery.push(endpoint);
-		}
+			// Discovery/Browsing Tools
+			else if (
+				name === 'list-languages' ||
+				name === 'list_languages' ||
+				name === 'list-subjects' ||
+				name === 'list_subjects' ||
+				name === 'list-resources-by-language' ||
+				name === 'list_resources_by_language' ||
+				name === 'list-resources-for-language' ||
+				name === 'list_resources_for_language' ||
+				name === 'search-translation-word-across-languages' ||
+				name === 'search_translation_word_across_languages'
+			) {
+				groups.discovery.push(endpoint);
+			}
 			// Everything else goes to discovery
 			else {
 				groups.discovery.push(endpoint);
@@ -535,18 +538,18 @@
 				'fetch-translation-word-links'
 			],
 			rcLinked: ['fetch-translation-word', 'fetch-translation-academy'],
-		discovery: [
-			'list-languages',
-			'list_languages',
-			'list-subjects',
-			'list_subjects',
-			'list-resources-by-language',
-			'list_resources_by_language',
-			'list-resources-for-language',
-			'list_resources_for_language',
-			'search-translation-word-across-languages',
-			'search_translation_word_across_languages'
-		]
+			discovery: [
+				'list-languages',
+				'list_languages',
+				'list-subjects',
+				'list_subjects',
+				'list-resources-by-language',
+				'list_resources_by_language',
+				'list-resources-for-language',
+				'list_resources_for_language',
+				'search-translation-word-across-languages',
+				'search_translation_word_across_languages'
+			]
 		};
 
 		// Sort each group according to custom order
@@ -644,18 +647,24 @@
 			testParams.language = 'en';
 			testParams.organization = 'unfoldingWord';
 			testParams.stage = 'prod';
-	} else if (endpoint.name === 'list-resources-by-language' || endpoint.name === 'list_resources_by_language') {
-		testParams.organization = 'unfoldingWord';
-		testParams.stage = 'prod';
-		testParams.limit = '100';
-	} else if (endpoint.name === 'list-resources-for-language' || endpoint.name === 'list_resources_for_language') {
-		testParams.language = 'en';
-		testParams.organization = '';
-		testParams.stage = 'prod';
-		// Don't set limit - omitting it fetches all resources
-	}
+		} else if (
+			endpoint.name === 'list-resources-by-language' ||
+			endpoint.name === 'list_resources_by_language'
+		) {
+			testParams.organization = 'unfoldingWord';
+			testParams.stage = 'prod';
+			testParams.limit = '100';
+		} else if (
+			endpoint.name === 'list-resources-for-language' ||
+			endpoint.name === 'list_resources_for_language'
+		) {
+			testParams.language = 'en';
+			testParams.organization = '';
+			testParams.stage = 'prod';
+			// Don't set limit - omitting it fetches all resources
+		}
 
-	// Convert endpoint name to MCP tool name
+		// Convert endpoint name to MCP tool name
 		const toolName = endpointToToolName(endpoint.name);
 		const serverUrl = '/api/mcp'; // Use local MCP server
 
@@ -1014,18 +1023,24 @@
 				testParams.language = 'en';
 				testParams.organization = 'unfoldingWord';
 				testParams.stage = 'prod';
-		} else if (endpoint.name === 'list-resources-by-language' || endpoint.name === 'list_resources_by_language') {
-			testParams.organization = 'unfoldingWord';
-			testParams.stage = 'prod';
-			testParams.limit = '100';
-		} else if (endpoint.name === 'list-resources-for-language' || endpoint.name === 'list_resources_for_language') {
-			testParams.language = 'en';
-			testParams.organization = '';
-			testParams.stage = 'prod';
-			// Don't set limit - omitting it fetches all resources
-		}
+			} else if (
+				endpoint.name === 'list-resources-by-language' ||
+				endpoint.name === 'list_resources_by_language'
+			) {
+				testParams.organization = 'unfoldingWord';
+				testParams.stage = 'prod';
+				testParams.limit = '100';
+			} else if (
+				endpoint.name === 'list-resources-for-language' ||
+				endpoint.name === 'list_resources_for_language'
+			) {
+				testParams.language = 'en';
+				testParams.organization = '';
+				testParams.stage = 'prod';
+				// Don't set limit - omitting it fetches all resources
+			}
 
-		// Build query string
+			// Build query string
 			const params = new URLSearchParams();
 			Object.entries(testParams).forEach(([key, value]) => {
 				if (value !== null && value !== undefined && value !== '') {

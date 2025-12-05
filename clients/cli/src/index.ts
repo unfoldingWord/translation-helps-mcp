@@ -43,7 +43,9 @@ program
       console.log(chalk.green(`✅ Language set to: ${options.setLanguage}`));
     } else if (options.setOrganization) {
       config.setOrganization(options.setOrganization);
-      console.log(chalk.green(`✅ Organization set to: ${options.setOrganization}`));
+      console.log(
+        chalk.green(`✅ Organization set to: ${options.setOrganization}`),
+      );
     } else {
       config.display();
     }
@@ -56,7 +58,10 @@ program
   .option("--offline", "Force offline mode")
   .option("--list-models", "List available Ollama models")
   .option("-l, --language <code>", "Language code (e.g., 'en', 'es-419')")
-  .option("-o, --organization <name>", "Organization name (e.g., 'unfoldingWord', 'es-419_gl')");
+  .option(
+    "-o, --organization <name>",
+    "Organization name (e.g., 'unfoldingWord', 'es-419_gl')",
+  );
 
 // Parse arguments
 program.parse();
@@ -110,7 +115,8 @@ async function startChat(options: any): Promise<void> {
     // Map language to catalog code (e.g., es -> es-419)
     const rawLanguage = options.language || cfg.language || "en";
     const selectedLanguage = mapLanguageToCatalogCode(rawLanguage);
-    const selectedOrganization = options.organization || cfg.organization || "unfoldingWord";
+    const selectedOrganization =
+      options.organization || cfg.organization || "unfoldingWord";
 
     console.log(chalk.bold.blue("\n🚀 Starting Translation Helps CLI...\n"));
 
@@ -132,7 +138,13 @@ async function startChat(options: any): Promise<void> {
     );
 
     // Start chat interface
-    const chatInterface = new ChatInterface(aiProvider, mcpClient, config, selectedLanguage, selectedOrganization);
+    const chatInterface = new ChatInterface(
+      aiProvider,
+      mcpClient,
+      config,
+      selectedLanguage,
+      selectedOrganization,
+    );
 
     // Handle graceful shutdown
     process.on("SIGINT", async () => {

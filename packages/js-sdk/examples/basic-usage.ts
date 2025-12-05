@@ -17,7 +17,7 @@ import { TranslationHelpsClient } from "../src/index.js";
 async function main() {
   // Create MCP client
   const mcpClient = new TranslationHelpsClient({
-    serverUrl: "https://translation-helps-mcp-945.pages.dev/api/mcp",
+    serverUrl: "https://tc-helps.mcp.servant.bible/api/mcp",
   });
 
   try {
@@ -121,6 +121,39 @@ async function main() {
     //     console.error(`❌ Tool execution error: ${error}`);
     //   }
     // }
+
+    // ============================================
+    // DISCOVERY WORKFLOW EXAMPLE (New in v1.2.0)
+    // ============================================
+    // Recommended workflow for discovering available resources:
+
+    // Step 1: Discover available languages (~1s)
+    console.log("\n🔍 Discovery Workflow Example:");
+    const languages = await mcpClient.listLanguages({ stage: "prod" });
+    console.log(`✅ Found ${languages.languages?.length || 0} languages`);
+    console.log(
+      `   Examples: ${languages.languages
+        ?.slice(0, 5)
+        .map((l) => l.code)
+        .join(", ")}`,
+    );
+
+    // Step 2: Get resources for a specific language (~1-2s) ⭐ RECOMMENDED
+    const spanishResources = await mcpClient.listResourcesForLanguage({
+      language: "es-419",
+      topic: "tc-ready", // optional: production-ready resources only
+    });
+    console.log(
+      `✅ Found ${spanishResources.totalResources || 0} resources for Spanish (es-419)`,
+    );
+    console.log(`   Subjects: ${spanishResources.subjects?.join(", ")}`);
+
+    // Step 3: Use specific fetch tools with discovered language/organization
+    // const scripture = await mcpClient.fetchScripture({
+    //   reference: "John 3:16",
+    //   language: "es-419",
+    //   organization: "es-419_gl", // from resources list
+    // });
 
     console.log("\n📝 Note: This is a template example.");
     console.log("Uncomment and adapt the code above for your AI provider.");

@@ -36,7 +36,7 @@ export const OrganizationParam = z
   .union([z.string(), z.array(z.string()), z.undefined()])
   .optional()
   .describe(
-    'Organization(s) to search. Can be a single organization (string), multiple organizations (array), or omitted to search all organizations. Examples: "unfoldingWord", ["unfoldingWord", "es-419_gl"], or undefined for all.'
+    'Organization(s) to search. Can be a single organization (string), multiple organizations (array), or omitted to search all organizations. Examples: "unfoldingWord", ["unfoldingWord", "es-419_gl"], or undefined for all.',
   );
 
 /**

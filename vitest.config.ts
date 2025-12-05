@@ -5,7 +5,7 @@ export default defineConfig({
   resolve: {
     alias: {
       // Resolve SvelteKit $lib alias for tests
-      "$lib": path.resolve(__dirname, "ui/src/lib"),
+      $lib: path.resolve(__dirname, "ui/src/lib"),
       // Resolve $env alias
       "$env/dynamic/private": path.resolve(__dirname, "ui/src/lib/env-mock.ts"),
     },

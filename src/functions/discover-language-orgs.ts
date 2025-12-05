@@ -43,9 +43,7 @@ export async function discoverLanguageOrgs(): Promise<LanguageOrgDiscoveryResult
       logger.error("Catalog search failed", {
         status: catalogResponse.status,
       });
-      throw new Error(
-        `Failed to search catalog: ${catalogResponse.status}`,
-      );
+      throw new Error(`Failed to search catalog: ${catalogResponse.status}`);
     }
 
     const catalogData = (await catalogResponse.json()) as {
@@ -78,7 +76,9 @@ export async function discoverLanguageOrgs(): Promise<LanguageOrgDiscoveryResult
       const langCode =
         resource.language ||
         resource.lang ||
-        (resource.name.match(/^([a-z]{2,3}(?:-[A-Z][a-z]{3})?)/i)?.[1]?.toLowerCase());
+        resource.name
+          .match(/^([a-z]{2,3}(?:-[A-Z][a-z]{3})?)/i)?.[1]
+          ?.toLowerCase();
 
       if (!langCode) continue;
 
@@ -117,13 +117,13 @@ export async function discoverLanguageOrgs(): Promise<LanguageOrgDiscoveryResult
     }
 
     // Convert to result format
-    const options: LanguageOrgOption[] = Array.from(
-      languageMap.entries(),
-    ).map(([language, data]) => ({
-      language,
-      displayName: data.displayName,
-      organizations: Array.from(data.organizations).sort(),
-    }));
+    const options: LanguageOrgOption[] = Array.from(languageMap.entries()).map(
+      ([language, data]) => ({
+        language,
+        displayName: data.displayName,
+        organizations: Array.from(data.organizations).sort(),
+      }),
+    );
 
     // Sort by language code
     options.sort((a, b) => a.language.localeCompare(b.language));
@@ -157,4 +157,3 @@ export async function discoverLanguageOrgs(): Promise<LanguageOrgDiscoveryResult
     throw error;
   }
 }
-

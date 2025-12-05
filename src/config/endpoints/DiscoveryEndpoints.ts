@@ -6,7 +6,13 @@
  */
 
 import type { EndpointConfig } from "../EndpointConfig.js";
-import { LANGUAGES_SHAPE, RESOURCES_SHAPE, SUBJECTS_SHAPE, RESOURCES_BY_LANGUAGE_SHAPE, RESOURCES_FOR_LANGUAGE_SHAPE } from "../ResponseShapes.js";
+import {
+  LANGUAGES_SHAPE,
+  RESOURCES_SHAPE,
+  SUBJECTS_SHAPE,
+  RESOURCES_BY_LANGUAGE_SHAPE,
+  RESOURCES_FOR_LANGUAGE_SHAPE,
+} from "../ResponseShapes.js";
 
 /**
  * Get Languages - Discover available languages with resource metadata
@@ -551,7 +557,8 @@ export const LIST_RESOURCES_BY_LANGUAGE_CONFIG: EndpointConfig = {
       type: "number" as const,
       required: false,
       default: 100,
-      description: "Maximum number of resources to return per subject (default: 100, max: 1000)",
+      description:
+        "Maximum number of resources to return per subject (default: 100, max: 1000)",
       example: 100,
       min: 1,
       max: 1000,
@@ -559,7 +566,8 @@ export const LIST_RESOURCES_BY_LANGUAGE_CONFIG: EndpointConfig = {
     topic: {
       type: "string" as const,
       required: false,
-      description: 'Filter by topic tag (e.g., "tc-ready" for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.',
+      description:
+        'Filter by topic tag (e.g., "tc-ready" for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.',
       example: "tc-ready",
     },
   },
@@ -598,7 +606,11 @@ export const LIST_RESOURCES_BY_LANGUAGE_CONFIG: EndpointConfig = {
         stage: "prod",
       },
       expectedContent: {
-        contains: ["resourcesByLanguage", "Translation Words", "Translation Notes"],
+        contains: [
+          "resourcesByLanguage",
+          "Translation Words",
+          "Translation Notes",
+        ],
         minLength: 200,
         fields: {
           resourcesByLanguage: "object",
@@ -652,13 +664,15 @@ export const LIST_RESOURCES_FOR_LANGUAGE_CONFIG: EndpointConfig = {
     limit: {
       type: "number" as const,
       required: false,
-      description: "Maximum number of resources to return. If not specified, fetches all available resources (up to 10000).",
+      description:
+        "Maximum number of resources to return. If not specified, fetches all available resources (up to 10000).",
       example: 200,
     },
     topic: {
       type: "string" as const,
       required: false,
-      description: 'Filter by topic tag (e.g., "tc-ready" for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.',
+      description:
+        'Filter by topic tag (e.g., "tc-ready" for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.',
       example: "tc-ready",
     },
   },

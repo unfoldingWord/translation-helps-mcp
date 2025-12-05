@@ -1,0 +1,116 @@
+---
+description: Use 'py' launcher for all Python commands on Windows
+globs: packages/python-sdk/**/*, **/*.py, **/*.bat, **/*.sh
+alwaysApply: true
+---
+
+# Python Commands Rule
+
+**CRITICAL**: On Windows, always use the `py` launcher instead of full Python paths or `python`/`python3`.
+
+## ✅ Always Use `py` Command
+
+### Correct Commands:
+```bash
+# ✅ DO: Use py launcher
+py -m build
+py -m twine upload dist/*
+py -m pip install build twine
+py -m pytest
+py script.py
+```
+
+### Incorrect Commands:
+```bash
+# ❌ DON'T: Use full paths
+"C:\Users\LENOVO\AppData\Local\Programs\Python\Python311\python.exe" -m build
+
+# ❌ DON'T: Use python/python3 (may point to wrong interpreter)
+python -m build
+python3 -m build
+```
+
+## 🎯 Why Use `py`?
+
+- **Cross-platform compatible**: Works on Windows, Linux, Mac
+- **Finds correct Python**: Automatically uses the right Python version
+- **Shorter commands**: Much easier to type and read
+- **Consistent**: Same command works everywhere
+
+## 📝 Examples in This Project
+
+### Building Python SDK:
+```bash
+cd packages/python-sdk
+py -m build
+```
+
+### Publishing to PyPI:
+```bash
+cd packages/python-sdk
+py -m twine upload dist/*
+```
+
+### Installing Dependencies:
+```bash
+py -m pip install build twine
+```
+
+### Running Tests:
+```bash
+py -m pytest
+```
+
+### Running Scripts:
+```bash
+py build_package.py
+py test_sdk_comprehensive.py
+```
+
+## 🔧 PyPI Token Configuration
+
+To avoid entering your PyPI token every time, use one of these methods:
+
+### Option 1: `.pypirc` File (Recommended)
+
+Create `~/.pypirc` (or `%USERPROFILE%\.pypirc` on Windows):
+
+```ini
+[pypi]
+username = __token__
+password = pypi-YourActualTokenHere
+
+[testpypi]
+username = __token__
+password = pypi-YourTestPyPITokenHere
+```
+
+**Security Note**: Make sure `.pypirc` is in `.gitignore` and never commit it!
+
+### Option 2: Environment Variables
+
+Set in your shell profile (`.bashrc`, `.zshrc`, or Windows environment variables):
+
+```bash
+export TWINE_USERNAME=__token__
+export TWINE_PASSWORD=pypi-YourActualTokenHere
+```
+
+### Option 3: Keyring (Most Secure)
+
+```bash
+py -m pip install keyring
+py -m keyring set https://upload.pypi.org/legacy/ __token__
+# Enter your token when prompted
+```
+
+Then use normally:
+```bash
+py -m twine upload dist/*
+```
+
+## 📚 References
+
+- Python Launcher: https://docs.python.org/3/using/windows.html#launcher
+- PyPI Token Setup: https://pypi.org/manage/account/token/
+- Twine Configuration: https://twine.readthedocs.io/en/stable/#configuration

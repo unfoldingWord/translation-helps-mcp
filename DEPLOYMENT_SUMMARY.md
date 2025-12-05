@@ -44,10 +44,10 @@ compatibility_flags = ["nodejs_compat"]
 
 ## 🌐 Deployment URLs
 
-- **Production**: `https://translation-helps-mcp.pages.dev`
+- **Production**: `https://tc-helps.mcp.servant.bible`
 - **API Endpoints**:
-  - Health: `https://translation-helps-mcp.pages.dev/api/health`
-  - MCP: `https://translation-helps-mcp.pages.dev/api/mcp`
+  - Health: `https://tc-helps.mcp.servant.bible/api/health`
+  - MCP: `https://tc-helps.mcp.servant.bible/api/mcp`
 
 ## 📝 Next Steps
 

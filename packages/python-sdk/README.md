@@ -455,6 +455,6 @@ MIT
 
 ## Links
 
-- [Documentation](https://translation-helps-mcp-945.pages.dev)
+- [Documentation](https://tc-helps.mcp.servant.bible)
 - [GitHub Repository](https://github.com/unfoldingWord/translation-helps-mcp)
 - [MCP Protocol](https://modelcontextprotocol.io)

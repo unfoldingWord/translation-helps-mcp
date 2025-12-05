@@ -5,6 +5,29 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2025-12-05
+
+### Changed
+
+- Updated default server URL to new domain: `https://tc-helps.mcp.servant.bible/api/mcp`
+- Updated all examples and documentation to use new domain
+
+## [1.2.0] - 2025-12-03
+
+### Added
+
+- **Discovery Tools** - New methods for efficient resource discovery:
+  - `listLanguages()` - List all available languages from Door43 catalog (~1s)
+  - `listSubjects()` - List all available resource subjects/types
+  - `listResourcesByLanguage()` - List resources organized by language with parallel API calls (~4-5s first call, cached afterward)
+  - `listResourcesForLanguage()` - Fast single-language resource discovery (~1-2s) ⭐ RECOMMENDED
+  - `searchTranslationWordAcrossLanguages()` - Search translation word terms across multiple languages
+
+### Changed
+
+- Updated README with discovery workflow examples and performance notes
+- All 11 MCP tools now available in SDK
+
 ## [1.1.0] - 2025-11-20
 
 ### Added

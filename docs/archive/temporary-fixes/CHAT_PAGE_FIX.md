@@ -12,7 +12,7 @@ SvelteKit routes deployed to Cloudflare Pages require explicit edge runtime conf
 
 ### Investigation Process
 
-1. **Initial Discovery**: `curl -I https://emergency-investor-demo.translation-helps-mcp.pages.dev/chat` returned HTTP 500
+1. **Initial Discovery**: `curl -I https://emergency-investor-demo.tc-helps.mcp.servant.bible/chat` returned HTTP 500
 2. **Error Pattern**: The page HTML showed a generic "Internal Error" without specific details
 3. **Build Analysis**: Build logs showed no runtime configuration for API endpoints
 4. **Root Cause**: Missing edge runtime configuration for all server-side routes

@@ -14,7 +14,8 @@ export const GET: RequestHandler = async () => {
 	} catch (error) {
 		return json(
 			{
-				error: error instanceof Error ? error.message : 'Failed to discover language-org combinations',
+				error:
+					error instanceof Error ? error.message : 'Failed to discover language-org combinations',
 				options: [],
 				metadata: {
 					responseTime: 0,
@@ -27,4 +28,3 @@ export const GET: RequestHandler = async () => {
 		);
 	}
 };
-

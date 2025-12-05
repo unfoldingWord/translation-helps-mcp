@@ -157,13 +157,13 @@ After setup, verify your deployment:
    - Watch GitHub Actions and Cloudflare dashboard
 
 2. **Test URLs**
-   - Production: `https://translation-helps-mcp.pages.dev`
-   - Preview: `https://<hash>.translation-helps-mcp.pages.dev`
+   - Production: `https://tc-helps.mcp.servant.bible`
+   - Preview: `https://<hash>.tc-helps.mcp.servant.bible`
 
 3. **API Endpoints**
    ```bash
-   curl https://translation-helps-mcp.pages.dev/api/health
-   curl https://translation-helps-mcp.pages.dev/api/mcp
+   curl https://tc-helps.mcp.servant.bible/api/health
+   curl https://tc-helps.mcp.servant.bible/api/mcp
    ```
 
 ## 🎯 Best Practices

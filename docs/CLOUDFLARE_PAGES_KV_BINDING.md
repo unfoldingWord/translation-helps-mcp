@@ -38,7 +38,7 @@ After binding and redeployment, verify with:
 
 ```bash
 # Check KV status
-curl https://translation-helps-mcp.pages.dev/api/kv-status | jq .
+curl https://tc-helps.mcp.servant.bible/api/kv-status | jq .
 ```
 
 You should see:

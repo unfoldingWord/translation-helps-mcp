@@ -70,7 +70,7 @@ The GitHub Actions workflow should now:
 Monitor the Cloudflare Pages dashboard to ensure:
 
 - ✅ Build completes successfully
-- ✅ Deployment is live at `https://translation-helps-mcp.pages.dev`
+- ✅ Deployment is live at `https://tc-helps.mcp.servant.bible`
 - ✅ All API endpoints are working correctly
 
 If any issues persist, check:

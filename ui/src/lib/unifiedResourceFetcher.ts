@@ -82,11 +82,12 @@ export class UnifiedResourceFetcher {
 		// Handle multiple organizations
 		// When organization is undefined, search all orgs (single call without owner param)
 		// When organization is array, make parallel calls for each org
-		const organizations = organization === undefined 
-			? [undefined] // Search all orgs - pass undefined to ZipResourceFetcher2
-			: Array.isArray(organization) 
-				? organization 
-				: [organization]; // Single org as array for uniform handling
+		const organizations =
+			organization === undefined
+				? [undefined] // Search all orgs - pass undefined to ZipResourceFetcher2
+				: Array.isArray(organization)
+					? organization
+					: [organization]; // Single org as array for uniform handling
 
 		// Fetch all requested resources for all organizations
 		for (const org of organizations) {
@@ -99,7 +100,9 @@ export class UnifiedResourceFetcher {
 					const data = await this.zipFetcher.getScripture(parsed, language, orgParam, resource);
 					results.push(...data);
 				} catch (error) {
-					logger.warn(`Failed to fetch ${resource} for ${reference} from ${org || 'all orgs'}`, { error });
+					logger.warn(`Failed to fetch ${resource} for ${reference} from ${org || 'all orgs'}`, {
+						error
+					});
 					// Continue with other resources instead of failing completely
 				}
 			}

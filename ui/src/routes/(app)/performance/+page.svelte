@@ -172,7 +172,7 @@
 
 		const baseUrl =
 			platform === 'cloudflare'
-				? 'https://translation-helps-mcp.pages.dev'
+				? 'https://tc-helps.mcp.servant.bible'
 				: 'https://translation-helps-mcp.netlify.app';
 
 		const endpoints = [

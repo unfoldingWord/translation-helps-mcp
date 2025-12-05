@@ -20,7 +20,7 @@ export const ListSubjectsArgs = z.object({
     'Filter subjects by language code (e.g., "en", "es-419"). If not provided, returns all subjects.',
   ),
   organization: OrganizationParam.describe(
-    'Filter subjects by organization(s). Can be a single organization (string), multiple organizations (array), or omitted to return all subjects from all organizations.',
+    "Filter subjects by organization(s). Can be a single organization (string), multiple organizations (array), or omitted to return all subjects from all organizations.",
   ),
   stage: z
     .string()
@@ -43,10 +43,16 @@ interface SubjectItem {
  */
 function mapSubjectToResourceType(subject: string): string | undefined {
   const subjectLower = subject.toLowerCase();
-  if (subjectLower.includes("translation words") || subjectLower.includes("tw")) {
+  if (
+    subjectLower.includes("translation words") ||
+    subjectLower.includes("tw")
+  ) {
     return "tw";
   }
-  if (subjectLower.includes("translation notes") || subjectLower.includes("tn")) {
+  if (
+    subjectLower.includes("translation notes") ||
+    subjectLower.includes("tn")
+  ) {
     return "tn";
   }
   if (
@@ -55,7 +61,10 @@ function mapSubjectToResourceType(subject: string): string | undefined {
   ) {
     return "tq";
   }
-  if (subjectLower.includes("translation word links") || subjectLower.includes("twl")) {
+  if (
+    subjectLower.includes("translation word links") ||
+    subjectLower.includes("twl")
+  ) {
     return "twl";
   }
   if (subjectLower.includes("aligned bible") || subjectLower.includes("ult")) {
@@ -67,7 +76,10 @@ function mapSubjectToResourceType(subject: string): string | undefined {
   if (subjectLower.includes("bible") && !subjectLower.includes("aligned")) {
     return "scripture";
   }
-  if (subjectLower.includes("translation academy") || subjectLower.includes("ta")) {
+  if (
+    subjectLower.includes("translation academy") ||
+    subjectLower.includes("ta")
+  ) {
     return "ta";
   }
   return undefined;
@@ -76,9 +88,7 @@ function mapSubjectToResourceType(subject: string): string | undefined {
 /**
  * Handle the list subjects tool call
  */
-export async function handleListSubjects(
-  args: ListSubjectsArgs,
-): Promise<{
+export async function handleListSubjects(args: ListSubjectsArgs): Promise<{
   content: Array<{ type: "text"; text: string }>;
   isError: boolean;
 }> {
@@ -103,7 +113,7 @@ export async function handleListSubjects(
     }
     // Handle organization: undefined = all orgs, string = single org, array = multiple orgs
     if (args.organization) {
-      if (typeof args.organization === 'string') {
+      if (typeof args.organization === "string") {
         url.searchParams.append("owner", args.organization);
       } else if (Array.isArray(args.organization)) {
         // For multiple orgs, we'll need to make parallel calls and merge
@@ -151,7 +161,7 @@ export async function handleListSubjects(
             : new TextDecoder().decode(cachedData as ArrayBuffer);
         data = JSON.parse(json);
         logger.info("Subjects cache HIT", { key: catalogCacheKey });
-        
+
         // Track cache hit in X-Ray
         const cacheSource = cacheDuration < 5 ? "memory" : "kv";
         tracer.addApiCall({
@@ -209,7 +219,12 @@ export async function handleListSubjects(
       });
 
       // Cache the raw API response (not the processed response)
-      if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
+      if (
+        data &&
+        data.data &&
+        Array.isArray(data.data) &&
+        data.data.length > 0
+      ) {
         try {
           await kvCache.set(catalogCacheKey, responseText, cacheTtl);
           logger.info("Subjects cached", {
@@ -308,4 +323,3 @@ export async function handleListSubjects(
     };
   }
 }
-

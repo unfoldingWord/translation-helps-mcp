@@ -51,10 +51,7 @@ import {
   ListLanguagesArgs,
   handleListLanguages,
 } from "./tools/listLanguages.js";
-import {
-  ListSubjectsArgs,
-  handleListSubjects,
-} from "./tools/listSubjects.js";
+import { ListSubjectsArgs, handleListSubjects } from "./tools/listSubjects.js";
 import {
   ListResourcesByLanguageArgs,
   handleListResourcesByLanguage,

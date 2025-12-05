@@ -141,4 +141,4 @@ pip install translation-helps-mcp-client
 For issues or questions:
 
 - GitHub: https://github.com/unfoldingWord/translation-helps-mcp
-- Documentation: https://translation-helps-mcp-945.pages.dev
+- Documentation: https://tc-helps.mcp.servant.bible

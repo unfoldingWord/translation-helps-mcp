@@ -44,7 +44,7 @@ export class ChatInterface {
 - If you detect the user switching languages mid-conversation, acknowledge this and suggest they update the language setting
 - You can inform users about the current language/organization settings if they ask
 `;
-    
+
     this.messages.push({
       role: "system",
       content: `You are a Bible study assistant that provides information EXCLUSIVELY from the Translation Helps MCP Server database. You have access to real-time data from unfoldingWord's translation resources.
@@ -513,7 +513,7 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`;
         try {
           const data = await this.mcpClient.executePrompt(
             "translation-helps-for-passage",
-            { 
+            {
               reference: bibleRef,
               language: this.selectedLanguage,
               organization: this.selectedOrganization,

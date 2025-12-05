@@ -13,15 +13,15 @@ for /d %%d in (*.egg-info) do rmdir /s /q %%d
 
 REM Install build tools
 echo Installing build tools...
-pip install build twine -q
+py -m pip install build twine -q
 
 REM Build the package
 echo Building package...
-python -m build
+py -m build
 
 REM Check the package
 echo Checking package...
-twine check dist/*
+py -m twine check dist/*
 
 echo.
 echo ==========================================
@@ -32,13 +32,13 @@ echo Package files created:
 dir dist
 echo.
 echo To publish to TestPyPI:
-echo   twine upload --repository testpypi dist/*
+echo   py -m twine upload --repository testpypi dist/*
 echo.
 echo To publish to PyPI:
-echo   twine upload dist/*
+echo   py -m twine upload dist/*
 echo.
-echo You'll need your PyPI API token.
-echo Get it from: https://pypi.org/manage/account/token/
+echo Note: If you've configured .pypirc with your token, you won't be prompted.
+echo Get your token from: https://pypi.org/manage/account/token/
 
 pause
 

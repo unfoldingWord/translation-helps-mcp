@@ -20,7 +20,7 @@ Use `/api/kv-status` to check KV health:
 curl http://localhost:8174/api/kv-status | jq .
 
 # Production
-curl https://translation-helps-mcp.pages.dev/api/kv-status | jq .
+curl https://tc-helps.mcp.servant.bible/api/kv-status | jq .
 ```
 
 This endpoint shows:

@@ -29,22 +29,22 @@ info:
 
     ## 🔗 Related Resources
 
-    - **Live Demo**: [https://translation-helps-mcp.pages.dev/test](https://translation-helps-mcp.pages.dev/test)
-    - **MCP Tools**: [https://translation-helps-mcp.pages.dev/mcp-tools](https://translation-helps-mcp.pages.dev/mcp-tools)
+    - **Live Demo**: [https://tc-helps.mcp.servant.bible/test](https://tc-helps.mcp.servant.bible/test)
+    - **MCP Tools**: [https://tc-helps.mcp.servant.bible/mcp-tools](https://tc-helps.mcp.servant.bible/mcp-tools)
     - **GitHub Repository**: [https://github.com/translationhelps/translation-helps-mcp](https://github.com/translationhelps/translation-helps-mcp)
 
   version: "1.0.0"
   contact:
     name: Translation Helps Support
-    url: https://translation-helps-mcp.pages.dev
+    url: https://tc-helps.mcp.servant.bible
     email: support@unfoldingword.org
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
-  termsOfService: https://translation-helps-mcp.pages.dev/terms
+  termsOfService: https://tc-helps.mcp.servant.bible/terms
 
 servers:
-  - url: https://translation-helps-mcp.pages.dev/api
+  - url: https://tc-helps.mcp.servant.bible/api
     description: Production server (Cloudflare Pages)
   - url: http://localhost:5173/api
     description: Local development server
@@ -190,7 +190,7 @@ paths:
             print(data['scripture']['ult']['text'])
         - lang: cURL
           source: |
-            curl "https://translation-helps-mcp.pages.dev/api/fetch-scripture?reference=John3:16"
+            curl "https://tc-helps.mcp.servant.bible/api/fetch-scripture?reference=John3:16"
 
   /fetch-ult-scripture:
     get:
@@ -1743,4 +1743,4 @@ security: []
 
 externalDocs:
   description: Complete platform documentation and interactive tools
-  url: https://translation-helps-mcp.pages.dev
+  url: https://tc-helps.mcp.servant.bible

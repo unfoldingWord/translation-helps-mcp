@@ -25,7 +25,7 @@ from .types import (
     SearchTranslationWordAcrossLanguagesOptions,
 )
 
-DEFAULT_SERVER_URL = "https://translation-helps-mcp-945.pages.dev/api/mcp"
+DEFAULT_SERVER_URL = "https://tc-helps.mcp.servant.bible/api/mcp"
 DEFAULT_TIMEOUT = 30.0
 
 

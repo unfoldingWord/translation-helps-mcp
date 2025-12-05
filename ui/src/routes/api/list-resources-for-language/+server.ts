@@ -12,7 +12,10 @@ import { handleListResourcesForLanguage } from '$lib/../../../src/tools/listReso
 /**
  * Fetch resources for a specific language
  */
-async function fetchResourcesForLanguage(params: Record<string, any>, request: Request): Promise<any> {
+async function fetchResourcesForLanguage(
+	params: Record<string, any>,
+	request: Request
+): Promise<any> {
 	const { language, organization, stage, subject, limit, topic } = params;
 
 	// Ensure limit is a number - if not provided, use undefined to get all resources
@@ -21,7 +24,7 @@ async function fetchResourcesForLanguage(params: Record<string, any>, request: R
 		const limitNum = typeof limit === 'string' ? parseInt(limit, 10) : limit;
 		finalLimit = isNaN(limitNum) || limitNum < 1 || limitNum > 10000 ? undefined : limitNum;
 	}
-	
+
 	try {
 		const result = await handleListResourcesForLanguage({
 			language,
@@ -29,19 +32,19 @@ async function fetchResourcesForLanguage(params: Record<string, any>, request: R
 			stage: stage || 'prod',
 			subject,
 			limit: finalLimit,
-			topic,
+			topic
 		});
 
 		// Extract the JSON text from MCP response format
 		if (result.content && result.content[0]?.text) {
 			const data = JSON.parse(result.content[0].text);
-			
+
 			// Extract X-Ray trace from metadata if available
 			const xrayTrace = data.metadata?.serviceMetadata?.xrayTrace || null;
-			
+
 			return {
 				...data,
-				_trace: xrayTrace, // Include trace for header extraction
+				_trace: xrayTrace // Include trace for header extraction
 			};
 		}
 
@@ -68,7 +71,7 @@ export const GET = createSimpleEndpoint({
 					return false;
 				}
 				return true;
-			},
+			}
 		},
 		COMMON_PARAMS.organization,
 		{
@@ -76,12 +79,12 @@ export const GET = createSimpleEndpoint({
 			required: false,
 			type: 'string',
 			default: 'prod',
-			validate: (value: string) => ['prod', 'preprod', 'draft'].includes(value),
+			validate: (value: string) => ['prod', 'preprod', 'draft'].includes(value)
 		},
 		{
 			name: 'subject',
 			required: false,
-			type: 'string',
+			type: 'string'
 		},
 		{
 			name: 'limit',
@@ -91,13 +94,13 @@ export const GET = createSimpleEndpoint({
 				if (!value) return true; // Allow empty/undefined
 				const num = parseInt(value, 10);
 				return !isNaN(num) && num >= 1 && num <= 10000;
-			},
+			}
 		},
 		{
 			name: 'topic',
 			required: false,
-			type: 'string',
-		},
+			type: 'string'
+		}
 	],
 
 	// Enable format support
@@ -109,11 +112,10 @@ export const GET = createSimpleEndpoint({
 	onError: createStandardErrorHandler({
 		'Failed to fetch resources for language': {
 			status: 500,
-			message: 'Failed to retrieve resources for the specified language.',
-		},
-	}),
+			message: 'Failed to retrieve resources for the specified language.'
+		}
+	})
 });
 
 // CORS handler
 export const OPTIONS = createCORSHandler();
-

@@ -7,11 +7,12 @@
 
 export async function setup() {
   // Check if we're running API tests that don't need Wrangler
-  const allArgs = process.argv.join(' ');
-  const isApiTest = allArgs.includes('ui/tests/api') || 
-                    allArgs.includes('tests/api') ||
-                    process.env.VITEST_FILE_PATTERN?.includes('api');
-  
+  const allArgs = process.argv.join(" ");
+  const isApiTest =
+    allArgs.includes("ui/tests/api") ||
+    allArgs.includes("tests/api") ||
+    process.env.VITEST_FILE_PATTERN?.includes("api");
+
   // Skip Wrangler check for API tests
   if (isApiTest) {
     console.log("\n✅ Running API tests - Wrangler not required\n");
@@ -21,7 +22,7 @@ export async function setup() {
   // For other tests, check if Wrangler is needed
   // Only enforce if TEST_BASE_URL is set to Wrangler port
   const testBaseUrl = process.env.TEST_BASE_URL || "http://localhost:8174";
-  const needsWrangler = testBaseUrl.includes(':8787');
+  const needsWrangler = testBaseUrl.includes(":8787");
 
   if (!needsWrangler) {
     console.log("\n✅ Using dev server - Wrangler not required\n");

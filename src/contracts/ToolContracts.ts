@@ -343,7 +343,7 @@ export const ToolRegistry = {
       if (data.resourcesBySubject && data.language) {
         let output = `**Resources for ${data.language.toUpperCase()}**\n`;
         output += `Total: ${data.totalResources} resources across ${data.subjectCount} subjects\n\n`;
-        
+
         for (const subject of data.subjects || []) {
           const resources = data.resourcesBySubject[subject] || [];
           output += `**${subject}** (${resources.length})\n`;

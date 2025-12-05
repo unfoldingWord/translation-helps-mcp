@@ -8,7 +8,7 @@ This document audits our remote MCP server implementation against:
 - MCP Protocol Specification
 - Best practices for remote MCP servers
 
-**Server URL**: `https://translation-helps-mcp.pages.dev/api/mcp`
+**Server URL**: `https://tc-helps.mcp.servant.bible/api/mcp`
 
 ---
 

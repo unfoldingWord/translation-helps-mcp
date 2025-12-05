@@ -66,7 +66,7 @@ export interface MCPResponse {
 export interface ClientOptions {
   /**
    * Server URL for remote HTTP servers
-   * Default: 'https://translation-helps-mcp-945.pages.dev/api/mcp'
+   * Default: 'https://tc-helps.mcp.servant.bible/api/mcp'
    */
   serverUrl?: string;
 

@@ -941,7 +941,8 @@ export const SUBJECTS_SHAPE: ResponseShape = {
           {
             name: "name",
             type: "string",
-            description: "Subject name (e.g., 'Translation Words', 'Translation Notes')",
+            description:
+              "Subject name (e.g., 'Translation Words', 'Translation Notes')",
             example: "Translation Words",
           },
           {
@@ -990,7 +991,13 @@ export const RESOURCES_BY_LANGUAGE_SHAPE: ResponseShape = {
       metadata: {
         dataType: "context",
         structure: {
-          required: ["responseTime", "cached", "timestamp", "languagesFound", "resourcesFound"],
+          required: [
+            "responseTime",
+            "cached",
+            "timestamp",
+            "languagesFound",
+            "resourcesFound",
+          ],
           optional: ["subjectsSearched"],
         },
         performance: {
@@ -1001,7 +1008,13 @@ export const RESOURCES_BY_LANGUAGE_SHAPE: ResponseShape = {
       summary: {
         dataType: "context",
         structure: {
-          required: ["totalLanguages", "totalResources", "subjectsSearched", "organization", "stage"],
+          required: [
+            "totalLanguages",
+            "totalResources",
+            "subjectsSearched",
+            "organization",
+            "stage",
+          ],
         },
       },
     },
@@ -1026,7 +1039,8 @@ export const RESOURCES_BY_LANGUAGE_SHAPE: ResponseShape = {
           {
             name: "subjects",
             type: "array",
-            description: "List of resource subjects/types available for this language",
+            description:
+              "List of resource subjects/types available for this language",
             example: ["Translation Words", "Translation Notes"],
           },
           {
@@ -1067,7 +1081,14 @@ export const RESOURCES_BY_LANGUAGE_SHAPE: ResponseShape = {
 export const RESOURCES_FOR_LANGUAGE_SHAPE: ResponseShape = {
   dataType: "resources",
   structure: {
-    required: ["language", "totalResources", "subjectCount", "subjects", "resourcesBySubject", "metadata"],
+    required: [
+      "language",
+      "totalResources",
+      "subjectCount",
+      "subjects",
+      "resourcesBySubject",
+      "metadata",
+    ],
     optional: ["organization", "stage", "_metadata"],
     nested: {
       metadata: {

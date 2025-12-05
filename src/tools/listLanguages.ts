@@ -17,7 +17,7 @@ import { OrganizationParam } from "../schemas/common-params.js";
 // Input schema - using common parameters where applicable
 export const ListLanguagesArgs = z.object({
   organization: OrganizationParam.describe(
-    'Filter languages by organization(s). Can be a single organization (string), multiple organizations (array), or omitted to return all languages from all organizations.',
+    "Filter languages by organization(s). Can be a single organization (string), multiple organizations (array), or omitted to return all languages from all organizations.",
   ),
   stage: z
     .string()
@@ -44,9 +44,7 @@ interface LanguageItem {
 /**
  * Handle the list languages tool call
  */
-export async function handleListLanguages(
-  args: ListLanguagesArgs,
-): Promise<{
+export async function handleListLanguages(args: ListLanguagesArgs): Promise<{
   content: Array<{ type: "text"; text: string }>;
   isError: boolean;
 }> {
@@ -63,10 +61,10 @@ export async function handleListLanguages(
     const baseUrl = "https://git.door43.org/api/v1/catalog/list/languages";
     const url = new URL(baseUrl);
     url.searchParams.append("stage", args.stage || "prod");
-    
+
     // Handle organization: undefined = all orgs, string = single org, array = multiple orgs
     if (args.organization) {
-      if (typeof args.organization === 'string') {
+      if (typeof args.organization === "string") {
         url.searchParams.append("owner", args.organization);
       } else if (Array.isArray(args.organization)) {
         // For multiple orgs, we'll need to make parallel calls and merge
@@ -96,7 +94,7 @@ export async function handleListLanguages(
         error: String(error),
       });
     }
-    
+
     const cacheDuration = Date.now() - cacheStart;
 
     let data: {
@@ -121,7 +119,7 @@ export async function handleListLanguages(
             : new TextDecoder().decode(cachedData as ArrayBuffer);
         data = JSON.parse(json);
         logger.info("Languages cache HIT", { key: catalogCacheKey });
-        
+
         // Track cache hit in X-Ray
         const cacheSource = cacheDuration < 5 ? "memory" : "kv";
         tracer.addApiCall({
@@ -165,7 +163,12 @@ export async function handleListLanguages(
       };
 
       // Cache the raw API response (not the processed response)
-      if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
+      if (
+        data &&
+        data.data &&
+        Array.isArray(data.data) &&
+        data.data.length > 0
+      ) {
         try {
           await kvCache.set(catalogCacheKey, responseText, cacheTtl);
           logger.info("Languages cached", {
@@ -255,4 +258,3 @@ export async function handleListLanguages(
     });
   }
 }
-

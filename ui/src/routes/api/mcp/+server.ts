@@ -205,13 +205,15 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 						},
 						{
 							name: 'list_languages',
-							description: 'List all available languages from the Door43 catalog. Returns structured language data that can be directly reused as language parameters in other tools.',
+							description:
+								'List all available languages from the Door43 catalog. Returns structured language data that can be directly reused as language parameters in other tools.',
 							inputSchema: {
 								type: 'object',
 								properties: {
 									organization: {
 										type: 'string',
-										description: 'Filter languages by organization (e.g., "unfoldingWord"). If not provided, returns all languages.'
+										description:
+											'Filter languages by organization (e.g., "unfoldingWord"). If not provided, returns all languages.'
 									},
 									stage: {
 										type: 'string',
@@ -223,17 +225,20 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 						},
 						{
 							name: 'list_subjects',
-							description: 'List all available resource subjects (resource types) from the Door43 catalog. Returns structured subject data that can be used to discover what resource types are available.',
+							description:
+								'List all available resource subjects (resource types) from the Door43 catalog. Returns structured subject data that can be used to discover what resource types are available.',
 							inputSchema: {
 								type: 'object',
 								properties: {
 									language: {
 										type: 'string',
-										description: 'Filter subjects by language code (e.g., "en", "es-419"). If not provided, returns all subjects.'
+										description:
+											'Filter subjects by language code (e.g., "en", "es-419"). If not provided, returns all subjects.'
 									},
 									organization: {
 										type: 'string',
-										description: 'Filter subjects by organization (e.g., "unfoldingWord"). If not provided, returns all subjects.'
+										description:
+											'Filter subjects by organization (e.g., "unfoldingWord"). If not provided, returns all subjects.'
 									},
 									stage: {
 										type: 'string',

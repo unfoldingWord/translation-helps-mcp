@@ -8,7 +8,7 @@ The AI Chat feature has been successfully implemented and deployed to production
 
 ### Endpoint: `/api/chat-stream`
 
-The AI-powered Bible study assistant is now live at `https://translation-helps-mcp.pages.dev/chat` using OpenAI GPT-4o-mini.
+The AI-powered Bible study assistant is now live at `https://tc-helps.mcp.servant.bible/chat` using OpenAI GPT-4o-mini.
 
 ## Key Features
 

@@ -96,18 +96,13 @@ export async function handleSearchTranslationWordAcrossLanguages(
       "mcp-tool",
       "search_translation_word_across_languages",
     );
-    const providerName =
-      process.env.ZIP_FETCHER_PROVIDER || "auto";
+    const providerName = process.env.ZIP_FETCHER_PROVIDER || "auto";
     const cacheDir =
       typeof process !== "undefined" && process.env.CACHE_PATH
         ? process.env.CACHE_PATH
         : path.join(os.homedir(), ".translation-helps-mcp", "cache");
 
-    const zipFetcher = ZipFetcherFactory.create(
-      providerName,
-      cacheDir,
-      tracer,
-    );
+    const zipFetcher = ZipFetcherFactory.create(providerName, cacheDir, tracer);
 
     // Search for the term in each language
     const results: LanguageResult[] = [];
@@ -209,5 +204,3 @@ export async function handleSearchTranslationWordAcrossLanguages(
     });
   }
 }
-
-

@@ -130,7 +130,7 @@ export const COMMON_PARAMS = {
 			}
 			if (Array.isArray(value)) {
 				// Validate all organizations in array
-				return value.every(org => typeof org === 'string' && isValidOrganization(org));
+				return value.every((org) => typeof org === 'string' && isValidOrganization(org));
 			}
 			return false;
 		}

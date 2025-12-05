@@ -55,7 +55,7 @@ git push origin main
 
 After deployment, check:
 
-1. Visit https://translation-helps-mcp.pages.dev/api/health
+1. Visit https://tc-helps.mcp.servant.bible/api/health
 2. Look for KV-related messages in the response
 3. Check if cache persists between deployments
 

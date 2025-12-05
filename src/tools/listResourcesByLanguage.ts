@@ -12,7 +12,10 @@ import { proxyFetch } from "../utils/httpClient.js";
 import { getKVCache } from "../functions/kv-cache.js";
 import { EdgeXRayTracer } from "../functions/edge-xray.js";
 import { OrganizationParam } from "../schemas/common-params.js";
-import { CATALOG_SUBJECTS, DEFAULT_DISCOVERY_SUBJECTS } from "../constants/subjects.js";
+import {
+  CATALOG_SUBJECTS,
+  DEFAULT_DISCOVERY_SUBJECTS,
+} from "../constants/subjects.js";
 
 // Input schema
 export const ListResourcesByLanguageArgs = z.object({
@@ -23,7 +26,7 @@ export const ListResourcesByLanguageArgs = z.object({
       'Comma-separated list or array of subjects to search for (e.g., "Translation Words,Translation Academy"). If not provided, searches 7 default subjects: Bible, Aligned Bible, Translation Words, Translation Academy, TSV Translation Notes, TSV Translation Questions, and TSV Translation Words Links.',
     ),
   organization: OrganizationParam.describe(
-    'Organization(s) to filter by. Can be a single organization (string), multiple organizations (array), or omitted to search all organizations.',
+    "Organization(s) to filter by. Can be a single organization (string), multiple organizations (array), or omitted to search all organizations.",
   ),
   stage: z
     .string()
@@ -35,14 +38,20 @@ export const ListResourcesByLanguageArgs = z.object({
     .min(1)
     .max(1000)
     .default(100)
-    .describe("Maximum number of resources to return per subject (default: 100, max: 1000)"),
+    .describe(
+      "Maximum number of resources to return per subject (default: 100, max: 1000)",
+    ),
   topic: z
     .string()
     .optional()
-    .describe('Filter by topic tag (e.g., "tc-ready" for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.'),
+    .describe(
+      'Filter by topic tag (e.g., "tc-ready" for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.',
+    ),
 });
 
-export type ListResourcesByLanguageArgs = z.infer<typeof ListResourcesByLanguageArgs>;
+export type ListResourcesByLanguageArgs = z.infer<
+  typeof ListResourcesByLanguageArgs
+>;
 
 interface ResourceItem {
   name: string;
@@ -69,7 +78,10 @@ function parseSubjects(subjects?: string | string[]): string[] {
     return [...DEFAULT_DISCOVERY_SUBJECTS];
   }
   if (typeof subjects === "string") {
-    return subjects.split(",").map((s) => s.trim()).filter(Boolean);
+    return subjects
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
   return subjects;
 }
@@ -86,7 +98,7 @@ async function searchResourcesBySubject(
   tracer: EdgeXRayTracer,
 ): Promise<ResourceItem[]> {
   const cache = getKVCache();
-  const cacheKey = `resources-by-subject:${subject}:${JSON.stringify(organization)}:${stage}:${limit}:${topic || 'all'}`;
+  const cacheKey = `resources-by-subject:${subject}:${JSON.stringify(organization)}:${stage}:${limit}:${topic || "all"}`;
 
   // Try cache first
   if (cache) {
@@ -95,30 +107,36 @@ async function searchResourcesBySubject(
       logger.info(`✅ Cache HIT for ${cacheKey}`);
       try {
         // Handle both string and ArrayBuffer responses
-        const dataStr = typeof cached === "string" 
-          ? cached 
-          : new TextDecoder().decode(cached as ArrayBuffer);
+        const dataStr =
+          typeof cached === "string"
+            ? cached
+            : new TextDecoder().decode(cached as ArrayBuffer);
         const parsed = JSON.parse(dataStr);
         // Ensure we return an array, not a string or other type
         if (Array.isArray(parsed)) {
           return parsed;
         }
-        logger.warn("Cached data is not an array, fetching fresh", { type: typeof parsed });
+        logger.warn("Cached data is not an array, fetching fresh", {
+          type: typeof parsed,
+        });
       } catch (error) {
-        logger.warn("Failed to parse cached data, fetching fresh", { error: String(error) });
+        logger.warn("Failed to parse cached data, fetching fresh", {
+          error: String(error),
+        });
       }
     }
     logger.info(`❌ Cache MISS for ${cacheKey}`);
   }
 
   const resources: ResourceItem[] = [];
-  
+
   // Handle multiple organizations
-  const organizations = organization === undefined
-    ? [undefined] // Search all orgs
-    : typeof organization === "string"
-      ? [organization]
-      : organization;
+  const organizations =
+    organization === undefined
+      ? [undefined] // Search all orgs
+      : typeof organization === "string"
+        ? [organization]
+        : organization;
 
   // Search for each organization
   for (const org of organizations) {
@@ -127,11 +145,11 @@ async function searchResourcesBySubject(
       searchUrl.searchParams.set("subject", subject);
       searchUrl.searchParams.set("stage", stage);
       searchUrl.searchParams.set("limit", limit.toString());
-      
+
       if (org) {
         searchUrl.searchParams.set("owner", org);
       }
-      
+
       if (topic) {
         searchUrl.searchParams.set("topic", topic);
       }
@@ -160,11 +178,11 @@ async function searchResourcesBySubject(
       }
 
       const searchData = await searchResponse.json();
-      
+
       // Catalog API returns { ok: true, data: [...], last_updated: "..." } or { data: [...] }
       const items = searchData.data || searchData;
       const itemsArray = Array.isArray(items) ? items : [];
-      
+
       for (const item of itemsArray) {
         // Extract language from repo name (format: {language}_{resource})
         const repoName = item.name || "";
@@ -174,16 +192,19 @@ async function searchResourcesBySubject(
         if (language) {
           // Check for duplicates (same name + organization)
           const isDuplicate = resources.some(
-            (r) => r.name === item.name && r.organization === (item.owner || org || "unknown")
+            (r) =>
+              r.name === item.name &&
+              r.organization === (item.owner || org || "unknown"),
           );
-          
+
           if (!isDuplicate) {
             resources.push({
               name: item.name || "",
               subject: subject,
               language: language,
               organization: item.owner || org || "unknown",
-              version: item.release?.tag_name || item.default_branch || "master",
+              version:
+                item.release?.tag_name || item.default_branch || "master",
             });
           }
         }
@@ -201,7 +222,10 @@ async function searchResourcesBySubject(
   if (cache && resources.length > 0) {
     try {
       await cache.set(cacheKey, JSON.stringify(resources), 3600); // 1 hour cache
-      logger.info("Resources cached", { key: cacheKey, count: resources.length });
+      logger.info("Resources cached", {
+        key: cacheKey,
+        count: resources.length,
+      });
     } catch (error) {
       logger.warn("Failed to cache resources", {
         error: String(error),
@@ -221,9 +245,11 @@ async function getLanguageName(
   stage: string,
 ): Promise<string | undefined> {
   try {
-    const languagesUrl = new URL("https://git.door43.org/api/v1/catalog/list/languages");
+    const languagesUrl = new URL(
+      "https://git.door43.org/api/v1/catalog/list/languages",
+    );
     languagesUrl.searchParams.set("stage", stage);
-    
+
     if (organization && typeof organization === "string") {
       languagesUrl.searchParams.set("owner", organization);
     }
@@ -232,7 +258,9 @@ async function getLanguageName(
     if (response.ok) {
       const data = await response.json();
       if (data.data && Array.isArray(data.data)) {
-        const lang = data.data.find((l: any) => l.lc === code || l.code === code);
+        const lang = data.data.find(
+          (l: any) => l.lc === code || l.code === code,
+        );
         return lang?.ln || lang?.name;
       }
     }
@@ -257,7 +285,7 @@ export async function handleListResourcesByLanguage(
   try {
     // Validate and parse input using Zod schema (ListResourcesByLanguageArgs is the schema)
     const parsedArgs = ListResourcesByLanguageArgs.parse(args);
-    
+
     const subjects = parseSubjects(parsedArgs.subjects);
     const organization = parsedArgs.organization;
     const stage = parsedArgs.stage || "prod";
@@ -274,19 +302,23 @@ export async function handleListResourcesByLanguage(
 
     // Check aggregated cache first for the complete result
     const cache = getKVCache();
-    const aggregatedCacheKey = `resources-by-lang-aggregated:${subjects.join(",")}:${JSON.stringify(organization)}:${stage}:${limit}:${topic || 'all'}`;
+    const aggregatedCacheKey = `resources-by-lang-aggregated:${subjects.join(",")}:${JSON.stringify(organization)}:${stage}:${limit}:${topic || "all"}`;
     const cacheTtl = 3600; // 1 hour
 
     if (cache) {
-      const cached = (await cache.get(aggregatedCacheKey)) as string | ArrayBuffer | null;
+      const cached = (await cache.get(aggregatedCacheKey)) as
+        | string
+        | ArrayBuffer
+        | null;
       if (cached) {
         logger.info(`✅ AGGREGATED Cache HIT for ${aggregatedCacheKey}`);
         try {
-          const dataStr = typeof cached === "string" 
-            ? cached 
-            : new TextDecoder().decode(cached as ArrayBuffer);
+          const dataStr =
+            typeof cached === "string"
+              ? cached
+              : new TextDecoder().decode(cached as ArrayBuffer);
           const cachedResult = JSON.parse(dataStr);
-          
+
           // Return cached complete response
           return {
             content: [
@@ -298,7 +330,9 @@ export async function handleListResourcesByLanguage(
             isError: false,
           };
         } catch (error) {
-          logger.warn("Failed to parse aggregated cache, fetching fresh", { error: String(error) });
+          logger.warn("Failed to parse aggregated cache, fetching fresh", {
+            error: String(error),
+          });
         }
       }
       logger.info(`❌ AGGREGATED Cache MISS for ${aggregatedCacheKey}`);
@@ -306,8 +340,8 @@ export async function handleListResourcesByLanguage(
 
     // Step 1: Search for resources for each subject IN PARALLEL (cache miss - fetch fresh)
     logger.info("Fetching subjects in parallel for faster response");
-    
-    const resourcePromises = subjects.map(subject => 
+
+    const resourcePromises = subjects.map((subject) =>
       searchResourcesBySubject(
         subject,
         organization,
@@ -315,14 +349,16 @@ export async function handleListResourcesByLanguage(
         limit,
         topic,
         tracer,
-      ).catch(error => {
-        logger.error(`Failed to fetch subject ${subject}`, { error: String(error) });
+      ).catch((error) => {
+        logger.error(`Failed to fetch subject ${subject}`, {
+          error: String(error),
+        });
         return []; // Return empty array on error to continue with other subjects
-      })
+      }),
     );
-    
+
     const resourceArrays = await Promise.all(resourcePromises);
-    
+
     // Flatten and validate all results
     const allResources: ResourceItem[] = [];
     resourceArrays.forEach((resources, index) => {
@@ -330,10 +366,10 @@ export async function handleListResourcesByLanguage(
       if (Array.isArray(resources)) {
         allResources.push(...resources);
       } else {
-        logger.warn("searchResourcesBySubject did not return an array", { 
-          subject: subjects[index], 
+        logger.warn("searchResourcesBySubject did not return an array", {
+          subject: subjects[index],
           type: typeof resources,
-          isString: typeof resources === 'string'
+          isString: typeof resources === "string",
         });
       }
     });
@@ -352,12 +388,12 @@ export async function handleListResourcesByLanguage(
       }
 
       const langData = resourcesByLanguage.get(resource.language)!;
-      
+
       // Add subject if not already present
       if (!langData.subjects.includes(resource.subject)) {
         langData.subjects.push(resource.subject);
       }
-      
+
       // Add resource
       langData.resources.push(resource);
       langData.resourceCount = langData.resources.length;
@@ -374,8 +410,8 @@ export async function handleListResourcesByLanguage(
     await Promise.all(languageNamePromises);
 
     // Step 4: Sort languages alphabetically
-    const sortedLanguages = Array.from(resourcesByLanguage.values()).sort((a, b) =>
-      a.language.localeCompare(b.language),
+    const sortedLanguages = Array.from(resourcesByLanguage.values()).sort(
+      (a, b) => a.language.localeCompare(b.language),
     );
 
     // Step 5: Build summary
@@ -419,13 +455,15 @@ export async function handleListResourcesByLanguage(
     if (cache) {
       try {
         await cache.set(aggregatedCacheKey, JSON.stringify(result), cacheTtl);
-        logger.info("✅ Aggregated result cached", { 
-          key: aggregatedCacheKey, 
+        logger.info("✅ Aggregated result cached", {
+          key: aggregatedCacheKey,
           languages: sortedLanguages.length,
-          resources: allResources.length 
+          resources: allResources.length,
         });
       } catch (error) {
-        logger.warn("Failed to cache aggregated result", { error: String(error) });
+        logger.warn("Failed to cache aggregated result", {
+          error: String(error),
+        });
       }
     }
 
@@ -453,4 +491,3 @@ export async function handleListResourcesByLanguage(
     });
   }
 }
-

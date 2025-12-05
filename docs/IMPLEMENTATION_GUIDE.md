@@ -71,7 +71,7 @@ Use the production endpoint directly:
   "mcpServers": {
     "translation-helps": {
       "type": "http",
-      "url": "https://translation-helps-mcp.pages.dev/api/mcp"
+      "url": "https://tc-helps.mcp.servant.bible/api/mcp"
     }
   }
 }

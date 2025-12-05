@@ -14,7 +14,7 @@ import { TranslationHelpsClient } from "../src/index.js";
 async function initBrowserApp() {
   // Create client instance
   const mcpClient = new TranslationHelpsClient({
-    serverUrl: "https://translation-helps-mcp-945.pages.dev/api/mcp",
+    serverUrl: "https://tc-helps.mcp.servant.bible/api/mcp",
   });
 
   try {

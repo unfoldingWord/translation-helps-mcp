@@ -8,9 +8,9 @@ Translation Helps MCP v4.3.0+ uses a revolutionary **HTTP-based MCP** architectu
 
 ### ✨ Live Production Deployment
 
-- **HTTP MCP Endpoint**: `https://translation-helps-mcp.pages.dev/api/mcp`
-- **Interactive Test UI**: `https://translation-helps-mcp.pages.dev/mcp-http-test`
-- **Main Site**: `https://translation-helps-mcp.pages.dev`
+- **HTTP MCP Endpoint**: `https://tc-helps.mcp.servant.bible/api/mcp`
+- **Interactive Test UI**: `https://tc-helps.mcp.servant.bible/mcp-http-test`
+- **Main Site**: `https://tc-helps.mcp.servant.bible`
 
 ## 🏗️ **Platform-Agnostic Architecture**
 

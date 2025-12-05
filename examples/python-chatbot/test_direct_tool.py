@@ -16,7 +16,7 @@ async def test_direct_tool():
     print("Testing Translation Helps Python SDK (Direct Tool Call)...\n")
     
     # Initialize client
-    server_url = os.getenv("MCP_SERVER_URL", "https://translation-helps-mcp.pages.dev/api/mcp")
+    server_url = os.getenv("MCP_SERVER_URL", "https://tc-helps.mcp.servant.bible/api/mcp")
     client = TranslationHelpsClient({
         "serverUrl": server_url
     })

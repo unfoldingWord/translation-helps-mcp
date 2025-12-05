@@ -19,19 +19,19 @@ async function fetchSubjects(params: Record<string, any>, request: Request): Pro
 	const result = await handleListSubjects({
 		language,
 		organization,
-		stage: stage || 'prod',
+		stage: stage || 'prod'
 	});
 
 	// Extract the JSON text from MCP response format
 	if (result.content && result.content[0]?.text) {
 		const data = JSON.parse(result.content[0].text);
-		
+
 		// Extract X-Ray trace from metadata if available
 		const xrayTrace = data.metadata?.serviceMetadata?.xrayTrace || null;
-		
+
 		return {
 			...data,
-			_trace: xrayTrace, // Include trace for header extraction
+			_trace: xrayTrace // Include trace for header extraction
 		};
 	}
 
@@ -51,8 +51,8 @@ export const GET = createSimpleEndpoint({
 			required: false,
 			type: 'string',
 			default: 'prod',
-			validate: (value: string) => ['prod', 'preprod', 'draft'].includes(value),
-		},
+			validate: (value: string) => ['prod', 'preprod', 'draft'].includes(value)
+		}
 	],
 
 	// Enable format support
@@ -64,9 +64,9 @@ export const GET = createSimpleEndpoint({
 	onError: createStandardErrorHandler({
 		'Failed to fetch subjects': {
 			status: 500,
-			message: 'Failed to retrieve subjects from catalog.',
-		},
-	}),
+			message: 'Failed to retrieve subjects from catalog.'
+		}
+	})
 });
 
 // CORS handler

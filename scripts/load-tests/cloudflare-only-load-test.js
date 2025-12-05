@@ -15,7 +15,7 @@ import https from "https";
 // Cloudflare configuration
 const CLOUDFLARE = {
   name: "Cloudflare Workers",
-  url: "https://translation-helps-mcp.pages.dev",
+  url: "https://tc-helps.mcp.servant.bible",
   pricing: {
     requests: 0.0000005, // $0.50 per million after 100k free
     cpu: 0.000001, // per GB-second (simplified)

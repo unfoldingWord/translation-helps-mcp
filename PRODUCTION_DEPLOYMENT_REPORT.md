@@ -12,7 +12,7 @@ Status: **✅ DEPLOYED & VALIDATED**
 ### ✅ Successfully Completed:
 
 1. **GitHub Push Triggered**: 14 commits ahead pushed to `main` branch
-2. **Manual Cloudflare Deployment**: Backup deployment to `https://7f8c863e.translation-helps-mcp.pages.dev`
+2. **Manual Cloudflare Deployment**: Backup deployment to `https://7f8c863e.tc-helps.mcp.servant.bible`
 3. **GitHub Actions**: Automatic deployment pipeline triggered
 4. **Version Update**: Successfully bumped to v4.5.0
 
@@ -57,12 +57,12 @@ Scripture Endpoint:
 
 ### **Production Deployment Status**
 
-**Primary URL**: `https://translation-helps-mcp.pages.dev`
+**Primary URL**: `https://tc-helps.mcp.servant.bible`
 
 - Status: GitHub Actions deployment in progress
 - Expected: Full API functionality with X-Ray tracing
 
-**Backup URL**: `https://7f8c863e.translation-helps-mcp.pages.dev`
+**Backup URL**: `https://7f8c863e.tc-helps.mcp.servant.bible`
 
 - Status: ✅ Static site deployed successfully
 - Note: API functions require GitHub Actions completion
@@ -98,9 +98,9 @@ Scripture Endpoint:
 
 ### **Live Demo URLs:**
 
-1. **MCP Tools**: `https://translation-helps-mcp.pages.dev/mcp-tools`
-2. **API Documentation**: `https://translation-helps-mcp.pages.dev/api-docs`
-3. **Performance Testing**: `https://translation-helps-mcp.pages.dev/test`
+1. **MCP Tools**: `https://tc-helps.mcp.servant.bible/mcp-tools`
+2. **API Documentation**: `https://tc-helps.mcp.servant.bible/api-docs`
+3. **Performance Testing**: `https://tc-helps.mcp.servant.bible/test`
 
 ### **Demo Script (30 seconds):**
 

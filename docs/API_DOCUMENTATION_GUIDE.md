@@ -140,7 +140,7 @@ data = response.json()
 
 ```bash
 # cURL Example
-curl "https://translation-helps-mcp.pages.dev/api/fetch-scripture?reference=John3:16"
+curl "https://tc-helps.mcp.servant.bible/api/fetch-scripture?reference=John3:16"
 ```
 
 ## 📋 Usage Examples
@@ -294,7 +294,7 @@ data.languages.forEach((lang) => {
 
 2. **Deploy to Cloudflare Pages**
    - Documentation automatically deployed with main site
-   - Available at `https://translation-helps-mcp.pages.dev/api-docs`
+   - Available at `https://tc-helps.mcp.servant.bible/api-docs`
 
 ## 🔮 Future Enhancements
 

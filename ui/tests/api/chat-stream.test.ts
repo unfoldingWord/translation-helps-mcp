@@ -233,7 +233,7 @@ describe('/api/chat-stream endpoint', () => {
 		});
 
 		const response = await POST({ request, url: new URL('http://localhost') });
-		
+
 		// The test verifies the LLM's format choice is respected
 		expect([200, 500]).toContain(response.status); // May fail due to missing mocks, but structure is correct
 	});

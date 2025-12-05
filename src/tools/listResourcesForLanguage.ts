@@ -20,7 +20,7 @@ export const ListResourcesForLanguageArgs = z.object({
     .min(2)
     .describe('Language code (e.g., "en", "es", "fr", "es-419"). Required.'),
   organization: OrganizationParam.describe(
-    'Organization(s) to filter by. Can be a single organization (string), multiple organizations (array), or omitted to search all organizations.',
+    "Organization(s) to filter by. Can be a single organization (string), multiple organizations (array), or omitted to search all organizations.",
   ),
   stage: z
     .string()
@@ -29,20 +29,28 @@ export const ListResourcesForLanguageArgs = z.object({
   subject: z
     .string()
     .optional()
-    .describe('Optional: Filter by specific subject/resource type (e.g., "Bible", "Translation Words")'),
+    .describe(
+      'Optional: Filter by specific subject/resource type (e.g., "Bible", "Translation Words")',
+    ),
   limit: z
     .number()
     .min(1)
     .max(10000)
     .optional()
-    .describe("Maximum number of resources to return per request. If not specified, fetches all available resources (up to 10000)."),
+    .describe(
+      "Maximum number of resources to return per request. If not specified, fetches all available resources (up to 10000).",
+    ),
   topic: z
     .string()
     .optional()
-    .describe('Filter by topic tag (e.g., "tc-ready" for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.'),
+    .describe(
+      'Filter by topic tag (e.g., "tc-ready" for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.',
+    ),
 });
 
-export type ListResourcesForLanguageArgs = z.infer<typeof ListResourcesForLanguageArgs>;
+export type ListResourcesForLanguageArgs = z.infer<
+  typeof ListResourcesForLanguageArgs
+>;
 
 interface ResourceItem {
   name: string;
@@ -71,7 +79,7 @@ export async function handleListResourcesForLanguage(
   try {
     // Validate and parse input
     const parsedArgs = ListResourcesForLanguageArgs.parse(args);
-    
+
     const { language, organization, stage, subject, topic } = parsedArgs;
     // Use high limit if not specified to get all available resources
     const limit = parsedArgs.limit || 5000;
@@ -107,15 +115,18 @@ export async function handleListResourcesForLanguage(
     // Try to use cached data
     if (cachedData) {
       try {
-        const dataStr = typeof cachedData === "string" 
-          ? cachedData 
-          : new TextDecoder().decode(cachedData);
+        const dataStr =
+          typeof cachedData === "string"
+            ? cachedData
+            : new TextDecoder().decode(cachedData);
         resources = JSON.parse(dataStr);
-        
+
         logger.info(`✅ KV HIT for ${cacheKey} in ${cacheDuration}ms`);
         tracer.addCacheHit("resources-for-language", cacheKey);
       } catch (parseError) {
-        logger.warn("Failed to parse cached data", { error: String(parseError) });
+        logger.warn("Failed to parse cached data", {
+          error: String(parseError),
+        });
         cachedData = null;
       }
     } else {
@@ -129,21 +140,22 @@ export async function handleListResourcesForLanguage(
       searchUrl.searchParams.set("lang", language);
       searchUrl.searchParams.set("stage", stage);
       searchUrl.searchParams.set("limit", limit.toString());
-      
+
       if (subject) {
         searchUrl.searchParams.set("subject", subject);
       }
-      
+
       if (topic) {
         searchUrl.searchParams.set("topic", topic);
       }
 
       // Handle organizations
-      const organizations = organization === undefined
-        ? [undefined]
-        : typeof organization === "string"
-          ? [organization]
-          : organization;
+      const organizations =
+        organization === undefined
+          ? [undefined]
+          : typeof organization === "string"
+            ? [organization]
+            : organization;
 
       for (const org of organizations) {
         if (org) {
@@ -177,7 +189,9 @@ export async function handleListResourcesForLanguage(
           for (const item of items) {
             // Avoid duplicates
             const isDuplicate = resources.some(
-              (r) => r.name === item.name && r.organization === (item.owner || org || "unknown")
+              (r) =>
+                r.name === item.name &&
+                r.organization === (item.owner || org || "unknown"),
             );
 
             if (!isDuplicate) {
@@ -185,7 +199,8 @@ export async function handleListResourcesForLanguage(
                 name: item.name || "",
                 subject: item.subject || "Unknown",
                 organization: item.owner || org || "unknown",
-                version: item.release?.tag_name || item.default_branch || "master",
+                version:
+                  item.release?.tag_name || item.default_branch || "master",
                 url: item.html_url,
               });
             }
@@ -209,7 +224,10 @@ export async function handleListResourcesForLanguage(
       if (resources.length > 0) {
         try {
           await kvCache.set(cacheKey, JSON.stringify(resources), cacheTtl);
-          logger.info("Resources cached", { key: cacheKey, count: resources.length });
+          logger.info("Resources cached", {
+            key: cacheKey,
+            count: resources.length,
+          });
         } catch (error) {
           logger.warn("Failed to cache resources", { error: String(error) });
         }
@@ -270,4 +288,3 @@ export async function handleListResourcesForLanguage(
     });
   }
 }
-

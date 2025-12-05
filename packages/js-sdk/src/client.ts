@@ -23,8 +23,7 @@ import type {
   SearchTranslationWordAcrossLanguagesOptions,
 } from "./types.js";
 
-const DEFAULT_SERVER_URL =
-  "https://translation-helps-mcp-945.pages.dev/api/mcp";
+const DEFAULT_SERVER_URL = "https://tc-helps.mcp.servant.bible/api/mcp";
 const DEFAULT_TIMEOUT = 30000;
 
 export class TranslationHelpsClient {
@@ -133,7 +132,7 @@ export class TranslationHelpsClient {
           try {
             const cleaned = xrayHeader.replace(/\s+/g, "");
             metadata.xrayTrace = JSON.parse(atob(cleaned));
-          } catch (e) {
+          } catch (_e) {
             // Ignore parse errors
           }
         }

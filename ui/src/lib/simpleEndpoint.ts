@@ -59,7 +59,7 @@ function parseParams(
 		// Special handling for organization parameter - can be array
 		if (param.name === 'organization') {
 			const orgValues = url.searchParams.getAll(param.name);
-			
+
 			// Check required
 			if (param.required && orgValues.length === 0) {
 				errors.push(`Missing required parameter: ${param.name}`);

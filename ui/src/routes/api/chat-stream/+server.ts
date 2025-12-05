@@ -462,14 +462,21 @@ async function detectAndValidateLanguage(
 	chatHistory: Array<{ role: string; content: string }> = [],
 	currentLanguage: string = 'en',
 	baseUrl: string
-): Promise<{ detectedLanguage: string | null; needsValidation: boolean; languageVariants?: Array<{ code: string; name: string }> }> {
+): Promise<{
+	detectedLanguage: string | null;
+	needsValidation: boolean;
+	languageVariants?: Array<{ code: string; name: string }>;
+}> {
 	// Check if user explicitly requested a language change
 	const explicitLang = extractLanguageFromRequest(message);
 	if (explicitLang && explicitLang !== currentLanguage) {
 		// User explicitly requested a different language - mark it for LLM to validate
-		logger.info('Explicit language request detected', { requested: explicitLang, current: currentLanguage });
-		return { 
-			detectedLanguage: explicitLang, 
+		logger.info('Explicit language request detected', {
+			requested: explicitLang,
+			current: currentLanguage
+		});
+		return {
+			detectedLanguage: explicitLang,
 			needsValidation: true,
 			languageVariants: [] // LLM will call list_languages to validate
 		};
@@ -482,22 +489,24 @@ async function detectAndValidateLanguage(
 		// The LLM will decide whether to:
 		// 1. Call list_languages to find variants
 		// 2. Call search_translation_word_across_languages for term queries
-		logger.info('Language detected from message', { 
-			detected: detectedLang, 
-			current: currentLanguage 
+		logger.info('Language detected from message', {
+			detected: detectedLang,
+			current: currentLanguage
 		});
-		return { 
-			detectedLanguage: detectedLang, 
+		return {
+			detectedLanguage: detectedLang,
 			needsValidation: true,
 			languageVariants: [] // LLM will handle validation/search
 		};
 	}
 
 	// Check conversation history for previously selected language
-	const lastAssistantMessage = chatHistory.filter(m => m.role === 'assistant').slice(-1)[0];
+	const lastAssistantMessage = chatHistory.filter((m) => m.role === 'assistant').slice(-1)[0];
 	if (lastAssistantMessage?.content) {
 		// Look for language selection in assistant's previous response
-		const langMatch = lastAssistantMessage.content.match(/I'll use (?:language )?([a-z]{2}(?:-[A-Z0-9]+)?)/i);
+		const langMatch = lastAssistantMessage.content.match(
+			/I'll use (?:language )?([a-z]{2}(?:-[A-Z0-9]+)?)/i
+		);
 		if (langMatch) {
 			const selectedLang = mapLanguageToCatalogCode(langMatch[1]);
 			if (selectedLang !== currentLanguage) {
@@ -1508,7 +1517,11 @@ async function callOpenAI(
 	endpointCalls?: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>,
 	catalogLanguage: string = 'en',
 	organization: string = 'unfoldingWord',
-	languageInfo?: { detectedLanguage: string | null; needsValidation: boolean; languageVariants?: Array<{ code: string; name: string }> }
+	languageInfo?: {
+		detectedLanguage: string | null;
+		needsValidation: boolean;
+		languageVariants?: Array<{ code: string; name: string }>;
+	}
 ): Promise<{
 	response: string;
 	error?: string;
@@ -1530,15 +1543,15 @@ async function callOpenAI(
 			? getSystemPrompt(requestType, endpointCalls as EndpointCall[] | undefined, message)
 			: SYSTEM_PROMPT_LEGACY;
 
-			// Add language/org context to system prompt
-			let languageContext = `\n\n**CURRENT LANGUAGE AND ORGANIZATION SETTINGS:**
+		// Add language/org context to system prompt
+		let languageContext = `\n\n**CURRENT LANGUAGE AND ORGANIZATION SETTINGS:**
 - Language: ${catalogLanguage}
 - Organization: ${organization}
 - All tool calls will automatically use these settings unless the user explicitly requests a different language/organization`;
 
-				// Add language detection context
-				if (languageInfo?.detectedLanguage && languageInfo.detectedLanguage !== catalogLanguage) {
-					languageContext += `\n\n**LANGUAGE DETECTED FROM USER MESSAGE:**
+		// Add language detection context
+		if (languageInfo?.detectedLanguage && languageInfo.detectedLanguage !== catalogLanguage) {
+			languageContext += `\n\n**LANGUAGE DETECTED FROM USER MESSAGE:**
 - User's language detected: ${languageInfo.detectedLanguage}
 - You MUST call list_languages FIRST to discover available variants for this language
 - After list_languages returns:
@@ -1550,12 +1563,12 @@ async function callOpenAI(
   2. You call: list_languages
   3. If es-419 found: "I see you're speaking Spanish. I found resources in es-419. I'll use that to find the definition of 'amor'." Then call fetch_translation_word with term="amor" and language="es-419"
   4. If multiple found: "I see you're speaking Spanish. I found resources in: es-419, es-MX. Which would you prefer?" Then wait for user response`;
-				}
+		}
 
-			languageContext += `\n- If you detect the user switching languages mid-conversation, validate the new language using list_languages tool first
+		languageContext += `\n- If you detect the user switching languages mid-conversation, validate the new language using list_languages tool first
 - You can inform users about the current language/organization settings if they ask`;
-			
-			systemPrompt = systemPrompt + languageContext;
+
+		systemPrompt = systemPrompt + languageContext;
 
 		const messages = [
 			{ role: 'system', content: systemPrompt },
@@ -1672,7 +1685,11 @@ async function callOpenAIStream(
 	endpointCalls?: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>,
 	catalogLanguage: string = 'en',
 	organization: string = 'unfoldingWord',
-	languageInfo?: { detectedLanguage: string | null; needsValidation: boolean; languageVariants?: Array<{ code: string; name: string }> }
+	languageInfo?: {
+		detectedLanguage: string | null;
+		needsValidation: boolean;
+		languageVariants?: Array<{ code: string; name: string }>;
+	}
 ): Promise<ReadableStream<Uint8Array>> {
 	const encoder = new TextEncoder();
 	const decoder = new TextDecoder();
@@ -1712,7 +1729,7 @@ async function callOpenAIStream(
 
 				languageContext += `\n- If you detect the user switching languages mid-conversation, validate the new language using list_languages tool first
 - You can inform users about the current language/organization settings if they ask`;
-				
+
 				systemPrompt = systemPrompt + languageContext;
 
 				const messages = [
@@ -1893,13 +1910,24 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 	// via services like ZipResourceFetcher2 when fetching resources.
 
 	try {
-		const { message, chatHistory = [], enableXRay = false, language = 'en', organization = 'unfoldingWord' }: ChatRequest = await request.json();
+		const {
+			message,
+			chatHistory = [],
+			enableXRay = false,
+			language = 'en',
+			organization = 'unfoldingWord'
+		}: ChatRequest = await request.json();
 		const baseUrl = `${url.protocol}//${url.host}`;
 
 		// Map language to catalog code (e.g., es -> es-419)
 		const catalogLanguage = mapLanguageToCatalogCode(language);
 
-		logger.info('Chat stream request', { message, historyLength: chatHistory.length, language: catalogLanguage, organization });
+		logger.info('Chat stream request', {
+			message,
+			historyLength: chatHistory.length,
+			language: catalogLanguage,
+			organization
+		});
 
 		// Check for API key - try multiple sources
 		const apiKey =
@@ -1957,23 +1985,37 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 
 		// Step 1.5: Detect and validate language if needed
 		const languageDetectionStart = Date.now();
-		const languageInfo = await detectAndValidateLanguage(message, chatHistory, catalogLanguage, baseUrl);
+		const languageInfo = await detectAndValidateLanguage(
+			message,
+			chatHistory,
+			catalogLanguage,
+			baseUrl
+		);
 		timings.languageDetection = Date.now() - languageDetectionStart;
 
 		// Update language if detected and validated
 		let finalLanguage = catalogLanguage;
 		if (languageInfo.detectedLanguage && !languageInfo.needsValidation) {
 			finalLanguage = languageInfo.detectedLanguage;
-			logger.info('Language detected and validated', { 
-				detected: languageInfo.detectedLanguage, 
-				previous: catalogLanguage 
+			logger.info('Language detected and validated', {
+				detected: languageInfo.detectedLanguage,
+				previous: catalogLanguage
 			});
 		}
 
 		// Step 2: Let the LLM decide which endpoints/prompts to call
 		// The LLM will handle language validation/search based on the languageInfo context
 		const llmDecisionStart = Date.now();
-		const endpointCalls = await determineMCPCalls(message, apiKey, endpoints, prompts, chatHistory, finalLanguage, organization, baseUrl);
+		const endpointCalls = await determineMCPCalls(
+			message,
+			apiKey,
+			endpoints,
+			prompts,
+			chatHistory,
+			finalLanguage,
+			organization,
+			baseUrl
+		);
 		timings.llmDecision = Date.now() - llmDecisionStart;
 
 		// Log if no endpoints were selected
@@ -1983,7 +2025,12 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 
 		// Step 3: Execute the MCP calls
 		const mcpExecutionStart = Date.now();
-		const { data, apiCalls } = await executeMCPCalls(endpointCalls, baseUrl, finalLanguage, organization);
+		const { data, apiCalls } = await executeMCPCalls(
+			endpointCalls,
+			baseUrl,
+			finalLanguage,
+			organization
+		);
 		timings.mcpExecution = Date.now() - mcpExecutionStart;
 
 		// Step 4: Format data for OpenAI context, including any tool errors so the LLM can respond gracefully

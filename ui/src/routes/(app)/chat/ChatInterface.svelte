@@ -80,7 +80,8 @@
 			title: '📚 Find resources for Spanish (es-419)',
 			prompt:
 				'What translation resources are available for Spanish (es-419)? Show me all organizations and resource types.',
-			description: 'Single-language discovery: See resources from es-419_gl and other orgs in ~1-2 seconds.'
+			description:
+				'Single-language discovery: See resources from es-419_gl and other orgs in ~1-2 seconds.'
 		},
 		{
 			title: '🔍 Explore resources for a specific language',
@@ -90,8 +91,7 @@
 		},
 		{
 			title: '📖 Find a Bible verse with translation help',
-			prompt:
-				'Show me John 3:16 in ULT and UST, plus the translation notes explaining key terms.',
+			prompt: 'Show me John 3:16 in ULT and UST, plus the translation notes explaining key terms.',
 			description: 'Complete package: Scripture text + translation guidance.'
 		},
 		{
@@ -146,9 +146,12 @@
 			);
 
 		// Then make RC links clickable with special handling
-		html = html.replace(/<a href="(rc:\/\/[^"]+)">([^<]+)<\/a>/g, (_match: string, href: string, text: string) => {
-			return `<a href="${href}" data-rc-link="${href}" class="rc-link inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 underline cursor-pointer">${text}</a>`;
-		});
+		html = html.replace(
+			/<a href="(rc:\/\/[^"]+)">([^<]+)<\/a>/g,
+			(_match: string, href: string, text: string) => {
+				return `<a href="${href}" data-rc-link="${href}" class="rc-link inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 underline cursor-pointer">${text}</a>`;
+			}
+		);
 
 		return html;
 	}

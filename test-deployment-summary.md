@@ -5,17 +5,20 @@
 ### Test Results
 
 #### ✅ **Ruth (Rut 1:1)** - SUCCESS
+
 - **Status**: ✅ Working perfectly
 - **Resources Found**: GLT v41, GST v40
 - **Response**: Returns Spanish scripture text correctly
 - **SDK Test**: ✅ Passed
 
-#### ✅ **Jonah (Jon 1:1)** - SUCCESS  
+#### ✅ **Jonah (Jon 1:1)** - SUCCESS
+
 - **Status**: ✅ Working perfectly
 - **Resources Found**: GLT v41, GST v40
 - **Response**: Returns Spanish scripture text correctly
 
 #### ⚠️ **Esther (Est 1:1)** - Expected Failure
+
 - **Status**: ⚠️ 500 Error (Expected)
 - **Reason**: Esther is not available in es-419 resources
 - **Available Books**: rut, jon, tit, 3jn (only 4 books in es-419_glt/gst)
@@ -58,4 +61,3 @@ node test-es-419-rut.js
 - The 500 error for Esther is expected (book not in catalog)
 
 **Deployment Status**: ✅ **SUCCESSFUL**
-

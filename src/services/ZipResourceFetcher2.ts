@@ -2556,8 +2556,7 @@ export class ZipResourceFetcher2 {
 
       // For verse ranges, keep verse numbers
       const isRange =
-        reference.endVerse &&
-        reference.endVerse > reference.verse;
+        reference.endVerse && reference.endVerse > reference.verse;
 
       if (isRange) {
         // Clean USFM but preserve verse markers for ranges

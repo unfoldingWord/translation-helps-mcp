@@ -1287,7 +1287,7 @@
 									<div>
 										<h4 class="mb-2 font-medium text-white">🌐 HTTP/Web API</h4>
 										<code class="rounded bg-gray-900 px-3 py-1 text-sm text-blue-400">
-											https://translation-helps-mcp.pages.dev/api/mcp
+											https://tc-helps.mcp.servant.bible/api/mcp
 										</code>
 										<p class="mt-1 text-sm text-gray-400">
 											Stateless HTTP endpoint for all MCP tools
@@ -1296,7 +1296,7 @@
 									<div>
 										<h4 class="mb-2 font-medium text-white">⚡ Direct API Endpoints</h4>
 										<code class="rounded bg-gray-900 px-3 py-1 text-sm text-purple-400">
-											https://translation-helps-mcp.pages.dev/api/fetch-scripture
+											https://tc-helps.mcp.servant.bible/api/fetch-scripture
 										</code>
 										<p class="mt-1 text-sm text-gray-400">
 											Direct access to individual endpoint functionality

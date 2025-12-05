@@ -10,15 +10,14 @@
 export function mapLanguageToCatalogCode(language: string): string {
   const languageMap: Record<string, string> = {
     // Spanish variants
-    'es': 'es-419', // Spanish -> Latin American Spanish
-    'es-MX': 'es-419',
-    'es-AR': 'es-419',
-    'es-CO': 'es-419',
-    'es-CL': 'es-419',
-    'es-PE': 'es-419',
+    es: "es-419", // Spanish -> Latin American Spanish
+    "es-MX": "es-419",
+    "es-AR": "es-419",
+    "es-CO": "es-419",
+    "es-CL": "es-419",
+    "es-PE": "es-419",
     // Add other mappings as needed
   };
 
   return languageMap[language] || language;
 }
-

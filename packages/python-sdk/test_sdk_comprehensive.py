@@ -12,7 +12,7 @@ async def test_connection():
     print("TEST 1: Connection")
     print("=" * 60)
     client = TranslationHelpsClient({
-        "serverUrl": "https://translation-helps-mcp-945.pages.dev/api/mcp"
+        "serverUrl": "https://tc-helps.mcp.servant.bible/api/mcp"
     })
     try:
         await client.connect()
@@ -139,7 +139,7 @@ async def test_context_manager():
     print("=" * 60)
     try:
         async with TranslationHelpsClient({
-            "serverUrl": "https://translation-helps-mcp-945.pages.dev/api/mcp"
+            "serverUrl": "https://tc-helps.mcp.servant.bible/api/mcp"
         }) as client:
             tools = await client.list_tools()
             print(f"✅ Context manager works")

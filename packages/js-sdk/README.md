@@ -44,7 +44,7 @@ import { TranslationHelpsClient } from "@translation-helps/mcp-client";
 
 // Create a client instance
 const mcpClient = new TranslationHelpsClient({
-  serverUrl: "https://translation-helps-mcp-945.pages.dev/api/mcp",
+  serverUrl: "https://tc-helps.mcp.servant.bible/api/mcp",
 });
 
 await mcpClient.connect();
@@ -457,6 +457,6 @@ MIT
 
 ## Links
 
-- [Documentation](https://translation-helps-mcp-945.pages.dev)
+- [Documentation](https://tc-helps.mcp.servant.bible)
 - [GitHub Repository](https://github.com/unfoldingWord/translation-helps-mcp)
 - [MCP Protocol](https://modelcontextprotocol.io)

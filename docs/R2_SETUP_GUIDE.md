@@ -51,9 +51,9 @@ If automatic caching isn't working, you can warm the cache by:
 
 ```bash
 # Force download each resource type
-curl -H "X-Force-Refresh: true" "https://translation-helps-mcp.pages.dev/api/translation-notes?reference=John%203:16"
-curl -H "X-Force-Refresh: true" "https://translation-helps-mcp.pages.dev/api/translation-questions?reference=John%203:16"
-curl -H "X-Force-Refresh: true" "https://translation-helps-mcp.pages.dev/api/fetch-translation-word-links?reference=John%203:16"
+curl -H "X-Force-Refresh: true" "https://tc-helps.mcp.servant.bible/api/translation-notes?reference=John%203:16"
+curl -H "X-Force-Refresh: true" "https://tc-helps.mcp.servant.bible/api/translation-questions?reference=John%203:16"
+curl -H "X-Force-Refresh: true" "https://tc-helps.mcp.servant.bible/api/fetch-translation-word-links?reference=John%203:16"
 ```
 
 ### Debug Information

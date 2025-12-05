@@ -4,7 +4,7 @@
 
 ### ✅ What We Have
 
-1. **HTTP Endpoint**: `https://translation-helps-mcp.pages.dev/api/mcp`
+1. **HTTP Endpoint**: `https://tc-helps.mcp.servant.bible/api/mcp`
    - ✅ `initialize` - Returns server info and capabilities
    - ✅ `tools/list` - Lists all available tools
    - ✅ `tools/call` - Executes tool calls
@@ -147,7 +147,7 @@ If needed, implement:
 {
   "mcpServers": {
     "translation-helps": {
-      "url": "https://translation-helps-mcp.pages.dev/api/mcp",
+      "url": "https://tc-helps.mcp.servant.bible/api/mcp",
       "transport": "http"
     }
   }
@@ -158,14 +158,14 @@ If needed, implement:
 
 1. Navigate to Claude Settings → Connectors
 2. Click "Add custom connector"
-3. Enter URL: `https://translation-helps-mcp.pages.dev/api/mcp`
+3. Enter URL: `https://tc-helps.mcp.servant.bible/api/mcp`
 4. Complete authentication (if implemented)
 
 ## Current Workaround
 
 For now, developers can:
 
-1. Use the HTTP endpoint directly: `POST https://translation-helps-mcp.pages.dev/api/mcp`
+1. Use the HTTP endpoint directly: `POST https://tc-helps.mcp.servant.bible/api/mcp`
 2. Use custom endpoints for prompts: `/api/mcp-config` and `/api/execute-prompt`
 3. Use standard MCP tools: `tools/list` and `tools/call`
 

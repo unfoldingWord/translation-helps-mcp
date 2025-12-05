@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file. See [standa
 
 ## [Unreleased]
 
+### Changed
+
+- **Domain Migration** - Updated server domain from `translation-helps-mcp-945.pages.dev` to `tc-helps.mcp.servant.bible`
+  - All default server URLs updated in SDKs
+  - Documentation and examples updated
+  - JS SDK v1.2.1 and Python SDK v1.3.1 published with new domain
+
+- **SDK Updates** - Published new versions with discovery tools and domain updates
+  - JS SDK v1.2.1: Updated default server URL to new domain
+  - Python SDK v1.3.1: Updated default server URL to new domain
+  - Both SDKs now include all 11 MCP tools including discovery tools
+
 ### Features
 
 - **Optimized System Prompts in SDKs** - 60-70% token reduction for AI interactions
