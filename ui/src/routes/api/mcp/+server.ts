@@ -41,32 +41,37 @@ export const OPTIONS: RequestHandler = async () => {
 export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) => {
 	try {
 		const body = await request.json();
+		// Support both JSON-RPC 2.0 format and simple method format
+		const jsonrpc = body.jsonrpc;
 		const method = body.method || url.searchParams.get('method');
+		const id = body.id || null;
+		const params = body.params || {};
 
 		// Handle different MCP methods
 		switch (method) {
 			case 'initialize':
-				return json(
-					{
-						protocolVersion: '1.0',
-						capabilities: {
-							tools: {},
-							prompts: {}
-						},
-						serverInfo: {
-							name: 'translation-helps-mcp',
-							version: getVersion()
-						}
+				const initResult = {
+					protocolVersion: '2024-11-05',
+					capabilities: {
+						tools: {},
+						prompts: {}
 					},
+					serverInfo: {
+						name: 'translation-helps-mcp',
+						version: getVersion()
+					}
+				};
+				return json(
+					jsonrpc === '2.0'
+						? { jsonrpc: '2.0', result: initResult, id }
+						: initResult,
 					{
 						headers: corsHeaders
 					}
 				);
 
 			case 'tools/list':
-				return json(
-					{
-						tools: [
+				const toolsList = [
 						{
 							name: 'get_system_prompt',
 							description:
@@ -268,18 +273,22 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 										description: 'Resource stage (default: "prod")'
 									}
 								}
+									}
+								}
+							]
+						};
+						return json(
+							jsonrpc === '2.0'
+								? { jsonrpc: '2.0', result: prompt1Result, id }
+								: prompt1Result,
+							{
+								headers: corsHeaders
 							}
-						}
-					]
-					},
-					{
-						headers: corsHeaders
-					}
-				);
+						);
 
 			case 'tools/call': {
-				const toolName = body.params?.name;
-				const args = body.params?.arguments || {};
+				const toolName = params?.name || params?.tool || body.params?.name;
+				const args = params?.arguments || params?.args || body.params?.arguments || {};
 
 				// Import the unified handler with proper base URL
 				// FORCE REBUILD: All tools now use UnifiedMCPHandler (no duplicate formatting)
@@ -299,10 +308,25 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 					const metadata = (result as any).metadata;
 					console.log('[MCP ENDPOINT] Result metadata:', metadata);
 
+					// Format result for MCP protocol
+					// UnifiedMCPHandler already returns { content: [...] } format
+					const mcpResult = result && typeof result === 'object' && 'content' in result
+						? result
+						: {
+							content: Array.isArray(result) 
+								? result 
+								: [{ type: 'text', text: typeof result === 'string' ? result : JSON.stringify(result) }]
+						};
+
 					// Create response with headers if metadata is available
-					const response = json(result, {
-						headers: corsHeaders
-					});
+					const response = json(
+						jsonrpc === '2.0'
+							? { jsonrpc: '2.0', result: mcpResult, id }
+							: mcpResult,
+						{
+							headers: corsHeaders
+						}
+					);
 
 					// Forward diagnostic headers from internal endpoint if available
 					if (metadata) {
@@ -337,15 +361,25 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 							args: args
 						});
 					}
+					const errorResult = {
+						content: [
+							{
+								type: 'text',
+								text: error instanceof Error ? error.message : 'Tool execution failed'
+							}
+						]
+					};
 					return json(
-						{
-							content: [
-								{
-									type: 'text',
-									text: error instanceof Error ? error.message : 'Tool execution failed'
+						jsonrpc === '2.0'
+							? {
+									jsonrpc: '2.0',
+									error: {
+										code: -32000,
+										message: error instanceof Error ? error.message : 'Tool execution failed'
+									},
+									id
 								}
-							]
-						},
+							: errorResult,
 						{
 							headers: corsHeaders
 						}
@@ -614,9 +648,7 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 			}
 
 			case 'prompts/list':
-				return json(
-					{
-						prompts: [
+				const promptsList = [
 						{
 							name: 'translation-helps-for-passage',
 							description:
@@ -676,7 +708,9 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 				);
 
 			case 'prompts/get': {
-				const { name, arguments: args } = body.params || {};
+				const promptParams = params?.name ? params : body.params || {};
+				const name = promptParams.name;
+				const args = promptParams.arguments || promptParams.args || {};
 
 				if (!name) {
 					return json(
@@ -695,9 +729,8 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 
 				switch (name) {
 					case 'translation-helps-for-passage':
-						return json(
-							{
-								messages: [
+						const prompt1Result = {
+							messages: [
 								{
 									role: 'user',
 									content: {
@@ -748,9 +781,8 @@ The goal is to provide EVERYTHING a translator needs for this passage in one com
 						});
 
 					case 'get-translation-words-for-passage':
-						return json(
-							{
-								messages: [
+						const prompt2Result = {
+							messages: [
 								{
 									role: 'user',
 									content: {
@@ -783,9 +815,8 @@ Focus on making the translation words accessible by showing their proper titles.
 						});
 
 					case 'get-translation-academy-for-passage':
-						return json(
-							{
-								messages: [
+						const prompt3Result = {
+							messages: [
 								{
 									role: 'user',
 									content: {
@@ -827,32 +858,74 @@ The goal is to show what translation concepts and training materials are relevan
 
 					default:
 						return json(
-							{
-								error: {
-									code: ErrorCode.InvalidRequest,
-									message: `Unknown prompt: ${name}`
-								}
-							},
+							jsonrpc === '2.0'
+								? {
+										jsonrpc: '2.0',
+										error: {
+											code: -32601,
+											message: `Unknown prompt: ${name}`
+										},
+										id
+									}
+								: {
+										error: {
+											code: ErrorCode.InvalidRequest,
+											message: `Unknown prompt: ${name}`
+										}
+									},
 							{ status: 400, headers: corsHeaders }
 						);
 				}
 			}
 
 			case 'ping':
-				return json({}, { headers: corsHeaders });
+				return json(
+					jsonrpc === '2.0' ? { jsonrpc: '2.0', result: {}, id } : {},
+					{ headers: corsHeaders }
+				);
 
 			default:
-				throw new Error(`Unknown method: ${method}`);
+				return json(
+					jsonrpc === '2.0'
+						? {
+								jsonrpc: '2.0',
+								error: {
+									code: -32601,
+									message: `Unknown method: ${method}`
+								},
+								id
+							}
+						: {
+								error: {
+									code: ErrorCode.InvalidRequest,
+									message: `Unknown method: ${method}`
+								}
+							},
+					{ status: 400, headers: corsHeaders }
+				);
 		}
 	} catch (error) {
 		console.error('MCP Bridge Error:', error);
+		const requestBody = await request.json().catch(() => ({}));
+		const jsonrpc = requestBody.jsonrpc;
+		const id = requestBody.id || null;
+		
 		return json(
-			{
-				error: {
-					code: error instanceof McpError ? error.code : ErrorCode.InternalError,
-					message: error instanceof Error ? error.message : 'Unknown error'
-				}
-			},
+			jsonrpc === '2.0'
+				? {
+						jsonrpc: '2.0',
+						error: {
+							code: error instanceof McpError ? error.code : -32603,
+							message: error instanceof Error ? error.message : 'Unknown error'
+						},
+						id
+					}
+				: {
+						error: {
+							code: error instanceof McpError ? error.code : ErrorCode.InternalError,
+							message: error instanceof Error ? error.message : 'Unknown error'
+						}
+					},
 			{ status: 500, headers: corsHeaders }
 		);
 	}
