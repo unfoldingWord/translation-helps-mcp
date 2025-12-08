@@ -188,3 +188,5 @@ describe('Door43 Catalog API Contracts', () => {
 		});
 	});
 });
+
+

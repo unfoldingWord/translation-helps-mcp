@@ -2,7 +2,7 @@
 
 This tutorial shows you how to build an MCP client that connects to our remote Translation Helps MCP server. You'll learn to create a client that can use our tools and prompts to access Bible translation resources.
 
-**Server URL**: `https://translation-helps-mcp-945.pages.dev/api/mcp`
+**Server URL**: `https://tc-helps.mcp.servant.bible/api/mcp`
 
 ---
 
@@ -77,7 +77,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Our remote server URL
-REMOTE_SERVER_URL = "https://translation-helps-mcp-945.pages.dev/api/mcp"
+REMOTE_SERVER_URL = "https://tc-helps.mcp.servant.bible/api/mcp"
 
 class RemoteMCPClient:
     def __init__(self):
@@ -388,7 +388,7 @@ import * as dotenv from "dotenv";
 
 dotenv.config();
 
-const REMOTE_SERVER_URL = "https://translation-helps-mcp-945.pages.dev/api/mcp";
+const REMOTE_SERVER_URL = "https://tc-helps.mcp.servant.bible/api/mcp";
 
 class RemoteMCPClient {
   private client: Client;
@@ -753,7 +753,7 @@ Our server provides 3 prompts:
 
 **Error: "Failed to connect"**
 
-- Verify the server URL is correct: `https://translation-helps-mcp-945.pages.dev/api/mcp`
+- Verify the server URL is correct: `https://tc-helps.mcp.servant.bible/api/mcp`
 - Check your internet connection
 - Ensure the server is online (try accessing the URL in a browser)
 
@@ -820,7 +820,7 @@ Here's a minimal web-based example using JavaScript:
     <div id="response"></div>
 
     <script type="module">
-      const SERVER_URL = "https://translation-helps-mcp-945.pages.dev/api/mcp";
+      const SERVER_URL = "https://tc-helps.mcp.servant.bible/api/mcp";
 
       async function askQuestion() {
         const query = document.getElementById("query").value;

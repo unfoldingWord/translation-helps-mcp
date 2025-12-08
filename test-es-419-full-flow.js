@@ -42,7 +42,7 @@ async function testFullFlow() {
 
   // Step 2: Test API Endpoints Directly
   console.log("Step 2: Testing API Endpoints Directly\n");
-  const baseUrl = "https://translation-helps-mcp-945.pages.dev/api";
+  const baseUrl = "https://tc-helps.mcp.servant.bible/api";
   const params = new URLSearchParams({
     reference: "Est 1:1",
     language: "es-419",
@@ -131,7 +131,7 @@ async function testFullFlow() {
         "@translation-helps/mcp-client"
       );
       const client = new TranslationHelpsClient({
-        serverUrl: "https://translation-helps-mcp-945.pages.dev/api/mcp",
+        serverUrl: "https://tc-helps.mcp.servant.bible/api/mcp",
       });
 
       await client.connect();

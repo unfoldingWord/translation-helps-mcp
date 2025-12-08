@@ -12,7 +12,7 @@ async function testES419Ruth() {
   console.log('  - reference: "Rut 1:1"\n');
 
   const client = new TranslationHelpsClient({
-    serverUrl: "https://translation-helps-mcp-945.pages.dev/api/mcp",
+    serverUrl: "https://tc-helps.mcp.servant.bible/api/mcp",
   });
 
   try {

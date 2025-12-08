@@ -13,7 +13,7 @@ async function testES419DataRetrieval() {
   console.log('  - reference: "Est 1:1"\n');
 
   const client = new TranslationHelpsClient({
-    serverUrl: "https://translation-helps-mcp-945.pages.dev/api/mcp",
+    serverUrl: "https://tc-helps.mcp.servant.bible/api/mcp",
   });
 
   try {

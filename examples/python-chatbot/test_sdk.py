@@ -84,7 +84,7 @@ async def test_sdk():
     # Initialize client
     # Use production server by default, allow override via environment variable
     import os
-    server_url = os.getenv("MCP_SERVER_URL", "https://translation-helps-mcp-945.pages.dev/api/mcp")
+    server_url = os.getenv("MCP_SERVER_URL", "https://tc-helps.mcp.servant.bible/api/mcp")
     client = TranslationHelpsClient({
         "serverUrl": server_url
     })

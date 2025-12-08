@@ -49,7 +49,7 @@ cp .env.example .env
 OPENAI_API_KEY=your-openai-api-key-here
 
 # Optional: Custom MCP server URL
-# MCP_SERVER_URL=https://translation-helps-mcp-945.pages.dev/api/mcp
+# MCP_SERVER_URL=https://tc-helps.mcp.servant.bible/api/mcp
 
 # Optional: Change AI provider (defaults to 'openai')
 # AI_PROVIDER=openai
@@ -286,5 +286,5 @@ MIT
 ## Links
 
 - [SDK Documentation](../../packages/js-sdk/README.md)
-- [MCP Server Documentation](https://translation-helps-mcp-945.pages.dev)
+- [MCP Server Documentation](https://tc-helps.mcp.servant.bible)
 - [MCP Protocol](https://modelcontextprotocol.io)

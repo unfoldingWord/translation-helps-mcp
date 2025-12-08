@@ -64,7 +64,7 @@ Examples:
 async def main(verbose=False, debug=False, quiet=False, server_url_override=None, language=None, organization=None):
     # Initialize clients
     # Use production server by default, allow override via environment variable or CLI
-    server_url = server_url_override or os.getenv("MCP_SERVER_URL", "https://translation-helps-mcp-945.pages.dev/api/mcp")
+    server_url = server_url_override or os.getenv("MCP_SERVER_URL", "https://tc-helps.mcp.servant.bible/api/mcp")
     mcp_client = TranslationHelpsClient({
         "serverUrl": server_url
     })

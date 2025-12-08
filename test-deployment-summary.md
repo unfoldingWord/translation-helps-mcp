@@ -42,10 +42,10 @@
 
 ```bash
 # Test Ruth (available book)
-curl "https://translation-helps-mcp-945.pages.dev/api/fetch-scripture?reference=Rut+1:1&language=es-419&organization=es-419_gl&format=json"
+curl "https://tc-helps.mcp.servant.bible/api/fetch-scripture?reference=Rut+1:1&language=es-419&organization=es-419_gl&format=json"
 
 # Test Jonah (available book)
-curl "https://translation-helps-mcp-945.pages.dev/api/fetch-scripture?reference=Jon+1:1&language=es-419&organization=es-419_gl&format=json"
+curl "https://tc-helps.mcp.servant.bible/api/fetch-scripture?reference=Jon+1:1&language=es-419&organization=es-419_gl&format=json"
 
 # Test with SDK
 node test-es-419-rut.js

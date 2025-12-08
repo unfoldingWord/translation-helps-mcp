@@ -8,7 +8,7 @@ async function testAPIEndpoint() {
     'Parameters: language="es-419", organization="es-419_gl", reference="Est 1:1"\n',
   );
 
-  const baseUrl = "https://translation-helps-mcp-945.pages.dev/api";
+  const baseUrl = "https://tc-helps.mcp.servant.bible/api";
 
   // Test the fetch-scripture endpoint
   const params = new URLSearchParams({

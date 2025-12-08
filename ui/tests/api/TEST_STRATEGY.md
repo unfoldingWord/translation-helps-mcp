@@ -245,3 +245,5 @@ it('should filter by stage', async () => {
 **Missing**: Format support, CORS, resource/stage parameters, edge cases, and performance boundaries.
 
 **Recommendation**: Add tests for format support and CORS as Priority 2, then fill in edge cases and performance tests.
+
+
