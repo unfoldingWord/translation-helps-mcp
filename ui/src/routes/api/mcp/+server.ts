@@ -21,6 +21,22 @@ import { getVersion } from '../../../../../src/version.js';
 // import { handleGetWordsForReference } from '../../../../../src/tools/getWordsForReference.js';
 // import { handleSearchResources } from '../../../../../src/tools/searchResources.js';
 
+// CORS headers for MCP endpoint
+const corsHeaders = {
+	'Access-Control-Allow-Origin': '*',
+	'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+	'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+	'Access-Control-Max-Age': '86400'
+};
+
+// Handle CORS preflight requests
+export const OPTIONS: RequestHandler = async () => {
+	return new Response(null, {
+		status: 200,
+		headers: corsHeaders
+	});
+};
+
 // MCP-over-HTTP Bridge
 export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) => {
 	try {
@@ -30,21 +46,27 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 		// Handle different MCP methods
 		switch (method) {
 			case 'initialize':
-				return json({
-					protocolVersion: '1.0',
-					capabilities: {
-						tools: {},
-						prompts: {}
+				return json(
+					{
+						protocolVersion: '1.0',
+						capabilities: {
+							tools: {},
+							prompts: {}
+						},
+						serverInfo: {
+							name: 'translation-helps-mcp',
+							version: getVersion()
+						}
 					},
-					serverInfo: {
-						name: 'translation-helps-mcp',
-						version: getVersion()
+					{
+						headers: corsHeaders
 					}
-				});
+				);
 
 			case 'tools/list':
-				return json({
-					tools: [
+				return json(
+					{
+						tools: [
 						{
 							name: 'get_system_prompt',
 							description:
@@ -249,7 +271,11 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 							}
 						}
 					]
-				});
+					},
+					{
+						headers: corsHeaders
+					}
+				);
 
 			case 'tools/call': {
 				const toolName = body.params?.name;
@@ -274,7 +300,9 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 					console.log('[MCP ENDPOINT] Result metadata:', metadata);
 
 					// Create response with headers if metadata is available
-					const response = json(result);
+					const response = json(result, {
+						headers: corsHeaders
+					});
 
 					// Forward diagnostic headers from internal endpoint if available
 					if (metadata) {
@@ -309,14 +337,19 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 							args: args
 						});
 					}
-					return json({
-						content: [
-							{
-								type: 'text',
-								text: error instanceof Error ? error.message : 'Tool execution failed'
-							}
-						]
-					});
+					return json(
+						{
+							content: [
+								{
+									type: 'text',
+									text: error instanceof Error ? error.message : 'Tool execution failed'
+								}
+							]
+						},
+						{
+							headers: corsHeaders
+						}
+					);
 				}
 
 				// The code below is unreachable - all tools are handled by UnifiedMCPHandler above
@@ -581,8 +614,9 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 			}
 
 			case 'prompts/list':
-				return json({
-					prompts: [
+				return json(
+					{
+						prompts: [
 						{
 							name: 'translation-helps-for-passage',
 							description:
@@ -635,7 +669,11 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 							]
 						}
 					]
-				});
+					},
+					{
+						headers: corsHeaders
+					}
+				);
 
 			case 'prompts/get': {
 				const { name, arguments: args } = body.params || {};
@@ -657,8 +695,9 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 
 				switch (name) {
 					case 'translation-helps-for-passage':
-						return json({
-							messages: [
+						return json(
+							{
+								messages: [
 								{
 									role: 'user',
 									content: {
@@ -709,8 +748,9 @@ The goal is to provide EVERYTHING a translator needs for this passage in one com
 						});
 
 					case 'get-translation-words-for-passage':
-						return json({
-							messages: [
+						return json(
+							{
+								messages: [
 								{
 									role: 'user',
 									content: {
@@ -743,8 +783,9 @@ Focus on making the translation words accessible by showing their proper titles.
 						});
 
 					case 'get-translation-academy-for-passage':
-						return json({
-							messages: [
+						return json(
+							{
+								messages: [
 								{
 									role: 'user',
 									content: {
@@ -792,13 +833,13 @@ The goal is to show what translation concepts and training materials are relevan
 									message: `Unknown prompt: ${name}`
 								}
 							},
-							{ status: 400 }
+							{ status: 400, headers: corsHeaders }
 						);
 				}
 			}
 
 			case 'ping':
-				return json({});
+				return json({}, { headers: corsHeaders });
 
 			default:
 				throw new Error(`Unknown method: ${method}`);
@@ -812,7 +853,7 @@ The goal is to show what translation concepts and training materials are relevan
 					message: error instanceof Error ? error.message : 'Unknown error'
 				}
 			},
-			{ status: 500 }
+			{ status: 500, headers: corsHeaders }
 		);
 	}
 };
@@ -823,8 +864,9 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	// Handle prompts/list directly
 	if (method === 'prompts/list') {
-		return json({
-			prompts: [
+		return json(
+			{
+				prompts: [
 				{
 					name: 'translation-helps-for-passage',
 					description:
@@ -877,7 +919,11 @@ export const GET: RequestHandler = async ({ url }) => {
 					]
 				}
 			]
-		});
+			},
+			{
+				headers: corsHeaders
+			}
+		);
 	}
 
 	// For tools/list, delegate to POST handler
@@ -904,9 +950,14 @@ export const GET: RequestHandler = async ({ url }) => {
 		} as any);
 	}
 
-	return json({
-		name: 'translation-helps-mcp',
-		version: getVersion(),
-		methods: ['initialize', 'tools/list', 'tools/call', 'prompts/list', 'prompts/get', 'ping']
-	});
+	return json(
+		{
+			name: 'translation-helps-mcp',
+			version: getVersion(),
+			methods: ['initialize', 'tools/list', 'tools/call', 'prompts/list', 'prompts/get', 'ping']
+		},
+		{
+			headers: corsHeaders
+		}
+	);
 };
