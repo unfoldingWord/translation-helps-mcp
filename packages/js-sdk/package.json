@@ -47,7 +47,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/unfoldingWord/translation-helps-mcp.git",
+    "url": "git+https://github.com/unfoldingWord/translation-helps-mcp.git",
     "directory": "packages/js-sdk"
   }
 }

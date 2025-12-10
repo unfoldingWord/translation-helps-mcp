@@ -5,6 +5,24 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2025-12-09
+
+### Removed
+
+- **Removed `list_resources_by_language()` method** - Replaced by faster `list_resources_for_language()` method
+- **Removed `search_translation_word_across_languages()` method** - Tool no longer needed
+
+### Changed
+
+- **Updated `list_resources_for_language()`** - `topic` parameter now defaults to `"tc-ready"` if not provided
+- Updated documentation to reflect tool removals and new defaults
+- Improved JSON-RPC 2.0 response parsing for better compatibility
+
+### Fixed
+
+- Fixed JSON-RPC 2.0 response parsing to correctly extract `result` field from server responses
+- Improved error handling for MCP server responses
+
 ## [1.3.1] - 2025-12-05
 
 ### Changed

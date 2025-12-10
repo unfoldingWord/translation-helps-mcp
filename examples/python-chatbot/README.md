@@ -12,7 +12,7 @@ This is a complete working example of a chatbot that uses the Translation Helps 
 1. **Install the Python SDK from PyPI:**
 
    ```bash
-   pip install translation-helps-mcp-client>=1.1.1
+   pip install translation-helps-mcp-client>=1.4.0
    ```
 
    This example uses version 1.1.1+ which includes optional adapter utilities for converting MCP tools/prompts to provider formats.
