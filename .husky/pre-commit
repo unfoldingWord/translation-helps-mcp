@@ -16,6 +16,10 @@ fi
 
 echo "✅ Pre-commit checks passed!"
 
+# Check if SDK packages have unpublished changes
+echo "📦 Checking SDK packages for unpublished changes..."
+node scripts/check-sdk-published.js
+
 # Sync version files before commit
 echo "🔄 Syncing version files..."
 npm run sync-version >/dev/null 2>&1 || true

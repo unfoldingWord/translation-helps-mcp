@@ -188,7 +188,7 @@ User asks: "What does 'grace' mean in the Bible?" or "Who is Paul?" or "What is 
 → Use fetch_translation_word tool with term parameter (e.g., term="grace", term="paul", term="faith", term="god")
 → The tool searches across all categories (kt, names, other) to find matching articles
 → Try variations if exact term doesn't match (e.g., "paul" might be "apostlepaul" or "paul-apostle")
-→ If the term is not found in the current language, use search_translation_word_across_languages to discover which languages have that term available
+→ If the term is not found in the current language, try searching in other languages using list_languages to find available resources
 
 User asks: "What passages of the Bible mention this term?" or "Where is 'apostle' mentioned in the Bible?" or "Show me Bible references for 'grace'"
 → Use fetch_translation_word_links tool with reference parameter (e.g., reference="John 3:16") OR
@@ -455,7 +455,7 @@ async function discoverMCPEndpoints(
 
 /**
  * Detect language from user message and conversation history
- * Note: We don't validate here - let the LLM decide whether to call list_languages or search_translation_word_across_languages
+ * Note: We don't validate here - let the LLM decide whether to call list_languages
  */
 async function detectAndValidateLanguage(
 	message: string,
@@ -488,7 +488,7 @@ async function detectAndValidateLanguage(
 		// User is speaking in a different language - mark it for LLM to handle
 		// The LLM will decide whether to:
 		// 1. Call list_languages to find variants
-		// 2. Call search_translation_word_across_languages for term queries
+		// 2. Use list_languages to discover available languages for term queries
 		logger.info('Language detected from message', {
 			detected: detectedLang,
 			current: currentLanguage
@@ -650,9 +650,6 @@ ${endpointDescriptions}
 
 When users want to discover available resources, guide them through this efficient workflow:
 
-**❌ SLOW: list-resources-by-language** (~4-5 seconds, makes 7 parallel API calls)
-- Use ONLY when user needs overview of ALL languages at once
-- Returns comprehensive data but slow on first call
 
 **✅ FAST & RECOMMENDED: Two-Step Discovery** (~2-3 seconds total)
 

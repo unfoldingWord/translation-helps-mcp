@@ -20,9 +20,7 @@ from .types import (
     GetLanguagesOptions,
     ListLanguagesOptions,
     ListSubjectsOptions,
-    ListResourcesByLanguageOptions,
     ListResourcesForLanguageOptions,
-    SearchTranslationWordAcrossLanguagesOptions,
 )
 
 DEFAULT_SERVER_URL = "https://tc-helps.mcp.servant.bible/api/mcp"
@@ -73,6 +71,8 @@ class TranslationHelpsClient:
             # Initialize the server
             init_response = await self._send_request("initialize")
 
+            # Handle JSON-RPC 2.0 format - serverInfo is in result.serverInfo or directly in response
+            # The _send_request method now extracts result, so serverInfo should be directly accessible
             if "serverInfo" not in init_response:
                 raise ValueError("Invalid server response: missing serverInfo")
 
@@ -134,13 +134,18 @@ class TranslationHelpsClient:
 
             data = response.json()
 
-            # Handle MCP error responses
+            # Handle MCP error responses (JSON-RPC 2.0 format)
             if "error" in data:
                 raise RuntimeError(
                     data["error"].get("message", "MCP server error")
                 )
 
-            return data
+            # Extract result from JSON-RPC 2.0 format if present
+            # The server now always returns JSON-RPC 2.0 format: { jsonrpc: "2.0", result: {...}, id: ... }
+            # But we need to support both formats for backward compatibility
+            response_data = data.get("result") if "result" in data else data
+
+            return response_data
         except httpx.HTTPError as e:
             raise ConnectionError(f"HTTP error: {str(e)}") from e
 
@@ -360,44 +365,6 @@ class TranslationHelpsClient:
 
         raise ValueError("Invalid response format from list_subjects")
 
-    async def list_resources_by_language(
-        self, options: Optional[ListResourcesByLanguageOptions] = None
-    ) -> Dict[str, Any]:
-        """
-        List resources organized by language.
-        
-        NOTE: Makes multiple parallel API calls (~4-5s first time, cached afterward).
-        For faster single-language discovery, use list_resources_for_language instead.
-        
-        Args:
-            options: Optional filtering options (subjects, organization, stage, limit, topic)
-            
-        Returns:
-            Dictionary with resources grouped by language
-        """
-        options = options or {}
-        params: Dict[str, Any] = {
-            "stage": options.get("stage", "prod"),
-        }
-        
-        if options.get("subjects"):
-            # Handle both string and list
-            subjects = options["subjects"]
-            params["subjects"] = subjects if isinstance(subjects, str) else ",".join(subjects)
-        if options.get("organization") is not None:
-            params["organization"] = options["organization"]
-        if options.get("limit"):
-            params["limit"] = options["limit"]
-        if options.get("topic"):
-            params["topic"] = options["topic"]
-
-        response = await self.call_tool("list_resources_by_language", params)
-
-        if response.get("content") and response["content"][0].get("text"):
-            return json.loads(response["content"][0]["text"])
-
-        raise ValueError("Invalid response format from list_resources_by_language")
-
     async def list_resources_for_language(
         self, options: ListResourcesForLanguageOptions
     ) -> Dict[str, Any]:
@@ -408,15 +375,16 @@ class TranslationHelpsClient:
         what's available for a chosen language.
         
         Args:
-            options: Language (required) and optional filters (organization, stage, subject, limit, topic)
+            options: Language (required) and optional filters
+            options["topic"]: Filter by topic tag. Defaults to "tc-ready" if not provided.
             
         Returns:
             Dictionary with resources for the specified language organized by subject
             
         Example:
             >>> resources = await client.list_resources_for_language({
-            ...     "language": "es-419",
-            ...     "topic": "tc-ready"
+            ...     "language": "es-419"
+            ...     # topic defaults to "tc-ready" if not specified
             ... })
             >>> print(f"Found {resources['totalResources']} resources")
         """
@@ -443,48 +411,6 @@ class TranslationHelpsClient:
             return json.loads(response["content"][0]["text"])
 
         raise ValueError("Invalid response format from list_resources_for_language")
-
-    async def search_translation_word_across_languages(
-        self, options: SearchTranslationWordAcrossLanguagesOptions
-    ) -> Dict[str, Any]:
-        """
-        Search for a translation word term across multiple languages.
-        
-        Useful when a term is not found in the current language or when you want
-        to find all languages that have a specific term available.
-        
-        Args:
-            options: Term (required) and optional filters (languages, organization, limit)
-            
-        Returns:
-            Dictionary with search results showing which languages have the term
-            
-        Example:
-            >>> results = await client.search_translation_word_across_languages({
-            ...     "term": "love",
-            ...     "languages": ["en", "es-419", "fr"],
-            ...     "limit": 10
-            ... })
-            >>> print(f"Found in {len([r for r in results['results'] if r['found']])} languages")
-        """
-        if not options.get("term"):
-            raise ValueError("term parameter is required for search_translation_word_across_languages")
-        
-        params: Dict[str, Any] = {
-            "term": options["term"],
-            "organization": options.get("organization", "unfoldingWord"),
-            "limit": options.get("limit", 20),
-        }
-        
-        if options.get("languages"):
-            params["languages"] = options["languages"]
-
-        response = await self.call_tool("search_translation_word_across_languages", params)
-
-        if response.get("content") and response["content"][0].get("text"):
-            return json.loads(response["content"][0]["text"])
-
-        raise ValueError("Invalid response format from search_translation_word_across_languages")
 
     async def get_system_prompt(
         self, include_implementation_details: bool = False

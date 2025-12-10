@@ -319,23 +319,7 @@ export const ToolRegistry = {
     },
     requiredParams: [],
   },
-  list_resources_by_language: {
-    endpoint: "/api/list-resources-by-language",
-    formatter: (data: any): string => {
-      // Format resources by language list for display
-      if (data.languages && Array.isArray(data.languages)) {
-        return data.languages
-          .map((lang: any) => {
-            const subjects = lang.subjects?.join(", ") || "No subjects";
-            const count = lang.resourceCount || 0;
-            return `**${lang.language}** (${count} resource${count !== 1 ? "s" : ""})\n  Subjects: ${subjects}`;
-          })
-          .join("\n\n");
-      }
-      return JSON.stringify(data, null, 2);
-    },
-    requiredParams: [],
-  },
+  // list_resources_by_language removed - use list_resources_for_language instead
   list_resources_for_language: {
     endpoint: "/api/list-resources-for-language",
     formatter: (data: any): string => {

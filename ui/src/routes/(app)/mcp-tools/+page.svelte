@@ -515,14 +515,14 @@
 				name === 'list_languages' ||
 				name === 'list-subjects' ||
 				name === 'list_subjects' ||
-				name === 'list-resources-by-language' ||
-				name === 'list_resources_by_language' ||
 				name === 'list-resources-for-language' ||
-				name === 'list_resources_for_language' ||
-				name === 'search-translation-word-across-languages' ||
-				name === 'search_translation_word_across_languages'
+				name === 'list_resources_for_language'
 			) {
 				groups.discovery.push(endpoint);
+			} else if (
+				name === 'search_translation_word_across_languages'
+			) {
+				// Tool removed - skip
 			}
 			// Everything else goes to discovery
 			else {
@@ -543,12 +543,8 @@
 				'list_languages',
 				'list-subjects',
 				'list_subjects',
-				'list-resources-by-language',
-				'list_resources_by_language',
 				'list-resources-for-language',
-				'list_resources_for_language',
-				'search-translation-word-across-languages',
-				'search_translation_word_across_languages'
+				'list_resources_for_language'
 			]
 		};
 
@@ -648,8 +644,7 @@
 			testParams.organization = 'unfoldingWord';
 			testParams.stage = 'prod';
 		} else if (
-			endpoint.name === 'list-resources-by-language' ||
-			endpoint.name === 'list_resources_by_language'
+			false // list_resources_by_language removed
 		) {
 			testParams.organization = 'unfoldingWord';
 			testParams.stage = 'prod';
@@ -1024,8 +1019,7 @@
 				testParams.organization = 'unfoldingWord';
 				testParams.stage = 'prod';
 			} else if (
-				endpoint.name === 'list-resources-by-language' ||
-				endpoint.name === 'list_resources_by_language'
+				false // list_resources_by_language removed
 			) {
 				testParams.organization = 'unfoldingWord';
 				testParams.stage = 'prod';

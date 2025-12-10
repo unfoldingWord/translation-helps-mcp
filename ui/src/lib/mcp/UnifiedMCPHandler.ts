@@ -53,7 +53,6 @@ export class UnifiedMCPHandler {
 				[
 					'list_languages',
 					'list_subjects',
-					'list_resources_by_language',
 					'list_resources_for_language'
 				].includes(toolName)
 			) {

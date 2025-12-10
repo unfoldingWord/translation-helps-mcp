@@ -1,11 +1,13 @@
-export const config = {
-	runtime: 'edge'
-};
+// Using node runtime instead of edge for better OPTIONS/CORS support
+// export const config = {
+// 	runtime: 'edge'
+// };
 
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
-import { getVersion } from '../../../../../src/version.js';
+import { VERSION } from '$lib/version.js';
+const getVersion = () => VERSION;
 
 // Import our existing tool handlers
 // TEMPORARILY COMMENTED OUT - These imports require dependencies not available in UI build
@@ -25,7 +27,7 @@ import { getVersion } from '../../../../../src/version.js';
 const corsHeaders = {
 	'Access-Control-Allow-Origin': '*',
 	'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-	'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+	'Access-Control-Allow-Headers': 'Content-Type, Authorization, mcp-protocol-version',
 	'Access-Control-Max-Age': '86400'
 };
 
@@ -40,16 +42,28 @@ export const OPTIONS: RequestHandler = async () => {
 // MCP-over-HTTP Bridge
 export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) => {
 	try {
-		const body = await request.json();
-		// Support both JSON-RPC 2.0 format and simple method format
+		// Parse request body - handle both JSON-RPC 2.0 and simple format
+		let body: any = {};
+		try {
+			const text = await request.text();
+			if (text) {
+				body = JSON.parse(text);
+			}
+		} catch (parseError) {
+			// Body might be empty or invalid JSON - use empty object
+			console.warn('[MCP ENDPOINT] Body parse error:', parseError);
+		}
+		
+		// Extract method and parameters
 		const jsonrpc = body.jsonrpc;
 		const method = body.method || url.searchParams.get('method');
-		const id = body.id || null;
+		// For JSON-RPC 2.0, id is required. For simple format, use null or 0
+		const id = body.id !== undefined ? body.id : (jsonrpc === '2.0' ? 0 : null);
 		const params = body.params || {};
 
 		// Handle different MCP methods
 		switch (method) {
-			case 'initialize':
+			case 'initialize': {
 				const initResult = {
 					protocolVersion: '2024-11-05',
 					capabilities: {
@@ -61,16 +75,17 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 						version: getVersion()
 					}
 				};
+				// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
+				// Ensure id is always present (use 0 if not provided)
 				return json(
-					jsonrpc === '2.0'
-						? { jsonrpc: '2.0', result: initResult, id }
-						: initResult,
+					{ jsonrpc: '2.0', result: initResult, id: id ?? 0 },
 					{
 						headers: corsHeaders
 					}
 				);
+			}
 
-			case 'tools/list':
+			case 'tools/list': {
 				const toolsList = [
 						{
 							name: 'get_system_prompt',
@@ -273,18 +288,17 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 										description: 'Resource stage (default: "prod")'
 									}
 								}
-									}
-								}
-							]
-						};
-						return json(
-							jsonrpc === '2.0'
-								? { jsonrpc: '2.0', result: prompt1Result, id }
-								: prompt1Result,
-							{
-								headers: corsHeaders
 							}
-						);
+						}
+					];
+				// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
+				return json(
+					{ jsonrpc: '2.0', result: { tools: toolsList }, id: id ?? 0 },
+					{
+						headers: corsHeaders
+					}
+				);
+			}
 
 			case 'tools/call': {
 				const toolName = params?.name || params?.tool || body.params?.name;
@@ -318,11 +332,9 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 								: [{ type: 'text', text: typeof result === 'string' ? result : JSON.stringify(result) }]
 						};
 
-					// Create response with headers if metadata is available
+					// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
 					const response = json(
-						jsonrpc === '2.0'
-							? { jsonrpc: '2.0', result: mcpResult, id }
-							: mcpResult,
+						{ jsonrpc: '2.0', result: mcpResult, id: id ?? 0 },
 						{
 							headers: corsHeaders
 						}
@@ -369,17 +381,16 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 							}
 						]
 					};
+					// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
 					return json(
-						jsonrpc === '2.0'
-							? {
-									jsonrpc: '2.0',
-									error: {
-										code: -32000,
-										message: error instanceof Error ? error.message : 'Tool execution failed'
-									},
-									id
-								}
-							: errorResult,
+						{
+							jsonrpc: '2.0',
+							error: {
+								code: -32000,
+								message: error instanceof Error ? error.message : 'Tool execution failed'
+							},
+							id: id ?? 0
+						},
 						{
 							headers: corsHeaders
 						}
@@ -647,7 +658,7 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 				*/
 			}
 
-			case 'prompts/list':
+			case 'prompts/list': {
 				const promptsList = [
 						{
 							name: 'translation-helps-for-passage',
@@ -700,12 +711,15 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 								}
 							]
 						}
-					]
-					},
+					];
+				// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
+				return json(
+					{ jsonrpc: '2.0', result: { prompts: promptsList }, id: id ?? 0 },
 					{
 						headers: corsHeaders
 					}
 				);
+			}
 
 			case 'prompts/get': {
 				const promptParams = params?.name ? params : body.params || {};
@@ -778,7 +792,14 @@ The goal is to provide EVERYTHING a translator needs for this passage in one com
 									}
 								}
 							]
-						});
+						};
+						// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
+						return json(
+							{ jsonrpc: '2.0', result: prompt1Result, id: id ?? 0 },
+							{
+								headers: corsHeaders
+							}
+						);
 
 					case 'get-translation-words-for-passage':
 						const prompt2Result = {
@@ -812,7 +833,14 @@ Focus on making the translation words accessible by showing their proper titles.
 									}
 								}
 							]
-						});
+						};
+						// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
+						return json(
+							{ jsonrpc: '2.0', result: prompt2Result, id: id ?? 0 },
+							{
+								headers: corsHeaders
+							}
+						);
 
 					case 'get-translation-academy-for-passage':
 						const prompt3Result = {
@@ -854,78 +882,77 @@ The goal is to show what translation concepts and training materials are relevan
 									}
 								}
 							]
-						});
+						};
+						// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
+						return json(
+							{ jsonrpc: '2.0', result: prompt3Result, id: id ?? 0 },
+							{
+								headers: corsHeaders
+							}
+						);
 
 					default:
+						// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
 						return json(
-							jsonrpc === '2.0'
-								? {
-										jsonrpc: '2.0',
-										error: {
-											code: -32601,
-											message: `Unknown prompt: ${name}`
-										},
-										id
-									}
-								: {
-										error: {
-											code: ErrorCode.InvalidRequest,
-											message: `Unknown prompt: ${name}`
-										}
-									},
+							{
+								jsonrpc: '2.0',
+								error: {
+									code: -32601,
+									message: `Unknown prompt: ${name}`
+								},
+								id: id ?? 0
+							},
 							{ status: 400, headers: corsHeaders }
 						);
 				}
 			}
 
-			case 'ping':
+			case 'ping': {
+				// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
 				return json(
-					jsonrpc === '2.0' ? { jsonrpc: '2.0', result: {}, id } : {},
+					{ jsonrpc: '2.0', result: {}, id: id ?? 0 },
 					{ headers: corsHeaders }
 				);
+			}
 
-			default:
+			default: {
+				// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
 				return json(
-					jsonrpc === '2.0'
-						? {
-								jsonrpc: '2.0',
-								error: {
-									code: -32601,
-									message: `Unknown method: ${method}`
-								},
-								id
-							}
-						: {
-								error: {
-									code: ErrorCode.InvalidRequest,
-									message: `Unknown method: ${method}`
-								}
-							},
+					{
+						jsonrpc: '2.0',
+						error: {
+							code: -32601,
+							message: `Unknown method: ${method}`
+						},
+						id: id ?? 0
+					},
 					{ status: 400, headers: corsHeaders }
 				);
+			}
 		}
 	} catch (error) {
 		console.error('MCP Bridge Error:', error);
-		const requestBody = await request.json().catch(() => ({}));
+		// Try to get request body, but don't fail if it's already consumed
+		let requestBody: any = {};
+		try {
+			const clonedRequest = request.clone();
+			requestBody = await clonedRequest.json();
+		} catch {
+			// Request body already consumed or not available
+		}
 		const jsonrpc = requestBody.jsonrpc;
 		const id = requestBody.id || null;
 		
+		// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
 		return json(
-			jsonrpc === '2.0'
-				? {
-						jsonrpc: '2.0',
-						error: {
-							code: error instanceof McpError ? error.code : -32603,
-							message: error instanceof Error ? error.message : 'Unknown error'
-						},
-						id
-					}
-				: {
-						error: {
-							code: error instanceof McpError ? error.code : ErrorCode.InternalError,
-							message: error instanceof Error ? error.message : 'Unknown error'
-						}
-					},
+			{
+				jsonrpc: '2.0',
+				error: {
+					code: error instanceof McpError ? error.code : -32603,
+					message: error instanceof Error ? error.message : 'Unknown error'
+				},
+				id: id ?? 0
+			},
 			{ status: 500, headers: corsHeaders }
 		);
 	}

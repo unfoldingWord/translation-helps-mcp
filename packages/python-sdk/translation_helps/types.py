@@ -85,25 +85,11 @@ class ListSubjectsOptions(TypedDict, total=False):
     stage: Optional[str]
 
 
-class ListResourcesByLanguageOptions(TypedDict, total=False):
-    subjects: Optional[str]  # Comma-separated or will be joined from list
-    organization: Optional[str]
-    stage: Optional[str]
-    limit: Optional[int]
-    topic: Optional[str]
-
-
 class ListResourcesForLanguageOptions(TypedDict, total=False):
     language: str  # Required
     organization: Optional[str]
     stage: Optional[str]
     subject: Optional[str]
     limit: Optional[int]
-    topic: Optional[str]
+    topic: Optional[str]  # Defaults to "tc-ready" if not provided
 
-
-class SearchTranslationWordAcrossLanguagesOptions(TypedDict, total=False):
-    term: str  # Required
-    languages: Optional[List[str]]  # Optional list of language codes
-    organization: Optional[str]
-    limit: Optional[int]

@@ -18,9 +18,7 @@ import type {
   GetLanguagesOptions,
   ListLanguagesOptions,
   ListSubjectsOptions,
-  ListResourcesByLanguageOptions,
   ListResourcesForLanguageOptions,
-  SearchTranslationWordAcrossLanguagesOptions,
 } from "./types.js";
 
 const DEFAULT_SERVER_URL = "https://tc-helps.mcp.servant.bible/api/mcp";
@@ -106,10 +104,15 @@ export class TranslationHelpsClient {
 
       const data = (await response.json()) as any;
 
-      // Handle MCP error responses
+      // Handle MCP error responses (JSON-RPC 2.0 format)
       if (data.error) {
         throw new Error(data.error.message || "MCP server error");
       }
+
+      // Extract result from JSON-RPC 2.0 format if present
+      // The server now always returns JSON-RPC 2.0 format: { jsonrpc: "2.0", result: {...}, id: ... }
+      // But we need to support both formats for backward compatibility
+      const responseData = data.result !== undefined ? data.result : data;
 
       // Extract metrics from headers if enabled
       if (this.enableMetrics) {
@@ -172,22 +175,22 @@ export class TranslationHelpsClient {
           allHeaders: Object.keys(metadata.headers),
         });
 
-        // Attach metadata to response
-        if (!data.metadata) {
-          data.metadata = {};
+        // Attach metadata to response (use responseData to handle JSON-RPC format)
+        if (!responseData.metadata) {
+          responseData.metadata = {};
         }
-        Object.assign(data.metadata, metadata);
+        Object.assign(responseData.metadata, metadata);
 
         console.log(`[SDK DEBUG] Final response.metadata:`, {
-          cacheStatus: data.metadata.cacheStatus,
-          hasXrayTrace: !!data.metadata.xrayTrace,
-          xrayTraceKeys: data.metadata.xrayTrace
-            ? Object.keys(data.metadata.xrayTrace)
+          cacheStatus: responseData.metadata.cacheStatus,
+          hasXrayTrace: !!responseData.metadata.xrayTrace,
+          xrayTraceKeys: responseData.metadata.xrayTrace
+            ? Object.keys(responseData.metadata.xrayTrace)
             : [],
         });
       }
 
-      return data;
+      return responseData;
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === "AbortError") {
@@ -467,40 +470,12 @@ export class TranslationHelpsClient {
   }
 
   /**
-   * List resources organized by language
-   * NOTE: Makes multiple parallel API calls (~4-5s first time, cached afterward)
-   * For faster single-language discovery, use listResourcesForLanguage instead
-   */
-  async listResourcesByLanguage(
-    options: ListResourcesByLanguageOptions = {},
-  ): Promise<any> {
-    const params: Record<string, any> = {
-      stage: options.stage || "prod",
-    };
-
-    if (options.subjects) {
-      params.subjects = Array.isArray(options.subjects)
-        ? options.subjects.join(",")
-        : options.subjects;
-    }
-    if (options.organization !== undefined)
-      params.organization = options.organization;
-    if (options.limit) params.limit = options.limit;
-    if (options.topic) params.topic = options.topic;
-
-    const response = await this.callTool("list_resources_by_language", params);
-
-    if (response.content && response.content[0]?.text) {
-      return JSON.parse(response.content[0].text);
-    }
-
-    throw new Error("Invalid response format from list_resources_by_language");
-  }
-
-  /**
    * List all resources for a specific language (RECOMMENDED - much faster!)
    * Single API call (~1-2 seconds)
    * Use this after listLanguages() to discover what's available for a chosen language
+   * 
+   * @param options - Language (required) and optional filters
+   * @param options.topic - Filter by topic tag. Defaults to "tc-ready" if not provided.
    */
   async listResourcesForLanguage(
     options: ListResourcesForLanguageOptions,
@@ -514,6 +489,7 @@ export class TranslationHelpsClient {
       params.organization = options.organization;
     if (options.subject) params.subject = options.subject;
     if (options.limit) params.limit = options.limit;
+    // topic defaults to "tc-ready" on the server if not provided
     if (options.topic) params.topic = options.topic;
 
     const response = await this.callTool("list_resources_for_language", params);
@@ -525,38 +501,6 @@ export class TranslationHelpsClient {
     throw new Error("Invalid response format from list_resources_for_language");
   }
 
-  /**
-   * Search for a translation word term across multiple languages
-   * to discover which languages have that term available.
-   * Useful when a term is not found in the current language or when
-   * you want to find all languages that have a specific term.
-   */
-  async searchTranslationWordAcrossLanguages(
-    options: SearchTranslationWordAcrossLanguagesOptions,
-  ): Promise<any> {
-    const params: Record<string, any> = {
-      term: options.term,
-      organization: options.organization || "unfoldingWord",
-      limit: options.limit || 20,
-    };
-
-    if (options.languages && options.languages.length > 0) {
-      params.languages = options.languages;
-    }
-
-    const response = await this.callTool(
-      "search_translation_word_across_languages",
-      params,
-    );
-
-    if (response.content && response.content[0]?.text) {
-      return JSON.parse(response.content[0].text);
-    }
-
-    throw new Error(
-      "Invalid response format from search_translation_word_across_languages",
-    );
-  }
 
   /**
    * Check if client is initialized

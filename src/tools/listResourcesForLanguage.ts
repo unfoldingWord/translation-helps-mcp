@@ -12,6 +12,7 @@ import { proxyFetch } from "../utils/httpClient.js";
 import { getKVCache } from "../functions/kv-cache.js";
 import { EdgeXRayTracer } from "../functions/edge-xray.js";
 import { OrganizationParam } from "../schemas/common-params.js";
+import { DEFAULT_DISCOVERY_SUBJECTS } from "../constants/subjects.js";
 
 // Input schema
 export const ListResourcesForLanguageArgs = z.object({
@@ -27,10 +28,10 @@ export const ListResourcesForLanguageArgs = z.object({
     .default("prod")
     .describe('Resource stage (default: "prod")'),
   subject: z
-    .string()
+    .union([z.string(), z.array(z.string())])
     .optional()
     .describe(
-      'Optional: Filter by specific subject/resource type (e.g., "Bible", "Translation Words")',
+      'Comma-separated list or array of subjects to search for (e.g., "Bible", "Translation Words,Translation Academy"). If not provided, searches 7 default subjects: Bible, Aligned Bible, Translation Words, Translation Academy, TSV Translation Notes, TSV Translation Questions, and TSV Translation Words Links.',
     ),
   limit: z
     .number()
@@ -43,8 +44,9 @@ export const ListResourcesForLanguageArgs = z.object({
   topic: z
     .string()
     .optional()
+    .default("tc-ready")
     .describe(
-      'Filter by topic tag (e.g., "tc-ready" for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.',
+      'Filter by topic tag (e.g., "tc-ready" for translationCore-ready resources). Defaults to "tc-ready". Topics are metadata tags that indicate resource status or readiness.',
     ),
 });
 
@@ -84,18 +86,45 @@ export async function handleListResourcesForLanguage(
     // Use high limit if not specified to get all available resources
     const limit = parsedArgs.limit || 5000;
 
+    // Parse subjects parameter - handle both string (comma-separated) and array
+    function parseSubjects(subjects?: string | string[]): string[] {
+      if (!subjects) {
+        // DEFAULT_DISCOVERY_SUBJECTS is a readonly array, convert to regular array
+        return [...DEFAULT_DISCOVERY_SUBJECTS];
+      }
+      if (typeof subjects === "string") {
+        return subjects
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+      return subjects;
+    }
+
+    const subjectsToSearch = parseSubjects(subject);
+
     logger.info("Listing resources for language", {
       language,
       organization: organization || "all",
       stage,
-      subject: subject || "all",
+      subject: subject 
+        ? (typeof subject === "string" ? subject : subject.join(","))
+        : `default (${DEFAULT_DISCOVERY_SUBJECTS.length} subjects)`,
+      subjectsCount: subjectsToSearch.length,
       limit,
-      topic: topic || "none",
+      topic: topic || "tc-ready",
     });
 
     // Build cache key
     const kvCache = getKVCache();
-    const cacheKey = `resources-for-lang:${language}:${JSON.stringify(organization)}:${stage}:${subject || "all"}:${limit}:${topic || "all"}`;
+    // Use "default" in cache key when using default subjects, otherwise use the specific subjects
+    // Sort subjects for consistent cache keys
+    const subjectKey = subject 
+      ? (typeof subject === "string" 
+          ? subject.split(",").map(s => s.trim()).sort().join(",")
+          : [...subject].sort().join(","))
+      : `default-${DEFAULT_DISCOVERY_SUBJECTS.join(",")}`;
+    const cacheKey = `resources-for-lang:${language}:${JSON.stringify(organization)}:${stage}:${subjectKey}:${limit}:${topic || "tc-ready"}`;
     const cacheTtl = 3600; // 1 hour
 
     // Check cache
@@ -135,19 +164,7 @@ export async function handleListResourcesForLanguage(
 
     // Fetch fresh data if no cache hit
     if (!cachedData || resources.length === 0) {
-      // Build search URL
-      const searchUrl = new URL("https://git.door43.org/api/v1/catalog/search");
-      searchUrl.searchParams.set("lang", language);
-      searchUrl.searchParams.set("stage", stage);
-      searchUrl.searchParams.set("limit", limit.toString());
-
-      if (subject) {
-        searchUrl.searchParams.set("subject", subject);
-      }
-
-      if (topic) {
-        searchUrl.searchParams.set("topic", topic);
-      }
+      // subjectsToSearch is already parsed above
 
       // Handle organizations
       const organizations =
@@ -157,66 +174,80 @@ export async function handleListResourcesForLanguage(
             ? [organization]
             : organization;
 
-      for (const org of organizations) {
-        if (org) {
-          searchUrl.searchParams.set("owner", org);
-        }
+      // Search for each subject
+      for (const subjectToSearch of subjectsToSearch) {
+        for (const org of organizations) {
+          // Build search URL for this subject
+          const searchUrl = new URL("https://git.door43.org/api/v1/catalog/search");
+          searchUrl.searchParams.set("lang", language);
+          searchUrl.searchParams.set("stage", stage);
+          searchUrl.searchParams.set("limit", limit.toString());
+          searchUrl.searchParams.set("subject", subjectToSearch);
 
-        try {
-          const fetchStart = Date.now();
-          const response = await proxyFetch(searchUrl.toString(), {
-            headers: { Accept: "application/json" },
-          });
-          const fetchDuration = Date.now() - fetchStart;
-
-          tracer.addApiCall({
-            url: searchUrl.toString(),
-            method: "GET",
-            duration: fetchDuration,
-            status: response.status,
-            cached: false,
-          });
-
-          if (!response.ok) {
-            throw new Error(
-              `Catalog search failed: ${response.status} ${response.statusText}`,
-            );
+          if (org) {
+            searchUrl.searchParams.set("owner", org);
           }
 
-          const data = await response.json();
-          const items = data.data || [];
+          // topic defaults to "tc-ready" per schema, so always set it
+          searchUrl.searchParams.set("topic", topic || "tc-ready");
 
-          for (const item of items) {
-            // Avoid duplicates
-            const isDuplicate = resources.some(
-              (r) =>
-                r.name === item.name &&
-                r.organization === (item.owner || org || "unknown"),
-            );
+          try {
+            const fetchStart = Date.now();
+            const response = await proxyFetch(searchUrl.toString(), {
+              headers: { Accept: "application/json" },
+            });
+            const fetchDuration = Date.now() - fetchStart;
 
-            if (!isDuplicate) {
-              resources.push({
-                name: item.name || "",
-                subject: item.subject || "Unknown",
-                organization: item.owner || org || "unknown",
-                version:
-                  item.release?.tag_name || item.default_branch || "master",
-                url: item.html_url,
-              });
+            tracer.addApiCall({
+              url: searchUrl.toString(),
+              method: "GET",
+              duration: fetchDuration,
+              status: response.status,
+              cached: false,
+            });
+
+            if (!response.ok) {
+              throw new Error(
+                `Catalog search failed: ${response.status} ${response.statusText}`,
+              );
             }
-          }
 
-          logger.info(`Found ${items.length} resources for ${language}`, {
-            organization: org || "all",
-            subject: subject || "all",
-          });
-        } catch (error) {
-          logger.error("Error searching catalog", {
-            error: error instanceof Error ? error.message : String(error),
-            language,
-            organization: org || "all",
-          });
-          // Continue with other organizations if multiple
+            const data = await response.json();
+            const items = data.data || [];
+
+            for (const item of items) {
+              // Avoid duplicates
+              const isDuplicate = resources.some(
+                (r) =>
+                  r.name === item.name &&
+                  r.organization === (item.owner || org || "unknown"),
+              );
+
+              if (!isDuplicate) {
+                resources.push({
+                  name: item.name || "",
+                  subject: item.subject || "Unknown",
+                  organization: item.owner || org || "unknown",
+                  version:
+                    item.release?.tag_name || item.default_branch || "master",
+                  url: item.html_url,
+                });
+              }
+            }
+
+            logger.info(`Found ${items.length} resources for ${language}`, {
+              organization: org || "all",
+              subject: subjectToSearch,
+            });
+          } catch (error) {
+            logger.error("Error searching catalog", {
+              error: error instanceof Error ? error.message : String(error),
+              language,
+              organization: org || "all",
+              subject: subjectToSearch,
+            });
+            // Continue with other subjects/organizations if multiple
+          }
         }
       }
 

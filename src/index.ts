@@ -44,18 +44,10 @@ import {
   handleGetTranslationWord,
 } from "./tools/getTranslationWord.js";
 import {
-  SearchTranslationWordAcrossLanguagesArgs,
-  handleSearchTranslationWordAcrossLanguages,
-} from "./tools/searchTranslationWordAcrossLanguages.js";
-import {
   ListLanguagesArgs,
   handleListLanguages,
 } from "./tools/listLanguages.js";
 import { ListSubjectsArgs, handleListSubjects } from "./tools/listSubjects.js";
-import {
-  ListResourcesByLanguageArgs,
-  handleListResourcesByLanguage,
-} from "./tools/listResourcesByLanguage.js";
 import {
   ListResourcesForLanguageArgs,
   handleListResourcesForLanguage,
@@ -126,12 +118,6 @@ const tools = [
     inputSchema: FetchTranslationAcademyArgs,
   },
   {
-    name: "search_translation_word_across_languages",
-    description:
-      "Search for a translation word term across multiple languages to discover which languages have that term available. Useful when a term is not found in the current language or when you want to find all languages that have a specific term.",
-    inputSchema: SearchTranslationWordAcrossLanguagesArgs,
-  },
-  {
     name: "list_languages",
     description:
       "List all available languages from the Door43 catalog. Returns structured language data (codes, names, display names) that can be directly reused as language parameters in other tools. Optionally filter by organization.",
@@ -142,12 +128,6 @@ const tools = [
     description:
       "List all available resource subjects (resource types) from the Door43 catalog. Returns structured subject data (names, descriptions, resource types) that can be used to discover what resource types are available. Optionally filter by language and/or organization.",
     inputSchema: ListSubjectsArgs,
-  },
-  {
-    name: "list_resources_by_language",
-    description:
-      "List available resources organized by language. Searches across multiple subjects (7 default) and returns results grouped by language. NOTE: This makes multiple parallel API calls and takes ~4-5 seconds on first call (cached afterward). For faster discovery, consider using list_languages followed by list_resources_for_language for specific languages instead.",
-    inputSchema: ListResourcesByLanguageArgs,
   },
   {
     name: "list_resources_for_language",
@@ -309,11 +289,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           args as z.infer<typeof FetchTranslationAcademyArgs>,
         );
 
-      case "search_translation_word_across_languages":
-        return await handleSearchTranslationWordAcrossLanguages(
-          args as z.infer<typeof SearchTranslationWordAcrossLanguagesArgs>,
-        );
-
       case "list_languages":
         return await handleListLanguages(
           args as z.infer<typeof ListLanguagesArgs>,
@@ -322,11 +297,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "list_subjects":
         return await handleListSubjects(
           args as z.infer<typeof ListSubjectsArgs>,
-        );
-
-      case "list_resources_by_language":
-        return await handleListResourcesByLanguage(
-          args as z.infer<typeof ListResourcesByLanguageArgs>,
         );
 
       case "list_resources_for_language":

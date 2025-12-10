@@ -179,21 +179,6 @@ const articles = await client.fetchTranslationAcademy({
 });
 ```
 
-##### `searchTranslationWordAcrossLanguages(options): Promise<any>`
-
-Search for a translation word term across multiple languages to discover which languages have that term available. Useful when a term is not found in the current language or when you want to find all languages that have a specific term.
-
-```typescript
-const results = await client.searchTranslationWordAcrossLanguages({
-  term: "love",
-  languages: ["en", "es-419", "fr"], // optional: specific languages to search
-  organization: "unfoldingWord", // optional, defaults to "unfoldingWord"
-  limit: 20, // optional, defaults to 20
-});
-
-console.log(results.results); // Array of { language, organization, found, ... }
-```
-
 ##### `getLanguages(options?): Promise<any>`
 
 Get available languages and organizations.
@@ -374,22 +359,6 @@ const subjects = await client.listSubjects({
 console.log(subjects.subjects); // Array of subject objects
 ```
 
-#### `listResourcesByLanguage(options?): Promise<any>`
-
-List resources organized by language. Makes multiple parallel API calls (~4-5s first time, cached afterward).
-
-```typescript
-const resourcesByLang = await client.listResourcesByLanguage({
-  subjects: ["Translation Words", "Translation Academy"], // or omit for defaults
-  organization: "", // empty = all orgs
-  stage: "prod",
-  limit: 100,
-  topic: "tc-ready", // optional: filter for production-ready resources
-});
-
-console.log(resourcesByLang.resourcesByLanguage); // Array grouped by language
-```
-
 #### `listResourcesForLanguage(options): Promise<any>` ⭐ RECOMMENDED
 
 List all resources for a specific language. Fast single API call (~1-2 seconds).
@@ -399,7 +368,7 @@ List all resources for a specific language. Fast single API call (~1-2 seconds).
 const resources = await client.listResourcesForLanguage({
   language: "es-419",
   organization: "", // empty = all orgs (includes es-419_gl, unfoldingWord, etc.)
-  topic: "tc-ready", // optional: production-ready only
+  // topic defaults to "tc-ready" if not provided
 });
 
 console.log(
@@ -422,7 +391,7 @@ console.log(
 // Step 2: Get resources for chosen language (~1-2s)
 const spanishResources = await client.listResourcesForLanguage({
   language: "es-419",
-  topic: "tc-ready", // optional: quality-filtered
+  // topic defaults to "tc-ready" (production-ready only)
 });
 
 // Step 3: Fetch specific resources

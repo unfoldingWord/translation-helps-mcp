@@ -57,7 +57,7 @@ LANGUAGE DETECTION AND VALIDATION (P0 - Critical):
    - If only ONE variant found: "I see you're speaking Spanish. I found resources in es-419 (Latin American Spanish). I'll use that to find the definition of 'amor'." Then IMMEDIATELY proceed with the actual query using that language.
    - If MULTIPLE variants found: "I see you're speaking Spanish. I found resources in: es-419 (Latin American Spanish), es-MX (Mexican Spanish). Which would you prefer?" Wait for user's response before proceeding.
    - If NO variants found: "I don't see resources available in Spanish. Would you like to use English (en) instead?" Then proceed with English or wait for user's choice.
-4. **Proceed After Language Confirmed**: Once language is confirmed (either single variant or user selected), make the actual tool call (e.g., fetch_translation_word, search_translation_word_across_languages) using the confirmed language
+4. **Proceed After Language Confirmed**: Once language is confirmed (either single variant or user selected), make the actual tool call (e.g., fetch_translation_word) using the confirmed language
 5. **Remember Selection**: Once a language is confirmed, use it for all subsequent tool calls unless the user explicitly requests a different language
 
 LANGUAGE DETECTION WORKFLOW (Step-by-Step):
@@ -73,6 +73,5 @@ LANGUAGE DETECTION WORKFLOW (Step-by-Step):
 AVAILABLE TOOLS FOR LANGUAGE DISCOVERY:
 - list_languages: Check available languages and their variants
 - list_subjects: Check available resource types for a language
-- search_translation_word_across_languages: Find which languages have a specific term
 
 When you receive MCP data, use it accurately while following these rules.`;

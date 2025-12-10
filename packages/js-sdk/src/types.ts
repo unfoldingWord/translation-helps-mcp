@@ -150,26 +150,16 @@ export interface ListSubjectsOptions {
   stage?: string;
 }
 
-export interface ListResourcesByLanguageOptions {
-  subjects?: string | string[];
-  organization?: string;
-  stage?: string;
-  limit?: number;
-  topic?: string;
-}
-
 export interface ListResourcesForLanguageOptions {
   language: string;
   organization?: string;
   stage?: string;
   subject?: string;
   limit?: number;
+  /**
+   * Filter by topic tag (e.g., "tc-ready" for translationCore-ready resources).
+   * Defaults to "tc-ready" if not provided.
+   */
   topic?: string;
 }
 
-export interface SearchTranslationWordAcrossLanguagesOptions {
-  term: string;
-  languages?: string[];
-  organization?: string;
-  limit?: number;
-}
