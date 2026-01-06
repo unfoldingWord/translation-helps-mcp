@@ -4,18 +4,29 @@
  * 
  * This ensures the tools/list response matches what tools/call can actually execute,
  * fixing the issue where discovery was stale and didn't match actual supported tools.
+ * 
+ * Uses the shared tools registry from src/mcp/tools-registry.ts to maintain DRY compliance.
  */
+
+import { getMCPToolDefinitions } from '../../../../src/mcp/tools-registry.js';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 /**
  * Get the list of all available MCP tools with their schemas
  * This matches what tools/call can actually execute
+ * 
+ * Converts Zod schemas to JSON Schema format for MCP protocol compliance
  */
 export function getMCPToolsList() {
-	// Map ToolRegistry entries to MCP tool format
-	// Note: This provides basic schemas. For full schemas, we'd need to import from src/index.ts
-	// but that's not accessible from the UI build. So we generate minimal but accurate schemas.
+	// Get tool definitions from shared registry (single source of truth)
+	const toolDefinitions = getMCPToolDefinitions();
 	
-	const tools = [
+	// Convert Zod schemas to JSON Schema format
+	return toolDefinitions.map((tool) => ({
+		name: tool.name,
+		description: tool.description,
+		inputSchema: zodToJsonSchema(tool.inputSchema, { $refStrategy: "none" }),
+	}));
 		{
 			name: 'fetch_scripture',
 			description: 'Fetch Bible scripture text for a specific reference',
