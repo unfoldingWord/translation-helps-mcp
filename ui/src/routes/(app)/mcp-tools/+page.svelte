@@ -519,9 +519,7 @@
 				name === 'list_resources_for_language'
 			) {
 				groups.discovery.push(endpoint);
-			} else if (
-				name === 'search_translation_word_across_languages'
-			) {
+			} else if (name === 'search_translation_word_across_languages') {
 				// Tool removed - skip
 			}
 			// Everything else goes to discovery

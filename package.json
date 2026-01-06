@@ -119,10 +119,7 @@
       "prettier --write"
     ],
     "**/*.svelte": [
-      "prettier --plugin-search-dir ui --write"
-    ],
-    "ui/**/*.{svelte,ts,tsx,js,jsx,css,scss,md}": [
-      "cd ui && npx prettier --write"
+      "prettier --write"
     ],
     "src/functions/handlers/*.ts": [
       "eslint --fix",

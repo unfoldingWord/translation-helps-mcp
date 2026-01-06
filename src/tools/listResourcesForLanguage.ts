@@ -107,8 +107,10 @@ export async function handleListResourcesForLanguage(
       language,
       organization: organization || "all",
       stage,
-      subject: subject 
-        ? (typeof subject === "string" ? subject : subject.join(","))
+      subject: subject
+        ? typeof subject === "string"
+          ? subject
+          : subject.join(",")
         : `default (${DEFAULT_DISCOVERY_SUBJECTS.length} subjects)`,
       subjectsCount: subjectsToSearch.length,
       limit,
@@ -119,10 +121,14 @@ export async function handleListResourcesForLanguage(
     const kvCache = getKVCache();
     // Use "default" in cache key when using default subjects, otherwise use the specific subjects
     // Sort subjects for consistent cache keys
-    const subjectKey = subject 
-      ? (typeof subject === "string" 
-          ? subject.split(",").map(s => s.trim()).sort().join(",")
-          : [...subject].sort().join(","))
+    const subjectKey = subject
+      ? typeof subject === "string"
+        ? subject
+            .split(",")
+            .map((s) => s.trim())
+            .sort()
+            .join(",")
+        : [...subject].sort().join(",")
       : `default-${DEFAULT_DISCOVERY_SUBJECTS.join(",")}`;
     const cacheKey = `resources-for-lang:${language}:${JSON.stringify(organization)}:${stage}:${subjectKey}:${limit}:${topic || "tc-ready"}`;
     const cacheTtl = 3600; // 1 hour
@@ -178,7 +184,9 @@ export async function handleListResourcesForLanguage(
       for (const subjectToSearch of subjectsToSearch) {
         for (const org of organizations) {
           // Build search URL for this subject
-          const searchUrl = new URL("https://git.door43.org/api/v1/catalog/search");
+          const searchUrl = new URL(
+            "https://git.door43.org/api/v1/catalog/search",
+          );
           searchUrl.searchParams.set("lang", language);
           searchUrl.searchParams.set("stage", stage);
           searchUrl.searchParams.set("limit", limit.toString());

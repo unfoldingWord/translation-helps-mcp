@@ -135,8 +135,6 @@ export function extractLanguageFromRequest(message: string): string | null {
 		return null;
 	}
 
-	const msg = message.toLowerCase();
-
 	// Pattern: "use [language]", "in [language]", "switch to [language]", "[language] resources"
 	const patterns = [
 		/(?:use|switch to|change to|set to|in|with)\s+(?:language\s+)?(es|es-419|en|fr|pt|spanish|english|french|portuguese|español|français|português)/i,
@@ -165,5 +163,11 @@ export function extractLanguageFromRequest(message: string): string | null {
 
 	return null;
 }
+
+
+
+
+
+
 
 

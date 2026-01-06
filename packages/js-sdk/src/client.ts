@@ -473,7 +473,7 @@ export class TranslationHelpsClient {
    * List all resources for a specific language (RECOMMENDED - much faster!)
    * Single API call (~1-2 seconds)
    * Use this after listLanguages() to discover what's available for a chosen language
-   * 
+   *
    * @param options - Language (required) and optional filters
    * @param options.topic - Filter by topic tag. Defaults to "tc-ready" if not provided.
    */
@@ -500,7 +500,6 @@ export class TranslationHelpsClient {
 
     throw new Error("Invalid response format from list_resources_for_language");
   }
-
 
   /**
    * Check if client is initialized

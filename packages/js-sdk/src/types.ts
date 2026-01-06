@@ -162,4 +162,3 @@ export interface ListResourcesForLanguageOptions {
    */
   topic?: string;
 }
-

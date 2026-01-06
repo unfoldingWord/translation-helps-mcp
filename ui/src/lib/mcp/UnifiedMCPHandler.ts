@@ -49,13 +49,7 @@ export class UnifiedMCPHandler {
 		// Only set default if the parameter is completely missing (undefined)
 		if (finalArgs.organization === undefined) {
 			// For discovery tools, allow searching all organizations
-			if (
-				[
-					'list_languages',
-					'list_subjects',
-					'list_resources_for_language'
-				].includes(toolName)
-			) {
+			if (['list_languages', 'list_subjects', 'list_resources_for_language'].includes(toolName)) {
 				// Leave organization undefined to search all
 			} else {
 				// For other tools, default to unfoldingWord

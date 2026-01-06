@@ -7,6 +7,7 @@ For local development, you can use the local SDK package instead of the npm vers
 ### Setup (One-time)
 
 1. **Link the local SDK:**
+
    ```bash
    cd packages/js-sdk
    npm link
@@ -21,12 +22,14 @@ For local development, you can use the local SDK package instead of the npm vers
 ### Verify
 
 Check that the UI is using the local version:
+
 ```bash
 cd ui
 npm list @translation-helps/mcp-client
 ```
 
 You should see:
+
 ```
 `-- @translation-helps/mcp-client@1.2.1 -> .\..\packages\js-sdk
 ```
@@ -34,6 +37,7 @@ You should see:
 ### Unlink (for Production)
 
 To switch back to the npm version:
+
 ```bash
 cd ui
 npm unlink @translation-helps/mcp-client
@@ -43,6 +47,7 @@ npm install
 ### Rebuilding SDK
 
 After making changes to the SDK, rebuild it:
+
 ```bash
 cd packages/js-sdk
 npm run build
@@ -53,4 +58,3 @@ The UI will automatically pick up changes (no need to reinstall).
 ## Production Builds
 
 Production builds (CI/CD, deployments) will automatically use the npm version (`^1.2.1`) since `npm link` is not used in those environments.
-

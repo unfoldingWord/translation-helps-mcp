@@ -7,6 +7,7 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
 import { VERSION } from '$lib/version.js';
+import { getMCPToolsList } from '$lib/mcp/tools-list.js';
 const getVersion = () => VERSION;
 
 // Import our existing tool handlers
@@ -53,12 +54,12 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 			// Body might be empty or invalid JSON - use empty object
 			console.warn('[MCP ENDPOINT] Body parse error:', parseError);
 		}
-		
+
 		// Extract method and parameters
 		const jsonrpc = body.jsonrpc;
 		const method = body.method || url.searchParams.get('method');
 		// For JSON-RPC 2.0, id is required. For simple format, use null or 0
-		const id = body.id !== undefined ? body.id : (jsonrpc === '2.0' ? 0 : null);
+		const id = body.id !== undefined ? body.id : jsonrpc === '2.0' ? 0 : null;
 		const params = body.params || {};
 
 		// Handle different MCP methods
@@ -85,212 +86,207 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 				);
 			}
 
-			case 'tools/list': {
-				const toolsList = [
-						{
-							name: 'get_system_prompt',
-							description:
-								'Get the complete system prompt and constraints for full transparency about AI behavior',
-							inputSchema: {
-								type: 'object',
-								properties: {
-									includeImplementationDetails: {
-										type: 'boolean',
-										description: 'Include implementation details and validation functions'
-									}
+		case 'tools/list': {
+			// Generate tools list dynamically from actual tool registry
+			// This ensures discovery matches what tools/call can actually execute
+			const toolsList = getMCPToolsList();
+			// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
+			return json(
+				{ jsonrpc: '2.0', result: { tools: toolsList }, id: id ?? 0 },
+				{
+					headers: corsHeaders
+				}
+			);
+		}
+					{
+						name: 'fetch_scripture',
+						description: 'Fetch Bible scripture text for a specific reference',
+						inputSchema: {
+							type: 'object',
+							properties: {
+								reference: { type: 'string', description: "Bible reference (e.g., 'John 3:16')" },
+								language: { type: 'string', default: 'en' },
+								organization: { type: 'string', default: 'unfoldingWord' }
+							},
+							required: ['reference']
+						}
+					},
+					{
+						name: 'fetch_translation_notes',
+						description: 'Fetch translation notes for a specific Bible reference',
+						inputSchema: {
+							type: 'object',
+							properties: {
+								reference: { type: 'string', description: 'Bible reference' },
+								language: { type: 'string', default: 'en' },
+								organization: { type: 'string', default: 'unfoldingWord' }
+							},
+							required: ['reference']
+						}
+					},
+					{
+						name: 'get_languages',
+						description: 'Get available languages for translation resources',
+						inputSchema: {
+							type: 'object',
+							properties: {}
+						}
+					},
+					{
+						name: 'fetch_translation_questions',
+						description: 'Fetch translation questions for a specific Bible reference',
+						inputSchema: {
+							type: 'object',
+							properties: {
+								reference: { type: 'string', description: 'Bible reference' },
+								language: { type: 'string', default: 'en' },
+								organization: { type: 'string', default: 'unfoldingWord' }
+							},
+							required: ['reference']
+						}
+					},
+					{
+						name: 'browse_translation_words',
+						description: 'Browse and search translation words by category or term',
+						inputSchema: {
+							type: 'object',
+							properties: {
+								language: { type: 'string', default: 'en' },
+								organization: { type: 'string', default: 'unfoldingWord' },
+								category: {
+									type: 'string',
+									description: 'Filter by category (kt, names, other)'
 								},
-								required: []
+								search: { type: 'string', description: 'Search term to filter words' },
+								limit: { type: 'number', default: 50, description: 'Maximum number of results' }
 							}
-						},
-						{
-							name: 'fetch_scripture',
-							description: 'Fetch Bible scripture text for a specific reference',
-							inputSchema: {
-								type: 'object',
-								properties: {
-									reference: { type: 'string', description: "Bible reference (e.g., 'John 3:16')" },
-									language: { type: 'string', default: 'en' },
-									organization: { type: 'string', default: 'unfoldingWord' }
-								},
-								required: ['reference']
-							}
-						},
-						{
-							name: 'fetch_translation_notes',
-							description: 'Fetch translation notes for a specific Bible reference',
-							inputSchema: {
-								type: 'object',
-								properties: {
-									reference: { type: 'string', description: 'Bible reference' },
-									language: { type: 'string', default: 'en' },
-									organization: { type: 'string', default: 'unfoldingWord' }
-								},
-								required: ['reference']
-							}
-						},
-						{
-							name: 'get_languages',
-							description: 'Get available languages for translation resources',
-							inputSchema: {
-								type: 'object',
-								properties: {}
-							}
-						},
-						{
-							name: 'fetch_translation_questions',
-							description: 'Fetch translation questions for a specific Bible reference',
-							inputSchema: {
-								type: 'object',
-								properties: {
-									reference: { type: 'string', description: 'Bible reference' },
-									language: { type: 'string', default: 'en' },
-									organization: { type: 'string', default: 'unfoldingWord' }
-								},
-								required: ['reference']
-							}
-						},
-						{
-							name: 'browse_translation_words',
-							description: 'Browse and search translation words by category or term',
-							inputSchema: {
-								type: 'object',
-								properties: {
-									language: { type: 'string', default: 'en' },
-									organization: { type: 'string', default: 'unfoldingWord' },
-									category: {
-										type: 'string',
-										description: 'Filter by category (kt, names, other)'
-									},
-									search: { type: 'string', description: 'Search term to filter words' },
-									limit: { type: 'number', default: 50, description: 'Maximum number of results' }
+						}
+					},
+					{
+						name: 'get_context',
+						description: 'Get contextual information for a Bible reference',
+						inputSchema: {
+							type: 'object',
+							properties: {
+								reference: { type: 'string', description: 'Bible reference' },
+								language: { type: 'string', default: 'en' },
+								organization: { type: 'string', default: 'unfoldingWord' }
+							},
+							required: ['reference']
+						}
+					},
+					{
+						name: 'extract_references',
+						description: 'Extract and parse Bible references from text',
+						inputSchema: {
+							type: 'object',
+							properties: {
+								text: { type: 'string', description: 'Text containing Bible references' },
+								includeContext: {
+									type: 'boolean',
+									default: false,
+									description: 'Include context around references'
 								}
-							}
-						},
-						{
-							name: 'get_context',
-							description: 'Get contextual information for a Bible reference',
-							inputSchema: {
-								type: 'object',
-								properties: {
-									reference: { type: 'string', description: 'Bible reference' },
-									language: { type: 'string', default: 'en' },
-									organization: { type: 'string', default: 'unfoldingWord' }
-								},
-								required: ['reference']
-							}
-						},
-						{
-							name: 'extract_references',
-							description: 'Extract and parse Bible references from text',
-							inputSchema: {
-								type: 'object',
-								properties: {
-									text: { type: 'string', description: 'Text containing Bible references' },
-									includeContext: {
-										type: 'boolean',
-										default: false,
-										description: 'Include context around references'
-									}
-								},
-								required: ['text']
-							}
-						},
-						{
-							name: 'fetch_resources',
-							description: 'Fetch multiple types of translation resources for a reference',
-							inputSchema: {
-								type: 'object',
-								properties: {
-									reference: { type: 'string', description: 'Bible reference' },
-									language: { type: 'string', default: 'en' },
-									organization: { type: 'string', default: 'unfoldingWord' },
-									resources: {
-										type: 'array',
-										items: { type: 'string' },
-										default: ['scripture', 'notes', 'questions', 'words']
-									}
-								},
-								required: ['reference']
-							}
-						},
-						{
-							name: 'get_words_for_reference',
-							description: 'Get translation words specifically linked to a Bible reference',
-							inputSchema: {
-								type: 'object',
-								properties: {
-									reference: { type: 'string', description: 'Bible reference' },
-									language: { type: 'string', default: 'en' },
-									organization: { type: 'string', default: 'unfoldingWord' }
-								},
-								required: ['reference']
-							}
-						},
-						{
-							name: 'search_resources',
-							description: 'Search across multiple resource types for content',
-							inputSchema: {
-								type: 'object',
-								properties: {
-									query: { type: 'string', description: 'Search query' },
-									resourceTypes: {
-										type: 'array',
-										items: { type: 'string' },
-										default: ['notes', 'questions', 'words']
-									},
-									language: { type: 'string', default: 'en' },
-									organization: { type: 'string', default: 'unfoldingWord' },
-									limit: { type: 'number', default: 50, description: 'Maximum number of results' }
-								},
-								required: ['query']
-							}
-						},
-						{
-							name: 'list_languages',
-							description:
-								'List all available languages from the Door43 catalog. Returns structured language data that can be directly reused as language parameters in other tools.',
-							inputSchema: {
-								type: 'object',
-								properties: {
-									organization: {
-										type: 'string',
-										description:
-											'Filter languages by organization (e.g., "unfoldingWord"). If not provided, returns all languages.'
-									},
-									stage: {
-										type: 'string',
-										default: 'prod',
-										description: 'Resource stage (default: "prod")'
-									}
+							},
+							required: ['text']
+						}
+					},
+					{
+						name: 'fetch_resources',
+						description: 'Fetch multiple types of translation resources for a reference',
+						inputSchema: {
+							type: 'object',
+							properties: {
+								reference: { type: 'string', description: 'Bible reference' },
+								language: { type: 'string', default: 'en' },
+								organization: { type: 'string', default: 'unfoldingWord' },
+								resources: {
+									type: 'array',
+									items: { type: 'string' },
+									default: ['scripture', 'notes', 'questions', 'words']
 								}
-							}
-						},
-						{
-							name: 'list_subjects',
-							description:
-								'List all available resource subjects (resource types) from the Door43 catalog. Returns structured subject data that can be used to discover what resource types are available.',
-							inputSchema: {
-								type: 'object',
-								properties: {
-									language: {
-										type: 'string',
-										description:
-											'Filter subjects by language code (e.g., "en", "es-419"). If not provided, returns all subjects.'
-									},
-									organization: {
-										type: 'string',
-										description:
-											'Filter subjects by organization (e.g., "unfoldingWord"). If not provided, returns all subjects.'
-									},
-									stage: {
-										type: 'string',
-										default: 'prod',
-										description: 'Resource stage (default: "prod")'
-									}
+							},
+							required: ['reference']
+						}
+					},
+					{
+						name: 'get_words_for_reference',
+						description: 'Get translation words specifically linked to a Bible reference',
+						inputSchema: {
+							type: 'object',
+							properties: {
+								reference: { type: 'string', description: 'Bible reference' },
+								language: { type: 'string', default: 'en' },
+								organization: { type: 'string', default: 'unfoldingWord' }
+							},
+							required: ['reference']
+						}
+					},
+					{
+						name: 'search_resources',
+						description: 'Search across multiple resource types for content',
+						inputSchema: {
+							type: 'object',
+							properties: {
+								query: { type: 'string', description: 'Search query' },
+								resourceTypes: {
+									type: 'array',
+									items: { type: 'string' },
+									default: ['notes', 'questions', 'words']
+								},
+								language: { type: 'string', default: 'en' },
+								organization: { type: 'string', default: 'unfoldingWord' },
+								limit: { type: 'number', default: 50, description: 'Maximum number of results' }
+							},
+							required: ['query']
+						}
+					},
+					{
+						name: 'list_languages',
+						description:
+							'List all available languages from the Door43 catalog. Returns structured language data that can be directly reused as language parameters in other tools.',
+						inputSchema: {
+							type: 'object',
+							properties: {
+								organization: {
+									type: 'string',
+									description:
+										'Filter languages by organization (e.g., "unfoldingWord"). If not provided, returns all languages.'
+								},
+								stage: {
+									type: 'string',
+									default: 'prod',
+									description: 'Resource stage (default: "prod")'
 								}
 							}
 						}
-					];
+					},
+					{
+						name: 'list_subjects',
+						description:
+							'List all available resource subjects (resource types) from the Door43 catalog. Returns structured subject data that can be used to discover what resource types are available.',
+						inputSchema: {
+							type: 'object',
+							properties: {
+								language: {
+									type: 'string',
+									description:
+										'Filter subjects by language code (e.g., "en", "es-419"). If not provided, returns all subjects.'
+								},
+								organization: {
+									type: 'string',
+									description:
+										'Filter subjects by organization (e.g., "unfoldingWord"). If not provided, returns all subjects.'
+								},
+								stage: {
+									type: 'string',
+									default: 'prod',
+									description: 'Resource stage (default: "prod")'
+								}
+							}
+						}
+					}
+				];
 				// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
 				return json(
 					{ jsonrpc: '2.0', result: { tools: toolsList }, id: id ?? 0 },
@@ -324,13 +320,19 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 
 					// Format result for MCP protocol
 					// UnifiedMCPHandler already returns { content: [...] } format
-					const mcpResult = result && typeof result === 'object' && 'content' in result
-						? result
-						: {
-							content: Array.isArray(result) 
-								? result 
-								: [{ type: 'text', text: typeof result === 'string' ? result : JSON.stringify(result) }]
-						};
+					const mcpResult =
+						result && typeof result === 'object' && 'content' in result
+							? result
+							: {
+									content: Array.isArray(result)
+										? result
+										: [
+												{
+													type: 'text',
+													text: typeof result === 'string' ? result : JSON.stringify(result)
+												}
+											]
+								};
 
 					// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
 					const response = json(
@@ -373,14 +375,6 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 							args: args
 						});
 					}
-					const errorResult = {
-						content: [
-							{
-								type: 'text',
-								text: error instanceof Error ? error.message : 'Tool execution failed'
-							}
-						]
-					};
 					// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
 					return json(
 						{
@@ -660,58 +654,58 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 
 			case 'prompts/list': {
 				const promptsList = [
-						{
-							name: 'translation-helps-for-passage',
-							description:
-								'Get comprehensive translation help for a Bible passage: scripture text, questions, word definitions (with titles), notes, and related academy articles',
-							arguments: [
-								{
-									name: 'reference',
-									description: 'Bible reference (e.g., "John 3:16", "Genesis 1:1-3")',
-									required: true
-								},
-								{
-									name: 'language',
-									description: 'Language code (default: "en")',
-									required: false
-								}
-							]
-						},
-						{
-							name: 'get-translation-words-for-passage',
-							description:
-								'Get all translation word definitions for a passage, showing dictionary entry titles (not technical term IDs)',
-							arguments: [
-								{
-									name: 'reference',
-									description: 'Bible reference (e.g., "John 3:16")',
-									required: true
-								},
-								{
-									name: 'language',
-									description: 'Language code (default: "en")',
-									required: false
-								}
-							]
-						},
-						{
-							name: 'get-translation-academy-for-passage',
-							description:
-								'Get Translation Academy training articles referenced in the translation notes for a passage',
-							arguments: [
-								{
-									name: 'reference',
-									description: 'Bible reference (e.g., "John 3:16")',
-									required: true
-								},
-								{
-									name: 'language',
-									description: 'Language code (default: "en")',
-									required: false
-								}
-							]
-						}
-					];
+					{
+						name: 'translation-helps-for-passage',
+						description:
+							'Get comprehensive translation help for a Bible passage: scripture text, questions, word definitions (with titles), notes, and related academy articles',
+						arguments: [
+							{
+								name: 'reference',
+								description: 'Bible reference (e.g., "John 3:16", "Genesis 1:1-3")',
+								required: true
+							},
+							{
+								name: 'language',
+								description: 'Language code (default: "en")',
+								required: false
+							}
+						]
+					},
+					{
+						name: 'get-translation-words-for-passage',
+						description:
+							'Get all translation word definitions for a passage, showing dictionary entry titles (not technical term IDs)',
+						arguments: [
+							{
+								name: 'reference',
+								description: 'Bible reference (e.g., "John 3:16")',
+								required: true
+							},
+							{
+								name: 'language',
+								description: 'Language code (default: "en")',
+								required: false
+							}
+						]
+					},
+					{
+						name: 'get-translation-academy-for-passage',
+						description:
+							'Get Translation Academy training articles referenced in the translation notes for a passage',
+						arguments: [
+							{
+								name: 'reference',
+								description: 'Bible reference (e.g., "John 3:16")',
+								required: true
+							},
+							{
+								name: 'language',
+								description: 'Language code (default: "en")',
+								required: false
+							}
+						]
+					}
+				];
 				// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
 				return json(
 					{ jsonrpc: '2.0', result: { prompts: promptsList }, id: id ?? 0 },
@@ -742,7 +736,7 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 				const reference = (args?.reference as string) || '';
 
 				switch (name) {
-					case 'translation-helps-for-passage':
+					case 'translation-helps-for-passage': {
 						const prompt1Result = {
 							messages: [
 								{
@@ -800,8 +794,9 @@ The goal is to provide EVERYTHING a translator needs for this passage in one com
 								headers: corsHeaders
 							}
 						);
+					}
 
-					case 'get-translation-words-for-passage':
+					case 'get-translation-words-for-passage': {
 						const prompt2Result = {
 							messages: [
 								{
@@ -841,8 +836,9 @@ Focus on making the translation words accessible by showing their proper titles.
 								headers: corsHeaders
 							}
 						);
+					}
 
-					case 'get-translation-academy-for-passage':
+					case 'get-translation-academy-for-passage': {
 						const prompt3Result = {
 							messages: [
 								{
@@ -890,6 +886,7 @@ The goal is to show what translation concepts and training materials are relevan
 								headers: corsHeaders
 							}
 						);
+					}
 
 					default:
 						// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
@@ -909,10 +906,7 @@ The goal is to show what translation concepts and training materials are relevan
 
 			case 'ping': {
 				// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
-				return json(
-					{ jsonrpc: '2.0', result: {}, id: id ?? 0 },
-					{ headers: corsHeaders }
-				);
+				return json({ jsonrpc: '2.0', result: {}, id: id ?? 0 }, { headers: corsHeaders });
 			}
 
 			default: {
@@ -940,9 +934,8 @@ The goal is to show what translation concepts and training materials are relevan
 		} catch {
 			// Request body already consumed or not available
 		}
-		const jsonrpc = requestBody.jsonrpc;
 		const id = requestBody.id || null;
-		
+
 		// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
 		return json(
 			{
@@ -967,58 +960,58 @@ export const GET: RequestHandler = async ({ url }) => {
 		return json(
 			{
 				prompts: [
-				{
-					name: 'translation-helps-for-passage',
-					description:
-						'Get comprehensive translation help for a Bible passage: scripture text, questions, word definitions (with titles), notes, and related academy articles',
-					arguments: [
-						{
-							name: 'reference',
-							description: 'Bible reference (e.g., "John 3:16", "Genesis 1:1-3")',
-							required: true
-						},
-						{
-							name: 'language',
-							description: 'Language code (default: "en")',
-							required: false
-						}
-					]
-				},
-				{
-					name: 'get-translation-words-for-passage',
-					description:
-						'Get all translation word definitions for a passage, showing dictionary entry titles (not technical term IDs)',
-					arguments: [
-						{
-							name: 'reference',
-							description: 'Bible reference (e.g., "John 3:16")',
-							required: true
-						},
-						{
-							name: 'language',
-							description: 'Language code (default: "en")',
-							required: false
-						}
-					]
-				},
-				{
-					name: 'get-translation-academy-for-passage',
-					description:
-						'Get Translation Academy training articles referenced in the translation notes for a passage',
-					arguments: [
-						{
-							name: 'reference',
-							description: 'Bible reference (e.g., "John 3:16")',
-							required: true
-						},
-						{
-							name: 'language',
-							description: 'Language code (default: "en")',
-							required: false
-						}
-					]
-				}
-			]
+					{
+						name: 'translation-helps-for-passage',
+						description:
+							'Get comprehensive translation help for a Bible passage: scripture text, questions, word definitions (with titles), notes, and related academy articles',
+						arguments: [
+							{
+								name: 'reference',
+								description: 'Bible reference (e.g., "John 3:16", "Genesis 1:1-3")',
+								required: true
+							},
+							{
+								name: 'language',
+								description: 'Language code (default: "en")',
+								required: false
+							}
+						]
+					},
+					{
+						name: 'get-translation-words-for-passage',
+						description:
+							'Get all translation word definitions for a passage, showing dictionary entry titles (not technical term IDs)',
+						arguments: [
+							{
+								name: 'reference',
+								description: 'Bible reference (e.g., "John 3:16")',
+								required: true
+							},
+							{
+								name: 'language',
+								description: 'Language code (default: "en")',
+								required: false
+							}
+						]
+					},
+					{
+						name: 'get-translation-academy-for-passage',
+						description:
+							'Get Translation Academy training articles referenced in the translation notes for a passage',
+						arguments: [
+							{
+								name: 'reference',
+								description: 'Bible reference (e.g., "John 3:16")',
+								required: true
+							},
+							{
+								name: 'language',
+								description: 'Language code (default: "en")',
+								required: false
+							}
+						]
+					}
+				]
 			},
 			{
 				headers: corsHeaders

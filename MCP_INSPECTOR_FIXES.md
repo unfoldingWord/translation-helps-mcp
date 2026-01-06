@@ -3,36 +3,42 @@
 ## Changes Made
 
 ### 1. **Always Return JSON-RPC 2.0 Format**
-   - All responses now always return JSON-RPC 2.0 format, regardless of request format
-   - Removed conditional logic that could return non-JSON-RPC format
+
+- All responses now always return JSON-RPC 2.0 format, regardless of request format
+- Removed conditional logic that could return non-JSON-RPC format
 
 ### 2. **ID Field Handling**
-   - Changed from `id: id || null` to `id: id ?? 0`
-   - Ensures `id` is always present (defaults to `0` if not provided)
+
+- Changed from `id: id || null` to `id: id ?? 0`
+- Ensures `id` is always present (defaults to `0` if not provided)
 
 ### 3. **Capabilities Structure**
-   - Removed `experimental: {}` from capabilities
-   - Now matches standard MCP spec exactly:
-     ```json
-     {
-       "tools": {},
-       "prompts": {}
-     }
-     ```
+
+- Removed `experimental: {}` from capabilities
+- Now matches standard MCP spec exactly:
+  ```json
+  {
+    "tools": {},
+    "prompts": {}
+  }
+  ```
 
 ### 4. **Response Structure**
-   All responses now follow this exact format:
-   ```json
-   {
-     "jsonrpc": "2.0",
-     "result": { ... },
-     "id": <number>
-   }
-   ```
+
+All responses now follow this exact format:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "result": { ... },
+  "id": <number>
+}
+```
 
 ## Current Response Format
 
 ### Initialize Response
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -75,6 +81,7 @@ The MCP Inspector has two connection modes:
 ## Next Steps
 
 1. **Restart the dev server** to ensure changes are loaded:
+
    ```bash
    cd ui && npm run dev
    ```
@@ -91,9 +98,9 @@ The MCP Inspector has two connection modes:
 ## Verification
 
 Run the test script to verify everything works:
+
 ```bash
 node test-mcp-endpoint.js
 ```
 
 All tests should pass ✅
-
