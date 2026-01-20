@@ -677,10 +677,8 @@
 		}
 	}
 
-	// Update cURL command when params change
-	$: if (selectedEndpoint) {
-		updateCurlCommand();
-	}
+	// Update cURL command when params or selectedEndpoint change
+	$: (selectedEndpoint, params, updateCurlCommand());
 </script>
 
 <svelte:head>
