@@ -18,6 +18,7 @@
     "test": "vitest --no-watch",
     "test:watch": "vitest watch",
     "test:ci": "vitest run --reporter=dot",
+    "test:tools": "node scripts/test-all-tools-and-prompts.js",
     "test:server": "./scripts/start-test-server.sh",
     "test:with-server": "npm run test:server & sleep 10 && npm test",
     "lint": "eslint .",
