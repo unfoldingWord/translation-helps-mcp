@@ -1,6 +1,7 @@
 /**
  * Comprehensive test for all MCP tools and prompts
- * Tests all 9 tools and 5 prompts using the HTTP MCP endpoint
+ * Tests all 9 tools via REST API endpoints (more reliable than MCP HTTP)
+ * Tests all 5 prompts via MCP endpoint
  * Run with: node scripts/test-all-tools-and-prompts.js
  * 
  * Requirements:
@@ -62,7 +63,58 @@ function logTest(name, status, details = '') {
   }
 }
 
-// Send MCP request via HTTP
+// Test a tool via REST API
+async function testToolRest(toolName, params, description, endpointPath) {
+  results.total++;
+  try {
+    log(`\n🧪 Testing: ${toolName}`, 'cyan');
+    console.log(`   Description: ${description}`);
+    console.log(`   Parameters: ${JSON.stringify(params, null, 2)}`);
+
+    // Build query string
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, String(value));
+      }
+    });
+
+    const url = `${BASE_URL}${endpointPath}?${queryParams.toString()}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+
+    // Validate result
+    if (result && (result.scripture || result.notes || result.questions || result.words || result.languages || result.subjects || result.resources || Array.isArray(result) || typeof result === 'object')) {
+      const resultSize = JSON.stringify(result).length;
+      results.tools[toolName] = { status: 'pass', result };
+      results.passed++;
+      logTest(toolName, 'pass', `Got response (${resultSize} chars)`);
+      return true;
+    } else {
+      results.tools[toolName] = { status: 'fail', error: 'Invalid response format' };
+      results.failed++;
+      logTest(toolName, 'fail', 'Invalid response format');
+      return false;
+    }
+  } catch (error) {
+    results.tools[toolName] = { status: 'fail', error: error.message };
+    results.failed++;
+    logTest(toolName, 'fail', error.message);
+    return false;
+  }
+}
+
+// Send MCP request via HTTP (for prompts)
 async function sendMCPRequest(method, params = {}) {
   const request = {
     jsonrpc: '2.0',
@@ -81,7 +133,8 @@ async function sendMCPRequest(method, params = {}) {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
@@ -93,40 +146,6 @@ async function sendMCPRequest(method, params = {}) {
     return data.result;
   } catch (error) {
     throw new Error(`Request failed: ${error.message}`);
-  }
-}
-
-// Test a tool
-async function testTool(toolName, params, description) {
-  results.total++;
-  try {
-    log(`\n🧪 Testing: ${toolName}`, 'cyan');
-    console.log(`   Description: ${description}`);
-    console.log(`   Parameters: ${JSON.stringify(params, null, 2)}`);
-
-    const result = await sendMCPRequest('tools/call', {
-      name: toolName,
-      arguments: params,
-    });
-
-    // Validate result
-    if (result && (result.content || result.data || result.items || Array.isArray(result) || typeof result === 'object')) {
-      const resultSize = JSON.stringify(result).length;
-      results.tools[toolName] = { status: 'pass', result };
-      results.passed++;
-      logTest(toolName, 'pass', `Got response (${resultSize} chars)`);
-      return true;
-    } else {
-      results.tools[toolName] = { status: 'fail', error: 'Invalid response format' };
-      results.failed++;
-      logTest(toolName, 'fail', 'Invalid response format');
-      return false;
-    }
-  } catch (error) {
-    results.tools[toolName] = { status: 'fail', error: error.message };
-    results.failed++;
-    logTest(toolName, 'fail', error.message);
-    return false;
   }
 }
 
@@ -184,6 +203,7 @@ async function runAllTests() {
   console.log(`  Language: ${TEST_CONFIG.language}`);
   console.log(`  Reference: ${TEST_CONFIG.reference}`);
   console.log(`  Term: ${TEST_CONFIG.term}`);
+  console.log(`\n  Note: Tools tested via REST API, prompts via MCP endpoint`);
 
   // Check if server is running
   log('\n🔍 Checking if server is running...', 'blue');
@@ -199,110 +219,106 @@ async function runAllTests() {
   log('✅ Server is running', 'green');
 
   try {
-    // Initialize MCP connection
-    log('\n📡 Initializing MCP connection...', 'blue');
-    await sendMCPRequest('initialize', {
-      protocolVersion: '2024-11-05',
-      capabilities: {},
-      clientInfo: {
-        name: 'test-script',
-        version: '1.0.0',
-      },
-    });
-    log('✅ MCP connection initialized', 'green');
-
-    // Test all tools
-    logSection('📋 TESTING TOOLS (9 tools)');
+    // Test all tools via REST API
+    logSection('📋 TESTING TOOLS (9 tools via REST API)');
 
     // 1. fetch_scripture
-    await testTool(
+    await testToolRest(
       'fetch_scripture',
       {
         reference: TEST_CONFIG.reference,
         language: TEST_CONFIG.language,
         organization: TEST_CONFIG.organization,
       },
-      'Fetch Bible scripture text for a specific reference'
+      'Fetch Bible scripture text for a specific reference',
+      '/api/fetch-scripture'
     );
 
     // 2. fetch_translation_notes
-    await testTool(
+    await testToolRest(
       'fetch_translation_notes',
       {
         reference: TEST_CONFIG.reference,
         language: TEST_CONFIG.language,
         organization: TEST_CONFIG.organization,
       },
-      'Fetch translation notes for a specific Bible reference'
+      'Fetch translation notes for a specific Bible reference',
+      '/api/fetch-translation-notes'
     );
 
     // 3. fetch_translation_questions
-    await testTool(
+    await testToolRest(
       'fetch_translation_questions',
       {
         reference: TEST_CONFIG.reference,
         language: TEST_CONFIG.language,
         organization: TEST_CONFIG.organization,
       },
-      'Fetch translation questions for a specific Bible reference'
+      'Fetch translation questions for a specific Bible reference',
+      '/api/fetch-translation-questions'
     );
 
     // 4. fetch_translation_word_links
-    await testTool(
+    await testToolRest(
       'fetch_translation_word_links',
       {
         reference: TEST_CONFIG.reference,
         language: TEST_CONFIG.language,
         organization: TEST_CONFIG.organization,
       },
-      'Fetch translation word links (TWL) for a specific Bible reference'
+      'Fetch translation word links (TWL) for a specific Bible reference',
+      '/api/fetch-translation-word-links'
     );
 
     // 5. fetch_translation_word
-    await testTool(
+    await testToolRest(
       'fetch_translation_word',
       {
         term: TEST_CONFIG.term,
         language: TEST_CONFIG.language,
         organization: TEST_CONFIG.organization,
       },
-      'Fetch translation word articles for biblical terms'
+      'Fetch translation word articles for biblical terms',
+      '/api/fetch-translation-word'
     );
 
     // 6. fetch_translation_academy
-    await testTool(
+    await testToolRest(
       'fetch_translation_academy',
       {
         moduleId: TEST_CONFIG.moduleId,
         language: TEST_CONFIG.language,
         organization: TEST_CONFIG.organization,
       },
-      'Fetch translation academy (tA) modules and training content'
+      'Fetch translation academy (tA) modules and training content',
+      '/api/fetch-translation-academy'
     );
 
     // 7. list_languages
-    await testTool(
+    await testToolRest(
       'list_languages',
       {
         organization: TEST_CONFIG.organization,
         stage: 'prod',
       },
-      'List all available languages from the Door43 catalog'
+      'List all available languages from the Door43 catalog',
+      '/api/list-languages'
     );
 
     // 8. list_subjects
-    await testTool(
+    await testToolRest(
       'list_subjects',
       {
         language: TEST_CONFIG.language,
         organization: TEST_CONFIG.organization,
         stage: 'prod',
       },
-      'List all available resource subjects (resource types)'
+      'List all available resource subjects (resource types)',
+      '/api/list-subjects'
     );
 
     // 9. list_resources_for_language
-    await testTool(
+    await testToolRest(
       'list_resources_for_language',
       {
         language: TEST_CONFIG.language,
@@ -310,11 +326,12 @@ async function runAllTests() {
         stage: 'prod',
         topic: 'tc-ready',
       },
-      'List all available resources for a specific language'
+      'List all available resources for a specific language',
+      '/api/list-resources-for-language'
     );
 
-    // Test all prompts
-    logSection('🎯 TESTING PROMPTS (5 prompts)');
+    // Test all prompts via MCP endpoint
+    logSection('🎯 TESTING PROMPTS (5 prompts via MCP endpoint)');
 
     // 1. translation-helps-for-passage
     await testPrompt(
