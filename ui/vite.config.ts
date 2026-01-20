@@ -19,11 +19,11 @@ export default defineConfig({
 		}
 	},
 	ssr: {
-		external: ['zod', 'zod-to-json-schema']
+		external: ['zod', 'zod-to-json-schema', 'fflate']
 	},
 	build: {
 		rollupOptions: {
-			external: ['zod', 'zod-to-json-schema']
+			external: ['zod', 'zod-to-json-schema', 'fflate']
 		}
 	},
 	server: {
