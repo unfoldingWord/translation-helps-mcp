@@ -163,11 +163,3 @@ export function extractLanguageFromRequest(message: string): string | null {
 
 	return null;
 }
-
-
-
-
-
-
-
-

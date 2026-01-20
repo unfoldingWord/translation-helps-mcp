@@ -19,31 +19,15 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 // Import tool handlers (still needed for tool execution)
-import {
-  handleFetchScripture,
-} from "./tools/fetchScripture.js";
-import {
-  handleFetchTranslationNotes,
-} from "./tools/fetchTranslationNotes.js";
-import {
-  handleFetchTranslationQuestions,
-} from "./tools/fetchTranslationQuestions.js";
-import {
-  handleFetchTranslationWordLinks,
-} from "./tools/fetchTranslationWordLinks.js";
-import {
-  handleFetchTranslationAcademy,
-} from "./tools/fetchTranslationAcademy.js";
-import {
-  handleGetTranslationWord,
-} from "./tools/getTranslationWord.js";
-import {
-  handleListLanguages,
-} from "./tools/listLanguages.js";
+import { handleFetchScripture } from "./tools/fetchScripture.js";
+import { handleFetchTranslationNotes } from "./tools/fetchTranslationNotes.js";
+import { handleFetchTranslationQuestions } from "./tools/fetchTranslationQuestions.js";
+import { handleFetchTranslationWordLinks } from "./tools/fetchTranslationWordLinks.js";
+import { handleFetchTranslationAcademy } from "./tools/fetchTranslationAcademy.js";
+import { handleGetTranslationWord } from "./tools/getTranslationWord.js";
+import { handleListLanguages } from "./tools/listLanguages.js";
 import { handleListSubjects } from "./tools/listSubjects.js";
-import {
-  handleListResourcesForLanguage,
-} from "./tools/listResourcesForLanguage.js";
+import { handleListResourcesForLanguage } from "./tools/listResourcesForLanguage.js";
 import { logger } from "./utils/logger.js";
 import { getVersion } from "./version.js";
 

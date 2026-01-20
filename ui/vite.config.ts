@@ -1,9 +1,31 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
+	resolve: {
+		alias: {
+			// Stub Node.js modules for Cloudflare Workers
+			os: path.resolve(__dirname, 'src/lib/mcp/node-stubs.ts'),
+			fs: path.resolve(__dirname, 'src/lib/mcp/node-stubs.ts'),
+			'node:os': path.resolve(__dirname, 'src/lib/mcp/node-stubs.ts'),
+			'node:fs': path.resolve(__dirname, 'src/lib/mcp/node-stubs.ts'),
+			'node:path': path.resolve(__dirname, 'src/lib/mcp/node-stubs.ts')
+		}
+	},
+	ssr: {
+		external: ['zod', 'zod-to-json-schema']
+	},
+	build: {
+		rollupOptions: {
+			external: ['zod', 'zod-to-json-schema']
+		}
+	},
 	server: {
 		port: 8174,
 		host: true,

@@ -8,6 +8,10 @@ const config = {
 		adapter: adapter(),
 		paths: {
 			relative: false
+		},
+		// Prevent Node.js modules from being bundled for Cloudflare
+		alias: {
+			$lib: './src/lib'
 		}
 	}
 };

@@ -195,11 +195,3 @@ describe('/api/fetch-translation-word', () => {
 		});
 	});
 });
-
-
-
-
-
-
-
-

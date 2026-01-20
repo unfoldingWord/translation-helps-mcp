@@ -1,40 +1,24 @@
 /**
  * MCP Tools Registry
  * Single source of truth for all MCP tool definitions
- * 
+ *
  * This module exports the tools array that is used by:
  * 1. The MCP server (src/index.ts) - for stdio transport
  * 2. The HTTP MCP endpoint (ui/src/routes/api/mcp/+server.ts) - for HTTP transport
- * 
+ *
  * This ensures DRY compliance - tool definitions are maintained in one place.
  */
 
 import { z } from "zod";
-import {
-  FetchScriptureArgs,
-} from "../tools/fetchScripture.js";
-import {
-  FetchTranslationNotesArgs,
-} from "../tools/fetchTranslationNotes.js";
-import {
-  FetchTranslationQuestionsArgs,
-} from "../tools/fetchTranslationQuestions.js";
-import {
-  FetchTranslationWordLinksArgs,
-} from "../tools/fetchTranslationWordLinks.js";
-import {
-  FetchTranslationAcademyArgs,
-} from "../tools/fetchTranslationAcademy.js";
-import {
-  GetTranslationWordArgs,
-} from "../tools/getTranslationWord.js";
-import {
-  ListLanguagesArgs,
-} from "../tools/listLanguages.js";
+import { FetchScriptureArgs } from "../tools/fetchScripture.js";
+import { FetchTranslationNotesArgs } from "../tools/fetchTranslationNotes.js";
+import { FetchTranslationQuestionsArgs } from "../tools/fetchTranslationQuestions.js";
+import { FetchTranslationWordLinksArgs } from "../tools/fetchTranslationWordLinks.js";
+import { FetchTranslationAcademyArgs } from "../tools/fetchTranslationAcademy.js";
+import { GetTranslationWordArgs } from "../tools/getTranslationWord.js";
+import { ListLanguagesArgs } from "../tools/listLanguages.js";
 import { ListSubjectsArgs } from "../tools/listSubjects.js";
-import {
-  ListResourcesForLanguageArgs,
-} from "../tools/listResourcesForLanguage.js";
+import { ListResourcesForLanguageArgs } from "../tools/listResourcesForLanguage.js";
 
 /**
  * MCP Tool Definition
@@ -76,29 +60,29 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
     {
       name: "fetch_translation_questions",
       description: "Fetch translation questions for a specific Bible reference",
-      inputSchema: FetchTranslationQuestionsArgs.omit({ reference: true }).extend(
-        {
-          reference: z
-            .string()
-            .describe(
-              'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")',
-            ),
-        },
-      ),
+      inputSchema: FetchTranslationQuestionsArgs.omit({
+        reference: true,
+      }).extend({
+        reference: z
+          .string()
+          .describe(
+            'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")',
+          ),
+      }),
     },
     {
       name: "fetch_translation_word_links",
       description:
         "Fetch translation word links (TWL) for a specific Bible reference",
-      inputSchema: FetchTranslationWordLinksArgs.omit({ reference: true }).extend(
-        {
-          reference: z
-            .string()
-            .describe(
-              'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")',
-            ),
-        },
-      ),
+      inputSchema: FetchTranslationWordLinksArgs.omit({
+        reference: true,
+      }).extend({
+        reference: z
+          .string()
+          .describe(
+            'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")',
+          ),
+      }),
     },
     {
       name: "fetch_translation_word",
@@ -108,7 +92,8 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
     },
     {
       name: "fetch_translation_academy",
-      description: "Fetch translation academy (tA) modules and training content",
+      description:
+        "Fetch translation academy (tA) modules and training content",
       inputSchema: FetchTranslationAcademyArgs,
     },
     {
