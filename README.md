@@ -67,24 +67,24 @@ See [MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md) for detailed migration instruc
 
 ### Live Production
 
-- **API Base**: `https://api.translation.helps/api/`
-- **Documentation**: `https://api.translation.helps/`
-- **Health Check**: `https://api.translation.helps/api/health`
+- **API Base**: `https://tc-helps.mcp.servant.bible/api/`
+- **Documentation**: `https://tc-helps.mcp.servant.bible/`
+- **Health Check**: `https://tc-helps.mcp.servant.bible/api/health`
 
 ### Quick Start
 
 ```bash
 # Fetch scripture
-curl "https://api.translation.helps/api/fetch-scripture?reference=John%203:16"
+curl "https://tc-helps.mcp.servant.bible/api/fetch-scripture?reference=John%203:16"
 
 # Get translation notes in markdown (for LLMs)
-curl "https://api.translation.helps/api/translation-notes?reference=Genesis%201:1&format=md"
+curl "https://tc-helps.mcp.servant.bible/api/translation-notes?reference=Genesis%201:1&format=md"
 
 # Fetch translation word links
-curl "https://api.translation.helps/api/fetch-translation-word-links?reference=Titus%201:1"
+curl "https://tc-helps.mcp.servant.bible/api/fetch-translation-word-links?reference=Titus%201:1"
 
 # Browse translation academy modules
-curl "https://api.translation.helps/api/browse-translation-academy?language=en"
+curl "https://tc-helps.mcp.servant.bible/api/browse-translation-academy?language=en"
 ```
 
 ## 🛠️ Architecture

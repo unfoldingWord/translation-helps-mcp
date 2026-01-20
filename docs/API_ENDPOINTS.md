@@ -5,7 +5,7 @@
 All endpoints are available at:
 
 ```
-https://api.translation.helps/api/
+https://tc-helps.mcp.servant.bible/api/
 ```
 
 ## Important Changes (December 2024)
@@ -496,25 +496,25 @@ Response headers:
 ### Fetch Scripture with Multiple Translations
 
 ```bash
-curl "https://api.translation.helps/api/fetch-scripture?reference=John%203:16&resource=ult,ust"
+curl "https://tc-helps.mcp.servant.bible/api/fetch-scripture?reference=John%203:16&resource=ult,ust"
 ```
 
 ### Get Translation Notes in Markdown
 
 ```bash
-curl "https://api.translation.helps/api/translation-notes?reference=Genesis%201:1&format=md"
+curl "https://tc-helps.mcp.servant.bible/api/translation-notes?reference=Genesis%201:1&format=md"
 ```
 
 ### Fetch Translation Word Links
 
 ```bash
-curl "https://api.translation.helps/api/fetch-translation-word-links?reference=Titus%201:1"
+curl "https://tc-helps.mcp.servant.bible/api/fetch-translation-word-links?reference=Titus%201:1"
 ```
 
 ### Browse Translation Academy Modules
 
 ```bash
-curl "https://api.translation.helps/api/browse-translation-academy?language=en&category=translate"
+curl "https://tc-helps.mcp.servant.bible/api/browse-translation-academy?language=en&category=translate"
 ```
 
 ## Testing with Wrangler
