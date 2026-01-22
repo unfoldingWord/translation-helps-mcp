@@ -119,7 +119,9 @@ text = await client.fetch_scripture({
     "language": "en",
     "organization": "unfoldingWord",
     "format": "text",  # or "usfm"
-    "includeVerseNumbers": True
+    "includeVerseNumbers": True,
+    "resource": "all",  # Optional: 'ult', 'ust', 't4t', 'ueb', 'all', or comma-separated (e.g., 'ult,ust')
+    "includeAlignment": False  # Optional: Include word alignment data (only available with USFM format)
 })
 ```
 
@@ -185,16 +187,6 @@ articles = await client.fetch_translation_academy({
     "reference": "John 3:16",
     "language": "en",
     "format": "json"  # or "markdown"
-})
-```
-
-##### `async get_languages(options: Optional[GetLanguagesOptions] = None) -> Dict`
-
-Get available languages and organizations.
-
-```python
-languages = await client.get_languages({
-    "organization": "unfoldingWord"
 })
 ```
 

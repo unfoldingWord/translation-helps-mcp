@@ -111,6 +111,8 @@ const text = await client.fetchScripture({
   organization: "unfoldingWord",
   format: "text", // or 'usfm'
   includeVerseNumbers: true,
+  resource: "all", // Optional: 'ult', 'ust', 't4t', 'ueb', 'all', or comma-separated (e.g., 'ult,ust')
+  includeAlignment: false, // Optional: Include word alignment data (only available with USFM format)
 });
 ```
 
@@ -179,14 +181,45 @@ const articles = await client.fetchTranslationAcademy({
 });
 ```
 
-##### `getLanguages(options?): Promise<any>`
+##### `listLanguages(options?): Promise<any>`
 
-Get available languages and organizations.
+List all available languages from Door43 catalog (~1 second).
 
 ```typescript
-const languages = await client.getLanguages({
-  organization: "unfoldingWord",
+const languages = await client.listLanguages({
+  organization: "unfoldingWord", // or omit for all orgs
+  stage: "prod",
 });
+console.log(`Found ${languages.languages.length} languages`);
+```
+
+##### `listSubjects(options?): Promise<any>`
+
+List all available resource subjects/types from Door43 catalog.
+
+```typescript
+const subjects = await client.listSubjects({
+  language: "en",
+  organization: "unfoldingWord",
+  stage: "prod",
+});
+console.log(`Found ${subjects.subjects.length} resource types`);
+```
+
+##### `listResourcesForLanguage(options): Promise<any>` ⭐ RECOMMENDED
+
+List all resources for a specific language. Fast single API call (~1-2 seconds).
+
+```typescript
+// Discover what's available for Spanish (es-419)
+const resources = await client.listResourcesForLanguage({
+  language: "es-419",
+  organization: "", // empty = all orgs
+  // topic defaults to "tc-ready" if not provided
+});
+
+console.log(`Found ${resources.totalResources} resources`);
+console.log(`Subjects: ${resources.subjects.join(", ")}`);
 ```
 
 ##### `listTools(): Promise<MCPTool[]>`

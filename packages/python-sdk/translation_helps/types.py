@@ -30,6 +30,8 @@ class FetchScriptureOptions(TypedDict, total=False):
     organization: Optional[str]
     format: Optional[str]  # 'text' or 'usfm'
     includeVerseNumbers: Optional[bool]
+    resource: Optional[str]  # 'ult', 'ust', 't4t', 'ueb', 'all', or comma-separated (e.g., 'ult,ust')
+    includeAlignment: Optional[bool]  # Include word alignment data (only available with USFM format)
 
 
 class FetchTranslationNotesOptions(TypedDict, total=False):
@@ -68,10 +70,6 @@ class FetchTranslationAcademyOptions(TypedDict, total=False):
     language: Optional[str]
     organization: Optional[str]
     format: Optional[str]  # 'json' or 'markdown'
-
-
-class GetLanguagesOptions(TypedDict, total=False):
-    organization: Optional[str]
 
 
 class ListLanguagesOptions(TypedDict, total=False):

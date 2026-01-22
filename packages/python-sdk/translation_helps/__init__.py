@@ -22,7 +22,9 @@ from .types import (
     FetchTranslationWordOptions,
     FetchTranslationWordLinksOptions,
     FetchTranslationAcademyOptions,
-    GetLanguagesOptions,
+    ListLanguagesOptions,
+    ListSubjectsOptions,
+    ListResourcesForLanguageOptions,
     MCPTool,
     MCPPrompt,
 )
@@ -42,7 +44,7 @@ from .prompts import (
     RequestType,
 )
 
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 __all__ = [
     "TranslationHelpsClient",
     "ClientOptions",
@@ -52,7 +54,9 @@ __all__ = [
     "FetchTranslationWordOptions",
     "FetchTranslationWordLinksOptions",
     "FetchTranslationAcademyOptions",
-    "GetLanguagesOptions",
+    "ListLanguagesOptions",
+    "ListSubjectsOptions",
+    "ListResourcesForLanguageOptions",
     "MCPTool",
     "MCPPrompt",
     "convert_tools_to_openai",

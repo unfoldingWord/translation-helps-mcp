@@ -95,6 +95,14 @@ export interface FetchScriptureOptions {
   organization?: string;
   format?: "text" | "usfm";
   includeVerseNumbers?: boolean;
+  /**
+   * Scripture resource type(s) - single resource (ult, ust, t4t, ueb), comma-separated (ult,ust), or 'all' for all available
+   */
+  resource?: string;
+  /**
+   * Include word alignment data (only available with USFM format)
+   */
+  includeAlignment?: boolean;
 }
 
 export interface FetchTranslationNotesOptions {
@@ -133,10 +141,6 @@ export interface FetchTranslationAcademyOptions {
   language?: string;
   organization?: string;
   format?: "json" | "markdown";
-}
-
-export interface GetLanguagesOptions {
-  organization?: string;
 }
 
 export interface ListLanguagesOptions {

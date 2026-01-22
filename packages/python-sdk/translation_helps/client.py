@@ -17,7 +17,6 @@ from .types import (
     FetchTranslationWordOptions,
     FetchTranslationWordLinksOptions,
     FetchTranslationAcademyOptions,
-    GetLanguagesOptions,
     ListLanguagesOptions,
     ListSubjectsOptions,
     ListResourcesForLanguageOptions,
@@ -204,13 +203,21 @@ class TranslationHelpsClient:
         self, options: FetchScriptureOptions
     ) -> str:
         """Fetch Bible scripture text."""
-        response = await self.call_tool("fetch_scripture", {
+        params: Dict[str, Any] = {
             "reference": options["reference"],
             "language": options.get("language", "en"),
             "organization": options.get("organization", "unfoldingWord"),
             "format": options.get("format", "text"),
             "includeVerseNumbers": options.get("includeVerseNumbers", True),
-        })
+        }
+        
+        # Add optional parameters if provided
+        if options.get("resource") is not None:
+            params["resource"] = options["resource"]
+        if options.get("includeAlignment") is not None:
+            params["includeAlignment"] = options["includeAlignment"]
+        
+        response = await self.call_tool("fetch_scripture", params)
 
         # Extract text from response
         if response.get("content") and response["content"][0].get("text"):
@@ -304,19 +311,6 @@ class TranslationHelpsClient:
 
         raise ValueError("Invalid response format from fetch_translation_academy")
 
-    async def get_languages(
-        self, options: Optional[GetLanguagesOptions] = None
-    ) -> Dict[str, Any]:
-        """Get available languages."""
-        options = options or {}
-        response = await self.call_tool("get_languages", {
-            "organization": options.get("organization"),
-        })
-
-        if response.get("content") and response["content"][0].get("text"):
-            return json.loads(response["content"][0]["text"])
-
-        raise ValueError("Invalid response format from get_languages")
 
     async def list_languages(
         self, options: Optional[ListLanguagesOptions] = None
@@ -412,18 +406,6 @@ class TranslationHelpsClient:
 
         raise ValueError("Invalid response format from list_resources_for_language")
 
-    async def get_system_prompt(
-        self, include_implementation_details: bool = False
-    ) -> str:
-        """Get system prompt."""
-        response = await self.call_tool("get_system_prompt", {
-            "includeImplementationDetails": include_implementation_details,
-        })
-
-        if response.get("content") and response["content"][0].get("text"):
-            return response["content"][0]["text"]
-
-        raise ValueError("Invalid response format from get_system_prompt")
 
     def is_connected(self) -> bool:
         """Check if client is initialized."""

@@ -15,7 +15,6 @@ import type {
   FetchTranslationWordOptions,
   FetchTranslationWordLinksOptions,
   FetchTranslationAcademyOptions,
-  GetLanguagesOptions,
   ListLanguagesOptions,
   ListSubjectsOptions,
   ListResourcesForLanguageOptions,
@@ -281,13 +280,23 @@ export class TranslationHelpsClient {
    * Fetch Bible scripture text
    */
   async fetchScripture(options: FetchScriptureOptions): Promise<string> {
-    const response = await this.callTool("fetch_scripture", {
+    const params: Record<string, any> = {
       reference: options.reference,
       language: options.language || "en",
       organization: options.organization || "unfoldingWord",
       format: options.format || "text",
       includeVerseNumbers: options.includeVerseNumbers !== false,
-    });
+    };
+
+    // Add optional parameters if provided
+    if (options.resource !== undefined) {
+      params.resource = options.resource;
+    }
+    if (options.includeAlignment !== undefined) {
+      params.includeAlignment = options.includeAlignment;
+    }
+
+    const response = await this.callTool("fetch_scripture", params);
 
     // Extract text from response
     if (response.content && response.content[0]?.text) {
@@ -404,36 +413,6 @@ export class TranslationHelpsClient {
     }
 
     throw new Error("Invalid response format from fetch_translation_academy");
-  }
-
-  /**
-   * Get available languages
-   */
-  async getLanguages(options: GetLanguagesOptions = {}): Promise<any> {
-    const response = await this.callTool("get_languages", {
-      organization: options.organization,
-    });
-
-    if (response.content && response.content[0]?.text) {
-      return JSON.parse(response.content[0].text);
-    }
-
-    throw new Error("Invalid response format from get_languages");
-  }
-
-  /**
-   * Get system prompt
-   */
-  async getSystemPrompt(includeImplementationDetails = false): Promise<string> {
-    const response = await this.callTool("get_system_prompt", {
-      includeImplementationDetails,
-    });
-
-    if (response.content && response.content[0]?.text) {
-      return response.content[0].text;
-    }
-
-    throw new Error("Invalid response format from get_system_prompt");
   }
 
   /**
