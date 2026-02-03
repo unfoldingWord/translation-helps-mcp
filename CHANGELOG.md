@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file. See [standa
 
 ## [Unreleased]
 
+### Fixed
+
+- **CRITICAL: MCP Schema Discovery** - Fixed empty input schemas in `tools/list` endpoint
+  - Root cause: Zod version mismatch between packages (v3 vs v4)
+  - Fixed UI package to use Zod v3.22.4 (aligned with root package)
+  - Fixed zod-to-json-schema to use v3.24.6 (compatible with Zod v3)
+  - Impact: MCP clients (like Claude) can now properly discover tool parameters
+  - Eliminates retry loops and guessing on tool calls
+  - All 9 tools now return complete schemas with 45+ parameters
+  - SDKs automatically benefit from fix (no SDK updates needed)
+  - Reported by: BT-Servant developer
+  - Tests added: `test:mcp-schemas` and `test:mcp-schemas:unit`
+
 ### Changed
 
 - **Domain Migration** - Updated server domain from `translation-helps-mcp-945.pages.dev` to `tc-helps.mcp.servant.bible`

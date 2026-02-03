@@ -61,7 +61,9 @@
     "cli:build": "cd clients/cli && npm run build",
     "cli:start": "cd clients/cli && npm start",
     "cli:sync": "cd clients/cli && npm start sync",
-    "cli:export": "cd clients/cli && npm start export"
+    "cli:export": "cd clients/cli && npm start export",
+    "test:mcp-schemas": "npx tsx scripts/test-mcp-schemas.mts",
+    "test:mcp-schemas:unit": "vitest run tests/mcp-schema-validation.test.ts"
   },
   "dependencies": {
     "@upstash/redis": "^1.28.0",
