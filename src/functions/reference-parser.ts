@@ -81,6 +81,36 @@ const BOOK_MAPPINGS: Record<string, { code: string; name: string }> = {
   "2ki": { code: "2KI", name: "2 Kings" },
   "2k": { code: "2KI", name: "2 Kings" },
 
+  // 1 Chronicles
+  "1chronicles": { code: "1CH", name: "1 Chronicles" },
+  "1chron": { code: "1CH", name: "1 Chronicles" },
+  "1chr": { code: "1CH", name: "1 Chronicles" },
+  "1ch": { code: "1CH", name: "1 Chronicles" },
+
+  // 2 Chronicles
+  "2chronicles": { code: "2CH", name: "2 Chronicles" },
+  "2chron": { code: "2CH", name: "2 Chronicles" },
+  "2chr": { code: "2CH", name: "2 Chronicles" },
+  "2ch": { code: "2CH", name: "2 Chronicles" },
+
+  // Ezra
+  ezra: { code: "EZR", name: "Ezra" },
+  ezr: { code: "EZR", name: "Ezra" },
+
+  // Nehemiah
+  nehemiah: { code: "NEH", name: "Nehemiah" },
+  neh: { code: "NEH", name: "Nehemiah" },
+  ne: { code: "NEH", name: "Nehemiah" },
+
+  // Esther
+  esther: { code: "EST", name: "Esther" },
+  est: { code: "EST", name: "Esther" },
+  es: { code: "EST", name: "Esther" },
+
+  // Job
+  job: { code: "JOB", name: "Job" },
+  jb: { code: "JOB", name: "Job" },
+
   // Psalms
   psalms: { code: "PSA", name: "Psalms" },
   psalm: { code: "PSA", name: "Psalms" },
@@ -93,6 +123,19 @@ const BOOK_MAPPINGS: Record<string, { code: string; name: string }> = {
   pro: { code: "PRO", name: "Proverbs" },
   pr: { code: "PRO", name: "Proverbs" },
 
+  // Ecclesiastes
+  ecclesiastes: { code: "ECC", name: "Ecclesiastes" },
+  eccl: { code: "ECC", name: "Ecclesiastes" },
+  ecc: { code: "ECC", name: "Ecclesiastes" },
+  ec: { code: "ECC", name: "Ecclesiastes" },
+
+  // Song of Solomon
+  "songofsolomon": { code: "SNG", name: "Song of Solomon" },
+  "songofsongs": { code: "SNG", name: "Song of Solomon" },
+  song: { code: "SNG", name: "Song of Solomon" },
+  sng: { code: "SNG", name: "Song of Solomon" },
+  ss: { code: "SNG", name: "Song of Solomon" },
+
   // Isaiah
   isaiah: { code: "ISA", name: "Isaiah" },
   isa: { code: "ISA", name: "Isaiah" },
@@ -103,15 +146,86 @@ const BOOK_MAPPINGS: Record<string, { code: string; name: string }> = {
   jer: { code: "JER", name: "Jeremiah" },
   je: { code: "JER", name: "Jeremiah" },
 
+  // Lamentations
+  lamentations: { code: "LAM", name: "Lamentations" },
+  lam: { code: "LAM", name: "Lamentations" },
+  la: { code: "LAM", name: "Lamentations" },
+
+  // Ezekiel
+  ezekiel: { code: "EZK", name: "Ezekiel" },
+  ezek: { code: "EZK", name: "Ezekiel" },
+  ezk: { code: "EZK", name: "Ezekiel" },
+  eze: { code: "EZK", name: "Ezekiel" },
+
+  // Daniel
+  daniel: { code: "DAN", name: "Daniel" },
+  dan: { code: "DAN", name: "Daniel" },
+  da: { code: "DAN", name: "Daniel" },
+  dn: { code: "DAN", name: "Daniel" },
+
+  // Hosea
+  hosea: { code: "HOS", name: "Hosea" },
+  hos: { code: "HOS", name: "Hosea" },
+  ho: { code: "HOS", name: "Hosea" },
+
+  // Joel
+  joel: { code: "JOL", name: "Joel" },
+  jol: { code: "JOL", name: "Joel" },
+  joe: { code: "JOL", name: "Joel" },
+  jl: { code: "JOL", name: "Joel" },
+
+  // Amos
+  amos: { code: "AMO", name: "Amos" },
+  amo: { code: "AMO", name: "Amos" },
+  am: { code: "AMO", name: "Amos" },
+
   // Obadiah
   obadiah: { code: "OBA", name: "Obadiah" },
   oba: { code: "OBA", name: "Obadiah" },
   ob: { code: "OBA", name: "Obadiah" },
 
+  // Jonah
+  jonah: { code: "JON", name: "Jonah" },
+  jon: { code: "JON", name: "Jonah" },
+  jnh: { code: "JON", name: "Jonah" },
+
+  // Micah
+  micah: { code: "MIC", name: "Micah" },
+  mic: { code: "MIC", name: "Micah" },
+  mi: { code: "MIC", name: "Micah" },
+
+  // Nahum
+  nahum: { code: "NAM", name: "Nahum" },
+  nah: { code: "NAM", name: "Nahum" },
+  nam: { code: "NAM", name: "Nahum" },
+  na: { code: "NAM", name: "Nahum" },
+
+  // Habakkuk
+  habakkuk: { code: "HAB", name: "Habakkuk" },
+  hab: { code: "HAB", name: "Habakkuk" },
+  hb: { code: "HAB", name: "Habakkuk" },
+
+  // Zephaniah
+  zephaniah: { code: "ZEP", name: "Zephaniah" },
+  zeph: { code: "ZEP", name: "Zephaniah" },
+  zep: { code: "ZEP", name: "Zephaniah" },
+  zp: { code: "ZEP", name: "Zephaniah" },
+
   // Haggai
   haggai: { code: "HAG", name: "Haggai" },
   hag: { code: "HAG", name: "Haggai" },
   hg: { code: "HAG", name: "Haggai" },
+
+  // Zechariah
+  zechariah: { code: "ZEC", name: "Zechariah" },
+  zech: { code: "ZEC", name: "Zechariah" },
+  zec: { code: "ZEC", name: "Zechariah" },
+  zc: { code: "ZEC", name: "Zechariah" },
+
+  // Malachi
+  malachi: { code: "MAL", name: "Malachi" },
+  mal: { code: "MAL", name: "Malachi" },
+  ml: { code: "MAL", name: "Malachi" },
 
   // Matthew
   matthew: { code: "MAT", name: "Matthew" },
