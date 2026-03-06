@@ -12,7 +12,7 @@ import { proxyFetch } from "../utils/httpClient.js";
 import { mapLanguageToCatalogCode } from "../utils/language-mapping.js";
 import { getKVCache } from "../functions/kv-cache.js";
 import { EdgeXRayTracer } from "../functions/edge-xray.js";
-import { OrganizationParam } from "../schemas/common-params.js";
+import { OrganizationParam, TopicParam } from "../schemas/common-params.js";
 
 // Input schema - using common parameters where applicable
 export const ListLanguagesArgs = z.object({
@@ -24,6 +24,7 @@ export const ListLanguagesArgs = z.object({
     .optional()
     .default("prod")
     .describe('Resource stage (default: "prod")'),
+  topic: TopicParam,
 });
 
 export type ListLanguagesArgs = z.infer<typeof ListLanguagesArgs>;
@@ -61,6 +62,7 @@ export async function handleListLanguages(args: ListLanguagesArgs): Promise<{
     const baseUrl = "https://git.door43.org/api/v1/catalog/list/languages";
     const url = new URL(baseUrl);
     url.searchParams.append("stage", args.stage || "prod");
+    url.searchParams.append("topic", args.topic || "tc-ready");
 
     // Handle organization: undefined = all orgs, string = single org, array = multiple orgs
     if (args.organization) {

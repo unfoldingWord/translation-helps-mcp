@@ -144,6 +144,18 @@ export const ModuleIdParam = z
   );
 
 /**
+ * Common topic parameter
+ * Filter by topic tag (e.g., "tc-ready" for translationCore-ready resources)
+ */
+export const TopicParam = z
+  .string()
+  .optional()
+  .default("tc-ready")
+  .describe(
+    'Filter by topic tag (e.g., "tc-ready" for translationCore-ready resources). Defaults to "tc-ready". Topics are metadata tags that indicate resource status or readiness.',
+  );
+
+/**
  * Helper function to create a schema object with common reference-based parameters
  */
 export function createReferenceBasedSchema<T extends z.ZodRawShape>(
