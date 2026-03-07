@@ -67,25 +67,17 @@ export class TranslationNotesService extends BaseService<TranslationNotesParams,
         'fetchTranslationNotes'
       );
 
-      // Check for errors in result
-      if (result.error) {
-        throw this.error(
-          'TRANSLATION_NOTES_ERROR',
-          result.error,
-          result,
-          404
-        );
-      }
-
       // Format response based on requested format
       const formattedData = this.formatResponse(result, params.format);
 
       return this.success(
         formattedData,
         {
-          count: result.notes?.length || 0,
-          resources: result.notes?.map(n => n.citation?.resource).filter(Boolean) || [],
-          organizations: result.notes?.map(n => n.citation?.organization).filter(Boolean) || [],
+          count: (result.verseNotes?.length || 0) + (result.contextNotes?.length || 0),
+          verseNotesCount: result.verseNotes?.length || 0,
+          contextNotesCount: result.contextNotes?.length || 0,
+          resources: result.citations?.map(c => c.resource).filter(Boolean) || [],
+          organizations: result.citations?.map(c => c.organization).filter(Boolean) || [],
           elapsed,
         },
         params.format

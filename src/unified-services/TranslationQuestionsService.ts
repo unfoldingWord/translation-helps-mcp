@@ -63,25 +63,15 @@ export class TranslationQuestionsService extends BaseService<TranslationQuestion
         'fetchTranslationQuestions'
       );
 
-      // Check for errors in result
-      if (result.error) {
-        throw this.error(
-          'TRANSLATION_QUESTIONS_ERROR',
-          result.error,
-          result,
-          404
-        );
-      }
-
       // Format response based on requested format
       const formattedData = this.formatResponse(result, params.format);
 
       return this.success(
         formattedData,
         {
-          count: result.questions?.length || 0,
-          resources: result.questions?.map(q => q.citation?.resource).filter(Boolean) || [],
-          organizations: result.questions?.map(q => q.citation?.organization).filter(Boolean) || [],
+          count: result.translationQuestions?.length || 0,
+          resources: result.citations?.map(c => c.resource).filter(Boolean) || [],
+          organizations: result.citations?.map(c => c.organization).filter(Boolean) || [],
           elapsed,
         },
         params.format
