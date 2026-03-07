@@ -1,0 +1,301 @@
+/**
+ * MCP Prompts Registry
+ * Single source of truth for all MCP prompt definitions
+ * Used by both the MCP server and the HTTP bridge
+ */
+
+export interface MCPPromptArgument {
+  name: string;
+  description: string;
+  required: boolean;
+}
+
+export interface MCPPromptDefinition {
+  name: string;
+  description: string;
+  arguments: MCPPromptArgument[];
+}
+
+/**
+ * All MCP prompts - single source of truth
+ */
+export const MCP_PROMPTS: MCPPromptDefinition[] = [
+  {
+    name: "translation-helps-for-passage",
+    description:
+      "Get comprehensive translation help for a Bible passage: scripture text, questions, word definitions (with titles), notes, and related academy articles",
+    arguments: [
+      {
+        name: "reference",
+        description: 'Bible reference (e.g., "John 3:16", "Genesis 1:1-3")',
+        required: true,
+      },
+      {
+        name: "language",
+        description: 'Language code (default: "en")',
+        required: false,
+      },
+    ],
+  },
+  {
+    name: "get-translation-words-for-passage",
+    description:
+      "Get all translation word definitions for a passage, showing dictionary entry titles (not technical term IDs)",
+    arguments: [
+      {
+        name: "reference",
+        description: 'Bible reference (e.g., "John 3:16")',
+        required: true,
+      },
+      {
+        name: "language",
+        description: 'Language code (default: "en")',
+        required: false,
+      },
+    ],
+  },
+  {
+    name: "get-translation-academy-for-passage",
+    description:
+      "Get Translation Academy training articles referenced in the translation notes for a passage",
+    arguments: [
+      {
+        name: "reference",
+        description: 'Bible reference (e.g., "John 3:16")',
+        required: true,
+      },
+      {
+        name: "language",
+        description: 'Language code (default: "en")',
+        required: false,
+      },
+    ],
+  },
+  {
+    name: "discover-resources-for-language",
+    description:
+      "Discover what translation resources are available for a specific language. Shows available languages (if not specified), available resource types for that language, and provides example tool calls using the discovered language parameter.",
+    arguments: [
+      {
+        name: "language",
+        description:
+          'Language code (e.g., "en", "es-419"). If not provided, will show all available languages first.',
+        required: false,
+      },
+      {
+        name: "organization",
+        description: 'Organization (default: "unfoldingWord")',
+        required: false,
+      },
+    ],
+  },
+  {
+    name: "discover-languages-for-subject",
+    description:
+      "Discover which languages have a specific resource type (subject) available. Shows available subjects (if not specified), then lists languages that have that resource type, and provides example tool calls using the discovered languages.",
+    arguments: [
+      {
+        name: "subject",
+        description:
+          'Resource subject/type (e.g., "Translation Words", "Translation Notes"). If not provided, will show all available subjects first.',
+        required: false,
+      },
+      {
+        name: "organization",
+        description: 'Organization (default: "unfoldingWord")',
+        required: false,
+      },
+    ],
+  },
+];
+
+/**
+ * Get prompt template text for a specific prompt
+ */
+export function getPromptTemplate(
+  name: string,
+  args: Record<string, any>,
+): string {
+  const language = (args?.language as string) || "en";
+  const reference = (args?.reference as string) || "";
+  const organization = (args?.organization as string) || "unfoldingWord";
+  const subject = (args?.subject as string) || "";
+
+  switch (name) {
+    case "translation-helps-for-passage":
+      return `Please provide comprehensive translation help for ${reference} in ${language}.
+
+Follow these steps to gather all relevant information:
+
+1. **Get the Scripture Text:**
+   - Use fetch_scripture tool with reference="${reference}" and language="${language}"
+   - This provides the actual Bible text to work with
+
+2. **Get Translation Questions:**
+   - Use fetch_translation_questions with reference="${reference}" and language="${language}"
+   - These help check comprehension and guide translation decisions
+
+3. **Get Translation Word Links and Fetch Titles:**
+   - Use fetch_translation_word_links with reference="${reference}" and language="${language}"
+   - This returns a list of terms (e.g., [{term: "love", category: "kt", path: "..."}])
+   - For EACH term in the response, use fetch_translation_word tool with term=<term_value> to get the full article
+   - Extract the TITLE from each article (found in the first H1 heading or title field)
+   - Show the user these dictionary entry TITLES, not the technical term IDs
+   - Example: Show "Love, Beloved" not "love"; show "Son of God, Son" not "sonofgod"
+
+4. **Get Translation Notes:**
+   - Use fetch_translation_notes with reference="${reference}" and language="${language}"
+   - Notes contain supportReference fields that link to Translation Academy articles
+
+5. **Get Related Translation Academy Articles:**
+   - From the translation notes response, extract all supportReference values
+   - These are RC links like "rc://*/ta/man/translate/figs-metaphor"
+   - For each supportReference, use fetch_translation_academy tool with rcLink=<supportReference_value>
+   - Extract the TITLE from each academy article
+   - Show these training article titles to help the user understand translation concepts
+
+6. **Organize the Response:**
+   Present everything in a clear, structured way:
+   - Scripture text at the top
+   - List of translation word titles (dictionary entries)
+   - Translation questions for comprehension
+   - Translation notes with guidance
+   - Related academy article titles for deeper learning
+
+The goal is to provide EVERYTHING a translator needs for this passage in one comprehensive response.`;
+
+    case "get-translation-words-for-passage":
+      return `Please show me all the translation word definitions for ${reference} in ${language}.
+
+Follow these steps:
+
+1. **Get Translation Word Links:**
+   - Use fetch_translation_word_links with reference="${reference}" and language="${language}"
+   - This returns links like: [{term: "love", category: "kt", ...}, {term: "god", ...}]
+
+2. **Fetch Full Articles and Extract Titles:**
+   - For EACH term in the links result, call fetch_translation_word with term=<term_value>
+   - From each article response, extract the TITLE (not the term ID)
+   - The title is usually in the first H1 heading or a dedicated title field
+   - Example: The term "love" might have title "Love, Beloved"
+   - Example: The term "sonofgod" might have title "Son of God, Son"
+
+3. **Present to User:**
+   - Show the dictionary entry TITLES in a clear list
+   - These are human-readable names, not technical IDs
+   - Optionally group by category (Key Terms, Names, Other Terms)
+   - Let the user know they can ask for the full definition of any term
+
+Focus on making the translation words accessible by showing their proper titles.`;
+
+    case "get-translation-academy-for-passage":
+      return `Please find all the Translation Academy training articles related to ${reference} in ${language}.
+
+Follow these steps:
+
+1. **Get Translation Notes:**
+   - Use fetch_translation_notes with reference="${reference}" and language="${language}"
+   - Translation notes contain supportReference fields that link to academy articles
+
+2. **Extract Support References:**
+   - From the notes response, find all supportReference values
+   - These are RC links in format: "rc://*/ta/man/translate/figs-metaphor"
+   - Or they might be moduleIds like: "figs-metaphor", "translate-names"
+   - Collect all unique support references
+
+3. **Fetch Academy Articles:**
+   - For each supportReference, use fetch_translation_academy tool
+   - If it's an RC link: use rcLink=<supportReference_value>
+   - If it's a moduleId: use moduleId=<supportReference_value>
+   - Each call returns an academy article with training content
+
+4. **Extract Titles:**
+   - From each academy article response, extract the TITLE
+   - The title is in the first H1 heading or dedicated title field
+
+5. **Present to User:**
+   - Show the academy article titles
+   - Brief description of what each article teaches
+   - Let the user know they can request the full content of any article
+   
+The goal is to show what translation concepts and training materials are relevant to understanding this passage.`;
+
+    case "discover-resources-for-language":
+      return `Help the user discover what translation resources are available for ${language ? `language "${language}"` : "a language"}.
+
+Follow these steps:
+
+1. **List Available Languages (if language not specified):**
+   - If no language was provided, first use list_languages tool with organization="${organization}"
+   - Show the user the available languages with their codes and names
+   - Ask the user to select a language, or proceed with the most common one (usually "en")
+
+2. **List Available Subjects for the Language:**
+   - Use list_subjects tool with language="${language || "en"}" and organization="${organization}"
+   - This shows what resource types (subjects) are available for this language
+   - Common subjects include: "Translation Words", "TSV Translation Notes", "TSV Translation Questions", "Bible", "Aligned Bible", etc.
+
+3. **Present Discovery Results:**
+   - Show the user:
+     * The selected language: ${language || "[to be selected]"}
+     * Available resource types (subjects) for that language
+     * A summary of what resources are available
+
+4. **Provide Example Tool Calls:**
+   - Show the user how to use the discovered language parameter in other tools
+   - Examples:
+     * fetch_scripture with language="${language || "en"}" and reference="John 3:16"
+     * fetch_translation_notes with language="${language || "en"}" and reference="John 3:16"
+     * fetch_translation_word with language="${language || "en"}" and term="love"
+     * list_subjects with language="${language || "en"}" to see what's available
+
+5. **Guide Next Steps:**
+   - Explain that the user can now use any of the available tools with the discovered language parameter
+   - Suggest which tools might be most useful based on the available subjects
+
+The goal is to help users discover what's available and show them how to use that information in subsequent tool calls.`;
+
+    case "discover-languages-for-subject":
+      return `Help the user discover which languages have the resource type "${subject || "[subject to be selected]"}" available.
+
+Follow these steps:
+
+1. **List Available Subjects (if subject not specified):**
+   - If no subject was provided, first use list_subjects tool with organization="${organization}"
+   - Show the user the available resource types (subjects)
+   - Common subjects include: "Translation Words", "TSV Translation Notes", "TSV Translation Questions", "Bible", "Aligned Bible", "Translation Word Links", "Translation Academy"
+   - Ask the user to select a subject, or proceed with a common one like "Translation Words"
+
+2. **Discover Languages with This Subject:**
+   - For the selected subject "${subject || "[to be selected]"}":
+     * Use list_subjects with organization="${organization}" to get all subjects
+     * Then, for each language you want to check, use list_subjects with language=<language_code> and organization="${organization}"
+     * OR use catalog search to find which languages have resources with this subject
+   - Alternatively, you can use list_languages to get all languages, then check each one
+   - The goal is to find which languages have the subject "${subject || "[selected subject]"}" available
+
+3. **Present Discovery Results:**
+   - Show the user:
+     * The selected subject: ${subject || "[to be selected]"}
+     * List of languages that have this resource type available
+     * For each language, show the language code and name
+
+4. **Provide Example Tool Calls:**
+   - Show the user how to use the discovered languages with the subject
+   - Examples for "Translation Words" subject:
+     * fetch_translation_word with language="en" and term="love"
+     * fetch_translation_word with language="es-419" and term="amor"
+   - Examples for "Translation Notes" subject:
+     * fetch_translation_notes with language="en" and reference="John 3:16"
+     * fetch_translation_notes with language="es-419" and reference="John 3:16"
+
+5. **Guide Next Steps:**
+   - Explain that the user can now use any of the discovered languages with tools that support that resource type
+   - Suggest trying the tools with different languages to compare resources
+
+The goal is to help users find which languages have specific resource types available and show them how to use those languages in subsequent tool calls.`;
+
+    default:
+      throw new Error(`Unknown prompt: ${name}`);
+  }
+}

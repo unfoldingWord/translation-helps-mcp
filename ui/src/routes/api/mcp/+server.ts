@@ -8,6 +8,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
 import { VERSION } from '$lib/version.js';
 import { getMCPToolsList } from '$lib/mcp/tools-list.js';
+import { MCP_PROMPTS, getPromptTemplate } from '../../../../../src/mcp/prompts-registry.js';
 const getVersion = () => VERSION;
 
 // Import our existing tool handlers
@@ -456,62 +457,10 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 			}
 
 			case 'prompts/list': {
-				const promptsList = [
-					{
-						name: 'translation-helps-for-passage',
-						description:
-							'Get comprehensive translation help for a Bible passage: scripture text, questions, word definitions (with titles), notes, and related academy articles',
-						arguments: [
-							{
-								name: 'reference',
-								description: 'Bible reference (e.g., "John 3:16", "Genesis 1:1-3")',
-								required: true
-							},
-							{
-								name: 'language',
-								description: 'Language code (default: "en")',
-								required: false
-							}
-						]
-					},
-					{
-						name: 'get-translation-words-for-passage',
-						description:
-							'Get all translation word definitions for a passage, showing dictionary entry titles (not technical term IDs)',
-						arguments: [
-							{
-								name: 'reference',
-								description: 'Bible reference (e.g., "John 3:16")',
-								required: true
-							},
-							{
-								name: 'language',
-								description: 'Language code (default: "en")',
-								required: false
-							}
-						]
-					},
-					{
-						name: 'get-translation-academy-for-passage',
-						description:
-							'Get Translation Academy training articles referenced in the translation notes for a passage',
-						arguments: [
-							{
-								name: 'reference',
-								description: 'Bible reference (e.g., "John 3:16")',
-								required: true
-							},
-							{
-								name: 'language',
-								description: 'Language code (default: "en")',
-								required: false
-							}
-						]
-					}
-				];
+				// Use shared prompts registry - single source of truth
 				// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
 				return json(
-					{ jsonrpc: '2.0', result: { prompts: promptsList }, id: id ?? 0 },
+					{ jsonrpc: '2.0', result: { prompts: MCP_PROMPTS }, id: id ?? 0 },
 					{
 						headers: corsHeaders
 					}
@@ -535,176 +484,44 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 					);
 				}
 
-				const language = (args?.language as string) || 'en';
-				const reference = (args?.reference as string) || '';
-
-				switch (name) {
-					case 'translation-helps-for-passage': {
-						const prompt1Result = {
-							messages: [
-								{
-									role: 'user',
-									content: {
-										type: 'text',
-										text: `Please provide comprehensive translation help for ${reference} in ${language}.
-
-Follow these steps to gather all relevant information:
-
-1. **Get the Scripture Text:**
-   - Use fetch_scripture tool with reference="${reference}" and language="${language}"
-   - This provides the actual Bible text to work with
-
-2. **Get Translation Questions:**
-   - Use fetch_translation_questions with reference="${reference}" and language="${language}"
-   - These help check comprehension and guide translation decisions
-
-3. **Get Translation Word Links and Fetch Titles:**
-   - Use fetch_translation_word_links with reference="${reference}" and language="${language}"
-   - This returns a list of terms (e.g., [{term: "love", category: "kt", path: "..."}])
-   - For EACH term in the response, use fetch_translation_word tool with term=<term_value> to get the full article
-   - Extract the TITLE from each article (found in the first H1 heading or title field)
-   - Show the user these dictionary entry TITLES, not the technical term IDs
-   - Example: Show "Love, Beloved" not "love"; show "Son of God, Son" not "sonofgod"
-
-4. **Get Translation Notes:**
-   - Use fetch_translation_notes with reference="${reference}" and language="${language}"
-   - Notes contain supportReference fields that link to Translation Academy articles
-
-5. **Get Related Translation Academy Articles:**
-   - From the translation notes response, extract all supportReference values
-   - These are RC links like "rc://*/ta/man/translate/figs-metaphor"
-   - For each supportReference, use fetch_translation_academy tool with rcLink=<supportReference_value>
-   - Extract the TITLE from each academy article
-   - Show these training article titles to help the user understand translation concepts
-
-6. **Organize the Response:**
-   Present everything in a clear, structured way:
-   - Scripture text at the top
-   - List of translation word titles (dictionary entries)
-   - Translation questions for comprehension
-   - Translation notes with guidance
-   - Related academy article titles for deeper learning
-
-The goal is to provide EVERYTHING a translator needs for this passage in one comprehensive response.`
-									}
-								}
-							]
-						};
-						// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
-						return json(
-							{ jsonrpc: '2.0', result: prompt1Result, id: id ?? 0 },
-							{
-								headers: corsHeaders
-							}
-						);
-					}
-
-					case 'get-translation-words-for-passage': {
-						const prompt2Result = {
-							messages: [
-								{
-									role: 'user',
-									content: {
-										type: 'text',
-										text: `Please show me all the translation word definitions for ${reference} in ${language}.
-
-Follow these steps:
-
-1. **Get Translation Word Links:**
-   - Use fetch_translation_word_links with reference="${reference}" and language="${language}"
-   - This returns links like: [{term: "love", category: "kt", ...}, {term: "god", ...}]
-
-2. **Fetch Full Articles and Extract Titles:**
-   - For EACH term in the links result, call fetch_translation_word with term=<term_value>
-   - From each article response, extract the TITLE (not the term ID)
-   - The title is usually in the first H1 heading or a dedicated title field
-   - Example: The term "love" might have title "Love, Beloved"
-   - Example: The term "sonofgod" might have title "Son of God, Son"
-
-3. **Present to User:**
-   - Show the dictionary entry TITLES in a clear list
-   - These are human-readable names, not technical IDs
-   - Optionally group by category (Key Terms, Names, Other Terms)
-   - Let the user know they can ask for the full definition of any term
-
-Focus on making the translation words accessible by showing their proper titles.`
-									}
-								}
-							]
-						};
-						// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
-						return json(
-							{ jsonrpc: '2.0', result: prompt2Result, id: id ?? 0 },
-							{
-								headers: corsHeaders
-							}
-						);
-					}
-
-					case 'get-translation-academy-for-passage': {
-						const prompt3Result = {
-							messages: [
-								{
-									role: 'user',
-									content: {
-										type: 'text',
-										text: `Please find all the Translation Academy training articles related to ${reference} in ${language}.
-
-Follow these steps:
-
-1. **Get Translation Notes:**
-   - Use fetch_translation_notes with reference="${reference}" and language="${language}"
-   - Translation notes contain supportReference fields that link to academy articles
-
-2. **Extract Support References:**
-   - From the notes response, find all supportReference values
-   - These are RC links in format: "rc://*/ta/man/translate/figs-metaphor"
-   - Or they might be moduleIds like: "figs-metaphor", "translate-names"
-   - Collect all unique support references
-
-3. **Fetch Academy Articles:**
-   - For each supportReference, use fetch_translation_academy tool
-   - If it's an RC link: use rcLink=<supportReference_value>
-   - If it's a moduleId: use moduleId=<supportReference_value>
-   - Each call returns an academy article with training content
-
-4. **Extract Titles:**
-   - From each academy article response, extract the TITLE
-   - The title is in the first H1 heading or dedicated title field
-
-5. **Present to User:**
-   - Show the academy article titles
-   - Brief description of what each article teaches
-   - Let the user know they can request the full content of any article
-   
-The goal is to show what translation concepts and training materials are relevant to understanding this passage.`
-									}
-								}
-							]
-						};
-						// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
-						return json(
-							{ jsonrpc: '2.0', result: prompt3Result, id: id ?? 0 },
-							{
-								headers: corsHeaders
-							}
-						);
-					}
-
-					default:
-						// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
-						return json(
-							{
-								jsonrpc: '2.0',
-								error: {
-									code: -32601,
-									message: `Unknown prompt: ${name}`
-								},
-								id: id ?? 0
+				// Check if prompt exists in registry
+				const prompt = MCP_PROMPTS.find((p) => p.name === name);
+				if (!prompt) {
+					return json(
+						{
+							jsonrpc: '2.0',
+							error: {
+								code: -32601,
+								message: `Unknown prompt: ${name}`
 							},
-							{ status: 400, headers: corsHeaders }
-						);
+							id: id ?? 0
+						},
+						{ status: 400, headers: corsHeaders }
+					);
 				}
+
+				// Get prompt template from registry
+				const templateText = getPromptTemplate(name, args);
+
+				const promptResult = {
+					messages: [
+						{
+							role: 'user',
+							content: {
+								type: 'text',
+								text: templateText
+							}
+						}
+					]
+				};
+
+				// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
+				return json(
+					{ jsonrpc: '2.0', result: promptResult, id: id ?? 0 },
+					{
+						headers: corsHeaders
+					}
+				);
 			}
 
 			case 'ping': {
@@ -760,61 +577,10 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	// Handle prompts/list directly
 	if (method === 'prompts/list') {
+		// Use shared prompts registry - single source of truth
 		return json(
 			{
-				prompts: [
-					{
-						name: 'translation-helps-for-passage',
-						description:
-							'Get comprehensive translation help for a Bible passage: scripture text, questions, word definitions (with titles), notes, and related academy articles',
-						arguments: [
-							{
-								name: 'reference',
-								description: 'Bible reference (e.g., "John 3:16", "Genesis 1:1-3")',
-								required: true
-							},
-							{
-								name: 'language',
-								description: 'Language code (default: "en")',
-								required: false
-							}
-						]
-					},
-					{
-						name: 'get-translation-words-for-passage',
-						description:
-							'Get all translation word definitions for a passage, showing dictionary entry titles (not technical term IDs)',
-						arguments: [
-							{
-								name: 'reference',
-								description: 'Bible reference (e.g., "John 3:16")',
-								required: true
-							},
-							{
-								name: 'language',
-								description: 'Language code (default: "en")',
-								required: false
-							}
-						]
-					},
-					{
-						name: 'get-translation-academy-for-passage',
-						description:
-							'Get Translation Academy training articles referenced in the translation notes for a passage',
-						arguments: [
-							{
-								name: 'reference',
-								description: 'Bible reference (e.g., "John 3:16")',
-								required: true
-							},
-							{
-								name: 'language',
-								description: 'Language code (default: "en")',
-								required: false
-							}
-						]
-					}
-				]
+				prompts: MCP_PROMPTS
 			},
 			{
 				headers: corsHeaders
