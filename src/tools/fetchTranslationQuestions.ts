@@ -1,96 +1,57 @@
 /**
  * Fetch Translation Questions Tool
  * Tool for fetching translation questions for a specific Bible reference
- * Uses shared core service for consistency with Netlify functions
+ * Uses unified service layer for consistency across MCP and REST endpoints
  */
 
 import { z } from "zod";
 import { logger } from "../utils/logger.js";
-import { fetchTranslationQuestions } from "../functions/translation-questions-service.js";
-import { buildMetadata } from "../utils/metadata-builder.js";
 import { handleMCPError } from "../utils/mcp-error-handler.js";
-import {
-  ReferenceParam,
-  LanguageParam,
-  OrganizationParam,
-  FormatParam,
-  TopicParam,
-} from "../schemas/common-params.js";
+import { createTranslationQuestionsService, type TranslationQuestionsParams } from "../unified-services/index.js";
+import { toZodObject, PARAMETER_GROUPS } from "../config/parameters/index.js";
 
-// Input schema - using shared common parameters
-export const FetchTranslationQuestionsArgs = z.object({
-  reference: ReferenceParam,
-  language: LanguageParam,
-  organization: OrganizationParam,
-  format: FormatParam,
-  topic: TopicParam,
-});
+// Input schema - generated from unified parameter definitions
+export const FetchTranslationQuestionsArgs = toZodObject(PARAMETER_GROUPS.translationQuestions.parameters);
 
-export type FetchTranslationQuestionsArgs = z.infer<
-  typeof FetchTranslationQuestionsArgs
->;
+export type FetchTranslationQuestionsArgs = z.infer<typeof FetchTranslationQuestionsArgs>;
 
 /**
  * Handle the fetch translation questions tool call
+ * Uses unified service layer for consistent business logic
  */
 export async function handleFetchTranslationQuestions(
   args: FetchTranslationQuestionsArgs,
 ) {
-  const startTime = Date.now();
-
   try {
-    logger.info("Fetching translation questions", {
-      reference: args.reference,
-      language: args.language,
-      organization: args.organization,
+    logger.info("Fetching translation questions", args);
+
+    // Create and execute unified service
+    const service = createTranslationQuestionsService();
+    const response = await service.execute(args as TranslationQuestionsParams, {
+      platform: 'mcp',
     });
 
-    // Use the shared translation questions service (same as Netlify functions)
-    const result = await fetchTranslationQuestions({
-      reference: args.reference,
-      language: args.language,
-      organization: args.organization,
-      topic: args.topic,
-    });
+    // Format response for MCP
+    const textContent = typeof response.data === 'string' 
+      ? response.data 
+      : JSON.stringify(response.data, null, 2);
 
-    // Build metadata using shared utility
-    const metadata = buildMetadata({
-      startTime,
-      data: result,
-      serviceMetadata: result.metadata,
-      additionalFields: {
-        questionsFound: result.metadata.questionsFound,
-      },
-    });
-
-    // Build enhanced response format for MCP
-    const response = {
-      translationQuestions: result.translationQuestions,
-      ...(result.citations && { citations: result.citations }), // Include citations array if present
-      ...(result.citation && !result.citations && { citation: result.citation }), // Single citation if no array
-      language: args.language,
-      ...(args.organization && { organization: args.organization }), // Only include if specified
-      ...(result.metadata.organizations && {
-        organizations: result.metadata.organizations,
-      }), // Include organizations array
-      metadata,
+    return {
+      content: [
+        {
+          type: "text",
+          text: textContent,
+        },
+      ],
+      isError: false,
+      ...(response.metadata && { metadata: response.metadata }),
     };
-
-    logger.info("Translation questions fetched successfully", {
-      reference: args.reference,
-      ...metadata,
-    });
-
-    return response;
-  } catch (error) {
+  } catch (error: any) {
+    logger.error("Failed to fetch translation questions", { error, args });
     return handleMCPError({
       toolName: "fetch_translation_questions",
-      args: {
-        reference: args.reference,
-        language: args.language,
-        organization: args.organization,
-      },
-      startTime,
+      args,
+      startTime: Date.now(),
       originalError: error,
     });
   }

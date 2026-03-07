@@ -1,0 +1,166 @@
+/**
+ * Parameter Groups
+ * 
+ * Organized collections of parameters for different tool/endpoint categories
+ */
+
+import { createParameterGroup } from './types.js';
+import { COMMON_PARAMS } from './common.js';
+
+/**
+ * Parameters for fetching scripture
+ */
+export const SCRIPTURE_PARAMS = createParameterGroup(
+  'Scripture Parameters',
+  'Parameters for fetching Bible scripture text',
+  [
+    COMMON_PARAMS.reference,
+    COMMON_PARAMS.language,
+    COMMON_PARAMS.organization,
+    COMMON_PARAMS.resource,
+    COMMON_PARAMS.format,
+    COMMON_PARAMS.includeAlignment,
+    COMMON_PARAMS.includeVerseNumbers,
+    COMMON_PARAMS.topic,
+  ]
+);
+
+/**
+ * Parameters for fetching translation notes
+ */
+export const TRANSLATION_NOTES_PARAMS = createParameterGroup(
+  'Translation Notes Parameters',
+  'Parameters for fetching translation notes',
+  [
+    COMMON_PARAMS.reference,
+    COMMON_PARAMS.language,
+    COMMON_PARAMS.organization,
+    COMMON_PARAMS.format,
+    COMMON_PARAMS.includeContext,
+    COMMON_PARAMS.includeIntro,
+    COMMON_PARAMS.topic,
+  ]
+);
+
+/**
+ * Parameters for fetching translation questions
+ */
+export const TRANSLATION_QUESTIONS_PARAMS = createParameterGroup(
+  'Translation Questions Parameters',
+  'Parameters for fetching translation questions',
+  [
+    COMMON_PARAMS.reference,
+    COMMON_PARAMS.language,
+    COMMON_PARAMS.organization,
+    COMMON_PARAMS.format,
+    COMMON_PARAMS.topic,
+  ]
+);
+
+/**
+ * Parameters for fetching translation word links
+ */
+export const TRANSLATION_WORD_LINKS_PARAMS = createParameterGroup(
+  'Translation Word Links Parameters',
+  'Parameters for fetching translation word links',
+  [
+    COMMON_PARAMS.reference,
+    COMMON_PARAMS.language,
+    COMMON_PARAMS.organization,
+    COMMON_PARAMS.format,
+    COMMON_PARAMS.topic,
+  ]
+);
+
+/**
+ * Parameters for fetching translation words (by term)
+ */
+export const TRANSLATION_WORD_PARAMS = createParameterGroup(
+  'Translation Word Parameters',
+  'Parameters for fetching translation word articles',
+  [
+    { ...COMMON_PARAMS.term, required: false },
+    { ...COMMON_PARAMS.reference, required: false },
+    COMMON_PARAMS.language,
+    COMMON_PARAMS.organization,
+    COMMON_PARAMS.category,
+    COMMON_PARAMS.path,
+    COMMON_PARAMS.rcLink,
+    COMMON_PARAMS.topic,
+  ]
+);
+
+/**
+ * Parameters for fetching translation academy modules
+ */
+export const TRANSLATION_ACADEMY_PARAMS = createParameterGroup(
+  'Translation Academy Parameters',
+  'Parameters for fetching translation academy modules',
+  [
+    COMMON_PARAMS.moduleId,
+    COMMON_PARAMS.language,
+    COMMON_PARAMS.organization,
+    COMMON_PARAMS.format,
+    COMMON_PARAMS.path,
+    COMMON_PARAMS.rcLink,
+    COMMON_PARAMS.topic,
+  ]
+);
+
+/**
+ * Parameters for listing languages
+ */
+export const LIST_LANGUAGES_PARAMS = createParameterGroup(
+  'List Languages Parameters',
+  'Parameters for listing available languages',
+  [
+    COMMON_PARAMS.organization,
+    COMMON_PARAMS.stage,
+    COMMON_PARAMS.topic,
+  ]
+);
+
+/**
+ * Parameters for listing subjects
+ */
+export const LIST_SUBJECTS_PARAMS = createParameterGroup(
+  'List Subjects Parameters',
+  'Parameters for listing available resource subjects',
+  [
+    COMMON_PARAMS.language,
+    COMMON_PARAMS.organization,
+    COMMON_PARAMS.stage,
+    COMMON_PARAMS.topic,
+  ]
+);
+
+/**
+ * Parameters for listing resources for a language
+ */
+export const LIST_RESOURCES_FOR_LANGUAGE_PARAMS = createParameterGroup(
+  'List Resources for Language Parameters',
+  'Parameters for listing all resources available in a specific language',
+  [
+    { ...COMMON_PARAMS.language, required: true },
+    COMMON_PARAMS.organization,
+    COMMON_PARAMS.stage,
+    COMMON_PARAMS.subject,
+    COMMON_PARAMS.limit,
+    COMMON_PARAMS.topic,
+  ]
+);
+
+/**
+ * All parameter groups organized by category
+ */
+export const PARAMETER_GROUPS = {
+  scripture: SCRIPTURE_PARAMS,
+  translationNotes: TRANSLATION_NOTES_PARAMS,
+  translationQuestions: TRANSLATION_QUESTIONS_PARAMS,
+  translationWordLinks: TRANSLATION_WORD_LINKS_PARAMS,
+  translationWord: TRANSLATION_WORD_PARAMS,
+  translationAcademy: TRANSLATION_ACADEMY_PARAMS,
+  listLanguages: LIST_LANGUAGES_PARAMS,
+  listSubjects: LIST_SUBJECTS_PARAMS,
+  listResourcesForLanguage: LIST_RESOURCES_FOR_LANGUAGE_PARAMS,
+} as const;
