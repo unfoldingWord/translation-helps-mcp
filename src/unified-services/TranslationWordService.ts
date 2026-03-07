@@ -1,14 +1,13 @@
 /**
  * Unified Translation Word Service
- * 
+ *
  * Wraps the core translation-words-service for use by both MCP and REST endpoints
  */
 
-import { BaseService } from './BaseService.js';
-import { PARAMETER_GROUPS } from '../config/parameters/index.js';
-import type { ServiceResponse, ServiceContext } from './types.js';
-import { getTranslationWord } from '../functions/translation-words-service.js';
-import { formatResponse } from '../utils/response-formatter.js';
+import { BaseService } from "./BaseService.js";
+import { PARAMETER_GROUPS } from "../config/parameters/index.js";
+import type { ServiceResponse, ServiceContext } from "./types.js";
+import { fetchTranslationWords } from "../functions/translation-words-service.js";
 
 /**
  * Translation word service parameters
@@ -27,24 +26,27 @@ export interface TranslationWordParams {
 /**
  * Unified Translation Word Service
  */
-export class TranslationWordService extends BaseService<TranslationWordParams, any> {
-  name = 'getTranslationWord';
-  description = 'Fetch translation word articles for biblical terms';
+export class TranslationWordService extends BaseService<
+  TranslationWordParams,
+  any
+> {
+  name = "getTranslationWord";
+  description = "Fetch translation word articles for biblical terms";
   parameters = PARAMETER_GROUPS.translationWord.parameters;
 
   async execute(
     params: TranslationWordParams,
-    context?: ServiceContext
+    context?: ServiceContext,
   ): Promise<ServiceResponse<any>> {
     try {
       // Validate parameters
       const validation = this.validateParams(params);
       if (!validation.valid) {
         throw this.error(
-          'VALIDATION_ERROR',
-          'Invalid parameters',
+          "VALIDATION_ERROR",
+          "Invalid parameters",
           validation.errors,
-          400
+          400,
         );
       }
 
@@ -52,43 +54,37 @@ export class TranslationWordService extends BaseService<TranslationWordParams, a
       const options = {
         term: params.term,
         reference: params.reference,
-        language: params.language || 'en',
+        language: params.language || "en",
         organization: params.organization,
         category: params.category,
         path: params.path,
         rcLink: params.rcLink,
-        topic: params.topic || 'tc-ready',
+        topic: params.topic || "tc-ready",
       };
 
       // Execute with timing
       const { result, elapsed } = await this.withTiming(
-        () => getTranslationWord(options),
-        'getTranslationWord'
+        () => fetchTranslationWords(options),
+        "fetchTranslationWords",
       );
 
       // Check for errors in result
       if (result.error) {
-        throw this.error(
-          'TRANSLATION_WORD_ERROR',
-          result.error,
-          result,
-          404
-        );
+        throw this.error("TRANSLATION_WORD_ERROR", result.error, result, 404);
       }
 
       // Return result (formatting handled by response-formatter if needed)
-      return this.success(
-        result,
-        {
-          elapsed,
-        }
-      );
+      return this.success(result, {
+        elapsed,
+      });
     } catch (error: any) {
       throw this.handleError(error, context);
     }
   }
 }
 
-export function createTranslationWordService(context?: ServiceContext): TranslationWordService {
+export function createTranslationWordService(
+  _context?: ServiceContext,
+): TranslationWordService {
   return new TranslationWordService();
 }
