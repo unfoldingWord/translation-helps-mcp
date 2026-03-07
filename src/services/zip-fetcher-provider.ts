@@ -248,13 +248,27 @@ export class ZipFetcherFactory {
   ): ZipFetcherProvider {
     // Auto-detect if not specified
     if (providerName === "auto") {
-      const useLocalStorage =
+      // Check if we're in a true Node.js environment (not Vite SSR)
+      // Vite SSR stubs process and os modules, so we need to detect this
+      const isTrueNodeJS =
         typeof process !== "undefined" &&
+        typeof process.versions?.node !== "undefined" &&
+        typeof require !== "undefined";
+
+      const useLocalStorage =
+        isTrueNodeJS &&
         (process.env.USE_FS_CACHE === "true" ||
-          process.env.NODE_ENV === "development" ||
-          typeof (globalThis as any).navigator === "undefined");
+          process.env.NODE_ENV === "development");
 
       providerName = useLocalStorage ? "fs" : "r2";
+
+      logger.info(`Auto-detected ZIP fetcher provider`, {
+        isTrueNodeJS,
+        chosen: providerName,
+        reason: useLocalStorage
+          ? "Node.js development mode"
+          : "SSR/Edge environment",
+      });
     }
 
     switch (providerName) {
