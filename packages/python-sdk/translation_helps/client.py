@@ -23,7 +23,7 @@ from .types import (
 )
 
 DEFAULT_SERVER_URL = "https://tc-helps.mcp.servant.bible/api/mcp"
-DEFAULT_TIMEOUT = 30.0
+DEFAULT_TIMEOUT = 90.0  # Increased from 30s to 90s for cold cache scenarios (DCS ZIP downloads can be slow)
 
 
 class TranslationHelpsClient:

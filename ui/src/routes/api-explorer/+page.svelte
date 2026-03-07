@@ -58,17 +58,23 @@
 					required: false,
 					description: 'Include word alignment data (USFM format only, default: false)'
 				},
-				{
-					name: 'includeVerseNumbers',
-					type: 'boolean',
-					required: false,
-					description: 'Include verse numbers in text (default: true)'
-				}
-			]
-		},
-		// Translation Helps
-		{
-			name: 'Translation Notes',
+			{
+				name: 'includeVerseNumbers',
+				type: 'boolean',
+				required: false,
+				description: 'Include verse numbers in text (default: true)'
+			},
+			{
+				name: 'topic',
+				type: 'string',
+				required: false,
+				description: 'Filter by topic tag (default: "tc-ready")'
+			}
+		]
+	},
+	// Translation Helps
+	{
+		name: 'Translation Notes',
 			path: '/api/fetch-translation-notes',
 			description:
 				'Fetch translation notes for a specific Bible reference - verse-by-verse explanations',
@@ -104,16 +110,22 @@
 					required: false,
 					description: 'Include contextual notes from related passages (default: true)'
 				},
-				{
-					name: 'format',
-					type: 'string',
-					required: false,
-					description: 'Output format: json, text, md, markdown (default: "json")'
-				}
-			]
-		},
-		{
-			name: 'Translation Questions',
+			{
+				name: 'format',
+				type: 'string',
+				required: false,
+				description: 'Output format: json, text, md, markdown (default: "json")'
+			},
+			{
+				name: 'topic',
+				type: 'string',
+				required: false,
+				description: 'Filter by topic tag (default: "tc-ready")'
+			}
+		]
+	},
+	{
+		name: 'Translation Questions',
 			path: '/api/fetch-translation-questions',
 			description:
 				'Fetch translation questions for a specific Bible reference - comprehension verification',
@@ -137,16 +149,22 @@
 					required: false,
 					description: 'Organization (default: "unfoldingWord")'
 				},
-				{
-					name: 'format',
-					type: 'string',
-					required: false,
-					description: 'Output format: json, text, md, markdown (default: "json")'
-				}
-			]
-		},
-		{
-			name: 'Translation Word Links',
+			{
+				name: 'format',
+				type: 'string',
+				required: false,
+				description: 'Output format: json, text, md, markdown (default: "json")'
+			},
+			{
+				name: 'topic',
+				type: 'string',
+				required: false,
+				description: 'Filter by topic tag (default: "tc-ready")'
+			}
+		]
+	},
+	{
+		name: 'Translation Word Links',
 			path: '/api/fetch-translation-word-links',
 			description:
 				'Fetch translation word links (TWL) for a specific Bible reference - maps verse words to dictionary entries',
@@ -170,16 +188,22 @@
 					required: false,
 					description: 'Organization (default: "unfoldingWord")'
 				},
-				{
-					name: 'format',
-					type: 'string',
-					required: false,
-					description: 'Output format: json, text, md, markdown (default: "json")'
-				}
-			]
-		},
-		{
-			name: 'Translation Word',
+			{
+				name: 'format',
+				type: 'string',
+				required: false,
+				description: 'Output format: json, text, md, markdown (default: "json")'
+			},
+			{
+				name: 'topic',
+				type: 'string',
+				required: false,
+				description: 'Filter by topic tag (default: "tc-ready")'
+			}
+		]
+	},
+	{
+		name: 'Translation Word',
 			path: '/api/fetch-translation-word',
 			description:
 				'Fetch translation word articles for biblical terms - can search by term, path, rcLink, or reference',
@@ -221,16 +245,22 @@
 					required: false,
 					description: 'Organization (default: "unfoldingWord")'
 				},
-				{
-					name: 'category',
-					type: 'string',
-					required: false,
-					description: 'Filter by category: kt (key terms), names, other (only with reference)'
-				}
-			]
-		},
-		{
-			name: 'Translation Academy',
+			{
+				name: 'category',
+				type: 'string',
+				required: false,
+				description: 'Filter by category: kt (key terms), names, other (only with reference)'
+			},
+			{
+				name: 'topic',
+				type: 'string',
+				required: false,
+				description: 'Filter by topic tag (default: "tc-ready")'
+			}
+		]
+	},
+	{
+		name: 'Translation Academy',
 			path: '/api/fetch-translation-academy',
 			description: 'Fetch translation academy (tA) modules and training content',
 			category: 'Translation Helps',
@@ -288,16 +318,22 @@
 					required: false,
 					description: 'Filter by organization (e.g., "unfoldingWord")'
 				},
-				{
-					name: 'stage',
-					type: 'string',
-					required: false,
-					description: 'Resource stage (default: "prod")'
-				}
-			]
-		},
-		{
-			name: 'List Subjects',
+			{
+				name: 'stage',
+				type: 'string',
+				required: false,
+				description: 'Resource stage (default: "prod")'
+			},
+			{
+				name: 'topic',
+				type: 'string',
+				required: false,
+				description: 'Filter by topic tag (default: "tc-ready")'
+			}
+		]
+	},
+	{
+		name: 'List Subjects',
 			path: '/api/list-subjects',
 			description:
 				'List all available resource subjects/types (Bible, Translation Words, etc.) - filter by language/org',
@@ -315,16 +351,22 @@
 					required: false,
 					description: 'Filter by organization'
 				},
-				{
-					name: 'stage',
-					type: 'string',
-					required: false,
-					description: 'Resource stage (default: "prod")'
-				}
-			]
-		},
-		{
-			name: 'List Resources for Language ⭐',
+			{
+				name: 'stage',
+				type: 'string',
+				required: false,
+				description: 'Resource stage (default: "prod")'
+			},
+			{
+				name: 'topic',
+				type: 'string',
+				required: false,
+				description: 'Filter by topic tag (default: "tc-ready")'
+			}
+		]
+	},
+	{
+		name: 'List Resources for Language ⭐',
 			path: '/api/list-resources-for-language',
 			description:
 				'RECOMMENDED: Fast single API call (~1-2s) listing all resources for a specific language',

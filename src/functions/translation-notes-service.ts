@@ -9,7 +9,7 @@ import { logger } from "../utils/logger.js";
 import { proxyFetch } from "../utils/httpClient.js";
 import { cache } from "./cache";
 import { parseReference } from "./reference-parser";
-import { getResourceForBook } from "./resource-detector";
+import { getResourceForBook, getResourcesForBook } from "./resource-detector";
 import { ZipFetcherFactory } from "../services/zip-fetcher-provider.js";
 import { EdgeXRayTracer } from "./edge-xray";
 
@@ -22,6 +22,13 @@ export interface TranslationNote {
   occurrences?: number;
   markdown?: string; // Original nested markdown payload
   supportReference?: string;
+  citation?: {
+    resource: string;
+    organization: string;
+    language: string;
+    version: string;
+    url: string;
+  };
 }
 
 export interface TranslationNotesOptions {
@@ -30,12 +37,13 @@ export interface TranslationNotesOptions {
   organization?: string;
   includeIntro?: boolean;
   includeContext?: boolean;
+  topic?: string;
 }
 
 export interface TranslationNotesResult {
   verseNotes: TranslationNote[];
   contextNotes: TranslationNote[];
-  citation: {
+  citation?: {
     resource: string;
     title: string;
     organization: string;
@@ -43,12 +51,200 @@ export interface TranslationNotesResult {
     url: string;
     version: string;
   };
+  citations?: Array<{
+    resource: string;
+    title?: string;
+    organization: string;
+    language: string;
+    url: string;
+    version: string;
+  }>;
   metadata: {
     sourceNotesCount: number;
     verseNotesCount: number;
     contextNotesCount: number;
     cached: boolean;
     responseTime: number;
+    totalResources?: number;
+    organizations?: string[];
+  };
+}
+
+/**
+ * Fetch translation notes from multiple resources (all organizations)
+ */
+async function fetchTranslationNotesFromMultipleResources(
+  reference: string,
+  language: string,
+  parsedRef: any,
+  includeIntro: boolean,
+  includeContext: boolean,
+  topic: string,
+  startTime: number,
+): Promise<TranslationNotesResult> {
+  logger.info(`Fetching translation notes from multiple resources`);
+
+  const resources = await getResourcesForBook(
+    reference,
+    "notes",
+    language,
+    undefined, // Get ALL organizations
+    topic,
+  );
+
+  if (!resources || resources.length === 0) {
+    throw new Error(`No translation notes found for ${language}`);
+  }
+
+  logger.info(`Found ${resources.length} note resources from multiple organizations`);
+
+  const allVerseNotes: TranslationNote[] = [];
+  const allContextNotes: TranslationNote[] = [];
+  const citations: Array<{
+    resource: string;
+    title?: string;
+    organization: string;
+    language: string;
+    url: string;
+    version: string;
+  }> = [];
+
+  // Fetch notes from each resource
+  for (const resourceInfo of resources) {
+    try {
+      logger.info(`Fetching notes from resource`, {
+        name: resourceInfo.name,
+        owner: resourceInfo.owner,
+      });
+
+      // Find the correct file from ingredients
+      const ingredient = resourceInfo.ingredients?.find(
+        (ing: { identifier?: string }) =>
+          ing.identifier?.toLowerCase() === parsedRef.book.toLowerCase(),
+      );
+
+      if (!ingredient) {
+        logger.warn(`Book not found in ingredients for resource`, {
+          resource: resourceInfo.name,
+          book: parsedRef.book,
+        });
+        continue;
+      }
+
+      // Use ZIP-based fetching
+      const tracer = new EdgeXRayTracer(
+        `tn-multi-${Date.now()}`,
+        "translation-notes-service",
+      );
+      const zipFetcherProvider = ZipFetcherFactory.create(
+        (process.env.ZIP_FETCHER_PROVIDER as "r2" | "fs" | "auto") ||
+          "auto",
+        process.env.CACHE_PATH,
+        tracer,
+      );
+
+      const rows = (await zipFetcherProvider.getTSVData(
+        {
+          book: parsedRef.book,
+          chapter: parsedRef.chapter!,
+          verse: parsedRef.verse,
+        },
+        language,
+        resourceInfo.owner || "unfoldingWord",
+        "tn",
+      )) as Array<Record<string, string>>;
+
+      logger.info(`Fetched ${rows.length} TSV rows from ${resourceInfo.name}`);
+
+      // Create citation for this resource
+      const resourceCitation = {
+        resource: resourceInfo.name,
+        title: resourceInfo.title,
+        organization: resourceInfo.owner || "unfoldingWord",
+        language,
+        url: resourceInfo.url || `https://git.door43.org/${resourceInfo.owner}/${resourceInfo.name}`,
+        version: "master",
+      };
+      citations.push(resourceCitation);
+
+      // Convert rows to TranslationNote format with citations
+      const notes: TranslationNote[] = rows.map((row) => ({
+        id: row.ID || row.Id || "",
+        reference: row.Reference || row.reference || "",
+        note: row.Note || row.note || "",
+        quote: row.Quote || row.quote,
+        occurrence: row.Occurrence
+          ? parseInt(row.Occurrence, 10)
+          : row.occurrence
+            ? parseInt(row.occurrence, 10)
+            : undefined,
+        occurrences: row.Occurrences
+          ? parseInt(row.Occurrences, 10)
+          : row.occurrences
+            ? parseInt(row.occurrences, 10)
+            : undefined,
+        supportReference: row.SupportReference || row.supportReference,
+        citation: {
+          resource: resourceInfo.name,
+          organization: resourceInfo.owner || "unfoldingWord",
+          language,
+          version: "master",
+          url: resourceCitation.url,
+        },
+      }));
+
+      // Filter notes based on includeIntro and includeContext
+      let filteredNotes = notes;
+      if (!includeIntro && !includeContext) {
+        filteredNotes = notes.filter(
+          (note) =>
+            !note.reference.includes("intro") && !note.reference.includes("front:"),
+        );
+      } else if (!includeIntro) {
+        filteredNotes = notes.filter((note) => !note.reference.includes("front:"));
+      } else if (!includeContext) {
+        filteredNotes = notes.filter((note) => !note.reference.includes(":intro"));
+      }
+
+      // Split into verse notes and context notes
+      const verseNotes = filteredNotes.filter((note) => {
+        const ref = note.reference || "";
+        return ref.match(/\d+:\d+/) && !ref.includes("intro");
+      });
+
+      const contextNotes = filteredNotes.filter((note) => {
+        const ref = note.reference || "";
+        return ref.includes("intro") || ref.includes("front:");
+      });
+
+      allVerseNotes.push(...verseNotes);
+      allContextNotes.push(...contextNotes);
+    } catch (error) {
+      logger.error(`Failed to fetch notes from resource`, {
+        resource: resourceInfo.name,
+        error: String(error),
+      });
+      // Continue with other resources
+    }
+  }
+
+  const organizations = Array.from(
+    new Set(citations.map((c) => c.organization)),
+  );
+
+  return {
+    verseNotes: allVerseNotes,
+    contextNotes: allContextNotes,
+    citations,
+    metadata: {
+      sourceNotesCount: allVerseNotes.length + allContextNotes.length,
+      verseNotesCount: allVerseNotes.length,
+      contextNotesCount: allContextNotes.length,
+      cached: false,
+      responseTime: Date.now() - startTime,
+      totalResources: resources.length,
+      organizations,
+    },
   };
 }
 
@@ -62,9 +258,10 @@ export async function fetchTranslationNotes(
   const {
     reference,
     language = "en",
-    organization = "unfoldingWord",
+    organization, // No longer defaults to unfoldingWord
     includeIntro = true,
     includeContext = true,
+    topic = "tc-ready",
   } = options;
 
   const parsedRef = parseReference(reference);
@@ -75,12 +272,27 @@ export async function fetchTranslationNotes(
   logger.info(`Core translation notes service called`, {
     reference,
     language,
-    organization,
+    organization: organization || "all",
     includeIntro,
     includeContext,
+    topic,
   });
 
-  logger.info(`Processing fresh notes request`);
+  // If organization is undefined, fetch from ALL organizations
+  if (!organization) {
+    return fetchTranslationNotesFromMultipleResources(
+      reference,
+      language,
+      parsedRef,
+      includeIntro,
+      includeContext,
+      topic,
+      startTime,
+    );
+  }
+
+  // Otherwise, use the existing single-organization logic
+  logger.info(`Processing fresh notes request for single organization`);
 
   // 🚀 OPTIMIZATION: Use unified resource discovery instead of separate catalog search
   logger.debug(`Using unified resource discovery for translation notes...`);
@@ -89,6 +301,7 @@ export async function fetchTranslationNotes(
     "notes",
     language,
     organization,
+    topic,
   );
 
   if (!resourceInfo) {

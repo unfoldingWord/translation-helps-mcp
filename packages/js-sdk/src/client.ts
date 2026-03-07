@@ -21,7 +21,7 @@ import type {
 } from "./types.js";
 
 const DEFAULT_SERVER_URL = "https://tc-helps.mcp.servant.bible/api/mcp";
-const DEFAULT_TIMEOUT = 30000;
+const DEFAULT_TIMEOUT = 90000; // Increased from 30s to 90s for cold cache scenarios (DCS ZIP downloads can be slow)
 
 export class TranslationHelpsClient {
   private serverUrl: string;

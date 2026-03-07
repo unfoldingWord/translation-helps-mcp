@@ -133,6 +133,13 @@ export const COMMON_PARAMS = {
 				return value.every((org) => typeof org === 'string' && isValidOrganization(org));
 			}
 			return false;
+		},
+		transform: (value: any) => {
+			// Normalize empty strings to undefined for multi-org fetch
+			if (value === '' || value === null) {
+				return undefined;
+			}
+			return value;
 		}
 	},
 

@@ -32,12 +32,13 @@ export { type WordAlignment };
 export interface ScriptureOptions {
   reference: string;
   language?: string;
-  organization?: string;
+  organization?: string; // Optional - undefined means all organizations
   includeVerseNumbers?: boolean;
   format?: "text" | "usfm";
   specificTranslations?: string[];
   bypassCache?: CacheBypassOptions;
   includeAlignment?: boolean; // New option for alignment data
+  topic?: string; // Topic filter (default: "tc-ready")
 }
 
 export interface ScriptureResult {
@@ -102,21 +103,23 @@ export async function fetchScripture(
   const {
     reference: referenceParam,
     language = "en",
-    organization = "unfoldingWord",
+    organization, // Optional - undefined means all organizations
     includeVerseNumbers = true,
     format = "text",
     specificTranslations,
     bypassCache,
     includeAlignment = false, // Default to false for backward compatibility
+    topic = "tc-ready", // Default to tc-ready for translationCore-ready resources
   } = options;
 
   logger.info(`Core scripture service called`, {
     reference: referenceParam,
     language,
-    organization,
+    organization: organization || "all",
     includeVerseNumbers,
     format,
     includeAlignment,
+    topic,
     bypassCache: Boolean(bypassCache),
   });
 
@@ -137,13 +140,18 @@ export async function fetchScripture(
       referenceParam,
       language,
       organization,
+      topic,
     );
     const allResources = availability.scripture;
 
     if (allResources.length === 0) {
-      logger.error(`No scripture resources found`, { language, organization });
+      logger.error(`No scripture resources found`, {
+        language,
+        organization: organization || "all",
+        topic,
+      });
       throw new Error(
-        `No scripture resources found for ${language}/${organization}`,
+        `No scripture resources found for ${language}${organization ? `/${organization}` : ""} with topic=${topic}`,
       );
     }
 
@@ -233,14 +241,19 @@ export async function fetchScripture(
         const refTag = "master"; // Default, ZipResourceFetcher2 will resolve actual ref from catalog
         const zipballUrl = null; // ZipResourceFetcher2 will get from catalog
 
+        // Extract organization from the resource metadata (from DCS catalog response)
+        // The resource comes from catalog search which includes owner information
+        const resourceOrg =
+          (resource as any).owner || organization || "unfoldingWord";
+
         logger.info(
-          `📦 Using ZIP-based download for ${resource.name} (ref: ${refTag})`,
+          `📦 Using ZIP-based download for ${resourceOrg}/${resource.name} (ref: ${refTag})`,
         );
 
         // Download ZIP (cached in R2) and extract USFM file (cached extraction)
         // ZipResourceFetcher2.getRawUSFMContent will fetch catalog if needed to get refTag/zipballUrl
         const usfmData = await zipFetcher.getRawUSFMContent(
-          organization,
+          resourceOrg,
           resource.name,
           ingredientPath,
           refTag,
@@ -377,9 +390,9 @@ export async function fetchScripture(
             translation: resource.title,
             citation: {
               resource: resource.name,
-              organization,
+              organization: resourceOrg,
               language,
-              url: `https://git.door43.org/${organization}/${resource.name}`,
+              url: `https://git.door43.org/${resourceOrg}/${resource.name}`,
               version: "master",
             },
             alignment: alignmentData,

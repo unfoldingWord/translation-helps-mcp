@@ -390,6 +390,15 @@ export const LIST_LANGUAGES_CONFIG: EndpointConfig = {
       example: "prod",
       options: ["prod", "preprod", "draft"],
     },
+    topic: {
+      type: "string" as const,
+      required: false,
+      default: "tc-ready",
+      description:
+        "Filter by topic tag (e.g., 'tc-ready' for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.",
+      example: "tc-ready",
+      options: ["tc-ready"],
+    },
   },
 
   dataSource: {
@@ -470,6 +479,15 @@ export const LIST_SUBJECTS_CONFIG: EndpointConfig = {
       description: "Resource stage (default: prod)",
       example: "prod",
       options: ["prod", "preprod", "draft"],
+    },
+    topic: {
+      type: "string" as const,
+      required: false,
+      default: "tc-ready",
+      description:
+        "Filter by topic tag (e.g., 'tc-ready' for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.",
+      example: "tc-ready",
+      options: ["tc-ready"],
     },
   },
 

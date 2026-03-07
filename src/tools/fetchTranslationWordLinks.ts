@@ -14,6 +14,7 @@ import {
   LanguageParam,
   OrganizationParam,
   FormatParam,
+  TopicParam,
 } from "../schemas/common-params.js";
 
 // Input schema - using shared common parameters
@@ -22,6 +23,7 @@ export const FetchTranslationWordLinksArgs = z.object({
   language: LanguageParam,
   organization: OrganizationParam,
   format: FormatParam,
+  topic: TopicParam,
 });
 
 export type FetchTranslationWordLinksArgs = z.infer<
@@ -54,6 +56,7 @@ export async function handleFetchTranslationWordLinks(
       language: args.language,
       organization: args.organization,
       resources: ["links"],
+      topic: args.topic,
     };
 
     // Fetch translation word links using aggregator

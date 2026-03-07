@@ -81,41 +81,64 @@ export function createScriptureResponse(
 	additionalMetadata?: Partial<StandardMetadata>
 ): ScriptureResponse {
 	const language = scripture[0]?.language || 'en';
-	const organization = scripture[0]?.organization || 'unfoldingWord';
+	// Don't include organization at top level when fetching from multiple sources
+	// Each scripture has its own citation.organization field for accuracy
+	const organizations = Array.from(
+		new Set(
+			scripture
+				.map((s) => s.citation?.organization || s.organization)
+				.filter(Boolean)
+		)
+	);
+	const organization =
+		organizations.length === 1
+			? organizations[0]
+			: organizations.length > 1
+				? 'multiple'
+				: undefined;
 	const reference = additionalMetadata?.reference || scripture[0]?.reference || '';
 
 	// Extract real metadata from first scripture with metadata
 	const firstWithMetadata = scripture.find((s) => s.metadata);
 	const realMetadata = firstWithMetadata?.metadata || {};
 
-	// Clean up scripture items - remove redundant fields
+	// Clean up scripture items - keep citation for per-resource metadata
 	const cleanScripture = scripture.map((s) => ({
 		text: s.text,
 		translation: s.translation,
-		...(s.reference !== reference && { reference: s.reference })
+		...(s.reference !== reference && { reference: s.reference }),
+		// Include citation metadata for each resource
+		...(s.citation && {
+			citation: {
+				resource: s.citation.resource,
+				organization: s.citation.organization,
+				language: s.citation.language,
+				url: s.citation.url,
+				version: s.citation.version
+			}
+		}),
+		// Include resource-specific metadata if available
+		...(s.metadata && { metadata: s.metadata })
 	}));
 
 	return {
 		scripture: cleanScripture,
 		reference,
 		language,
-		organization,
+		...(organization && { organization }), // Only include if defined
 		metadata: {
 			totalCount: scripture.length,
 			resources: [...new Set(scripture.map((s) => s.resource || s.translation))].filter(Boolean),
-			// Include real metadata
-			license: realMetadata.license || 'CC BY-SA 4.0',
-			...(realMetadata.copyright && { copyright: realMetadata.copyright }),
-			...(realMetadata.publisher && { publisher: realMetadata.publisher }),
-			...(realMetadata.contributors && { contributors: realMetadata.contributors }),
-			...(realMetadata.issued && { issued: realMetadata.issued }),
-			...(realMetadata.modified && { modified: realMetadata.modified }),
-			...(realMetadata.checkingLevel && { checkingLevel: realMetadata.checkingLevel }),
+			// Top-level metadata is now aggregate only - per-resource metadata is in each scripture item
 			...(additionalMetadata?.requestedResources && {
 				requestedResources: additionalMetadata.requestedResources
 			}),
 			...(additionalMetadata?.foundResources && {
 				foundResources: additionalMetadata.foundResources
+			}),
+			// Add organizations array when multiple sources
+			...(organizations.length > 1 && {
+				organizations: organizations
 			})
 		}
 	};

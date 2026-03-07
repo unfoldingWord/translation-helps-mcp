@@ -65,12 +65,13 @@ export class UnifiedResourceFetcher {
 
 	/**
 	 * Fetch scripture - supports single org, multiple orgs, or all orgs
+	 * When resources is null/undefined, discovers available resources from catalog dynamically
 	 */
 	async fetchScripture(
 		reference: string,
 		language: string,
 		organization: string | string[] | undefined,
-		resources: string[]
+		resources?: string[] | null
 	): Promise<ScriptureResult[]> {
 		const parsed = parseReference(reference);
 		const results: ScriptureResult[] = [];
@@ -89,21 +90,45 @@ export class UnifiedResourceFetcher {
 					? organization
 					: [organization]; // Single org as array for uniform handling
 
-		// Fetch all requested resources for all organizations
-		for (const org of organizations) {
-			for (const resource of resources) {
+		// Dynamic resource discovery when resources is null/undefined
+		// This allows the catalog (filtered by topic=tc-ready) to determine available resources
+		if (!resources || resources.length === 0) {
+			logger.info(
+				`🔍 Dynamic discovery mode: fetching all tc-ready resources from catalog for ${language}`
+			);
+
+			// Query catalog once to discover available resources
+			for (const org of organizations) {
 				try {
-					// zipFetcher.getScripture expects string, but we'll pass undefined for "all orgs"
-					// ZipResourceFetcher2 checks: if (organization && organization !== "all")
-					// So undefined or "all" will omit owner param and search all orgs
-					const orgParam = org || 'all'; // Use 'all' to indicate search all orgs
-					const data = await this.zipFetcher.getScripture(parsed, language, orgParam, resource);
+					const orgParam = org || 'all';
+					// Pass undefined as version to let getScripture discover all available
+					const data = await this.zipFetcher.getScripture(
+						parsed,
+						language,
+						orgParam,
+						undefined // No specific version = return all from catalog
+					);
 					results.push(...data);
 				} catch (error) {
-					logger.warn(`Failed to fetch ${resource} for ${reference} from ${org || 'all orgs'}`, {
+					logger.warn(`Failed to discover resources for ${reference} from ${org || 'all orgs'}`, {
 						error
 					});
-					// Continue with other resources instead of failing completely
+				}
+			}
+		} else {
+			// Specific resources requested - fetch each one
+			for (const org of organizations) {
+				for (const resource of resources) {
+					try {
+						const orgParam = org || 'all';
+						const data = await this.zipFetcher.getScripture(parsed, language, orgParam, resource);
+						results.push(...data);
+					} catch (error) {
+						logger.warn(`Failed to fetch ${resource} for ${reference} from ${org || 'all orgs'}`, {
+							error
+						});
+						// Continue with other resources instead of failing completely
+					}
 				}
 			}
 		}

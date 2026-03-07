@@ -200,6 +200,8 @@ export class ZipResourceFetcher2 {
       // CRITICAL: request RC metadata so ingredients are included
       params.set("metadataType", "rc");
       params.set("includeMetadata", "true");
+      // Filter to tc-ready (translationCore-ready) resources by default
+      params.set("topic", "tc-ready");
       const catalogUrl = `${baseCatalog}?${params.toString()}`;
 
       // KV+memory cached catalog per (lang, org, stage=prod, subject)
@@ -418,7 +420,17 @@ export class ZipResourceFetcher2 {
           return as - bs;
         });
 
-      type ScriptureResult = { text: string; translation: string };
+      type ScriptureResult = { 
+        text: string; 
+        translation: string;
+        citation?: {
+          resource: string;
+          organization: string;
+          language: string;
+          version: string;
+          url?: string;
+        };
+      };
       const results: ScriptureResult[] = [];
 
       // Prepare targets with resolved ingredient path and zip info
@@ -643,8 +655,13 @@ export class ZipResourceFetcher2 {
           results.push({
             text: verseText,
             translation: withVersion,
-            // @ts-expect-error - Adding organization tracking for accurate source attribution
-            actualOrganization: t.owner,
+            citation: {
+              resource: name.toLowerCase(),
+              organization: t.owner,
+              language,
+              version: t.refTag || 'unknown',
+              url: t.zipballUrl || `https://git.door43.org/${t.owner}/${t.name}`
+            }
           });
         }
       }
@@ -723,8 +740,13 @@ export class ZipResourceFetcher2 {
           results.push({
             text: verseText,
             translation: withVersion,
-            // @ts-expect-error - Adding organization tracking for accurate source attribution
-            actualOrganization: t.owner,
+            citation: {
+              resource: name.toLowerCase(),
+              organization: t.owner,
+              language,
+              version: t.refTag || 'unknown',
+              url: t.zipballUrl || `https://git.door43.org/${t.owner}/${t.name}`
+            }
           });
         }
       }

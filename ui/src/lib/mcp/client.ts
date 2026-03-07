@@ -17,14 +17,14 @@ export function getMCPClient(serverUrl?: string, enableMetrics = false): Transla
 	if (!clientInstance) {
 		clientInstance = new TranslationHelpsClient({
 			serverUrl: serverUrl || undefined, // Will use default if not provided
-			timeout: 30000,
+			timeout: 90000, // Increased from 30s to 90s for cold cache scenarios
 			enableMetrics // Enable metrics collection for development
 		});
 	} else if (enableMetrics && !clientInstance['enableMetrics']) {
 		// If metrics were requested but client doesn't have them, create new instance
 		clientInstance = new TranslationHelpsClient({
 			serverUrl: serverUrl || clientInstance['serverUrl'],
-			timeout: 30000,
+			timeout: 90000, // Increased from 30s to 90s for cold cache scenarios
 			enableMetrics: true
 		});
 	}

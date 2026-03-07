@@ -20,6 +20,7 @@ import {
   ReferenceParam,
   LanguageParam,
   OrganizationParam,
+  TopicParam,
 } from "../schemas/common-params.js";
 
 // Input schema - using shared common parameters
@@ -40,6 +41,7 @@ export const GetTranslationWordArgs = z.object({
     .describe(
       "Filter by category (kt, names, other) - only used with reference",
     ),
+  topic: TopicParam,
 });
 
 export type GetTranslationWordArgs = z.infer<typeof GetTranslationWordArgs>;
@@ -171,6 +173,7 @@ export async function handleGetTranslationWord(args: GetTranslationWordArgs) {
         language: args.language,
         organization: args.organization,
         category: args.category,
+        topic: args.topic,
       });
 
       // Build metadata using shared utility

@@ -14,6 +14,7 @@ import {
   LanguageParam,
   OrganizationParam,
   FormatParam,
+  TopicParam,
 } from "../schemas/common-params.js";
 
 // Input schema - using shared common parameters
@@ -22,6 +23,7 @@ export const FetchTranslationQuestionsArgs = z.object({
   language: LanguageParam,
   organization: OrganizationParam,
   format: FormatParam,
+  topic: TopicParam,
 });
 
 export type FetchTranslationQuestionsArgs = z.infer<
@@ -48,6 +50,7 @@ export async function handleFetchTranslationQuestions(
       reference: args.reference,
       language: args.language,
       organization: args.organization,
+      topic: args.topic,
     });
 
     // Build metadata using shared utility
@@ -63,9 +66,13 @@ export async function handleFetchTranslationQuestions(
     // Build enhanced response format for MCP
     const response = {
       translationQuestions: result.translationQuestions,
-      citation: result.citation,
+      ...(result.citations && { citations: result.citations }), // Include citations array if present
+      ...(result.citation && !result.citations && { citation: result.citation }), // Single citation if no array
       language: args.language,
-      organization: args.organization,
+      ...(args.organization && { organization: args.organization }), // Only include if specified
+      ...(result.metadata.organizations && {
+        organizations: result.metadata.organizations,
+      }), // Include organizations array
       metadata,
     };
 

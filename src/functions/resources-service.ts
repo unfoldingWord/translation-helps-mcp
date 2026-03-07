@@ -22,6 +22,7 @@ export interface ResourcesOptions {
   includeIntro?: boolean;
   includeVerseNumbers?: boolean;
   format?: "text" | "usfm";
+  topic?: string;
 }
 
 export interface ResourcesResult {
@@ -64,6 +65,7 @@ export async function fetchResources(
     includeIntro = true,
     includeVerseNumbers = true,
     format = "text",
+    topic = "tc-ready",
   } = options;
 
   logger.info(`Core resources service called`, {
@@ -71,6 +73,7 @@ export async function fetchResources(
     language,
     organization,
     resources,
+    topic,
   });
 
   // 🚀 OPTIMIZATION: Discover resource availability first with one unified call
@@ -79,6 +82,7 @@ export async function fetchResources(
     reference,
     language,
     organization,
+    topic,
   );
 
   logger.debug(`Resource availability discovered`, {
@@ -115,6 +119,7 @@ export async function fetchResources(
         organization,
         includeVerseNumbers,
         format,
+        topic,
       })
         .then((res) => {
           // Handle different response formats
@@ -147,6 +152,7 @@ export async function fetchResources(
         organization,
         includeIntro,
         includeContext: true,
+        topic,
       })
         .then((res) => {
           // Handle different response formats
@@ -179,6 +185,7 @@ export async function fetchResources(
         reference,
         language,
         organization,
+        topic,
       })
         .then((res) => {
           result.translationQuestions = res.translationQuestions;
@@ -206,6 +213,7 @@ export async function fetchResources(
         reference,
         language,
         organization,
+        topic,
       })
         .then((res) => {
           // Handle different response formats

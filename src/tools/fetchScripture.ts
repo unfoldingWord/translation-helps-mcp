@@ -18,6 +18,7 @@ import {
   FormatParam,
   ResourceParam,
   IncludeAlignmentParam,
+  TopicParam,
 } from "../schemas/common-params.js";
 
 // Input schema - using shared common parameters
@@ -29,6 +30,7 @@ export const FetchScriptureArgs = z.object({
   format: FormatParam,
   resource: ResourceParam,
   includeAlignment: IncludeAlignmentParam,
+  topic: TopicParam,
 });
 
 export type FetchScriptureArgs = z.infer<typeof FetchScriptureArgs>;
@@ -46,11 +48,12 @@ export async function handleFetchScripture(args: FetchScriptureArgs) {
         logger.info("Fetching scripture", {
           reference: args.reference,
           language: args.language,
-          organization: args.organization,
+          organization: args.organization || "all",
           includeVerseNumbers: args.includeVerseNumbers,
           format: args.format,
           resource: args.resource,
           includeAlignment: args.includeAlignment,
+          topic: args.topic,
         });
 
         // Use the shared scripture service (same as Netlify functions)
@@ -71,6 +74,7 @@ export async function handleFetchScripture(args: FetchScriptureArgs) {
               ? undefined
               : args.resource?.split(",").map((r) => r.trim()),
           includeAlignment: args.includeAlignment,
+          topic: args.topic,
         });
 
         // Check if we have multiple scriptures (when resource: "all")

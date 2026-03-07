@@ -27,6 +27,7 @@ export interface TranslationWordsOptions {
   language?: string;
   organization?: string;
   category?: string;
+  topic?: string;
 }
 
 export interface TranslationWordsResult {
@@ -58,6 +59,7 @@ export async function fetchTranslationWords(
     language = "en",
     organization = "unfoldingWord",
     category,
+    topic = "tc-ready",
   } = options;
 
   const parsedRef = parseReference(reference);
@@ -70,6 +72,7 @@ export async function fetchTranslationWords(
     language,
     organization,
     category,
+    topic,
   });
 
   logger.info(`Processing fresh words request`);
@@ -81,6 +84,7 @@ export async function fetchTranslationWords(
     "words",
     language,
     organization,
+    topic,
   );
 
   if (!resourceInfo) {

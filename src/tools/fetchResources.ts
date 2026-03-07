@@ -8,6 +8,7 @@ import { z } from "zod";
 import { logger } from "../utils/logger.js";
 import { fetchResources } from "../functions/resources-service.js";
 import { estimateTokens } from "../utils/tokenCounter.js";
+import { TopicParam } from "../schemas/common-params.js";
 
 // Input schema
 export const FetchResourcesArgs = z.object({
@@ -42,6 +43,7 @@ export const FetchResourcesArgs = z.object({
     .optional()
     .default("text")
     .describe("Output format"),
+  topic: TopicParam,
 });
 
 export type FetchResourcesArgs = z.infer<typeof FetchResourcesArgs>;
@@ -69,6 +71,7 @@ export async function handleFetchResources(args: FetchResourcesArgs) {
       includeIntro: args.includeIntro,
       includeVerseNumbers: args.includeVerseNumbers,
       format: args.format,
+      topic: args.topic,
     });
 
     // Build enhanced response format for MCP

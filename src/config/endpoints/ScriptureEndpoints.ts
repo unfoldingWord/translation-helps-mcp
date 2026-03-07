@@ -28,7 +28,7 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
     },
     language: {
       type: "string",
-      required: true,
+      required: false,
       default: "en",
       description: "Language code for the scripture text",
       example: "en",
@@ -36,9 +36,10 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
     },
     organization: {
       type: "string",
-      required: true,
-      default: "unfoldingWord",
-      description: "Organization providing the scripture text",
+      required: false,
+      default: undefined,
+      description:
+        "Organization(s) to search. Can be a single organization (string), multiple organizations (array), or omitted to search all organizations. Examples: 'unfoldingWord', ['unfoldingWord', 'es-419_gl'], or undefined for all.",
       example: "unfoldingWord",
       options: ["unfoldingWord", "Door43-Catalog"],
     },
@@ -67,6 +68,15 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
       description:
         "Include word alignment data (only available with USFM format)",
       example: false,
+    },
+    topic: {
+      type: "string",
+      required: false,
+      default: "tc-ready",
+      description:
+        "Filter by topic tag (e.g., 'tc-ready' for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.",
+      example: "tc-ready",
+      options: ["tc-ready"],
     },
   },
   dataSource: {

@@ -39,10 +39,11 @@ const REFERENCE_PARAMS = {
   organization: {
     type: "string" as const,
     required: false,
-    default: "unfoldingWord",
-    description: "Organization providing the translation helps",
+    default: undefined,
+    description:
+      "Organization(s) to search. Can be a single organization (string), multiple organizations (array), or omitted to search all tc-ready organizations. Examples: 'unfoldingWord', ['unfoldingWord', 'es-419_gl'], or undefined for all.",
     example: "unfoldingWord",
-    options: ["unfoldingWord", "Door43-Catalog"],
+    options: ["unfoldingWord", "Door43-Catalog", "es-419_gl", "WycliffeAssociates"],
   },
   format: {
     type: "string" as const,
@@ -51,6 +52,15 @@ const REFERENCE_PARAMS = {
     description: "Response format",
     example: "json",
     options: ["json", "md", "text"],
+  },
+  topic: {
+    type: "string" as const,
+    required: false,
+    default: "tc-ready",
+    description:
+      "Filter by topic tag (e.g., 'tc-ready' for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.",
+    example: "tc-ready",
+    options: ["tc-ready"],
   },
 };
 
@@ -89,6 +99,7 @@ const TERM_PARAMS = {
   language: REFERENCE_PARAMS.language,
   organization: REFERENCE_PARAMS.organization,
   format: REFERENCE_PARAMS.format,
+  topic: REFERENCE_PARAMS.topic,
 };
 
 /**

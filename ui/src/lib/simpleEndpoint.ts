@@ -80,15 +80,23 @@ function parseParams(
 			if (orgValues.length === 0) {
 				parsed = undefined; // No org specified - search all
 			} else if (orgValues.length === 1) {
-				parsed = orgValues[0]; // Single organization
+				// Convert empty string to undefined for multi-org fetch
+				parsed = orgValues[0] === '' ? undefined : orgValues[0];
 			} else {
-				parsed = orgValues; // Multiple organizations
+				// Multiple organizations - filter out empty strings
+				const filtered = orgValues.filter((v) => v !== '');
+				parsed = filtered.length > 0 ? filtered : undefined;
 			}
 
 			// Custom validation
 			if (param.validate && !param.validate(parsed)) {
 				errors.push(`Parameter ${param.name} is invalid`);
 				continue;
+			}
+
+			// Apply transform if available
+			if (param.transform && parsed !== undefined) {
+				parsed = param.transform(parsed);
 			}
 
 			params[param.name] = parsed;

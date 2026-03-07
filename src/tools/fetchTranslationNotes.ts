@@ -16,6 +16,7 @@ import {
   IncludeIntroParam,
   IncludeContextParam,
   FormatParam,
+  TopicParam,
 } from "../schemas/common-params.js";
 
 // Input schema - using shared common parameters
@@ -26,6 +27,7 @@ export const FetchTranslationNotesArgs = z.object({
   includeIntro: IncludeIntroParam,
   includeContext: IncludeContextParam,
   format: FormatParam,
+  topic: TopicParam,
 });
 
 export type FetchTranslationNotesArgs = z.infer<
@@ -56,6 +58,7 @@ export async function handleFetchTranslationNotes(
       organization: args.organization,
       includeIntro: args.includeIntro,
       includeContext: args.includeContext,
+      topic: args.topic,
     });
 
     // Build metadata using shared utility
@@ -75,9 +78,13 @@ export async function handleFetchTranslationNotes(
       verseNotes: result.verseNotes,
       contextNotes: result.contextNotes,
       translationNotes: result.translationNotes, // Keep original for backward compatibility
-      citation: result.citation,
+      ...(result.citations && { citations: result.citations }), // Include citations array if present
+      ...(result.citation && !result.citations && { citation: result.citation }), // Single citation if no array
       language: args.language,
-      organization: args.organization,
+      ...(args.organization && { organization: args.organization }), // Only include if specified
+      ...(result.metadata.organizations && {
+        organizations: result.metadata.organizations,
+      }), // Include organizations array
       metadata,
     };
 

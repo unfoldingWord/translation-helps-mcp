@@ -231,6 +231,7 @@ export interface ResourceCatalogInfo {
   name: string;
   title: string;
   subject: string;
+  owner?: string; // Organization that owns this resource (e.g., "unfoldingWord")
   ingredients?: Array<{
     identifier: string;
     path: string;
@@ -246,18 +247,24 @@ export interface ResourceAvailability {
   wordLinks: ResourceCatalogInfo[];
   lastUpdated: string;
   book: string;
-  organization: string;
+  organization?: string; // Optional - undefined means all organizations
   language: string;
 }
 
 /**
  * Discover all available resources for a book/language/organization in one shot
  * Caches results to minimize DCS catalog API calls
+ * 
+ * @param reference - Bible reference (e.g., "John 3:16")
+ * @param language - Language code (default: "en")
+ * @param organization - Organization filter (undefined = all organizations)
+ * @param topic - Topic filter (default: "tc-ready" for translationCore-ready resources)
  */
 export async function discoverAvailableResources(
   reference: string,
   language: string = "en",
-  organization: string = "unfoldingWord",
+  organization?: string,
+  topic: string = "tc-ready",
 ): Promise<ResourceAvailability> {
   const parsedRef = parseReference(reference);
   if (!parsedRef) {
@@ -265,8 +272,10 @@ export async function discoverAvailableResources(
   }
   const book = parsedRef.book;
 
-  // Cache key for this book/language/org combination
-  const cacheKey = `resource-discovery:${book}:${language}:${organization}`;
+  // Cache key for this book/language/org/topic combination
+  // When organization is undefined, use "all" in cache key
+  const orgKey = organization || "all";
+  const cacheKey = `resource-discovery:${book}:${language}:${orgKey}:${topic}`;
 
   // Try cache first
   const cached = await cache.getWithCacheInfo(cacheKey, "metadata");
@@ -274,12 +283,18 @@ export async function discoverAvailableResources(
     logger.info(`Resource discovery cache HIT`, {
       book,
       language,
-      organization,
+      organization: orgKey,
+      topic,
     });
     return cached.value;
   }
 
-  logger.info(`Discovering resources`, { book, language, organization });
+  logger.info(`Discovering resources`, {
+    book,
+    language,
+    organization: orgKey,
+    topic,
+  });
 
   const availability: ResourceAvailability = {
     scripture: [],
@@ -289,7 +304,7 @@ export async function discoverAvailableResources(
     wordLinks: [],
     lastUpdated: new Date().toISOString(),
     book,
-    organization,
+    organization: organization || undefined,
     language,
   };
 
@@ -320,8 +335,20 @@ export async function discoverAvailableResources(
   const searchPromises = searches.flatMap((search) =>
     search.subjects.map(async (subject) => {
       try {
-        const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=${encodeURIComponent(subject)}&lang=${language}&owner=${organization}&metadataType=rc&includeMetadata=true`;
-        logger.debug(`Catalog search`, { subject, language, organization });
+        // Build catalog URL with topic filter and optional organization filter
+        let catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=${encodeURIComponent(subject)}&lang=${language}&topic=${topic}&metadataType=rc&includeMetadata=true`;
+        
+        // Only add owner parameter if organization is specified
+        if (organization) {
+          catalogUrl += `&owner=${organization}`;
+        }
+        
+        logger.debug(`Catalog search`, {
+          subject,
+          language,
+          organization: organization || "all",
+          topic,
+        });
 
         const response = await proxyFetch(catalogUrl);
         if (!response.ok) {
@@ -338,12 +365,13 @@ export async function discoverAvailableResources(
 
         const resources = (data.data || []).map((resource) => ({
           name: resource.name,
+          owner: resource.owner, // Include owner from catalog response
           title:
             resource.title ||
             resource.door43_metadata?.title ||
             resource.description,
           subject,
-          url: `https://git.door43.org/${organization}/${resource.name}`,
+          url: `https://git.door43.org/${resource.owner || organization || "unknown"}/${resource.name}`,
           ingredients:
             resource.ingredients ||
             resource.door43_metadata?.ingredients ||
@@ -414,18 +442,21 @@ export async function getResourceForBook(
   reference: string,
   resourceType: "scripture" | "notes" | "questions" | "words" | "wordLinks",
   language: string = "en",
-  organization: string = "unfoldingWord",
+  organization?: string,
+  topic: string = "tc-ready",
 ): Promise<ResourceCatalogInfo | null> {
   logger.debug(`getResourceForBook called`, {
     reference,
     resourceType,
     language,
-    organization,
+    organization: organization || "all",
+    topic,
   });
   const availability = await discoverAvailableResources(
     reference,
     language,
     organization,
+    topic,
   );
   const resources = availability[resourceType];
 
@@ -444,13 +475,54 @@ export async function getResourceForBook(
 }
 
 /**
+ * Get ALL available resources for a book (not just the first one)
+ * Used when organization is undefined to fetch from multiple organizations
+ */
+export async function getResourcesForBook(
+  reference: string,
+  resourceType: "scripture" | "notes" | "questions" | "words" | "wordLinks",
+  language: string = "en",
+  organization?: string,
+  topic: string = "tc-ready",
+): Promise<ResourceCatalogInfo[]> {
+  logger.debug(`getResourcesForBook called (plural)`, {
+    reference,
+    resourceType,
+    language,
+    organization: organization || "all",
+    topic,
+  });
+  const availability = await discoverAvailableResources(
+    reference,
+    language,
+    organization,
+    topic,
+  );
+  const resources = availability[resourceType];
+
+  logger.debug(`Resources found (plural)`, {
+    resourceType,
+    count: resources?.length || 0,
+  });
+
+  if (!resources || resources.length === 0) {
+    logger.warn(`No resources found for plural fetch`, { resourceType });
+    return [];
+  }
+
+  // Return ALL resources
+  return resources;
+}
+
+/**
  * Check if any resources exist for a reference without fetching full details
  * Super fast check using cached discovery data
  */
 export async function checkResourceAvailability(
   reference: string,
   language: string = "en",
-  organization: string = "unfoldingWord",
+  organization?: string,
+  topic: string = "tc-ready",
 ): Promise<{
   hasScripture: boolean;
   hasNotes: boolean;
@@ -463,6 +535,7 @@ export async function checkResourceAvailability(
     reference,
     language,
     organization,
+    topic,
   );
 
   return {
