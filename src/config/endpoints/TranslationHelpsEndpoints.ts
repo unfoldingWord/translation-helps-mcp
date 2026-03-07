@@ -3,6 +3,8 @@
  *
  * Defines all translation help endpoints: Translation Notes (tN), Translation Academy (tA),
  * Translation Questions (tQ), Translation Word Links (tWL), and Translation Words (tW).
+ * 
+ * Uses unified parameter definitions for automatic consistency with MCP.
  */
 
 import type { EndpointConfig } from "../EndpointConfig.js";
@@ -13,70 +15,24 @@ import {
   TRANSLATION_WORDS_SHAPE,
   TRANSLATION_WORD_LINKS_SHAPE,
 } from "../ResponseShapes.js";
+import { toEndpointParams, PARAMETER_GROUPS } from "../parameters/index.js";
 
 /**
  * Common parameters for reference-based endpoints
+ * Auto-generated from unified parameter definitions
  */
-const REFERENCE_PARAMS = {
-  reference: {
-    type: "string" as const,
-    required: true,
-    description:
-      'Scripture reference (e.g., "John 3:16", "Genesis 1:1-5", "Psalm 23")',
-    example: "John 3:16",
-    pattern: "^[1-3]?\\s?[A-Za-z]+\\s+\\d+(?::\\d+(?:-\\d+)?)?$",
-    min: 3,
-    max: 50,
-  },
-  language: {
-    type: "string" as const,
-    required: false,
-    default: "en",
-    description: "Language code for the translation helps",
-    example: "en",
-    options: ["en", "es", "fr", "sw", "hi", "ar", "zh", "pt"],
-  },
-  organization: {
-    type: "string" as const,
-    required: false,
-    default: undefined,
-    description:
-      "Organization(s) to search. Can be a single organization (string), multiple organizations (array), or omitted to search all tc-ready organizations. Examples: 'unfoldingWord', ['unfoldingWord', 'es-419_gl'], or undefined for all.",
-    example: "unfoldingWord",
-    options: ["unfoldingWord", "Door43-Catalog", "es-419_gl", "WycliffeAssociates"],
-  },
-  format: {
-    type: "string" as const,
-    required: false,
-    default: "json",
-    description: "Response format",
-    example: "json",
-    options: ["json", "md", "text"],
-  },
-  topic: {
-    type: "string" as const,
-    required: false,
-    default: "tc-ready",
-    description:
-      "Filter by topic tag (e.g., 'tc-ready' for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.",
-    example: "tc-ready",
-    options: ["tc-ready"],
-  },
-};
+const REFERENCE_PARAMS = toEndpointParams(PARAMETER_GROUPS.translationNotes.parameters);
 
 /**
  * Common parameters for term-based endpoints
+ * Auto-generated from unified parameter definitions
  */
-const TERM_PARAMS = {
-  term: {
-    type: "string" as const,
-    required: false,
-    description:
-      'Translation word term to lookup (e.g., "love", "grace", "salvation")',
-    example: "love",
-    min: 2,
-    max: 50,
-  },
+const TERM_PARAMS = toEndpointParams(PARAMETER_GROUPS.translationWord.parameters);
+
+/**
+ * Legacy path parameter (keeping for backward compatibility)
+ */
+const PATH_PARAM = {
   path: {
     type: "string" as const,
     required: false,

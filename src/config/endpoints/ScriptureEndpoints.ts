@@ -3,82 +3,24 @@
  *
  * Defines all scripture-related endpoints with USFM to text transformation,
  * proper parameter handling, and real data examples.
+ * 
+ * Uses unified parameter definitions for consistency with MCP tools.
  */
 
 import type { EndpointConfig } from "../EndpointConfig.js";
 import { SCRIPTURE_SHAPE } from "../ResponseShapes.js";
+import { toEndpointParams, PARAMETER_GROUPS } from "../parameters/index.js";
 
 /**
  * Generic Scripture Endpoint Configuration
  * Base configuration for all scripture endpoints
+ * Uses unified parameter definitions for automatic consistency with MCP
  */
 const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
   category: "core",
   responseShape: SCRIPTURE_SHAPE,
-  params: {
-    reference: {
-      type: "string",
-      required: true,
-      description:
-        'Scripture reference (e.g., "John 3:16", "Genesis 1:1-5", "Psalm 23", "John 3-4", "Matthew")',
-      example: "John 3:16",
-      pattern: "^[1-3]?\\s?[A-Za-z]+.*$",
-      min: 3,
-      max: 50,
-    },
-    language: {
-      type: "string",
-      required: false,
-      default: "en",
-      description: "Language code for the scripture text",
-      example: "en",
-      options: ["en", "es", "fr", "sw", "hi", "ar", "zh", "pt"],
-    },
-    organization: {
-      type: "string",
-      required: false,
-      default: undefined,
-      description:
-        "Organization(s) to search. Can be a single organization (string), multiple organizations (array), or omitted to search all organizations. Examples: 'unfoldingWord', ['unfoldingWord', 'es-419_gl'], or undefined for all.",
-      example: "unfoldingWord",
-      options: ["unfoldingWord", "Door43-Catalog"],
-    },
-    resource: {
-      type: "string",
-      required: false,
-      default: "all",
-      description:
-        "Scripture resource type(s) - single resource (ult, ust, t4t, ueb), comma-separated (ult,ust), or 'all' for all available",
-      example: "all",
-      options: ["ult", "ust", "t4t", "ueb", "all", "ult,ust", "t4t,ueb"],
-    },
-    format: {
-      type: "string",
-      required: false,
-      default: "json",
-      description:
-        "Output format - 'json' (default) for structured data, 'text' for plain text with citation, 'md' for markdown, 'usfm' for USFM formatted",
-      example: "json",
-      options: ["json", "text", "md", "markdown", "usfm"],
-    },
-    includeAlignment: {
-      type: "boolean",
-      required: false,
-      default: false,
-      description:
-        "Include word alignment data (only available with USFM format)",
-      example: false,
-    },
-    topic: {
-      type: "string",
-      required: false,
-      default: "tc-ready",
-      description:
-        "Filter by topic tag (e.g., 'tc-ready' for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.",
-      example: "tc-ready",
-      options: ["tc-ready"],
-    },
-  },
+  // Auto-generated from unified parameter definitions
+  params: toEndpointParams(PARAMETER_GROUPS.scripture.parameters),
   dataSource: {
     type: "zip-cached",
     cacheTtl: 7200,

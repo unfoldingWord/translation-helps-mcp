@@ -3,6 +3,8 @@
  *
  * Defines endpoints for discovering available languages, books, and resource coverage.
  * These endpoints help users understand what content is available before fetching it.
+ * 
+ * Uses unified parameter definitions for automatic consistency with MCP.
  */
 
 import type { EndpointConfig } from "../EndpointConfig.js";
@@ -13,6 +15,7 @@ import {
   RESOURCES_BY_LANGUAGE_SHAPE,
   RESOURCES_FOR_LANGUAGE_SHAPE,
 } from "../ResponseShapes.js";
+import { toEndpointParams, PARAMETER_GROUPS } from "../parameters/index.js";
 
 /**
  * Get Languages - Discover available languages with resource metadata
@@ -374,32 +377,8 @@ export const LIST_LANGUAGES_CONFIG: EndpointConfig = {
   category: "core",
   responseShape: LANGUAGES_SHAPE,
 
-  params: {
-    organization: {
-      type: "string" as const,
-      required: false,
-      description:
-        "Organization(s) to filter by. Can be a single organization (string), multiple organizations (comma-separated), or omitted to return all languages from all organizations.",
-      example: "unfoldingWord",
-    },
-    stage: {
-      type: "string" as const,
-      required: false,
-      default: "prod",
-      description: "Resource stage (default: prod)",
-      example: "prod",
-      options: ["prod", "preprod", "draft"],
-    },
-    topic: {
-      type: "string" as const,
-      required: false,
-      default: "tc-ready",
-      description:
-        "Filter by topic tag (e.g., 'tc-ready' for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.",
-      example: "tc-ready",
-      options: ["tc-ready"],
-    },
-  },
+  // Auto-generated from unified parameter definitions
+  params: toEndpointParams(PARAMETER_GROUPS.listLanguages.parameters),
 
   dataSource: {
     type: "computed",
@@ -457,39 +436,8 @@ export const LIST_SUBJECTS_CONFIG: EndpointConfig = {
   category: "core",
   responseShape: SUBJECTS_SHAPE,
 
-  params: {
-    language: {
-      type: "string" as const,
-      required: false,
-      description:
-        "Filter subjects by language code (e.g., 'en', 'es-419'). If not provided, returns all subjects.",
-      example: "en",
-    },
-    organization: {
-      type: "string" as const,
-      required: false,
-      description:
-        "Organization(s) to filter by. Can be a single organization (string), multiple organizations (comma-separated), or omitted to return all subjects from all organizations.",
-      example: "unfoldingWord",
-    },
-    stage: {
-      type: "string" as const,
-      required: false,
-      default: "prod",
-      description: "Resource stage (default: prod)",
-      example: "prod",
-      options: ["prod", "preprod", "draft"],
-    },
-    topic: {
-      type: "string" as const,
-      required: false,
-      default: "tc-ready",
-      description:
-        "Filter by topic tag (e.g., 'tc-ready' for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.",
-      example: "tc-ready",
-      options: ["tc-ready"],
-    },
-  },
+  // Auto-generated from unified parameter definitions
+  params: toEndpointParams(PARAMETER_GROUPS.listSubjects.parameters),
 
   dataSource: {
     type: "computed",
