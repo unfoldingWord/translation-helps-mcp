@@ -1,0 +1,1 @@
+What should I know about translation before I start?

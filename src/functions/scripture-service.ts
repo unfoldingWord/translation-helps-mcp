@@ -14,6 +14,7 @@ import { discoverAvailableResources } from "./resource-detector.js";
 import { CacheBypassOptions } from "./unified-cache.js";
 import { EdgeXRayTracer } from "./edge-xray.js";
 import { ZipFetcherFactory } from "../services/zip-fetcher-provider.js";
+import { getBookCodesForError } from "../utils/book-codes.js";
 import * as os from "os";
 import * as path from "path";
 import {
@@ -207,10 +208,10 @@ export async function fetchScripture(
     const zipFetcher = ZipFetcherFactory.create(providerName, cacheDir, tracer);
     logger.info(`📦 Using ZIP fetcher provider: ${zipFetcher.name}`);
 
-    const scriptures: NonNullable<ScriptureResult["scriptures"]> = [];
+    // ⚡ PARALLEL FETCH: Process all resources simultaneously
+    logger.info(`[PARALLEL FETCH] Starting parallel fetch for ${resourcesToProcess.length} resources`);
 
-    // Process each resource using ZIP-based approach
-    for (const resource of resourcesToProcess) {
+    const resourcePromises = resourcesToProcess.map(async (resource) => {
       logger.debug(`Processing resource`, {
         name: resource.name,
         title: resource.title,
@@ -227,7 +228,7 @@ export async function fetchScripture(
           book: reference?.book,
           resource: resource.name,
         });
-        continue;
+        return null;
       }
 
       try {
@@ -262,7 +263,7 @@ export async function fetchScripture(
 
         if (!usfmData) {
           logger.warn(`Failed to get USFM from ZIP for ${resource.name}`);
-          continue;
+          return null;
         }
 
         logger.info(`✅ Got USFM data from ZIP: ${usfmData.length} characters`);
@@ -282,12 +283,12 @@ export async function fetchScripture(
         } else {
           // Extract clean text with or without verse numbers
           if (includeVerseNumbers) {
-            if (reference.verse && reference.verseEnd) {
+            if (reference.verse && reference.endVerse) {
               text = extractVerseRangeWithNumbers(
                 usfmData,
                 reference.chapter,
                 reference.verse,
-                reference.verseEnd,
+                reference.endVerse,
               );
             } else if (reference.verse) {
               text = extractVerseTextWithNumbers(
@@ -295,22 +296,22 @@ export async function fetchScripture(
                 reference.chapter,
                 reference.verse,
               );
-            } else if (reference.verseEnd) {
+            } else if (reference.endVerse) {
               text = extractChapterRangeWithNumbers(
                 usfmData,
                 reference.chapter,
-                reference.verseEnd,
+                reference.endVerse,
               );
             } else {
               text = extractChapterTextWithNumbers(usfmData, reference.chapter);
             }
           } else {
-            if (reference.verse && reference.verseEnd) {
+            if (reference.verse && reference.endVerse) {
               text = extractVerseRange(
                 usfmData,
                 reference.chapter,
                 reference.verse,
-                reference.verseEnd,
+                reference.endVerse,
               );
             } else if (reference.verse) {
               text = extractVerseText(
@@ -318,11 +319,11 @@ export async function fetchScripture(
                 reference.chapter,
                 reference.verse,
               );
-            } else if (reference.verseEnd) {
+            } else if (reference.endVerse) {
               text = extractChapterRange(
                 usfmData,
                 reference.chapter,
-                reference.verseEnd,
+                reference.endVerse,
               );
             } else {
               text = extractChapterText(usfmData, reference.chapter);
@@ -383,9 +384,14 @@ export async function fetchScripture(
             }
           }
 
-          logger.info(`➕ Adding scripture result for ${resource.name}`);
+          logger.info(`➕ Returning scripture result for ${resource.name}`);
 
-          scriptures.push({
+          const extractionTime = Date.now() - extractionStart;
+          logger.info(
+            `✅ Successfully processed ${resource.name} in ${extractionTime}ms - ${text.length} chars`,
+          );
+
+          return {
             text: text.trim(),
             translation: resource.title,
             citation: {
@@ -396,11 +402,7 @@ export async function fetchScripture(
               version: "master",
             },
             alignment: alignmentData,
-          });
-          const extractionTime = Date.now() - extractionStart;
-          logger.info(
-            `✅ Successfully processed ${resource.name} in ${extractionTime}ms - ${text.length} chars`,
-          );
+          };
         }
       } catch (error) {
         logger.error(`❌ Exception processing ${resource.name}:`, {
@@ -408,16 +410,38 @@ export async function fetchScripture(
           stack:
             error instanceof Error ? error.stack?.substring(0, 200) : undefined,
         });
-        continue;
+        return null;
       }
-    }
+
+      return null;
+    });
+
+    const scriptureResults = await Promise.all(resourcePromises);
+    logger.info(`[PARALLEL FETCH] Completed ${scriptureResults.length} fetches in parallel`);
+
+    // Filter out null results
+    const scriptures = scriptureResults.filter((s): s is NonNullable<typeof s> => s !== null);
 
     logger.info(
-      `🏁 Loop complete. Processed ${scriptures.length} scriptures out of ${resourcesToProcess.length} resources`,
+      `🏁 Parallel fetch complete. Processed ${scriptures.length} scriptures out of ${resourcesToProcess.length} resources`,
     );
 
     if (scriptures.length === 0) {
-      throw new Error(`No scripture text found for ${referenceParam}`);
+      // Check if this was due to invalid book code
+      const bookCode = reference?.book?.toUpperCase();
+      const validCodes = getBookCodesForError();
+      
+      const error: any = new Error(
+        `No scripture found for reference '${referenceParam}'. ` +
+        `The book code '${bookCode}' was not found in any available resources. ` +
+        `Please use 3-letter book codes (e.g., GEN for Genesis, JHN for John, MAT for Matthew, 3JN for 3 John).`
+      );
+      
+      // Attach valid book codes for AI agents
+      error.validBookCodes = validCodes;
+      error.invalidCode = bookCode;
+      
+      throw error;
     }
 
     const result: ScriptureResult =

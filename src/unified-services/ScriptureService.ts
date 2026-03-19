@@ -9,6 +9,8 @@ import { PARAMETER_GROUPS } from '../config/parameters/index.js';
 import type { ServiceResponse, ServiceContext } from './types.js';
 import { fetchScripture, type ScriptureOptions, type ScriptureResult } from '../functions/scripture-service.js';
 import { formatResponse } from '../utils/response-formatter.js';
+import { findLanguageVariants } from '../functions/resource-detector.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Scripture service parameters (matches ScriptureOptions from core service)
@@ -88,18 +90,68 @@ export class ScriptureService extends BaseService<ScriptureParams, ScriptureResu
       // Format response based on requested format
       const formattedData = this.formatScriptureResponse(result, params.format);
 
+      // Handle both single scripture and array formats from core service
+      const scriptureArray = result.scriptures || (result.scripture ? [result.scripture] : []);
+      const count = scriptureArray.length;
+      const resources = scriptureArray.map((s: any) => s.translation).filter(Boolean);
+      const organizations = scriptureArray.map((s: any) => s.citation?.organization).filter(Boolean);
+
       return this.success(
         formattedData,
         {
-          count: result.scripture?.length || 0,
-          resources: result.scripture?.map(s => s.translation) || [],
-          organizations: result.scripture?.map(s => s.citation.organization) || [],
+          count,
+          resources,
+          organizations,
           elapsed,
           ...(context?.useCache !== false && { cached: result.cached }),
         },
         params.format
       );
     } catch (error: any) {
+      // If it's a "No scripture resources found" error, try to find language variants
+      if (error.message?.includes('No scripture resources found') && params.language) {
+        try {
+          const baseLanguage = params.language.split('-')[0]; // Get base code (e.g., "es" from "es-419")
+          
+          // Handle organization parameter (could be string, array, or undefined)
+          const orgParam = Array.isArray(params.organization) 
+            ? params.organization[0] 
+            : params.organization;
+          
+          logger.info(`Searching for language variants after resource not found`, {
+            requestedLanguage: params.language,
+            baseLanguage,
+            organization: orgParam || 'all'
+          });
+          
+          const variants = await findLanguageVariants(baseLanguage, orgParam, params.topic);
+          
+          if (variants.length > 0) {
+            logger.info(`Found language variants`, { baseLanguage, variants });
+            
+            // Enhance error with available variants
+            const enhancedMessage = `No scripture resources found for language="${params.language}".\n\nAvailable language variants for '${baseLanguage}': ${variants.join(', ')}\n\nPlease try one of these language codes instead.`;
+            
+            throw this.error(
+              'LANGUAGE_NOT_FOUND',
+              enhancedMessage,
+              { 
+                requestedLanguage: params.language,
+                baseLanguage,
+                availableVariants: variants,
+                suggestion: `Try using language="${variants[0]}" instead`
+              },
+              404
+            );
+          } else {
+            logger.warn(`No language variants found for base language`, { baseLanguage });
+          }
+        } catch (variantError) {
+          // If variant discovery fails, log but don't hide the original error
+          logger.error(`Failed to discover language variants`, { error: variantError });
+        }
+      }
+      
       throw this.handleError(error, context);
     }
   }

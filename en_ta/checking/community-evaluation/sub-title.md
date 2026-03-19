@@ -1,0 +1,1 @@
+How can I show that the community approves the translation?

@@ -1,0 +1,1 @@
+Using the unfoldingWord® Translation Notes

@@ -23,7 +23,19 @@ async function fetchTranslationAcademy(
 	params: Record<string, any>,
 	request: Request
 ): Promise<any> {
-	const { moduleId, path, rcLink, language = 'en', organization = 'unfoldingWord' } = params;
+	const { path, language = 'en', organization, topic } = params;
+
+	// Check for deprecated parameters in the raw URL
+	const url = new URL(request.url);
+	const deprecatedParams = ['moduleId', 'rcLink', 'entryLink'];
+	const usedDeprecated = deprecatedParams.find((param) => url.searchParams.has(param));
+	if (usedDeprecated) {
+		throw new Error(
+			`Parameter "${usedDeprecated}" is no longer supported. Please use "path" instead. ` +
+				`The path parameter accepts clean resource paths (e.g., "translate/figs-metaphor"). ` +
+				`Extract the path from the externalReference field in translation notes responses.`
+		);
+	}
 
 	// Create tracer for this request
 	const tracer = new EdgeXRayTracer(`ta-${Date.now()}`, 'fetch-translation-academy');
@@ -32,94 +44,209 @@ async function fetchTranslationAcademy(
 	const fetcher = new UnifiedResourceFetcher(tracer);
 	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
 
-	// Determine path using priority: rcLink > path > moduleId
-	let finalPath: string | undefined;
-
-	if (rcLink || isTranslationAcademyRCLink(moduleId)) {
-		const linkToParse = rcLink || moduleId;
-		const parsed = parseTranslationAcademyRCLink(linkToParse, language);
-		if (!parsed.isValid) {
-			throw new Error(
-				`Invalid RC link format: ${linkToParse}. Expected format: rc://*/ta/man/translate/figs-metaphor`
-			);
-		}
-		finalPath = parsed.dirPath;
-	} else if (path) {
-		finalPath = path;
-	}
-	// If only moduleId provided (and not an RC link), let fetchTranslationAcademy handle fallback search
-
-	// Determine if we're requesting TOC or specific content
-	const requestingTOC = !moduleId && !finalPath && !rcLink;
-
-	// Fetch real TA module from markdown
-	const result = await fetcher.fetchTranslationAcademy(language, organization, moduleId, finalPath);
-
-	// If we requested TOC (no specific identifier), return table of contents format
-	if (requestingTOC) {
-		return {
-			type: 'toc',
-			categories: result.categories || [],
-			modules: (result.modules || []).map((m: any) => ({
-				id: m.id,
-				path: m.path,
-				category: m.path.match(/\/(translate|checking|process|audio|gateway)\//)?.[1] || 'translate'
-			})),
-			metadata: {
-				language,
-				organization,
-				resourceType: 'ta',
-				description: 'Translation Academy Table of Contents'
+	// If no path provided, return 404 with Table of Contents for discovery
+	if (!path) {
+		const toc = {
+			type: 'table-of-contents',
+			title: 'Translation Academy',
+			description: 'Translation training modules organized by category',
+			categories: [
+				{
+					id: 'translate',
+					name: 'Translation',
+					description: 'Translation principles and techniques',
+					exampleModules: ['figs-metaphor', 'figs-idiom', 'translate-names', 'translate-unknown'],
+					examplePath: 'translate/figs-metaphor'
+				},
+				{
+					id: 'checking',
+					name: 'Checking',
+					description: 'Quality assurance and verification',
+					exampleModules: ['accuracy-check', 'important-term-check'],
+					examplePath: 'checking/accuracy-check'
+				},
+				{
+					id: 'process',
+					name: 'Process',
+					description: 'Translation workflow and management',
+					exampleModules: ['setup-team', 'platforms'],
+					examplePath: 'process/setup-team'
+				},
+				{
+					id: 'intro',
+					name: 'Introduction',
+					description: 'Getting started with translation',
+					exampleModules: ['ta-intro', 'translation-guidelines'],
+					examplePath: 'intro/ta-intro'
+				}
+			],
+			usage: {
+				byPath: '?path=translate/figs-metaphor'
 			},
-			_trace: fetcher.getTrace()
+			language,
+			organization
 		};
+		const error = new Error('No path provided. Please specify a translation academy path (e.g., "translate/figs-metaphor").');
+		(error as any).toc = toc;
+		throw error;
 	}
 
-	// We requested specific content - check if we got it
+	try {
+		// Fetch the specific TA module using the path
+		// Path format: "translate/figs-metaphor" or "checking/accuracy-check"
+		const result = await fetcher.fetchTranslationAcademy(language, organization, undefined, path, topic);
+
+		// Check if we got content
 	if (result.modules && result.modules.length > 0) {
-		// Got specific module(s)
+		// Got specific module
 		const module = result.modules[0];
 
-		// Parse module ID from path if needed
-		const id = module.id || moduleId;
-		const category =
-			module.path.match(/\/(translate|checking|process|intro)\//)?.[1] || 'translate';
-
-		// Extract title from concatenated content
-		// Title is now at the beginning as # Title
+		// Extract title from content
 		const content = module.markdown || '';
-		let title = id;
-
-		// Extract title from first H1 heading
 		const titleMatch = content.match(/^#\s+(.+)$/m);
-		if (titleMatch) {
-			title = titleMatch[1].trim();
-		}
+		const title = titleMatch ? titleMatch[1].trim() : path.split('/').pop() || path;
 
-		// Return article directly (not wrapped in type/module structure)
-		// This makes it consistent with fetch-translation-word endpoint
+		// Return article directly (consistent with translation-word endpoint)
 		return {
-			moduleId: id,
 			title,
-			category,
-			path: module.path,
+			path, // Clean path without extension (e.g., "translate/figs-metaphor")
 			content: module.markdown || '',
-			rcLink: `rc://*/ta/man/${category}/${id}`,
-			language,
-			organization,
 			metadata: {
-				source: 'TA',
 				resourceType: 'ta',
+				subject: result.subject || 'Translation Academy', // ✅ FROM DCS CATALOG
+				language,
+				organization,
 				license: 'CC BY-SA 4.0'
 			}
 		};
 	} else {
-		// We requested specific content but got empty results
-		const identifier = moduleId || finalPath || rcLink || 'unknown';
-		throw new Error(
-			`Translation Academy module not found: ${identifier}. ` +
-				`The fetcher returned empty results. This may indicate the module doesn't exist in the DCS repository.`
+		// Module not found - return 404 with TOC
+		const toc = {
+			type: 'table-of-contents',
+			title: 'Translation Academy',
+			description: 'Translation training modules organized by category',
+			categories: [
+				{
+					id: 'translate',
+					name: 'Translation',
+					description: 'Translation principles and techniques',
+					exampleModules: ['figs-metaphor', 'figs-idiom', 'translate-names', 'translate-unknown'],
+					examplePath: 'translate/figs-metaphor'
+				},
+				{
+					id: 'checking',
+					name: 'Checking',
+					description: 'Quality assurance and verification',
+					exampleModules: ['accuracy-check', 'important-term-check'],
+					examplePath: 'checking/accuracy-check'
+				},
+				{
+					id: 'process',
+					name: 'Process',
+					description: 'Translation workflow and management',
+					exampleModules: ['setup-team', 'platforms'],
+					examplePath: 'process/setup-team'
+				},
+				{
+					id: 'intro',
+					name: 'Introduction',
+					description: 'Getting started with translation',
+					exampleModules: ['ta-intro', 'translation-guidelines'],
+					examplePath: 'intro/ta-intro'
+				}
+			],
+			usage: {
+				byPath: '?path=translate/figs-metaphor'
+			},
+			language,
+			organization
+		};
+		const error = new Error(
+			`Translation Academy module not found: ${path}. See available modules in the table of contents.`
 		);
+		(error as any).toc = toc;
+		throw error;
+	}
+	} catch (error) {
+		// Add trace information and TOC to error context
+		const trace = fetcher.getTrace();
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		let tocInfo = (error as any)?.toc;
+
+		// Preserve structured error data for automatic retry
+		const languageVariants = (error as any)?.languageVariants;
+		const requestedLanguage = (error as any)?.requestedLanguage;
+		const requestedPath = (error as any)?.requestedPath;
+		const requestedModule = (error as any)?.requestedModule;
+
+		// If this is a "not found" error and no TOC was already attached, add one
+		if (!tocInfo && (errorMessage.toLowerCase().includes('not found') || errorMessage.toLowerCase().includes('no path provided'))) {
+			tocInfo = {
+				type: 'table-of-contents',
+				title: 'Translation Academy',
+				description: 'Translation training modules organized by category',
+				categories: [
+					{
+						id: 'translate',
+						name: 'Translation',
+						description: 'Translation principles and techniques',
+						exampleModules: ['figs-metaphor', 'figs-idiom', 'translate-names', 'translate-unknown'],
+						examplePath: 'translate/figs-metaphor'
+					},
+					{
+						id: 'checking',
+						name: 'Checking',
+						description: 'Quality assurance and verification',
+						exampleModules: ['accuracy-check', 'important-term-check'],
+						examplePath: 'checking/accuracy-check'
+					},
+					{
+						id: 'process',
+						name: 'Process',
+						description: 'Translation workflow and management',
+						exampleModules: ['setup-team', 'platforms'],
+						examplePath: 'process/setup-team'
+					},
+					{
+						id: 'intro',
+						name: 'Introduction',
+						description: 'Getting started with translation',
+						exampleModules: ['ta-intro', 'translation-guidelines'],
+						examplePath: 'intro/ta-intro'
+					}
+				],
+				usage: {
+					byPath: '?path=translate/figs-metaphor'
+				},
+				language,
+				organization
+			};
+		}
+
+		const enhancedError = new Error(`${errorMessage} (Trace: ${JSON.stringify(trace)})`);
+		if (tocInfo) {
+			(enhancedError as any).toc = tocInfo;
+		}
+		
+		// Re-attach structured data for automatic retry (CRITICAL!)
+		// Always preserve languageVariants if present (for retry)
+		if (languageVariants && languageVariants.length > 0) {
+			(enhancedError as any).languageVariants = languageVariants;
+		}
+		// Always preserve requestedLanguage if present (for error reporting)
+		if (requestedLanguage) {
+			(enhancedError as any).requestedLanguage = requestedLanguage;
+		}
+		// Always preserve requestedPath if present (for error reporting)
+		if (requestedPath) {
+			(enhancedError as any).requestedPath = requestedPath;
+		}
+		// Always preserve requestedModule if present (for error reporting)
+		if (requestedModule) {
+			(enhancedError as any).requestedModule = requestedModule;
+		}
+		
+		throw enhancedError;
 	}
 }
 
@@ -127,37 +254,30 @@ async function fetchTranslationAcademy(
 export const GET = createSimpleEndpoint({
 	name: 'fetch-translation-academy-v2',
 
-	// Use common parameter validators + moduleId, path, rcLink
 	params: [
-		{
-			name: 'moduleId',
-			type: 'string',
-			required: false,
-			description:
-				'Translation Academy module ID (e.g., "figs-metaphor"). Searches in order: translate, process, checking, intro. If not provided, returns table of contents.'
-		},
-		{
-			name: 'path',
-			type: 'string',
-			required: false,
-			description:
-				'Path to TA module. Can be directory path (e.g., "translate/figs-metaphor") to get all .md files concatenated, or file path (e.g., "translate/figs-metaphor/01.md") for a single file.'
-		},
-		{
-			name: 'rcLink',
-			type: 'string',
-			required: false,
-			description:
-				'RC link to TA module (e.g., "rc://*/ta/man/translate/figs-metaphor"). Supports wildcards for language, resource, and type segments.'
-		},
+		COMMON_PARAMS.path, // ONLY identifier parameter - clean paths without extensions
 		COMMON_PARAMS.language,
-		COMMON_PARAMS.organization
+		COMMON_PARAMS.organization,
+		COMMON_PARAMS.topic, // Topic filter for tc-ready resources
+		COMMON_PARAMS.format
 	],
 
 	fetch: fetchTranslationAcademy,
 
-	// Use standard error handler
-	onError: createStandardErrorHandler(),
+	onError: createStandardErrorHandler({
+		'No path provided': {
+			status: 400,
+			message: 'No path provided. Please specify a translation academy path (e.g., "translate/figs-metaphor"). Check the table of contents in the response details for available modules.'
+		},
+		'Translation Academy module not found': {
+			status: 404,
+			message: 'The requested translation academy module was not found. Check the table of contents in the response details for available modules.'
+		},
+		'no longer supported': {
+			status: 400,
+			message: 'Deprecated parameter used. Please use the "path" parameter instead.'
+		}
+	}),
 
 	// Support passthrough for markdown
 	supportsFormats: ['json', 'md', 'markdown']

@@ -25,11 +25,16 @@ const getVersion = () => VERSION;
 // import { handleGetWordsForReference } from '../../../../../src/tools/getWordsForReference.js';
 // import { handleSearchResources } from '../../../../../src/tools/searchResources.js';
 
-// CORS headers for MCP endpoint
-const corsHeaders = {
+// Supported MCP protocol versions (Streamable HTTP)
+const SUPPORTED_PROTOCOL_VERSIONS = ['2024-11-05', '2025-03-26', '2025-11-25'] as const;
+const DEFAULT_PROTOCOL_VERSION = '2024-11-05';
+
+// CORS headers for MCP endpoint (Streamable HTTP)
+const corsHeaders: Record<string, string> = {
 	'Access-Control-Allow-Origin': '*',
-	'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-	'Access-Control-Allow-Headers': 'Content-Type, Authorization, mcp-protocol-version',
+	'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+	'Access-Control-Allow-Headers': 'Content-Type, Authorization, mcp-protocol-version, MCP-Protocol-Version, MCP-Session-Id',
+	'Access-Control-Expose-Headers': 'MCP-Session-Id',
 	'Access-Control-Max-Age': '86400'
 };
 
@@ -59,15 +64,28 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 		// Extract method and parameters
 		const jsonrpc = body.jsonrpc;
 		const method = body.method || url.searchParams.get('method');
-		// For JSON-RPC 2.0, id is required. For simple format, use null or 0
+		// For JSON-RPC 2.0, id is required for requests; notifications have no id
 		const id = body.id !== undefined ? body.id : jsonrpc === '2.0' ? 0 : null;
 		const params = body.params || {};
+
+		// Streamable HTTP: only known notification methods get 202 with no body.
+		// Do NOT treat "initialize" or "tools/list" without id as notifications — many clients (e.g. SDK) omit id and expect a JSON response.
+		const isNotification = body.method === 'notifications/initialized';
+		if (isNotification) {
+			return new Response(null, { status: 202, headers: { ...corsHeaders } });
+		}
 
 		// Handle different MCP methods
 		switch (method) {
 			case 'initialize': {
+				// Protocol version negotiation (Streamable HTTP)
+				const requestedVersion = params?.protocolVersion as string | undefined;
+				const protocolVersion =
+					requestedVersion && SUPPORTED_PROTOCOL_VERSIONS.includes(requestedVersion as any)
+						? requestedVersion
+						: DEFAULT_PROTOCOL_VERSION;
 				const initResult = {
-					protocolVersion: '2024-11-05',
+					protocolVersion,
 					capabilities: {
 						tools: {},
 						prompts: {}
@@ -77,13 +95,14 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 						version: getVersion()
 					}
 				};
-				// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
-				// Ensure id is always present (use 0 if not provided)
+				// Session ID per Streamable HTTP spec (stateless: we don't store sessions)
+				const sessionId = typeof crypto !== 'undefined' && crypto.randomUUID
+					? crypto.randomUUID()
+					: `sess-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+				const headers = { ...corsHeaders, 'MCP-Session-Id': sessionId };
 				return json(
 					{ jsonrpc: '2.0', result: initResult, id: id ?? 0 },
-					{
-						headers: corsHeaders
-					}
+					{ headers }
 				);
 			}
 
@@ -111,7 +130,8 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 				const { UnifiedMCPHandler } = await import('$lib/mcp/UnifiedMCPHandler');
 				// Use event.fetch for SvelteKit compatibility (allows relative URLs)
 				// eventFetch is the fetch function from the RequestEvent that supports relative URLs
-				const handler = new UnifiedMCPHandler('', eventFetch);
+				// Base path '/api/' is added to relative endpoint paths from tools-registry
+				const handler = new UnifiedMCPHandler('/api/', eventFetch);
 
 				try {
 					console.log('[MCP ENDPOINT] Using UnifiedMCPHandler for:', toolName);
@@ -179,14 +199,84 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 							args: args
 						});
 					}
-					// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
+					
+					// Build error response with helpful details for AI agents
+					const errorData: any = {
+						code: -32000,
+						message: error instanceof Error ? error.message : 'Tool execution failed'
+					};
+					
+					// Include structured recovery data for AI agents
+					const errorObj = error as any;
+					
+					// Check for validBookCodes (direct on error or in details)
+					if (errorObj?.validBookCodes) {
+						errorData.data = {
+							validBookCodes: errorObj.validBookCodes,
+							invalidCode: errorObj.invalidCode
+						};
+						console.log(`[MCP ENDPOINT] Including ${errorObj.validBookCodes.length} valid book codes in error response`);
+					} else if (errorObj?.details?.validBookCodes) {
+						errorData.data = {
+							validBookCodes: errorObj.details.validBookCodes,
+							invalidCode: errorObj.details.invalidCode
+						};
+						console.log(`[MCP ENDPOINT] Including ${errorObj.details.validBookCodes.length} valid book codes from error.details`);
+					}
+					
+					// Check for languageVariants (direct on error or in details)
+					if (errorObj?.languageVariants) {
+						if (!errorData.data) errorData.data = {};
+						errorData.data.languageVariants = errorObj.languageVariants;
+						errorData.data.requestedLanguage = errorObj.requestedLanguage;
+						console.log(`[MCP ENDPOINT] ✅ Including ${errorObj.languageVariants.length} language variants in error response:`, errorObj.languageVariants);
+					} else if (errorObj?.details?.languageVariants) {
+						if (!errorData.data) errorData.data = {};
+						errorData.data.languageVariants = errorObj.details.languageVariants;
+						errorData.data.requestedLanguage = errorObj.details.requestedLanguage;
+						console.log(`[MCP ENDPOINT] ✅ Including ${errorObj.details.languageVariants.length} language variants from error.details:`, errorObj.details.languageVariants);
+					}
+					
+				// Check for availableBooks (when book not found but language is valid)
+				if (errorObj?.availableBooks) {
+					if (!errorData.data) errorData.data = {};
+					errorData.data.availableBooks = errorObj.availableBooks;
+					errorData.data.requestedBook = errorObj.requestedBook;
+					errorData.data.language = errorObj.language;
+					console.log(`[MCP ENDPOINT] ✅ Including ${errorObj.availableBooks.length} available books in error response`);
+				} else if (errorObj?.details?.availableBooks) {
+					if (!errorData.data) errorData.data = {};
+					errorData.data.availableBooks = errorObj.details.availableBooks;
+					errorData.data.requestedBook = errorObj.details.requestedBook;
+					errorData.data.language = errorObj.details.language;
+					console.log(`[MCP ENDPOINT] ✅ Including ${errorObj.details.availableBooks.length} available books from error.details`);
+				}
+				
+				// Check for verseNotFound (when verse doesn't exist)
+				if (errorObj?.verseNotFound || errorObj?.details?.verseNotFound) {
+					if (!errorData.data) errorData.data = {};
+					errorData.data.verseNotFound = true;
+					errorData.data.requestedBook = errorObj.requestedBook || errorObj?.details?.requestedBook;
+					errorData.data.chapter = errorObj.chapter || errorObj?.details?.chapter;
+					errorData.data.verse = errorObj.verse || errorObj?.details?.verse;
+					errorData.data.language = errorObj.language || errorObj?.details?.language;
+					errorData.data.explicitError = 'VERSE_DOES_NOT_EXIST';
+					console.log(`[MCP ENDPOINT] ✅ Including verseNotFound details: ${errorData.data.requestedBook} ${errorData.data.chapter}:${errorData.data.verse}`);
+				}
+				
+				// Check for hasContextOnly (when only contextual notes available)
+				if (errorObj?.hasContextOnly || errorObj?.details?.hasContextOnly) {
+					if (!errorData.data) errorData.data = {};
+					errorData.data.hasContextOnly = true;
+					errorData.data.contextNotesCount = errorObj.contextNotesCount || errorObj?.details?.contextNotesCount;
+					console.log(`[MCP ENDPOINT] ✅ Including hasContextOnly flag with ${errorData.data.contextNotesCount} context notes`);
+				}
+				
+				// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
 					return json(
 						{
 							jsonrpc: '2.0',
-							error: {
-								code: -32000,
-								message: error instanceof Error ? error.message : 'Tool execution failed'
-							},
+							error: errorData,
 							id: id ?? 0
 						},
 						{
@@ -556,25 +646,46 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 		}
 		const id = requestBody.id || null;
 
+		// Determine appropriate HTTP status code based on MCP error code
+		let httpStatus = 500; // Default to Internal Server Error
+		const mcpErrorCode = error instanceof McpError ? error.code : -32603;
+		
+		// Map MCP error codes to HTTP status codes for better semantic correctness
+		switch (mcpErrorCode) {
+			case ErrorCode.MethodNotFound: // -32601
+				httpStatus = 404; // Not Found
+				break;
+			case ErrorCode.InvalidParams: // -32602
+			case ErrorCode.InvalidRequest: // -32600
+			case ErrorCode.ParseError: // -32700
+				httpStatus = 400; // Bad Request
+				break;
+			case ErrorCode.InternalError: // -32603
+			default:
+				httpStatus = 500; // Internal Server Error
+				break;
+		}
+
 		// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
 		return json(
 			{
 				jsonrpc: '2.0',
 				error: {
-					code: error instanceof McpError ? error.code : -32603,
+					code: mcpErrorCode,
 					message: error instanceof Error ? error.message : 'Unknown error'
 				},
 				id: id ?? 0
 			},
-			{ status: 500, headers: corsHeaders }
+			{ status: httpStatus, headers: corsHeaders }
 		);
 	}
 };
 
-// Also support GET for simple queries
-export const GET: RequestHandler = async ({ url }) => {
+// GET: Streamable HTTP — return 200 + minimal SSE stream (or legacy ?method= JSON).
+export const GET: RequestHandler = async ({ request, url }) => {
 	const method = url.searchParams.get('method');
 
+	// Legacy convenience: GET ?method=tools/list or ?method=prompts/list (return JSON)
 	// Handle prompts/list directly
 	if (method === 'prompts/list') {
 		// Use shared prompts registry - single source of truth
@@ -612,14 +723,29 @@ export const GET: RequestHandler = async ({ url }) => {
 		} as any);
 	}
 
-	return json(
-		{
-			name: 'translation-helps-mcp',
-			version: getVersion(),
-			methods: ['initialize', 'tools/list', 'tools/call', 'prompts/list', 'prompts/get', 'ping']
-		},
-		{
-			headers: corsHeaders
+	// Streamable HTTP: Inspector expects GET to return 200 + SSE. We don't push server messages;
+	// return a minimal SSE stream so the client stays connected and doesn't treat GET as failed.
+	const stream = new ReadableStream({
+		start(controller) {
+			// Single comment event so the stream is valid; client can keep connection open
+			controller.enqueue(new TextEncoder().encode(': mcp\n\n'));
 		}
-	);
+	});
+	return new Response(stream, {
+		status: 200,
+		headers: {
+			...corsHeaders,
+			'Content-Type': 'text/event-stream',
+			'Cache-Control': 'no-cache',
+			Connection: 'keep-alive'
+		}
+	});
+};
+
+// DELETE: Streamable HTTP optional session teardown. We are stateless; accept and return 200.
+export const DELETE: RequestHandler = async () => {
+	return new Response(null, {
+		status: 200,
+		headers: corsHeaders
+	});
 };

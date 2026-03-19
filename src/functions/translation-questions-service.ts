@@ -20,6 +20,7 @@ export interface TranslationQuestion {
   tags?: string[];
   citation?: {
     resource: string;
+    title?: string; // Dynamic title from DCS catalog
     organization: string;
     language: string;
     version: string;
@@ -57,6 +58,7 @@ export interface TranslationQuestionsResult {
     questionsFound: number;
     totalResources?: number;
     organizations?: string[];
+    subject?: string; // From DCS catalog (e.g., "TSV Translation Questions")
   };
 }
 
@@ -172,7 +174,35 @@ async function fetchTranslationQuestionsFromMultipleResources(
   );
 
   if (!resources || resources.length === 0) {
-    throw new Error(`No translation questions found for ${language}`);
+    // Try to find language variants to help the user
+    const { findLanguageVariants } = await import('./resource-detector.js');
+    const baseLanguage = language.split('-')[0];
+    // For translation questions, search the correct subject
+    const languageVariants = await findLanguageVariants(baseLanguage, 'all', topic, ['TSV Translation Questions']);
+    
+    // Create structured error with recovery data
+    const error: any = new Error(
+      languageVariants.length > 0
+        ? `No translation questions found for language '${language}'.\n\nAvailable language variants: ${languageVariants.join(', ')}\n\nPlease try one of these language codes instead.`
+        : `No translation questions available for language '${language}'.`
+    );
+    
+    // Attach structured data for automatic retry
+    if (languageVariants.length > 0) {
+      error.languageVariants = languageVariants;
+      error.requestedLanguage = language;
+      logger.info('Throwing language variant error for translation questions', {
+        language,
+        variants: languageVariants
+      });
+    } else {
+      error.requestedLanguage = language;
+      logger.info('Throwing language not supported error for translation questions', {
+        language
+      });
+    }
+    
+    throw error;
   }
 
   logger.info(`Found ${resources.length} question resources from multiple organizations`);
@@ -185,6 +215,7 @@ async function fetchTranslationQuestionsFromMultipleResources(
     url: string;
     version: string;
   }> = [];
+  let resourceSubject: string | undefined; // Capture subject from first resource
 
   // Fetch questions from each resource
   for (const resourceInfo of resources) {
@@ -220,26 +251,35 @@ async function fetchTranslationQuestionsFromMultipleResources(
         tracer,
       );
 
-      const rows = (await zipFetcherProvider.getTSVData(
+      const tsvResult = await zipFetcherProvider.getTSVData(
         {
           book: parsedRef.book,
           chapter: parsedRef.chapter!,
           verse: parsedRef.verse,
+          endVerse: parsedRef.endVerse,  // Include endVerse for verse ranges
         },
         language,
         resourceInfo.owner || "unfoldingWord",
         "tq",
-      )) as Array<Record<string, string>>;
+      );
+      const rows = tsvResult.data as Array<Record<string, string>>;
+      
+      // Capture subject from first successful resource
+      if (!resourceSubject && tsvResult.subject) {
+        resourceSubject = tsvResult.subject;
+        logger.info(`[Multi-resource] Captured subject from catalog: ${resourceSubject}`);
+      }
 
       logger.info(`Fetched ${rows.length} TSV rows from ${resourceInfo.name}`);
 
       // Create citation for this resource
       const resourceCitation = {
         resource: resourceInfo.name,
+        title: resourceInfo.title, // ✅ FROM DCS CATALOG
         organization: resourceInfo.owner || "unfoldingWord",
         language,
         url: resourceInfo.url || `https://git.door43.org/${resourceInfo.owner}/${resourceInfo.name}`,
-        version: "master",
+        version: tsvResult.version || "master", // ✅ FROM DCS CATALOG
       };
       citations.push(resourceCitation);
 
@@ -255,9 +295,10 @@ async function fetchTranslationQuestionsFromMultipleResources(
             : undefined,
         citation: {
           resource: resourceInfo.name,
+          title: resourceInfo.title, // ✅ FROM DCS CATALOG
           organization: resourceInfo.owner || "unfoldingWord",
           language,
-          version: "master",
+          version: tsvResult.version || "master", // ✅ FROM DCS CATALOG
           url: resourceCitation.url,
         },
       }));
@@ -286,6 +327,7 @@ async function fetchTranslationQuestionsFromMultipleResources(
       questionsFound: allQuestions.length,
       totalResources: resources.length,
       organizations,
+      subject: resourceSubject, // ✅ FROM DCS CATALOG
     },
   };
 }
@@ -341,9 +383,40 @@ export async function fetchTranslationQuestions(
   );
 
   if (!resourceInfo) {
-    throw new Error(
-      `No translation questions found for ${language}/${organization}`,
+    // Try to find language variants to help the user
+    const { findLanguageVariants } = await import('./resource-detector.js');
+    const baseLanguage = language.split('-')[0];
+    // For translation questions, search the correct subject (search all orgs for variants)
+    const languageVariants = await findLanguageVariants(baseLanguage, organization === 'unfoldingWord' ? undefined : organization, topic, ['TSV Translation Questions']);
+
+    // Filter out the current language to prevent infinite retry loops
+    const filteredVariants = languageVariants.filter(v => v !== language);
+
+    // Create structured error with recovery data
+    const error: any = new Error(
+      filteredVariants.length > 0
+        ? `No translation questions found for language '${language}'.\n\nAvailable language variants: ${filteredVariants.join(', ')}\n\nPlease try one of these language codes instead.`
+        : `No translation questions available for language '${language}'.`
     );
+
+    // Attach structured data for automatic retry
+    if (filteredVariants.length > 0) {
+      error.languageVariants = filteredVariants;
+      error.requestedLanguage = language;
+      logger.info('Throwing language variant error for translation questions (single org)', {
+        language,
+        variants: filteredVariants,
+        organization
+      });
+    } else {
+      error.requestedLanguage = language;
+      logger.info('Throwing language not supported error for translation questions (single org)', {
+        language,
+        organization
+      });
+    }
+
+    throw error;
   }
 
   logger.info(`Using resource`, {
@@ -390,18 +463,22 @@ export async function fetchTranslationQuestions(
   );
 
   // Get TSV rows from ZIP (already parsed and filtered by reference)
-  const rows = (await zipFetcherProvider.getTSVData(
+  const tsvResult = await zipFetcherProvider.getTSVData(
     {
       book: parsedRef.book,
       chapter: parsedRef.chapter!,
       verse: parsedRef.verse,
+      endVerse: parsedRef.endVerse,  // Include endVerse for verse ranges
     },
     language,
     organization,
     "tq",
-  )) as Array<Record<string, string>>;
+  );
+  const rows = tsvResult.data as Array<Record<string, string>>;
+  const resourceSubject = tsvResult.subject; // ✅ FROM DCS CATALOG
+  const resourceVersion = tsvResult.version; // ✅ FROM DCS CATALOG
 
-  logger.info(`Fetched TSV rows from ZIP`, { count: rows.length });
+  logger.info(`Fetched TSV rows from ZIP`, { count: rows.length, subject: resourceSubject, version: resourceVersion });
 
   // Convert rows to TranslationQuestion format
   // The rows are already filtered by reference, so we just need to map them
@@ -430,13 +507,14 @@ export async function fetchTranslationQuestions(
       url:
         resourceInfo.url ||
         `https://git.door43.org/${organization}/${resourceInfo.name}`,
-      version: "master",
+      version: resourceVersion || "master", // ✅ FROM DCS CATALOG
     },
     metadata: {
       responseTime: Date.now() - startTime,
       cached: false,
       timestamp: new Date().toISOString(),
       questionsFound: questions.length,
+      subject: resourceSubject, // ✅ FROM DCS CATALOG
     },
   };
 

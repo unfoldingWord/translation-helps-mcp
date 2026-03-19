@@ -1,0 +1,1 @@
+What are abstract nouns and how do I deal with them in my translation?

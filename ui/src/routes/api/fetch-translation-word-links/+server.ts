@@ -31,31 +31,32 @@ async function fetchTranslationWordLinks(
 	const fetcher = new UnifiedResourceFetcher(tracer);
 	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
 
-	// Fetch real TWL data from TSV
-	const tsvData = await fetcher.fetchTranslationWordLinks(reference, language, organization);
+	// Fetch real TWL data from TSV (now includes subject)
+	const tsvResult = await fetcher.fetchTranslationWordLinks(reference, language, organization);
 
-	// Transform TSV rows to expected format
-	const links = tsvData.map((row, index) => {
+	// Transform TSV rows to expected format with externalReference
+	const links = tsvResult.data.map((row, index) => {
 		const rcLink = row.TWLink || '';
 
 		// Parse RC link to extract category, term, and path
 		// Format: rc://*/tw/dict/bible/{category}/{term}
-		let category = '';
-		let term = '';
-		let path = '';
+		let externalReference: { target: string; path: string; category?: string } | null = null;
 
 		if (rcLink) {
-			// Extract everything after /dict/ and add .md extension
+			// Extract everything after /dict/ (without .md extension)
 			const pathMatch = rcLink.match(/rc:\/\/\*\/tw\/dict\/(.+)/);
 			if (pathMatch) {
-				path = pathMatch[1] + '.md'; // e.g., "bible/kt/love.md"
-			}
+				const extractedPath = pathMatch[1]; // e.g., "bible/kt/love"
+				
+				// Extract category from path
+				const categoryMatch = extractedPath.match(/bible\/([^/]+)\//);
+				const category = categoryMatch ? categoryMatch[1] : undefined; // e.g., "kt", "names", "other"
 
-			// Extract category and term
-			const match = rcLink.match(/rc:\/\/\*\/tw\/dict\/bible\/([^/]+)\/([^/]+)/);
-			if (match) {
-				category = match[1]; // e.g., "kt", "names", "other"
-				term = match[2]; // e.g., "love", "grace", "abraham"
+				externalReference = {
+					target: 'tw',
+					path: extractedPath, // e.g., "bible/kt/love"
+					...(category && { category })
+				};
 			}
 		}
 
@@ -64,20 +65,25 @@ async function fetchTranslationWordLinks(
 			reference: row.Reference || reference,
 			occurrence: parseInt(row.Occurrence || '1', 10),
 			quote: row.Quote || '',
-			category, // Extracted: "kt", "names", "other"
-			term, // Extracted: "love", "grace", etc. - matches translation_word tool parameter
-			path, // Extracted: "bible/kt/love.md"
 			strongsId: row.StrongsId || '',
-			rcLink, // Full RC link
-			position: null
+			...(externalReference && { externalReference })
 		};
 	});
 
-	// Return formatted response with trace data
-	// The simpleEndpoint will extract _trace and put it in X-ray headers
-	const response = createTranslationHelpsResponse(links, reference, language, organization, 'twl');
+	// Return response with standardized metadata
 	return {
-		...response,
+		reference,
+		items: links,
+		counts: {
+			linksFound: links.length
+		},
+		metadata: {
+			resourceType: 'twl',
+			subject: tsvResult.subject || 'TSV Translation Words Links', // ✅ Dynamic or fallback
+			language: language || 'en',
+			organization: organization || 'unfoldingWord',
+			license: 'CC BY-SA 4.0'
+		},
 		_trace: fetcher.getTrace()
 	};
 }

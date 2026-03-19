@@ -246,17 +246,20 @@ export async function handleListSubjects(args: ListSubjectsArgs): Promise<{
     }
 
     // Parse the response structure
+    // Note: The catalog API can return either an array of strings or an array of objects
     const subjectData = data.data || [];
     const subjects: SubjectItem[] = [];
 
     for (const subject of subjectData) {
-      if (subject.name) {
-        const resourceType = mapSubjectToResourceType(subject.name);
+      // Handle both string and object formats
+      const subjectName = typeof subject === "string" ? subject : subject.name;
+      if (subjectName) {
+        const resourceType = mapSubjectToResourceType(subjectName);
         subjects.push({
-          name: subject.name,
-          description: subject.description,
+          name: subjectName,
+          description: typeof subject === "object" ? subject.description : undefined,
           resourceType,
-          count: subject.count,
+          count: typeof subject === "object" ? subject.count : undefined,
         });
       }
     }

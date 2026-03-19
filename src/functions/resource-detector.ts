@@ -338,8 +338,9 @@ export async function discoverAvailableResources(
         // Build catalog URL with topic filter and optional organization filter
         let catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=${encodeURIComponent(subject)}&lang=${language}&topic=${topic}&metadataType=rc&includeMetadata=true`;
         
-        // Only add owner parameter if organization is specified
-        if (organization) {
+        // Only add owner parameter if organization is specified AND not "all"
+        // The catalog API doesn't recognize owner=all and returns 0 results
+        if (organization && organization !== "all") {
           catalogUrl += `&owner=${organization}`;
         }
         
@@ -355,6 +356,7 @@ export async function discoverAvailableResources(
           logger.warn(`Catalog search failed`, {
             subject,
             status: response.status,
+            catalogUrl
           });
           return { type: search.type, resources: [] };
         }
@@ -362,6 +364,13 @@ export async function discoverAvailableResources(
         const data = (await response.json()) as {
           data?: ResourceCatalogInfo[];
         };
+
+        logger.debug(`[CATALOG RESPONSE]`, {
+          subject,
+          resourceType: search.type,
+          dataLength: data.data?.length || 0,
+          firstResource: data.data?.[0]?.name
+        });
 
         const resources = (data.data || []).map((resource) => ({
           name: resource.name,
@@ -420,6 +429,18 @@ export async function discoverAvailableResources(
   );
 
   // Cache the discovery results
+  logger.info(`[RESOURCE DISCOVERY COMPLETE]`, {
+    book,
+    language,
+    organization: orgKey,
+    topic,
+    scripture: availability.scripture.length,
+    notes: availability.notes.length,
+    questions: availability.questions.length,
+    words: availability.words.length,
+    wordLinks: availability.wordLinks.length
+  });
+  
   await cache.set(cacheKey, availability, "metadata");
 
   const totalResources =
@@ -432,6 +453,237 @@ export async function discoverAvailableResources(
   logger.info(`Resource discovery complete`, { totalResources, book });
 
   return availability;
+}
+
+// 🚀 OPTIMIZATION: Known language variants for instant resolution
+// These are well-established variants that rarely change
+const KNOWN_VARIANTS: Record<string, string[]> = {
+  'es': ['es-419'],           // Spanish → Latin American Spanish
+  'pt': ['pt-br'],            // Portuguese → Brazilian Portuguese
+  'zh': ['zh-tw'],            // Chinese → Traditional Chinese
+  'ar': ['ar-x-strong'],      // Arabic → Strong's Arabic
+  'en': ['en-US', 'en-GB'],   // English variants (if needed)
+};
+
+/**
+ * Find all available language variants for a given base language code
+ * Used when a language fetch fails to suggest alternatives
+ *
+ * @param baseLanguage - Base language code (e.g., "es", "fr")
+ * @param organization - Optional organization filter
+ * @param topic - Topic filter (default: "tc-ready")
+ * @returns Array of available language codes that match the base
+ */
+export async function findLanguageVariants(
+  baseLanguage: string,
+  organization?: string,
+  topic: string = "tc-ready",
+  subjects?: string[],
+): Promise<string[]> {
+  // Default to Bible subjects if not specified
+  const searchSubjects = subjects || ["Bible", "Aligned Bible"];
+  const cacheKey = `language-variants:${baseLanguage}:${organization || "all"}:${topic}:${searchSubjects.join(',')}`;
+
+  // 🚀 OPTIMIZATION 1: Check known variants first (instant!)
+  const knownVariants = KNOWN_VARIANTS[baseLanguage];
+  if (knownVariants && knownVariants.length > 0) {
+    logger.info(`Using known language variants (instant)`, { 
+      baseLanguage, 
+      variants: knownVariants,
+      source: 'static-mapping'
+    });
+    
+    // Cache the known variants too (for consistency)
+    await cache.set(cacheKey, knownVariants, 60 * 60 * 24 * 7, "metadata"); // 7 days
+    return knownVariants;
+  }
+
+  // Try cache next
+  const cached = await cache.getWithCacheInfo(cacheKey, "metadata");
+  if (cached.value) {
+    logger.info(`Language variants cache HIT`, { baseLanguage, variants: cached.value });
+    return cached.value;
+  }
+
+  logger.info(`Finding language variants`, { baseLanguage, organization: organization || "all", topic, subjects: searchSubjects });
+
+  // 🚀 OPTIMIZATION: Try faster languages endpoint first with filters
+  // This endpoint returns just language codes, not full resource metadata (~96% smaller payload!)
+  try {
+    // Build filtered languages URL with topic and subjects for targeted results
+    const params = new URLSearchParams();
+    params.append("stage", "prod");
+    if (topic) {
+      params.append("topic", topic); // Filter by tc-ready
+    }
+    // Add all subjects as separate parameters (API supports multiple subject params)
+    for (const subject of searchSubjects) {
+      params.append("subject", subject);
+    }
+    
+    const languagesUrl = `https://git.door43.org/api/v1/catalog/list/languages?${params.toString()}`;
+    logger.debug(`Fetching filtered languages from dedicated endpoint`, { 
+      url: languagesUrl,
+      baseLanguage,
+      topic,
+      subjects: searchSubjects
+    });
+    
+    const startTime = Date.now();
+    const response = await proxyFetch(languagesUrl);
+    const fetchDuration = Date.now() - startTime;
+    
+    if (response.ok) {
+      const languagesData = await response.json() as { data?: Array<{ lc: string }> };
+      // API returns { lc: "language-code" } format
+      const allLanguages = (languagesData.data || []).map(l => l.lc);
+      
+      logger.info(`Filtered languages endpoint returned ${allLanguages.length} languages in ${fetchDuration}ms`, {
+        sampleLanguages: allLanguages.slice(0, 10),
+        baseLanguage,
+        payloadSize: '96% smaller than unfiltered'
+      });
+      
+      // Filter for variants matching the base language
+      const variants = allLanguages
+        .filter(code => code.startsWith(baseLanguage) && code !== baseLanguage)
+        .sort();
+      
+      if (variants.length > 0) {
+        logger.info(`Found language variants via filtered languages endpoint (FAST)`, { 
+          baseLanguage, 
+          count: variants.length, 
+          variants,
+          duration: `${fetchDuration}ms`,
+          optimization: 'filtered endpoint (96% smaller payload)'
+        });
+        
+        // Cache for 7 days
+        await cache.set(cacheKey, variants, 60 * 60 * 24 * 7, "metadata");
+        return variants;
+      }
+      
+      logger.debug(`No variants found via languages endpoint, falling back to resource search`);
+    } else {
+      logger.warn(`Languages endpoint failed, falling back to resource search`, { 
+        status: response.status 
+      });
+    }
+  } catch (error) {
+    logger.warn(`Languages endpoint error, falling back to resource search`, { error });
+  }
+
+  // Fallback: Original approach (search all resources, filter client-side)
+  logger.debug(`Using fallback resource search for variant discovery`);
+  
+  // Build catalog search URL - search specified subjects
+  // NOTE: Catalog API requires EXACT language match (lang=es doesn't return lang=es-419)
+  // So we search WITHOUT lang parameter and filter client-side for variants
+  const baseUrl = "https://git.door43.org/api/v1/catalog/search";
+  
+  // Make parallel requests for all specified subjects
+  const searchPromises = searchSubjects.map(async (subject) => {
+    const params = new URLSearchParams();
+    
+    // Only add owner if it's a specific organization (not "all")
+    if (organization && organization !== "all") {
+      params.append("owner", organization);
+    }
+    if (topic) {
+      params.append("topic", topic); // Use "topic" not "tag"
+    }
+    params.append("subject", subject);
+    params.append("metadataType", "rc");
+    // NOTE: NOT including lang parameter - we'll filter client-side
+
+    const catalogUrl = `${baseUrl}?${params.toString()}`;
+    logger.debug(`Searching catalog for language variants`, { subject, catalogUrl });
+
+    try {
+      const response = await proxyFetch(catalogUrl);
+      if (!response.ok) {
+        logger.warn(`Catalog search failed for subject ${subject}`, { status: response.status });
+        return [];
+      }
+
+      const catalogData = (await response.json()) as {
+        data?: Array<{
+          name: string;
+          language: string;
+          stage?: string;
+        }>;
+      };
+
+      return catalogData.data || [];
+    } catch (error) {
+      logger.error(`Error searching subject ${subject}`, { error });
+      return [];
+    }
+  });
+
+  try {
+    const allResults = await Promise.all(searchPromises);
+    const catalogData = allResults.flat();
+
+    if (catalogData.length === 0) {
+      logger.info(`No resources found`, { subjects });
+      return [];
+    }
+    
+    logger.debug(`Found ${catalogData.length} total resources, filtering for base language`, { 
+      baseLanguage, 
+      subjects,
+      sampleNames: catalogData.slice(0, 5).map(r => r.name)
+    });
+    
+    // Filter for resources matching the base language pattern
+    const matchingResources = catalogData.filter(r => {
+      const langMatch = r.name.match(/^([a-z]{2,3}(?:-[a-zA-Z0-9]+)?)_/);
+      if (langMatch) {
+        const langCode = langMatch[1];
+        return langCode.startsWith(baseLanguage);
+      }
+      return false;
+    });
+
+    logger.debug(`Filtered to ${matchingResources.length} matching resources`, {
+      matchingNames: matchingResources.slice(0, 5).map(r => r.name)
+    });
+    
+    if (matchingResources.length === 0) {
+      logger.info(`No matching resources for base language`, { baseLanguage });
+      return [];
+    }
+    
+    // Extract unique language codes from resource names
+    // Resource names follow pattern: {lang}_{resource} or {lang-variant}_{resource}
+    const languageCodes = new Set<string>();
+    
+    for (const resource of matchingResources) {
+      // Extract language code from resource name (e.g., "es-419_glt" -> "es-419")
+      const langMatch = resource.name.match(/^([a-z]{2,3}(?:-[a-zA-Z0-9]+)?)_/);
+      if (langMatch) {
+        languageCodes.add(langMatch[1]);
+      }
+    }
+
+    const variants = Array.from(languageCodes).sort();
+    logger.info(`Found language variants via fallback resource search`, { 
+      baseLanguage, 
+      count: variants.length, 
+      variants 
+    });
+
+    // Cache for 7 days (variants rarely change)
+    await cache.set(cacheKey, variants, 60 * 60 * 24 * 7, "metadata");
+    
+    logger.debug(`Cached variants for 7 days`, { baseLanguage, variants });
+
+    return variants;
+  } catch (error) {
+    logger.error(`Failed to find language variants`, { baseLanguage, error });
+    return [];
+  }
 }
 
 /**

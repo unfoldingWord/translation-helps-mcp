@@ -111,6 +111,7 @@ export function createScriptureResponse(
 		...(s.citation && {
 			citation: {
 				resource: s.citation.resource,
+				...(s.citation.title && { title: s.citation.title }), // ✅ FROM DCS CATALOG
 				organization: s.citation.organization,
 				language: s.citation.language,
 				url: s.citation.url,
@@ -124,19 +125,20 @@ export function createScriptureResponse(
 	return {
 		scripture: cleanScripture,
 		reference,
-		language,
-		...(organization && { organization }), // Only include if defined
-		metadata: {
+		counts: {
 			totalCount: scripture.length,
-			resources: [...new Set(scripture.map((s) => s.resource || s.translation))].filter(Boolean),
-			// Top-level metadata is now aggregate only - per-resource metadata is in each scripture item
 			...(additionalMetadata?.requestedResources && {
 				requestedResources: additionalMetadata.requestedResources
 			}),
 			...(additionalMetadata?.foundResources && {
 				foundResources: additionalMetadata.foundResources
-			}),
-			// Add organizations array when multiple sources
+			})
+		},
+		metadata: {
+			resourceType: 'scripture',
+			language,
+			organization: organization || (organizations.length > 1 ? 'multiple' : 'all'),
+			resources: [...new Set(scripture.map((s) => s.resource || s.translation))].filter(Boolean),
 			...(organizations.length > 1 && {
 				organizations: organizations
 			})

@@ -19,9 +19,27 @@ import type {
   ListSubjectsOptions,
   ListResourcesForLanguageOptions,
 } from "./types.js";
+import { ContextManager } from "./ContextManager.js";
+import { StateInjectionInterceptor, type InterceptorOptions, type ToolContextConfig } from "./StateInjectionInterceptor.js";
+import { DEFAULT_TOOL_CONTEXT_CONFIG } from "./defaultToolConfig.js";
+import {
+  languageCodeValidator,
+  organizationValidator,
+  stageValidator,
+  referenceValidator,
+  formatValidator,
+  booleanValidator,
+} from "./validators.js";
 
 const DEFAULT_SERVER_URL = "https://tc-helps.mcp.servant.bible/api/mcp";
 const DEFAULT_TIMEOUT = 90000; // Increased from 30s to 90s for cold cache scenarios (DCS ZIP downloads can be slow)
+
+export interface EnhancedClientOptions extends ClientOptions {
+  enableInterceptor?: boolean;
+  toolContextConfig?: ToolContextConfig;
+  interceptorOptions?: InterceptorOptions;
+  initialContext?: Record<string, any>;
+}
 
 export class TranslationHelpsClient {
   private serverUrl: string;
@@ -31,8 +49,13 @@ export class TranslationHelpsClient {
   private toolsCache: MCPTool[] | null = null;
   private promptsCache: MCPPrompt[] | null = null;
   private initialized = false;
+  
+  // State Injection Interceptor
+  private contextManager: ContextManager;
+  private interceptor: StateInjectionInterceptor | null = null;
+  private interceptorEnabled = false;
 
-  constructor(options: ClientOptions = {}) {
+  constructor(options: EnhancedClientOptions = {}) {
     this.serverUrl = options.serverUrl || DEFAULT_SERVER_URL;
     this.timeout = options.timeout || DEFAULT_TIMEOUT;
     this.enableMetrics = options.enableMetrics || false;
@@ -40,6 +63,29 @@ export class TranslationHelpsClient {
       "Content-Type": "application/json",
       ...options.headers,
     };
+    
+    // Initialize Context Manager
+    this.contextManager = new ContextManager();
+    
+    // Register validation rules
+    this.contextManager.addValidationRule('language', languageCodeValidator);
+    this.contextManager.addValidationRule('organization', organizationValidator);
+    this.contextManager.addValidationRule('stage', stageValidator);
+    this.contextManager.addValidationRule('reference', referenceValidator);
+    this.contextManager.addValidationRule('format', formatValidator);
+    this.contextManager.addValidationRule('includeAlignment', booleanValidator);
+    this.contextManager.addValidationRule('includeContext', booleanValidator);
+    this.contextManager.addValidationRule('includeIntro', booleanValidator);
+    
+    // Initialize interceptor if enabled
+    if (options.enableInterceptor) {
+      this.enableStateInjection(options.toolContextConfig, options.interceptorOptions);
+    }
+    
+    // Pre-populate context if provided
+    if (options.initialContext) {
+      this.contextManager.setMany(options.initialContext);
+    }
   }
 
   /**
@@ -105,7 +151,44 @@ export class TranslationHelpsClient {
 
       // Handle MCP error responses (JSON-RPC 2.0 format)
       if (data.error) {
-        throw new Error(data.error.message || "MCP server error");
+        console.log('[SDK] 🚨 MCP Error Response:', data.error);
+        console.log('[SDK] 🔍 Has data.error.data?', !!data.error.data);
+        console.log('[SDK] 🔍 data.error.data:', data.error.data);
+        
+        const error: any = new Error(data.error.message || "MCP server error");
+        
+        // Preserve error.data for AI agents (contains validBookCodes, languageVariants, etc.)
+        if (data.error.data) {
+          console.log('[SDK] ✅ Preserving error.data with', Object.keys(data.error.data));
+          error.details = data.error.data;
+          
+          // Attach validBookCodes directly for easy access
+          if (data.error.data.validBookCodes) {
+            console.log('[SDK] ✅ Attaching validBookCodes:', data.error.data.validBookCodes.length, 'codes');
+            error.validBookCodes = data.error.data.validBookCodes;
+            error.invalidCode = data.error.data.invalidCode;
+          }
+          
+          // Attach languageVariants directly for easy access
+          if (data.error.data.languageVariants) {
+            console.log('[SDK] ✅ Attaching languageVariants:', data.error.data.languageVariants);
+            error.languageVariants = data.error.data.languageVariants;
+            error.requestedLanguage = data.error.data.requestedLanguage;
+          }
+          
+          // Attach availableBooks directly for easy access
+          if (data.error.data.availableBooks) {
+            console.log('[SDK] ✅ Attaching availableBooks:', data.error.data.availableBooks.length, 'books');
+            error.availableBooks = data.error.data.availableBooks;
+            error.requestedBook = data.error.data.requestedBook;
+            error.language = data.error.data.language;
+          }
+        } else {
+          console.warn('[SDK] ⚠️ No data.error.data found in response');
+        }
+        
+        console.log('[SDK] 🎯 Throwing error with details:', !!error.details, 'validBookCodes:', !!error.validBookCodes);
+        throw error;
       }
 
       // Extract result from JSON-RPC 2.0 format if present
@@ -254,10 +337,47 @@ export class TranslationHelpsClient {
     arguments_: Record<string, any>,
   ): Promise<MCPResponse> {
     await this.ensureInitialized();
-    return await this.sendRequest("tools/call", {
+    
+    // Apply state injection interceptor if enabled
+    let finalArguments = arguments_;
+    let interceptionMetadata: any = null;
+    
+    if (this.interceptorEnabled && this.interceptor) {
+      const result = this.interceptor.intercept(name, arguments_);
+      finalArguments = result.arguments;
+      
+      // Store metadata for debugging/logging
+      if (result.modified) {
+        interceptionMetadata = {
+          injected: result.injected,
+          synced: result.synced,
+          originalArgs: arguments_,
+          finalArgs: finalArguments,
+        };
+        
+        console.log(
+          `[SDK] 🔄 State Injection Applied: tool=${name}, ` +
+          `injected=[${Object.keys(result.injected).join(', ')}], ` +
+          `synced=[${Object.keys(result.synced).join(', ')}]`
+        );
+      }
+    }
+    
+    // Call the MCP server with potentially modified arguments
+    const response = await this.sendRequest("tools/call", {
       name,
-      arguments: arguments_,
+      arguments: finalArguments,
     });
+    
+    // Attach interception metadata if metrics are enabled
+    if (this.enableMetrics && interceptionMetadata) {
+      if (!response.metadata) {
+        response.metadata = {};
+      }
+      response.metadata.stateInjection = interceptionMetadata;
+    }
+    
+    return response;
   }
 
   /**
@@ -486,4 +606,85 @@ export class TranslationHelpsClient {
   isConnected(): boolean {
     return this.initialized;
   }
+
+  // ============================================================================
+  // State Injection Interceptor Methods
+  // ============================================================================
+
+  /**
+   * Enable the State Injection Interceptor
+   */
+  enableStateInjection(
+    toolConfig?: ToolContextConfig,
+    options?: InterceptorOptions,
+  ): void {
+    const finalConfig = toolConfig || DEFAULT_TOOL_CONTEXT_CONFIG;
+    this.interceptor = new StateInjectionInterceptor(
+      this.contextManager,
+      finalConfig,
+      options || {},
+    );
+    this.interceptorEnabled = true;
+  }
+
+  /**
+   * Disable the State Injection Interceptor
+   */
+  disableStateInjection(): void {
+    this.interceptor = null;
+    this.interceptorEnabled = false;
+  }
+
+  /**
+   * Get the context manager instance
+   */
+  getContextManager(): ContextManager {
+    return this.contextManager;
+  }
+
+  /**
+   * Get the interceptor instance
+   */
+  getInterceptor(): StateInjectionInterceptor | null {
+    return this.interceptor;
+  }
+
+  /**
+   * Set a context value
+   */
+  setContext(key: string, value: any): boolean {
+    return this.contextManager.set(key, value);
+  }
+
+  /**
+   * Get a context value
+   */
+  getContext(key: string): any | undefined {
+    return this.contextManager.get(key);
+  }
+
+  /**
+   * Set multiple context values at once
+   */
+  setContextMany(values: Record<string, any>): Record<string, boolean> {
+    return this.contextManager.setMany(values);
+  }
+
+  /**
+   * Clear all context
+   */
+  clearContext(): void {
+    this.contextManager.clear();
+  }
+
+  /**
+   * Get all context values
+   */
+  getAllContext(): Record<string, any> {
+    return this.contextManager.getAll();
+  }
+
+  // ============================================================================
+  // End State Injection Interceptor Methods
+  // ============================================================================
 }

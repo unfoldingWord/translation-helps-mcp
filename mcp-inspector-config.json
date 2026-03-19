@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "translation-helps-mcp-local": {
+      "command": "npx",
+      "args": ["tsx", "src/index.ts"],
+      "env": {
+        "NODE_ENV": "development"
+      }
+    }
+  }
+}

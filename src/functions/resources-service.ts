@@ -122,15 +122,31 @@ export async function fetchResources(
         topic,
       })
         .then((res) => {
-          // Handle different response formats
-          const scriptureData = res.data || res.scripture;
-          result.scripture = scriptureData;
-          if (scriptureData?.citation) {
-            result.citations.push(scriptureData.citation);
-          } else if (res.metadata?.citation) {
-            result.citations.push(res.metadata.citation);
+          // Handle different response formats - single scripture or array
+          const scriptureData = res.data || res.scripture || res.scriptures;
+          
+          if (Array.isArray(scriptureData)) {
+            // Multiple scriptures - preserve array with inline citations
+            result.scripture = scriptureData;
+            // Extract citations from each scripture item for top-level citations array
+            scriptureData.forEach(s => {
+              if (s.citation) {
+                result.citations.push(s.citation);
+              }
+            });
+            if (scriptureData.length > 0) result.metadata.resourcesFound++;
+          } else if (scriptureData) {
+            // Single scripture object - preserve with inline citation
+            result.scripture = scriptureData;
+            // Add citation to top-level citations array
+            if (scriptureData.citation) {
+              result.citations.push(scriptureData.citation);
+            } else if (res.metadata?.citation) {
+              result.citations.push(res.metadata.citation);
+            }
+            result.metadata.resourcesFound++;
           }
-          if (scriptureData) result.metadata.resourcesFound++;
+          
           return res;
         })
         .catch((error) => {
@@ -155,14 +171,21 @@ export async function fetchResources(
         topic,
       })
         .then((res) => {
-          // Handle different response formats
+          // Handle different response formats - preserve inline citations
           const notesData = res.notes || res.translationNotes;
           result.translationNotes = notesData;
+          
+          // Extract top-level citation(s) for citations array
           if (res.citation) {
             result.citations.push(res.citation);
+          } else if (res.citations && Array.isArray(res.citations)) {
+            // Multi-organization response may have multiple citations
+            result.citations.push(...res.citations);
           } else if (res.metadata?.citation) {
             result.citations.push(res.metadata.citation);
           }
+          
+          // NOTE: Individual notes should already have inline citation from core service
           if (notesData?.length) result.metadata.resourcesFound++;
           return res;
         })
@@ -189,7 +212,16 @@ export async function fetchResources(
       })
         .then((res) => {
           result.translationQuestions = res.translationQuestions;
-          result.citations.push(res.citation);
+          
+          // Extract top-level citation(s) for citations array
+          if (res.citation) {
+            result.citations.push(res.citation);
+          } else if (res.citations && Array.isArray(res.citations)) {
+            // Multi-organization response may have multiple citations
+            result.citations.push(...res.citations);
+          }
+          
+          // NOTE: Individual questions should already have inline citation from core service
           if (res.translationQuestions?.length)
             result.metadata.resourcesFound++;
           return res;
@@ -216,14 +248,21 @@ export async function fetchResources(
         topic,
       })
         .then((res) => {
-          // Handle different response formats
+          // Handle different response formats - preserve inline citations
           const wordsData = res.words || res.translationWords;
           result.translationWords = wordsData;
+          
+          // Extract top-level citation(s) for citations array
           if (res.citation) {
             result.citations.push(res.citation);
+          } else if (res.citations && Array.isArray(res.citations)) {
+            // Multi-organization response may have multiple citations
+            result.citations.push(...res.citations);
           } else if (res.metadata?.citation) {
             result.citations.push(res.metadata.citation);
           }
+          
+          // NOTE: Individual words should already have inline citation from core service
           if (wordsData?.length) result.metadata.resourcesFound++;
           return res;
         })

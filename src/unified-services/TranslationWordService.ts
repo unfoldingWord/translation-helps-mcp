@@ -1,13 +1,13 @@
 /**
  * Unified Translation Word Service
  *
- * Wraps the core translation-words-service for use by both MCP and REST endpoints
+ * Wraps the core translation-word-service for use by both MCP and REST endpoints
  */
 
 import { BaseService } from "./BaseService.js";
 import { PARAMETER_GROUPS } from "../config/parameters/index.js";
 import type { ServiceResponse, ServiceContext } from "./types.js";
-import { fetchTranslationWords } from "../functions/translation-words-service.js";
+import { fetchTranslationWordArticle } from "../functions/translation-word-service.js";
 
 /**
  * Translation word service parameters
@@ -50,28 +50,32 @@ export class TranslationWordService extends BaseService<
         );
       }
 
+      // Validate that at least one identifier is provided
+      if (!params.term && !params.path && !params.rcLink) {
+        throw this.error(
+          "VALIDATION_ERROR",
+          "Either term, path, or rcLink parameter is required",
+          { provided: params },
+          400,
+        );
+      }
+
       // Transform params to match core service interface
       const options = {
         term: params.term,
-        reference: params.reference,
-        language: params.language || "en",
-        organization: params.organization,
-        category: params.category,
         path: params.path,
         rcLink: params.rcLink,
+        language: params.language || "en",
+        organization: params.organization || "unfoldingWord",
+        category: params.category,
         topic: params.topic || "tc-ready",
       };
 
       // Execute with timing
       const { result, elapsed } = await this.withTiming(
-        () => fetchTranslationWords(options),
-        "fetchTranslationWords",
+        () => fetchTranslationWordArticle(options, context?.tracer),
+        "fetchTranslationWordArticle",
       );
-
-      // Check for errors in result
-      if (result.error) {
-        throw this.error("TRANSLATION_WORD_ERROR", result.error, result, 404);
-      }
 
       // Return result (formatting handled by response-formatter if needed)
       return this.success(result, {

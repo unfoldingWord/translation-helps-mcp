@@ -101,6 +101,20 @@ export abstract class BaseService<TParams = any, TResult = any>
       );
     }
 
+    // Handle invalid reference/book code errors (400 Bad Request)
+    if (
+      error.message?.includes('Invalid reference') ||
+      error.message?.includes('book code') ||
+      error.message?.includes('3-letter')
+    ) {
+      return this.error(
+        'INVALID_REFERENCE',
+        error.message || 'Invalid reference format',
+        error,
+        400
+      );
+    }
+
     // Generic error
     return this.error(
       'INTERNAL_ERROR',

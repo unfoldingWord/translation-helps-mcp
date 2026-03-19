@@ -19,7 +19,7 @@ import { edgeLogger as logger } from '$lib/edgeLogger.js';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
-import { callTool, listTools, listPrompts } from '$lib/mcp/client.js';
+import { callTool, listTools, listPrompts, getContextState, updateContext } from '$lib/mcp/client.js';
 import { mapLanguageToCatalogCode } from '$lib/languageMapping.js';
 import { detectLanguageFromMessage, extractLanguageFromRequest } from '$lib/languageDetection.js';
 import {
@@ -83,8 +83,12 @@ UNDERSTANDING TRANSLATION RESOURCES AND THEIR PURPOSE:
 
 2. **Translation Notes** (TN)
    - PURPOSE: Explains difficult phrases, cultural context, and alternative renderings
-   - Contains Greek/Hebrew quotes being explained
+   - Quote field contains Greek/Hebrew - match it to find corresponding words in scripture text
    - Includes SupportReference links to Translation Academy articles
+   - RESPONSE FORMAT: verseNotes (verse-specific) + contextNotes (book/chapter background)
+   - **CRITICAL: Show ALL notes with words from scripture (not raw Greek) + COMPLETE Note content**
+   - Example: Quote="ὑποτάσσεσθαι" + scripture="se sometan" → show "**«se sometan»**"
+   - NEVER summarize or skip notes - if verseNotes has 6 items, show all 6 completely
    - USE WHEN: User asks about "how to translate", "difficult phrases", "cultural context", "meaning of phrase"
 
 3. **Translation Words** (TW)
@@ -109,19 +113,25 @@ UNDERSTANDING TRANSLATION RESOURCES AND THEIR PURPOSE:
 
 AVAILABLE MCP PROMPTS (Use these for comprehensive data):
 
-1. **translation-helps-for-passage** - PREFERRED for comprehensive/learning requests
-   - Returns: scripture, questions, word articles WITH TITLES, notes, academy articles WITH TITLES
+1. **translation-helps-report** - RECOMMENDED for most comprehensive requests
+   - Returns: CONDENSED overview (~2,000-3,000 chars vs 50,000+ for full prompt)
+   - Scripture (full), Questions (full), Notes (quote+TA link), Words (titles only), Academy (titles only)
    - USE WHEN user asks:
      * "all translation helps"
-     * "everything for [passage]"
-     * "What do I need to know to translate [passage]"
-     * "What concepts do I need to understand [passage]"
-     * "Teach me about [passage]"
-     * "Help me translate [passage]"
-     * "Key terms in [passage]"
-     * Any comprehensive learning/translation request
+     * "what do I need to translate {passage}"
+     * "overview of resources for {passage}"
+   - **ADVANTAGE**: Faster, easier to process, better citations
 
-2. **get-translation-words-for-passage** - For key terms only
+2. **translation-helps-for-passage** - Use ONLY when user explicitly wants FULL articles
+   - Returns: FULL CONTENT (scripture, questions, full word articles, full notes, full academy articles)
+   - WARNING: Can be 50,000+ characters - may overwhelm context
+   - USE WHEN user asks:
+     * "all translation helps WITH FULL DEFINITIONS"
+     * "show me COMPLETE articles for [passage]"
+     * "give me FULL content for [passage]"
+     * User explicitly says "full", "complete", "entire", or "all details"
+
+3. **get-translation-words-for-passage** - For key terms only
    - Returns word articles with titles and full content
    - USE WHEN: User specifically asks only for key terms/word definitions
 
@@ -129,32 +139,75 @@ AVAILABLE MCP PROMPTS (Use these for comprehensive data):
    - Returns academy articles with titles and full content  
    - USE WHEN: User specifically asks only for translation concepts/techniques
 
+🚨 MANDATORY TRANSLATION NOTES FORMAT 🚨
+
+When user asks for translation notes, you MUST:
+1. First fetch scripture if not already available (use fetch_scripture)
+2. Then fetch notes (use fetch_translation_notes)
+3. For each note, quote the ACTUAL WORDS FROM SCRIPTURE being explained
+
+Formatting process for EACH note:
+1. Read the Note content to understand what phrase it explains
+2. Find those EXACT words in the scripture text
+3. Quote them: **«exact scripture words»** - {Complete Note}
+
+Example:
+Scripture text: "Recuérdales que se sometan a los gobernantes y a las autoridades, que obedezcan"
+Note: Quote="ἀρχαῖς, ἐξουσίαις" Note="Estas palabras... Traducción alternativa: «gobernadores»"
+
+❌ WRONG: "**Términos de autoridad**: Estas palabras..." (invented label)
+❌ WRONG: "**ἀρχαῖς, ἐξουσίαις**: Estas palabras..." (Greek)
+❌ WRONG: "**«gobernadores»**: Estas palabras..." (alternative suggestion, NOT actual scripture)
+✅ CORRECT: "**«los gobernantes y a las autoridades»** - Estas palabras..." (ACTUAL words from scripture text)
+
+The Note field contains "Traducción alternativa" suggestions - do NOT quote those!
+Quote the words AS THEY APPEAR in the scripture text provided above!
+
 INTENT MAPPING (How to interpret user questions):
 
-**CRITICAL: Differentiate between LIST requests vs EXPLANATION requests**
+**CRITICAL: Always show COMPLETE data - never summarize translation content**
 
-**LIST requests** (user wants a summary/list):
-- "What notes are there for {passage}?"
-- "List the translation challenges in {passage}"
-- "What terms appear in {passage}?"
-- "Show me the questions for {passage}"
-→ Use individual tools (fetch_translation_notes, fetch_translation_word_links, etc.)
-→ Provide concise lists/summaries
+**When displaying translation notes:**
+- Show ALL items from verseNotes array (never skip or summarize)
+- For each note, identify which words in the scripture text the note is explaining
+- CRITICAL: Show the translated words from scripture, NOT the raw Greek/Hebrew
+- Format: "**«{words from scripture text}»** - {Complete Note text}"
+- The Quote field contains Greek/Hebrew - use it to find the corresponding words in the scripture
+- If scripture is not available, only then show the Greek/Hebrew Quote field
+- Present the full Note field content verbatim (never paraphrase)
+- List ALL translation alternatives mentioned in each note
+- Example: Quote="ὑποτάσσεσθαι" + scripture has "se sometan" → show "**«se sometan»** - Pablo le explica..."
 
-**EXPLANATION requests** (user wants comprehensive understanding):
-- "Explain the notes for {passage}"
-- "Explain the translation challenges in {passage}"
-- "What do the notes say about {passage}?"
-- "Help me understand {passage}"
-→ Use individual tools (fetch_translation_notes, etc.) BUT provide comprehensive explanations
-→ Don't just list - explain what each note means, why it matters, how it helps translation
+**Discovery requests** (when to be concise):
+- "What resources exist for {language}?"
+- "What subjects are available?"
+- "List all languages"
+→ Brief bullet lists are appropriate here
+
+**Content requests** (when to be comprehensive):
+- "What notes are there for {passage}?" → Show ALL notes with full content
+- "Difficult phrases in {passage}?" → Show ALL notes, don't summarize
+- "Translation challenges?" → Present complete note content
+- "Explain {passage}" → Comprehensive explanation with all available data
+
+**Default behavior:** When showing translation helps data, present it COMPLETELY. Don't summarize unless user explicitly asks for "overview" or "summary".
 
 **PROMPTS - Use ONLY for specific comprehensive cases:**
 
-1. **translation-helps-for-passage** - Use ONLY when:
+1. **translation-helps-report** - Use WHEN (RECOMMENDED - DEFAULT FOR COMPREHENSIVE REQUESTS):
    - User asks for "all translation helps" or "everything I need to translate {passage}"
    - User asks "What do I need to know to translate {passage}?"
    - User asks "Can you provide all the help I need to translate {passage}?"
+   - User asks "Teach me to translate {passage}" or "Help me translate {passage}"
+   - User asks "Show me resources for {passage}"
+   - ANY comprehensive learning/translation request (unless explicitly asking for "full" content)
+   - User wants an overview without being overwhelmed
+   - **DEFAULT**: Use this for ALL comprehensive requests unless user says "full" or "complete"
+   
+2. **translation-helps-for-passage** - Use ONLY when:
+   - User explicitly asks for "FULL" or "COMPLETE" articles
+   - User says "give me the full definitions" or "show me complete content"
+   - User has already seen overview and wants deep dive
    - User asks "Teach me everything about {passage}" (comprehensive learning)
    → This prompt chains multiple tools and takes longer - use sparingly!
 
@@ -168,21 +221,25 @@ INTENT MAPPING (How to interpret user questions):
    - User specifically asks for "key terms" or "important terms" for {passage}
    - User asks "What key terms do I need to know for {passage}?"
    - User asks "What are the important words in {passage}?"
+   - User wants FULL word definitions (not just overview)
    → Returns word articles with full definitions
 
 **INDIVIDUAL TOOLS - Use for specific, focused requests:**
 
 User asks: "Explain the notes for {passage}" or "What do the notes say about {passage}?"
-→ Use fetch_translation_notes tool
-→ Provide COMPREHENSIVE EXPLANATION (not just a list)
-→ Explain what each note means, the Greek/Hebrew context, why it matters
+→ Call TWO tools: fetch_scripture + fetch_translation_notes
+→ Use scripture words (not Greek) when formatting each note
+→ Provide COMPREHENSIVE EXPLANATION with scripture quotes
+→ Explain what each note means, the context, why it matters
 
-User asks: "List the notes for {passage}" or "What notes are there for {passage}?"
-→ Use fetch_translation_notes tool
-→ Provide CONCISE LIST (just the challenges/phrases)
+User asks: "List the notes for {passage}" or "What notes are there for {passage}?" or "Difficult phrases?"
+→ Call TWO tools: fetch_scripture + fetch_translation_notes  
+→ Show ALL notes using SCRIPTURE WORDS: **«words from scripture»** - {Note}
+→ Never use generic labels or raw Greek - always quote scripture text
 
 User asks: "How do I translate [specific phrase] in {passage}?"
-→ Use fetch_translation_notes tool (filters to relevant notes)
+→ Call TWO tools: fetch_scripture + fetch_translation_notes
+→ Use scripture words when presenting the relevant notes
 
 User asks: "What does 'grace' mean in the Bible?" or "Who is Paul?" or "What is faith?" or "Who is God?"
 → Use fetch_translation_word tool with term parameter (e.g., term="grace", term="paul", term="faith", term="god")
@@ -206,10 +263,10 @@ User asks: "Show me {passage} in ULT"
 ❌ WRONG: User says "What are the key terms in Romans 12:2?" → Using fetch_translation_word_links (just links)
 ✅ CORRECT: User says "What are the key terms in Romans 12:2?" → Use get-translation-words-for-passage prompt (returns full word articles)
 
-❌ WRONG: User says "List the notes for Titus 1" → Providing comprehensive explanations
-✅ CORRECT: User says "List the notes for Titus 1" → Use fetch_translation_notes tool, provide concise list
+❌ WRONG: User says "List the notes for Titus 1" → Showing only 2-3 notes when there are 10
+✅ CORRECT: User says "List the notes for Titus 1" → Show ALL notes with complete Quote + Note content (Greek text + full explanation)
 
-✅ CORRECT: User says "What do I need to know to translate Romans 12:2?" → Use translation-helps-for-passage prompt (comprehensive request)
+✅ CORRECT: User says "What do I need to know to translate Romans 12:2?" → Use translation-helps-report prompt (condensed overview)
 
 CRITICAL RULES YOU MUST FOLLOW:
 
@@ -318,10 +375,12 @@ CRITICAL RULES YOU MUST FOLLOW:
    **VERIFICATION CHECKLIST:**
    - Count words.length → List ALL word titles (use word.title field)
    - Count academyArticles.length → List ALL academy titles (use article.title field)
-   - Count notes.items.length → List ALL note challenges (identify phrase from Note field)
-   - Count questions.items.length → Show question count
+   - Count notes.verseNotes.length → List ALL verse notes with Quote + Note fields
+   - Count notes.contextNotes.length → Note that context notes are background (optional to show)
+   - Count questions.items.length → Show ALL questions with full text
    - If you list 5 words but data has 6, YOU MADE A MISTAKE - list all 6!
-   - If you list 2 concepts but data has 4, YOU MADE A MISTAKE - list all 4!
+   - If you list 2 notes but verseNotes has 6, YOU MADE A MISTAKE - show all 6!
+   - NEVER summarize note content - show the complete Note field for each item
    
    Where would you like to start your learning? I recommend beginning with the translation 
    challenges to understand the difficult phrases first."
@@ -372,28 +431,78 @@ CRITICAL RULES YOU MUST FOLLOW:
    - Each note explains a specific Greek/Hebrew phrase found in the original biblical text
    - **IMPORTANT**: If there are no verse-specific notes for a passage, the system may return chapter introductions (e.g., "21:intro" for Revelation 21). This is expected behavior - chapter introductions provide context for the entire chapter when individual verse notes are not available. When presenting notes, clearly distinguish between verse-specific notes and chapter introductions.
 
-9. RESPONSE STYLE - LIST vs EXPLANATION:
+9. RESPONSE STYLE - ALWAYS SHOW COMPLETE CONTENT:
 
-   **When user asks for a LIST** (e.g., "What notes are there?", "List the challenges"):
-   - Provide concise, bullet-point summaries
-   - Just identify the challenges/phrases
-   - Keep it brief and scannable
-
-   **When user asks for EXPLANATION** (e.g., "Explain the notes", "What do the notes say?"):
-   - Provide comprehensive, detailed explanations
-   - Explain what each note means
-   - Explain the Greek/Hebrew context (from Quote field)
-   - Explain why it matters for translation
-   - Connect notes to translation concepts when relevant
-   - Make it educational and thorough
-
-   Example for "Explain the notes for Ephesians 2:8-9":
-   - Don't just say: "There are 2 notes: 'by grace you have been saved' and 'not of yourselves'"
-   - Instead say: "Here are the translation challenges in Ephesians 2:8-9:
+   **CRITICAL: When showing translation notes:**
+   - Show EVERY SINGLE note from verseNotes array individually (if 6 notes, show all 6 separately)
+   - NEVER combine or merge notes even if they explain similar phrases
+   - For each note, find the corresponding words in the scripture text
+   - Format: "**«{exact words from scripture}»** - {Complete Note content}"
+   - Match by reading the Note to understand which phrase it explains, then find those words in scripture
+   - ONLY show raw Greek/Hebrew if scripture text is not available
+   - Present the COMPLETE Note field content (never summarize or paraphrase)
+   - List ALL translation alternatives mentioned in each note
    
-   1. **'by grace you have been saved' (passive voice)**: This phrase uses passive voice in Greek, which emphasizes that salvation is something done TO the person, not something they do themselves. The note explains that translators need to maintain this passive construction to preserve the theological emphasis that salvation is a gift received, not earned.
+   **Example for Titus 3:1 (with scripture available):**
+   Scripture: "Recuérdales que se sometan a los gobernantes y a las autoridades, que obedezcan, que estén dispuestos para toda buena obra"
+   
+   If verseNotes has 6 items, show ALL 6 using EXACT words from scripture (never generic labels):
+   
+   1. **«Connecting Statement»** - Pablo continúa dándole instrucciones a Tito... (special case: no scripture match)
+   2. **«Recuérdales que se sometan»** - Pablo le explica a Tito lo que debe recordarle a la gente. Traducción alternativa: «Dile de nuevo...»
+   3. **«gobernantes y autoridades...que obedezcan»** - Esto es lo que debía recordarle Tito a la gente. Traducción alternativa: «hacer lo que dicen...»
+   4. **«gobernantes y autoridades»** - Estas palabras tienen significados similares y ambas se refieren a cualquiera que tenga autoridad en el gobierno. Traducción alternativa: «gobernadores»
+   5. **«se sometan...obedezcan»** - Estas palabras tienen significados similares y ambas se refieren a hacer lo que alguien te dice que hagas. Traducción alternativa: «cumplir», «acatar»
+   6. **«dispuestos para toda buena obra»** - Esta es otra cosa que Tito debía recordarle a la gente, que siempre debían estar dispuestos y listos. Traducción alternativa: «estar preparado para hacer el bien...»
+
+   **Never say:** "Hay algunas palabras difíciles" (when you have 6 specific notes)
+   **Always do:** List all 6 notes with their scripture quotes + complete content
+
+   **Only be brief for discovery questions:**
+   - "What languages exist?" → Simple bullet list
+   - "What resources are available?" → Brief overview
    
    2. **'not of yourselves' (meaning)**: This phrase clarifies that salvation doesn't originate from human effort. The note explains the importance of making it clear that salvation is external to human works, which is crucial for accurate translation of this key theological passage."
+
+10. PROACTIVE TOOL SUGGESTIONS AFTER SCRIPTURE:
+
+   **CRITICAL: After providing scripture, ALWAYS proactively suggest relevant translation helps**
+   
+   Don't end with generic "feel free to ask" - instead, suggest SPECIFIC available tools:
+   
+   **After providing scripture, say:**
+   "Would you like me to show you:
+   - **Translation notes** for this verse (explains difficult phrases and cultural context)
+   - **Key terms** used in this passage (biblical definitions)
+   - **Comprehension questions** to check understanding
+   - **Translation concepts** that apply to this passage"
+   
+   **Be specific and actionable:**
+   ❌ BAD: "If you need further information or insights about this verse, feel free to ask!"
+   ✅ GOOD: "Would you like me to show you the translation notes for this verse? They explain the key phrases and cultural context that help with accurate translation."
+   
+   **Make suggestions contextual:**
+   - After providing scripture → Suggest translation notes, key terms, or questions
+   - After explaining a note → Suggest related academy articles or key terms
+   - After showing key terms → Suggest translation notes or questions
+   - After showing questions → Suggest translation notes or academy articles
+   
+   **Examples:**
+   
+   After scripture:
+   "Here is John 3:16 in Spanish: [quote]
+   
+   Would you like me to show you:
+   - The **translation notes** that explain key phrases like 'only begotten' and 'eternal life'?
+   - The **key terms** in this verse (God, believe, eternal life)?
+   - **Comprehension questions** to verify understanding?"
+   
+   After translation notes:
+   "These notes mention several translation concepts. Would you like me to:
+   - Show the **Translation Academy articles** about metaphors and abstract nouns?
+   - Explain the **key terms** like 'grace' and 'faith'?"
+   
+   **Keep it conversational and helpful** - your goal is to guide users to discover all the available helps, not just wait for them to ask!
 
 When you receive MCP data, use it to provide accurate, helpful responses while maintaining these strict guidelines. Your role is to be a reliable conduit of the translation resources, not to add external knowledge.`;
 
@@ -528,7 +637,7 @@ async function determineMCPCalls(
 	prompts: any[],
 	chatHistory: Array<{ role: string; content: string }> = [],
 	language: string = 'en',
-	organization: string = 'unfoldingWord'
+	organization: string = '' // Empty = search ALL organizations (default)
 ): Promise<Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>> {
 	// Format endpoints for the LLM prompt
 	const endpointDescriptions = endpoints
@@ -611,28 +720,22 @@ ${recentContext ? `Recent conversation:\n${recentContext}\n\n` : ''}**CRITICAL: 
 
 Before making any tool calls, check if the information was already fetched in previous responses. If the user is asking about something that was already shown (e.g., a translation concept, word article, or note that was mentioned), return an empty array [] and the assistant will use the existing information.
 
-**CRITICAL: LANGUAGE DETECTION AND VALIDATION**
+**CRITICAL: WHEN FETCHING TRANSLATION NOTES**
 
-1. **Detect User Language**: If the user is speaking in a language different from the current language (${language}), you MUST call list_languages FIRST to discover available language variants.
+If user asks for translation notes and scripture is NOT in conversation history:
+- You MUST call BOTH fetch_scripture AND fetch_translation_notes
+- This allows the assistant to quote scripture words instead of Greek text
+- Example calls: [
+    {"endpoint": "fetch_scripture", "params": {"reference": "TIT 3:1", "language": "es"}},
+    {"endpoint": "fetch_translation_notes", "params": {"reference": "TIT 3:1", "language": "es"}}
+  ]
 
-2. **Language Detection Workflow**:
-   - User speaks in Spanish → Call list_languages to find Spanish variants (es, es-419, es-MX, etc.)
-   - After list_languages returns:
-     * If ONLY ONE variant found → Respond to user: "I see you're speaking Spanish. I found resources in es-419. I'll use that to find [their query]." Then IMMEDIATELY make the actual tool call (e.g., fetch_translation_word with term="amor" and language="es-419")
-     * If MULTIPLE variants found → Respond to user: "I see you're speaking Spanish. I found resources in: es-419 (Latin American Spanish), es-MX (Mexican Spanish). Which would you prefer?" Then WAIT for user's response before making tool calls
-     * If NO variants found → Respond: "I don't see resources available in Spanish. Would you like to use English (en) instead?" Then proceed based on user's choice
+**LANGUAGE & ORGANIZATION:**
 
-3. **Two-Step Process**:
-   - STEP 1: Call list_languages to discover available languages
-   - STEP 2: After responding to user about language options, make the actual tool call with the confirmed language
-
-4. **After Language Confirmed**: Once language is confirmed (single variant or user selected), use it for all subsequent tool calls unless the user explicitly requests a different language.
-
-**IMPORTANT**: 
-- If you detect the user is speaking in a language different from ${language}, you MUST call list_languages FIRST
-- After list_languages, respond to the user about available options
-- If only one variant exists, proceed immediately with the actual query
-- If multiple variants exist, wait for user's selection before proceeding
+- Use 'language' parameter with base code (e.g., "es", "fr", "en")
+- DO NOT specify 'organization' parameter unless user explicitly requests specific organization
+- MCP tools fetch from ALL organizations when organization is omitted
+- Example: fetch_scripture(reference="JHN 3:16", language="es") with NO organization parameter
 
 Only make tool calls when:
 1. The information was NOT previously fetched
@@ -683,34 +786,51 @@ You: "Here are the Spanish resources available: 23 resources from 6 organization
 
 Current user query: "${message}"
 
+**PARAMETER RULES:**
+- Use base language code (es, fr, en) NOT variants (es-419)
+- DO NOT specify organization parameter (tools fetch from all orgs when omitted)
+- Example: fetch_scripture(reference="JHN 3:16", language="es") with NO organization
+
 **CRITICAL DECISION RULES:**
 
-**1. LIST vs EXPLANATION - This is the most important distinction:**
+**1. ALWAYS SHOW COMPLETE TRANSLATION CONTENT - NEVER SUMMARIZE:**
 
-**LIST requests** (user wants a summary/list):
-- "What notes are there for {passage}?"
-- "List the translation challenges in {passage}"
-- "What terms appear in {passage}?"
-- "Show me the questions for {passage}"
-→ Use individual tools (fetch-translation-notes, fetch-translation-word-links, etc.)
-→ Response should be concise lists/summaries
+**When displaying translation notes, words, questions, or academy articles:**
+- Show ALL items (never skip items from verseNotes/contextNotes/items arrays)
+- Present FULL content verbatim (complete Note, Question, Definition fields)
+- Include original language quotes (Greek/Hebrew Quote fields)
+- List ALL translation alternatives mentioned in the content
+- Format clearly with original language text: "**Greek: {Quote}** - {Full Note}"
 
-**EXPLANATION requests** (user wants comprehensive understanding):
-- "Explain the notes for {passage}"
-- "Explain the translation challenges in {passage}"
-- "What do the notes say about {passage}?"
-- "Help me understand {passage}"
-→ Use individual tools (fetch-translation-notes, etc.)
-→ Response should provide comprehensive explanations (explain what each note means, why it matters)
+**Questions that require showing FULL content:**
+- "What notes are there for {passage}?" → Show ALL notes completely
+- "Difficult phrases in {passage}?" → Show ALL notes with full text
+- "Translation challenges?" → Present ALL challenges with complete details
+- "What terms appear?" → Show ALL terms with full definitions
+- "Show me questions" → Display ALL questions with full answers
+
+**Only be concise for discovery/meta questions:**
+- "What resources exist?" → Brief list
+- "What languages are available?" → Simple list
+- "What subjects?" → Quick overview
+
+**Default:** Present complete data. Summarize ONLY if user says "overview" or "summary".
 
 **2. PROMPTS - Use ONLY when user explicitly requests comprehensive/complex data:**
 
-**translation-helps-for-passage** - Use ONLY when:
+**translation-helps-report** - Use WHEN (DEFAULT FOR COMPREHENSIVE REQUESTS):
 - User asks for "all translation helps" or "everything I need to translate {passage}"
 - User asks "What do I need to know to translate {passage}?"
 - User asks "Can you provide all the help I need to translate {passage}?"
-- User asks "Teach me everything about {passage}" (comprehensive learning)
-→ This prompt chains multiple tools - use sparingly!
+- User asks "Teach me to translate {passage}" or "Help me translate {passage}"
+- User asks "Show me resources for {passage}"
+- ANY comprehensive learning/translation request (unless explicitly asking for "full")
+→ Returns condensed overview (~2,000-3,000 chars)
+
+**translation-helps-for-passage** - Use ONLY when:
+- User explicitly asks for "FULL" or "COMPLETE" articles
+- User says "give me the FULL definitions" or "show me COMPLETE content"
+→ WARNING: Returns 50,000+ chars - use sparingly!
 
 **get-translation-academy-for-passage** - Use ONLY when:
 - User specifically asks for "concepts" or "translation concepts" for {passage}
@@ -742,7 +862,10 @@ Current user query: "${message}"
 ❌ WRONG: User says "What does 'love' mean?" → Using get-translation-word with reference="" or missing term parameter
 ✅ CORRECT: User says "What does 'love' mean?" → Use fetch-translation-word endpoint with term="love" (extract "love" from the quoted word in the question)
 
-✅ CORRECT: User says "What do I need to know to translate Romans 12:2?" → Use translation-helps-for-passage prompt
+✅ CORRECT: User says "What do I need to know to translate Romans 12:2?" → Use translation-helps-report prompt (condensed overview)
+
+❌ WRONG: User says "Show me everything for John 3:16" → Using translation-helps-for-passage (too much content)
+✅ CORRECT: User says "Show me everything for John 3:16" → Use translation-helps-report (condensed overview)
 
 Return ONLY a JSON array like this (no markdown, no explanation):
 
@@ -898,11 +1021,13 @@ async function executeMCPCalls(
 	calls: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>,
 	baseUrl: string,
 	language: string = 'en',
-	organization: string = 'unfoldingWord'
-): Promise<{ data: any[]; apiCalls: any[] }> {
+	organization: string = '', // Empty = search ALL organizations (default)
+	languageInfo?: { detectedLanguage?: string; needsValidation?: boolean }
+): Promise<{ data: any[]; apiCalls: any[]; resolvedLanguage?: string }> {
 	const data: any[] = [];
 	const apiCalls: any[] = [];
 	const serverUrl = `${baseUrl}/api/mcp`;
+	let resolvedLanguage: string | undefined = undefined; // Track actual language used (may differ from input after variant retry)
 
 	for (const call of calls) {
 		const startTime = Date.now();
@@ -910,6 +1035,7 @@ async function executeMCPCalls(
 			// Check if this is a prompt or an endpoint
 			// Also check if endpoint name is actually a prompt name (LLM might misclassify)
 			const knownPrompts = [
+				'translation-helps-report',
 				'translation-helps-for-passage',
 				'get-translation-words-for-passage',
 				'get-translation-academy-for-passage'
@@ -929,18 +1055,12 @@ async function executeMCPCalls(
 					const executePromptUrl = `${baseUrl}/api/execute-prompt`;
 					const startTime2 = Date.now();
 
-					// Inject language and organization into prompt parameters if not present
+					// Inject language into prompt parameters if not present (use base code)
 					const promptParams = { ...call.params };
-					// Map language to catalog code (e.g., es -> es-419)
 					if (!promptParams.language) {
-						promptParams.language = language;
-					} else {
-						// Map existing language if present
-						promptParams.language = mapLanguageToCatalogCode(promptParams.language);
+						promptParams.language = language; // Use base code (es, fr, en)
 					}
-					if (!promptParams.organization) {
-						promptParams.organization = organization;
-					}
+					// DO NOT inject organization - let prompt tools discover what's available
 
 					const fetchResponse = await fetch(executePromptUrl, {
 						method: 'POST',
@@ -953,10 +1073,15 @@ async function executeMCPCalls(
 						})
 					});
 
-					if (!fetchResponse.ok) {
-						const errorData = await fetchResponse.json().catch(() => ({ error: 'Unknown error' }));
-						throw new Error(errorData.error || `HTTP ${fetchResponse.status}`);
-					}
+				if (!fetchResponse.ok) {
+					const errorData = await fetchResponse.json().catch(() => ({ error: 'Unknown error' }));
+					const error: any = new Error(errorData.error || `HTTP ${fetchResponse.status}`);
+					// Attach full error details including verseNotFound, hasContextOnly, etc.
+					error.status = fetchResponse.status;
+					error.response = errorData;
+					error.details = errorData.details;
+					throw error;
+				}
 
 					const responseData = await fetchResponse.json();
 					const duration = Date.now() - startTime;
@@ -1055,6 +1180,106 @@ async function executeMCPCalls(
 						}
 					}
 
+					// AUTOMATIC RETRY: Check if error has structured recovery data (prompts use tools internally)
+					let retrySucceeded = false;
+					const hasLanguageVariants = errorResponse?.details?.languageVariants?.length > 0;
+
+					if (hasLanguageVariants) {
+						logger.info('Prompt error has language variants - attempting automatic retry', {
+							prompt: promptName,
+							variants: errorResponse.details.languageVariants
+						});
+
+						try {
+							const retryParams = { ...call.params };
+							const suggestedLanguage = errorResponse.details.languageVariants[0];
+							retryParams.language = suggestedLanguage;
+
+							logger.info('Retrying prompt with suggested language', {
+								original: call.params.language,
+								suggested: suggestedLanguage
+							});
+
+							const retryStartTime = Date.now();
+							const retryFetchResponse = await fetch(
+								`${serverUrl}/api/execute-prompt/${promptName}?${new URLSearchParams(retryParams).toString()}`
+							);
+							const retryDuration = Date.now() - retryStartTime;
+
+							if (retryFetchResponse.ok) {
+								const retryResponseData = await retryFetchResponse.json();
+
+								const retryResponse: any = {
+									content: [
+										{
+											type: 'text',
+											text: JSON.stringify(retryResponseData)
+										}
+									]
+								};
+
+								let retryResult: any;
+								if (retryResponse.content && retryResponse.content[0]?.text) {
+									try {
+										retryResult = JSON.parse(retryResponse.content[0].text);
+									} catch {
+										retryResult = retryResponse.content[0].text;
+									}
+								} else {
+									retryResult = retryResponse;
+								}
+
+								// Retry succeeded!
+								retrySucceeded = true;
+								
+								// Track the resolved language from successful retry
+								if (retryParams.language && retryParams.language !== language) {
+									resolvedLanguage = retryParams.language;
+									logger.info('Prompt retry succeeded with language variant', { 
+										prompt: promptName, 
+										originalLanguage: call.params.language,
+										resolvedLanguage: retryParams.language 
+									});
+								} else {
+									logger.info('Prompt retry succeeded', { prompt: promptName, retryParams });
+								}
+
+								data.push({
+									type: `prompt:${promptName}`,
+									params: retryParams,
+									result: retryResult
+								});
+
+								// Log both original error and successful retry
+								apiCalls.push({
+									endpoint: `execute-prompt (${promptName})`,
+									params: call.params,
+									duration: `${duration}ms`,
+									status: errorStatus || 500,
+									error: `${errorMessage} (auto-retried)`,
+									response: errorResponse
+								});
+
+								apiCalls.push({
+									endpoint: `execute-prompt (${promptName})`,
+									params: retryParams,
+									duration: `${retryDuration}ms`,
+									status: 200,
+									cacheStatus: 'n/a',
+									response: retryResponse,
+									isRetry: true
+								});
+							}
+						} catch (retryError) {
+							logger.error('Prompt retry attempt failed', {
+								prompt: promptName,
+								retryError
+							});
+						}
+					}
+
+				// If retry didn't succeed, log the original error
+				if (!retrySucceeded) {
 					apiCalls.push({
 						endpoint: `execute-prompt (${promptName})`,
 						params: call.params,
@@ -1063,8 +1288,26 @@ async function executeMCPCalls(
 						error: errorMessage,
 						response: errorResponse // Include full response for debugging
 					});
+					
+					// Add error to data array for LLM to see, especially for verse not found errors
+					// This ensures the LLM can provide a helpful response instead of failing silently
+					const errorItem = {
+						type: `prompt:${promptName}`,
+						params: call.params,
+						error: errorMessage,
+						errorDetails: errorResponse?.details || null,
+						status: errorStatus || 500
+					};
+					logger.info('[executeMCPCalls] Adding error to data array for LLM', {
+						errorItem,
+						hasDetails: !!errorResponse?.details,
+						verseNotFound: errorResponse?.details?.verseNotFound,
+						explicitError: errorResponse?.details?.explicitError
+					});
+					data.push(errorItem);
 				}
-				continue;
+			}
+			continue;
 			}
 
 			// Handle individual endpoint using SDK
@@ -1076,19 +1319,29 @@ async function executeMCPCalls(
 			// Convert endpoint name to tool name (kebab-case → snake_case)
 			const toolName = endpointToToolName(endpointName);
 
-			// Normalize params with sensible defaults to avoid LLM omissions
-			const normalizedParams: Record<string, any> = {
-				...call.params
-			};
-			// Use provided language/org from request, fallback to defaults
-			// Map language to catalog code (e.g., es -> es-419)
-			if (!normalizedParams.language) {
-				normalizedParams.language = language;
-			} else {
-				// Map existing language if present
-				normalizedParams.language = mapLanguageToCatalogCode(normalizedParams.language);
-			}
-			if (!normalizedParams.organization) normalizedParams.organization = organization;
+		// Normalize params with sensible defaults to avoid LLM omissions
+		const normalizedParams: Record<string, any> = {
+			...call.params
+		};
+		
+		// Language parameter handling with detected language override
+		if (!normalizedParams.language) {
+			// No language provided - use detected or default
+			normalizedParams.language = languageInfo?.detectedLanguage || language;
+		} else if (languageInfo?.detectedLanguage && 
+			normalizedParams.language !== languageInfo.detectedLanguage &&
+			languageInfo.needsValidation) {
+			// LLM provided language doesn't match detected - override with detected
+			// This fixes cases where LLM reuses old language from previous request
+			logger.info('Overriding LLM language param with detected language', {
+				llmProvided: normalizedParams.language,
+				detected: languageInfo.detectedLanguage
+			});
+			normalizedParams.language = languageInfo.detectedLanguage;
+		}
+		
+		// DO NOT inject organization - let MCP tools fetch from all organizations when omitted
+		// Only use organization if LLM explicitly provides it
 
 			// Clean up invalid parameters for fetch_translation_word
 			if (toolName === 'fetch_translation_word') {
@@ -1150,9 +1403,34 @@ async function executeMCPCalls(
 				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 				let errorResponse: any = null;
 				let errorStatus: number | undefined = undefined;
+				let errorDetails: any = {};
 
 				// Check if error has response data (from SDK)
 				if (error && typeof error === 'object') {
+					// Extract error details directly from error object (SDK attaches these)
+					if ('details' in error && error.details) {
+						errorDetails = error.details;
+						console.log('[CHAT] ✅ Error has details:', Object.keys(errorDetails));
+					}
+					
+					// Extract direct attachments from SDK (validBookCodes, languageVariants)
+					if ('validBookCodes' in error) {
+						errorDetails.validBookCodes = (error as any).validBookCodes;
+						errorDetails.invalidCode = (error as any).invalidCode;
+						console.log('[CHAT] ✅ Found validBookCodes:', errorDetails.validBookCodes.length);
+					}
+					if ('languageVariants' in error) {
+						errorDetails.languageVariants = (error as any).languageVariants;
+						errorDetails.requestedLanguage = (error as any).requestedLanguage;
+						console.log('[CHAT] ✅ Found languageVariants:', errorDetails.languageVariants);
+					}
+					
+					console.log('[CHAT] 🔍 Final errorDetails for retry check:', {
+						hasLanguageVariants: !!errorDetails.languageVariants,
+						hasValidBookCodes: !!errorDetails.validBookCodes,
+						errorDetails
+					});
+					
 					// Check for common error response patterns
 					if ('response' in error && error.response) {
 						errorResponse = error.response;
@@ -1172,14 +1450,224 @@ async function executeMCPCalls(
 					}
 				}
 
+				// AUTOMATIC RETRY: Check if error has structured recovery data
+				// Check both errorDetails (from SDK) and errorResponse.details (from nested structure)
+				let retrySucceeded = false;
+				const hasLanguageVariants = 
+					errorDetails?.languageVariants?.length > 0 || 
+					errorResponse?.details?.languageVariants?.length > 0;
+				const hasValidBookCodes = 
+					errorDetails?.validBookCodes?.length > 0 || 
+					errorResponse?.details?.validBookCodes?.length > 0;
+
+				console.log('[CHAT] 🔄 Retry check:', {
+					hasLanguageVariants,
+					hasValidBookCodes,
+					languageVariants: errorDetails?.languageVariants || errorResponse?.details?.languageVariants,
+					validBookCodes: errorDetails?.validBookCodes || errorResponse?.details?.validBookCodes
+				});
+
+				if (hasLanguageVariants || hasValidBookCodes) {
+					console.log('[CHAT] ✅ RETRY TRIGGERED - Recovery data found');
+					logger.info('Error has recovery data - attempting automatic retry', {
+						tool: toolName,
+						hasLanguageVariants,
+						hasValidBookCodes,
+						errorDetails
+					});
+
+					// Build retry parameters (declare outside try for catch block access)
+					const retryParams = { ...normalizedParams };
+
+					try {
+
+						if (hasLanguageVariants) {
+							// Get language variants from errorDetails or nested response
+							const variants = errorDetails?.languageVariants || errorResponse?.details?.languageVariants;
+							const suggestedLanguage = variants[0];
+							retryParams.language = suggestedLanguage;
+							
+							logger.info('Retrying with suggested language variant', {
+								original: normalizedParams.language,
+								suggested: suggestedLanguage,
+								allVariants: variants
+							});
+						} else if (hasValidBookCodes) {
+							// Retry with first valid book code (if reference parsing failed)
+							// This is more complex - would need to re-parse reference with suggested code
+							// For now, skip auto-retry for book codes (too complex)
+							logger.info('Book code error detected, but auto-retry not implemented for this case');
+						}
+
+						// Only retry if we modified parameters
+						if (JSON.stringify(retryParams) !== JSON.stringify(normalizedParams)) {
+							const retryStartTime = Date.now();
+							logger.info('Executing retry with modified parameters', { retryParams });
+
+							const retryResponse = await callTool(toolName, retryParams, serverUrl);
+							const retryDuration = Date.now() - retryStartTime;
+
+							// Extract result from retry
+							let retryResult: any;
+							if (retryResponse.content && retryResponse.content[0]?.text) {
+								const text = retryResponse.content[0].text;
+								try {
+									retryResult = JSON.parse(text);
+								} catch {
+									retryResult = text;
+								}
+							} else {
+								retryResult = retryResponse;
+							}
+
+						// Retry succeeded!
+						retrySucceeded = true;
+						console.log('[CHAT] ✅ RETRY SUCCEEDED with params:', retryParams);
+						
+						// Track the resolved language from successful retry
+						if (retryParams.language && retryParams.language !== language) {
+							resolvedLanguage = retryParams.language;
+							logger.info('Endpoint retry succeeded with language variant', { 
+								tool: toolName,
+								originalLanguage: normalizedParams.language,
+								resolvedLanguage: retryParams.language 
+							});
+						} else {
+							logger.info('Retry succeeded', { tool: toolName, retryParams });
+						}
+
+							// Add successful retry result to data
+							data.push({
+								type: endpointName,
+								params: retryParams,
+								result: retryResult
+							});
+
+							// Log both the original error and successful retry
+							apiCalls.push({
+								endpoint: endpointName,
+								params: normalizedParams,
+								duration: `${duration}ms`,
+								status: errorStatus || 500,
+								error: `${errorMessage} (auto-retried)`,
+								response: {
+									...errorResponse,
+									details: errorDetails // Ensure details are included
+								}
+							});
+
+							apiCalls.push({
+								endpoint: endpointName,
+								params: retryParams,
+								duration: `${retryDuration}ms`,
+								status: 200,
+								cacheStatus: 'n/a',
+								response: retryResponse,
+								isRetry: true
+							});
+						}
+					} catch (retryError) {
+						// Check if retry "failed" but actually has useful recovery data (availableBooks)
+						const retryErrorObj = retryError as any;
+						const hasAvailableBooks = retryErrorObj?.availableBooks?.length > 0 ||
+							retryErrorObj?.details?.availableBooks?.length > 0;
+						
+					if (hasAvailableBooks) {
+						// This is actually a "successful" retry - we found the language variant
+						// and got useful information (available books)
+						console.log('[CHAT] ✅ Retry provided useful data (availableBooks)');
+						
+						// Track the resolved language from this retry
+						if (retryParams.language && retryParams.language !== language) {
+							resolvedLanguage = retryParams.language;
+						}
+						
+						logger.info('Retry provided useful recovery data', {
+							tool: toolName,
+							availableBooksCount: retryErrorObj?.availableBooks?.length || retryErrorObj?.details?.availableBooks?.length,
+							resolvedLanguage: resolvedLanguage
+						});
+							
+							// Extract the retry error details
+							let retryErrorDetails: any = {};
+							if (retryErrorObj?.details) {
+								retryErrorDetails = retryErrorObj.details;
+							}
+							if (retryErrorObj?.availableBooks) {
+								retryErrorDetails.availableBooks = retryErrorObj.availableBooks;
+								retryErrorDetails.requestedBook = retryErrorObj.requestedBook;
+								retryErrorDetails.language = retryErrorObj.language;
+							}
+							
+							// Log the retry as providing useful data (not a failure)
+							apiCalls.push({
+								endpoint: endpointName,
+								params: normalizedParams,
+								duration: `${duration}ms`,
+								status: errorStatus || 500,
+								error: `${errorMessage} (auto-retried)`,
+								response: {
+									...errorResponse,
+									details: errorDetails
+								}
+							});
+							
+							apiCalls.push({
+								endpoint: endpointName,
+								params: retryParams,
+								duration: `${Date.now() - startTime}ms`,
+								status: 404, // Book not found, but language was found
+								error: retryErrorObj instanceof Error ? retryErrorObj.message : 'Book not available',
+								response: {
+									details: retryErrorDetails
+								},
+								isRetry: true
+							});
+							
+							// Mark as "succeeded" so we don't show the original error
+							retrySucceeded = true;
+						} else {
+							logger.error('Retry attempt failed', {
+								tool: toolName,
+								retryError
+							});
+							// Continue with original error handling
+						}
+					}
+				}
+
+			// If retry didn't succeed, log the original error with full details
+			if (!retrySucceeded) {
 				apiCalls.push({
 					endpoint: endpointName,
 					params: normalizedParams,
 					duration: `${duration}ms`,
 					status: errorStatus || 500,
 					error: errorMessage,
-					response: errorResponse // Include full response for debugging
+					response: {
+						...errorResponse,
+						details: errorDetails // Ensure details (with languageVariants) are included
+					}
 				});
+				
+				// Add error to data array for LLM to see, especially for verse not found errors
+				// This ensures the LLM can provide a helpful response instead of failing silently
+				const errorItem = {
+					type: endpointName,
+					params: normalizedParams,
+					error: errorMessage,
+					errorDetails: errorDetails || null,
+					status: errorStatus || 500
+				};
+				logger.info('[executeMCPCalls] Adding tool error to data array for LLM', {
+					tool: toolName,
+					errorItem,
+					hasDetails: !!errorDetails,
+					verseNotFound: errorDetails?.verseNotFound,
+					explicitError: errorDetails?.explicitError
+				});
+				data.push(errorItem);
+			}
 			}
 		} catch (error) {
 			logger.error('Failed to execute MCP call', {
@@ -1222,7 +1710,7 @@ async function executeMCPCalls(
 		}
 	}
 
-	return { data, apiCalls };
+	return { data, apiCalls, resolvedLanguage };
 }
 
 /**
@@ -1297,14 +1785,32 @@ function formatDataForContext(data: any[]): string {
 				// Fallback: include the result as-is
 				context += `Scripture for ${item.params.reference}:\n${JSON.stringify(item.result, null, 2)}\n\n`;
 			}
-		} else if (item.type === 'translation-notes' && item.result.items) {
+		} else if (item.type === 'translation-notes' && (item.result.verseNotes || item.result.contextNotes)) {
 			const metadata = item.result.metadata || {};
 			const source = metadata.source || 'TN';
 			const version = metadata.version || '';
-			context += `Translation Notes for ${item.params.reference} [${source} ${version}]:\n`;
-			for (const note of item.result.items) {
-				const noteRef = note.Reference || item.params.reference;
-				context += `- ${note.Quote || 'General'}: ${note.Note} [${source} ${version} - ${noteRef}]\n`;
+			
+			// VERSE-SPECIFIC NOTES (for the exact reference)
+			if (item.result.verseNotes && item.result.verseNotes.length > 0) {
+				context += `\n=== Translation Notes for ${item.params.reference} [${source} ${version}] ===\n`;
+				context += `COUNT: ${item.result.verseNotes.length} notes - you MUST show all ${item.result.verseNotes.length} individually\n`;
+				context += `FORMAT: For each note, quote the ACTUAL WORDS FROM THE SCRIPTURE TEXT (not Greek, not labels)\n`;
+				context += `The Quote field shows Greek/Hebrew - find where it appears TRANSLATED in the scripture text.\n`;
+				context += `Example: If Quote="ἀρχαῖς" and scripture has "gobernantes", show **«gobernantes»** not **ἀρχαῖς**\n\n`;
+				for (const note of item.result.verseNotes) {
+					const noteRef = note.Reference || item.params.reference;
+					context += `- Quote (Greek): ${note.Quote || 'General'}\n  Note: ${note.Note}\n  [${source} ${version} - ${noteRef}]\n\n`;
+				}
+			}
+			
+			// CONTEXTUAL NOTES (background information)
+			if (item.result.contextNotes && item.result.contextNotes.length > 0) {
+				context += `\n=== Background Context [${source} ${version}] ===\n`;
+				for (const note of item.result.contextNotes) {
+					const contextLabel = note.contextType === 'book' ? 'Book Introduction' : 'Chapter Introduction';
+					context += `\n--- ${contextLabel} (${note.Reference}) ---\n`;
+					context += `${note.Note}\n`;
+				}
 			}
 			context += '\n';
 		} else if (item.type === 'translation-questions' && item.result.items) {
@@ -1380,6 +1886,43 @@ function formatDataForContext(data: any[]): string {
 				}
 				context += '\n';
 			}
+		} else if (item.error) {
+			// Handle both prompt and tool errors (e.g., verse not found)
+			// Provide the error details to the LLM so it can give a helpful response
+			const isPrompt = item.type?.startsWith('prompt:');
+			const itemName = isPrompt ? item.type.replace('prompt:', '') : item.type;
+			const itemLabel = isPrompt ? 'Prompt' : 'Tool';
+			
+			logger.info(`[buildContext] Processing ${itemLabel.toLowerCase()} error for LLM`, {
+				type: item.type,
+				hasError: !!item.error,
+				hasDetails: !!item.errorDetails,
+				verseNotFound: item.errorDetails?.verseNotFound,
+				explicitError: item.errorDetails?.explicitError
+			});
+			
+			context += `\n=== ${itemLabel} Error ===\n`;
+			context += `${itemLabel}: ${itemName}\n`;
+			context += `Error: ${item.error}\n`;
+			
+			if (item.errorDetails) {
+				// Include specific error details that help the LLM understand what went wrong
+				if (item.errorDetails.verseNotFound) {
+					context += `⚠️ VERSE NOT FOUND: ${item.errorDetails.requestedBook} ${item.errorDetails.chapter}:${item.errorDetails.verse}\n`;
+					context += `This verse does not exist in the requested resources.\n`;
+					context += `DO NOT make up or fabricate scripture text for verses that don't exist.\n`;
+				}
+				if (item.errorDetails.hasContextOnly) {
+					context += `Note: Only book/chapter context is available, no verse-specific notes.\n`;
+				}
+				if (item.errorDetails.languageVariants?.length > 0) {
+					context += `Suggested language variants: ${item.errorDetails.languageVariants.join(', ')}\n`;
+				}
+				if (item.errorDetails.explicitError) {
+					context += `Error Type: ${item.errorDetails.explicitError}\n`;
+				}
+			}
+			context += '\n';
 		} else if (item.type?.startsWith('prompt:') && item.result) {
 			// Handle prompt results (e.g., translation-helps-for-passage)
 			// Prompt results can contain scripture, notes, questions, words, and academy articles
@@ -1419,18 +1962,36 @@ function formatDataForContext(data: any[]): string {
 					context += `Scripture for ${item.params?.reference || 'passage'}:\n"${promptData.scripture.text}"\n\n`;
 				}
 
-				// Handle notes
-				if (promptData.notes?.items && Array.isArray(promptData.notes.items)) {
-					const metadata = promptData.notes.metadata || {};
-					const source = metadata.source || 'TN';
-					const version = metadata.version || '';
-					context += `Translation Notes for ${item.params?.reference || 'passage'} [${source} ${version}]:\n`;
-					for (const note of promptData.notes.items) {
+			// Handle notes (new shape: verseNotes + contextNotes)
+			if (promptData.notes && (promptData.notes.verseNotes || promptData.notes.contextNotes)) {
+				const metadata = promptData.notes.metadata || {};
+				const source = metadata.source || 'TN';
+				const version = metadata.version || '';
+				
+				// VERSE-SPECIFIC NOTES (for the exact reference)
+				if (promptData.notes.verseNotes && promptData.notes.verseNotes.length > 0) {
+					context += `\n=== Translation Notes for ${item.params?.reference || 'passage'} [${source} ${version}] ===\n`;
+					context += `COUNT: ${promptData.notes.verseNotes.length} notes - you MUST show all ${promptData.notes.verseNotes.length} individually\n`;
+					context += `FORMAT: Quote the ACTUAL WORDS FROM THE SCRIPTURE TEXT (not Greek, not labels, not alternatives)\n`;
+					context += `The Quote field shows Greek/Hebrew - find where it appears TRANSLATED in the scripture text.\n`;
+					context += `Example: Quote="ἀρχαῖς" + scripture has "gobernantes" → show **«gobernantes»** (not ἀρχαῖς)\n\n`;
+					for (const note of promptData.notes.verseNotes) {
 						const noteRef = note.Reference || item.params?.reference || 'passage';
-						context += `- ${note.Quote || 'General'}: ${note.Note} [${source} ${version} - ${noteRef}]\n`;
+						context += `- Quote (Greek): ${note.Quote || 'General'}\n  Note: ${note.Note}\n  [${source} ${version} - ${noteRef}]\n\n`;
 					}
-					context += '\n';
 				}
+				
+				// CONTEXTUAL NOTES (background information)
+				if (promptData.notes.contextNotes && promptData.notes.contextNotes.length > 0) {
+					context += `\n=== Background Context [${source} ${version}] ===\n`;
+					for (const note of promptData.notes.contextNotes) {
+						const contextLabel = note.contextType === 'book' ? 'Book Introduction' : 'Chapter Introduction';
+						context += `\n--- ${contextLabel} (${note.Reference}) ---\n`;
+						context += `${note.Note}\n`;
+					}
+				}
+				context += '\n';
+			}
 
 				// Handle questions
 				if (promptData.questions?.items && Array.isArray(promptData.questions.items)) {
@@ -1513,7 +2074,7 @@ async function callOpenAI(
 	apiKey: string,
 	endpointCalls?: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>,
 	catalogLanguage: string = 'en',
-	organization: string = 'unfoldingWord',
+	organization: string = '', // Empty = search ALL organizations (default)
 	languageInfo?: {
 		detectedLanguage: string | null;
 		needsValidation: boolean;
@@ -1540,32 +2101,29 @@ async function callOpenAI(
 			? getSystemPrompt(requestType, endpointCalls as EndpointCall[] | undefined, message)
 			: SYSTEM_PROMPT_LEGACY;
 
-		// Add language/org context to system prompt
-		let languageContext = `\n\n**CURRENT LANGUAGE AND ORGANIZATION SETTINGS:**
-- Language: ${catalogLanguage}
-- Organization: ${organization}
-- All tool calls will automatically use these settings unless the user explicitly requests a different language/organization`;
+		// Add minimal language context
+		let languageContext = `\n\n**LANGUAGE:** Use base code (es, fr, en). Default: ${catalogLanguage}`;
 
-		// Add language detection context
+		// Add language detection context if needed
 		if (languageInfo?.detectedLanguage && languageInfo.detectedLanguage !== catalogLanguage) {
-			languageContext += `\n\n**LANGUAGE DETECTED FROM USER MESSAGE:**
-- User's language detected: ${languageInfo.detectedLanguage}
-- You MUST call list_languages FIRST to discover available variants for this language
-- After list_languages returns:
-  * If only ONE variant found → Confirm to user and IMMEDIATELY proceed with their query using that language
-  * If MULTIPLE variants found → Present options to user and wait for their selection
-  * If NO variants found → Suggest alternatives (e.g., English) and proceed based on user's choice
-- Example workflow:
-  1. User: "Hola, podrías definir amor?"
-  2. You call: list_languages
-  3. If es-419 found: "I see you're speaking Spanish. I found resources in es-419. I'll use that to find the definition of 'amor'." Then call fetch_translation_word with term="amor" and language="es-419"
-  4. If multiple found: "I see you're speaking Spanish. I found resources in: es-419, es-MX. Which would you prefer?" Then wait for user response`;
+			languageContext += `\n**DETECTED:** ${languageInfo.detectedLanguage} - use this code`;
 		}
 
-		languageContext += `\n- If you detect the user switching languages mid-conversation, validate the new language using list_languages tool first
-- You can inform users about the current language/organization settings if they ask`;
+		// Add book code guidance
+		languageContext += `\n\n**BIBLE REFERENCES:** ALWAYS use standard 3-letter book codes (GEN, EXO, JHN, TIT, etc.), NEVER full book names. When user says "John 3:16" or "Titus 1:15", convert to "JHN 3:16" or "TIT 1:15" before calling tools.`;
 
-		systemPrompt = systemPrompt + languageContext;
+		// Add proactive tool suggestions guidance (applies to both optimized and legacy prompts)
+		const proactiveSuggestions = `\n\n**PROACTIVE TOOL SUGGESTIONS:**
+After providing scripture, ALWAYS suggest relevant tools:
+"Would you like me to show you:
+- **Translation notes** (explains difficult phrases)
+- **Key terms** (biblical definitions)
+- **Comprehension questions** (check understanding)
+- **Translation concepts** (academy articles)"
+
+Don't end with "feel free to ask" - be specific about available tools!`;
+
+		systemPrompt = systemPrompt + languageContext + proactiveSuggestions;
 
 		const messages = [
 			{ role: 'system', content: systemPrompt },
@@ -1681,7 +2239,7 @@ async function callOpenAIStream(
 	overallStartTime?: number,
 	endpointCalls?: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>,
 	catalogLanguage: string = 'en',
-	organization: string = 'unfoldingWord',
+	organization: string = '', // Empty = search ALL organizations (default)
 	languageInfo?: {
 		detectedLanguage: string | null;
 		needsValidation: boolean;
@@ -1702,32 +2260,29 @@ async function callOpenAIStream(
 					? getSystemPrompt(requestType, endpointCalls as EndpointCall[] | undefined, message)
 					: SYSTEM_PROMPT_LEGACY;
 
-				// Add language/org context to system prompt
-				let languageContext = `\n\n**CURRENT LANGUAGE AND ORGANIZATION SETTINGS:**
-- Language: ${catalogLanguage}
-- Organization: ${organization}
-- All tool calls will automatically use these settings unless the user explicitly requests a different language/organization`;
+			// Add minimal language context
+			let languageContext = `\n\n**LANGUAGE:** Use base code (es, fr, en). Default: ${catalogLanguage}`;
 
-				// Add language detection context
-				if (languageInfo?.detectedLanguage && languageInfo.detectedLanguage !== catalogLanguage) {
-					languageContext += `\n\n**LANGUAGE DETECTED FROM USER MESSAGE:**
-- User's language detected: ${languageInfo.detectedLanguage}
-- You MUST call list_languages FIRST to discover available variants for this language
-- After list_languages returns:
-  * If only ONE variant found → Confirm to user and IMMEDIATELY proceed with their query using that language
-  * If MULTIPLE variants found → Present options to user and wait for their selection
-  * If NO variants found → Suggest alternatives (e.g., English) and proceed based on user's choice
-- Example workflow:
-  1. User: "Hola, podrías definir amor?"
-  2. You call: list_languages
-  3. If es-419 found: "I see you're speaking Spanish. I found resources in es-419. I'll use that to find the definition of 'amor'." Then call fetch_translation_word with term="amor" and language="es-419"
-  4. If multiple found: "I see you're speaking Spanish. I found resources in: es-419, es-MX. Which would you prefer?" Then wait for user response`;
-				}
+			// Add language detection context if needed
+			if (languageInfo?.detectedLanguage && languageInfo.detectedLanguage !== catalogLanguage) {
+				languageContext += `\n**DETECTED:** ${languageInfo.detectedLanguage} - use this code`;
+			}
 
-				languageContext += `\n- If you detect the user switching languages mid-conversation, validate the new language using list_languages tool first
-- You can inform users about the current language/organization settings if they ask`;
+			// Add book code guidance
+			languageContext += `\n\n**BIBLE REFERENCES:** ALWAYS use standard 3-letter book codes (GEN, EXO, JHN, TIT, etc.), NEVER full book names. When user says "John 3:16" or "Titus 1:15", convert to "JHN 3:16" or "TIT 1:15" before calling tools.`;
 
-				systemPrompt = systemPrompt + languageContext;
+			// Add proactive tool suggestions guidance
+			const proactiveSuggestions = `\n\n**PROACTIVE TOOL SUGGESTIONS:**
+After providing scripture, ALWAYS suggest relevant tools:
+"Would you like me to show you:
+- **Translation notes** (explains difficult phrases)
+- **Key terms** (biblical definitions)
+- **Comprehension questions** (check understanding)
+- **Translation concepts** (academy articles)"
+
+Don't end with "feel free to ask" - be specific about available tools!`;
+
+			systemPrompt = systemPrompt + languageContext + proactiveSuggestions;
 
 				const messages = [
 					{ role: 'system', content: systemPrompt },
@@ -1909,15 +2464,15 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 	try {
 		const {
 			message,
-			chatHistory = [],
-			enableXRay = false,
-			language = 'en',
-			organization = 'unfoldingWord'
-		}: ChatRequest = await request.json();
+		chatHistory = [],
+		enableXRay = false,
+		language = 'en',
+		organization = '' // Empty = search ALL organizations (default)
+	}: ChatRequest = await request.json();
 		const baseUrl = `${url.protocol}//${url.host}`;
 
-		// Map language to catalog code (e.g., es -> es-419)
-		const catalogLanguage = mapLanguageToCatalogCode(language);
+		// Use base language code as-is (e.g., "es", "fr", "en")
+		const catalogLanguage = language;
 
 		logger.info('Chat stream request', {
 			message,
@@ -1994,7 +2549,23 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 		let finalLanguage = catalogLanguage;
 		if (languageInfo.detectedLanguage && !languageInfo.needsValidation) {
 			finalLanguage = languageInfo.detectedLanguage;
+			
+			// ✨ Sync detected language into SDK's ContextManager
+			updateContext({
+				language: finalLanguage,
+				detectedLanguage: languageInfo.detectedLanguage,
+				languageSource: 'llm-detected'
+			});
+			
 			logger.info('Language detected and validated', {
+				detected: languageInfo.detectedLanguage,
+				previous: catalogLanguage
+			});
+		} else if (languageInfo.detectedLanguage && languageInfo.needsValidation) {
+			// Language detected but needs validation - LLM will handle it
+			// Set as tentative final language for now
+			finalLanguage = languageInfo.detectedLanguage;
+			logger.info('Language detected, LLM will validate', {
 				detected: languageInfo.detectedLanguage,
 				previous: catalogLanguage
 			});
@@ -2020,15 +2591,41 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			logger.info('LLM decided no MCP endpoints needed for this query', { message });
 		}
 
-		// Step 3: Execute the MCP calls
-		const mcpExecutionStart = Date.now();
-		const { data, apiCalls } = await executeMCPCalls(
-			endpointCalls,
-			baseUrl,
-			finalLanguage,
-			organization
-		);
-		timings.mcpExecution = Date.now() - mcpExecutionStart;
+	// Step 3: Execute the MCP calls
+	const mcpExecutionStart = Date.now();
+	const { data, apiCalls, resolvedLanguage } = await executeMCPCalls(
+		endpointCalls,
+		baseUrl,
+		finalLanguage,
+		organization,
+		languageInfo
+	);
+	timings.mcpExecution = Date.now() - mcpExecutionStart;
+
+	// Step 3.5: Extract language from actual tool calls and update state
+	// This ensures the context state reflects what the LLM actually used
+	// Priority: resolvedLanguage (from retry) > languageFromToolCalls > catalogLanguage
+	const languageFromToolCalls = endpointCalls.find(call => call.params?.language)?.params?.language;
+	const actualLanguageUsed = resolvedLanguage || languageFromToolCalls;
+	
+	if (actualLanguageUsed && actualLanguageUsed !== catalogLanguage) {
+		finalLanguage = actualLanguageUsed;
+		
+		// Sync to SDK's ContextManager
+		updateContext({
+			language: finalLanguage,
+			detectedLanguage: languageInfo?.detectedLanguage || finalLanguage,
+			languageSource: resolvedLanguage ? 'variant-retry' : (languageInfo?.detectedLanguage ? 'llm-detected' : 'tool-call-extracted'),
+			resolvedVariant: resolvedLanguage || undefined // Track if a variant was used
+		});
+		
+		logger.info('Language extracted and synced to SDK', {
+			actualLanguageUsed,
+			resolvedFromRetry: !!resolvedLanguage,
+			previous: catalogLanguage,
+			detectedLanguage: languageInfo?.detectedLanguage
+		});
+	}
 
 		// Step 4: Format data for OpenAI context, including any tool errors so the LLM can respond gracefully
 		const contextFormattingStart = Date.now();
@@ -2043,6 +2640,23 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			errorContext += 'Errors (do not expose internal URLs):\n';
 			for (const err of toolErrors) {
 				errorContext += `- endpoint: ${err.endpoint}, status: ${err.status || 'n/a'}, message: ${err.error || 'Unknown error'}, params: ${JSON.stringify(err.params)}\n`;
+				
+				// Include structured recovery data if available
+				if (err.response?.details?.availableBooks) {
+					const books = err.response.details.availableBooks;
+					errorContext += `  Book "${err.response.details.requestedBook}" not available in ${err.response.details.language}\n`;
+					errorContext += `  However, ${books.length} other books ARE available: ${books.slice(0, 10).map(b => b.name).join(', ')}${books.length > 10 ? '...' : ''}\n`;
+					errorContext += `  IMPORTANT: Ask the user if they would like to see one of these available books instead.\n`;
+				} else if (err.response?.details?.validBookCodes) {
+					errorContext += `  Available book codes: ${err.response.details.validBookCodes.slice(0, 10).join(', ')}${err.response.details.validBookCodes.length > 10 ? '...' : ''}\n`;
+					errorContext += `  Invalid code: ${err.response.details.invalidCode}\n`;
+				}
+
+				if (err.response?.details?.languageVariants) {
+					errorContext += `  Available language variants: ${err.response.details.languageVariants.join(', ')}\n`;
+					errorContext += `  Requested language: ${err.response.details.requestedLanguage}\n`;
+					errorContext += `  IMPORTANT: Retry the same request using one of the available language variants.\n`;
+				}
 			}
 			errorContext +=
 				'\nIf a requested resource was not found, explain what is available instead (e.g., try a different verse, or use notes/questions/scripture).\n\n';
@@ -2058,6 +2672,48 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 		if (streamMode) {
 			// Build initial X-ray snapshot (always emit so client can show tools during streaming)
 			const totalDurationSoFar = Date.now() - startTime;
+			
+			// Build system prompt for streaming (same logic as callOpenAIStream)
+			const requestType = endpointCalls
+				? detectRequestType(endpointCalls as EndpointCall[], message)
+				: undefined;
+			let systemPromptForDebug = USE_OPTIMIZED_PROMPT
+				? getSystemPrompt(requestType, endpointCalls as EndpointCall[] | undefined, message)
+				: SYSTEM_PROMPT_LEGACY;
+			
+		// Add minimal language context
+		let languageContextForDebug = `\n\n**LANGUAGE:** Use base code (es, fr, en). Default: ${finalLanguage}`;
+
+		if (languageInfo?.detectedLanguage && languageInfo.detectedLanguage !== finalLanguage) {
+			languageContextForDebug += `\n**DETECTED:** ${languageInfo.detectedLanguage} - use this code`;
+		}
+
+		// Add book code guidance
+		languageContextForDebug += `\n\n**BIBLE REFERENCES:** ALWAYS use standard 3-letter book codes (GEN, EXO, JHN, TIT, etc.), NEVER full book names. When user says "John 3:16" or "Titus 1:15", convert to "JHN 3:16" or "TIT 1:15" before calling tools.`;
+
+		// Add proactive tool suggestions guidance
+		const proactiveSuggestionsForDebug = `\n\n**PROACTIVE TOOL SUGGESTIONS:**
+After providing scripture, ALWAYS suggest relevant tools:
+"Would you like me to show you:
+- **Translation notes** (explains difficult phrases)
+- **Key terms** (biblical definitions)
+- **Comprehension questions** (check understanding)
+- **Translation concepts** (academy articles)"
+
+Don't end with "feel free to ask" - be specific about available tools!`;
+
+		systemPromptForDebug = systemPromptForDebug + languageContextForDebug + proactiveSuggestionsForDebug;
+			
+			// Build full prompt object for debugging
+			const fullPromptData = {
+				systemPrompt: systemPromptForDebug,
+				context: context.substring(0, 10000) + (context.length > 10000 ? '... (truncated)' : ''),
+				contextSize: context.length,
+				chatHistory: chatHistory.slice(-6),
+				userMessage: message,
+				totalTokens: estimateTokens(systemPromptForDebug + context + message + chatHistory.slice(-6).map(m => m.content).join(''))
+			};
+			
 			const xrayInit: any = {
 				queryType: 'ai-assisted',
 				apiCallsCount: apiCalls.length,
@@ -2083,6 +2739,20 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 					llmDecision: timings.llmDecision || 0,
 					mcpExecution: timings.mcpExecution || 0,
 					contextFormatting: timings.contextFormatting || 0
+				},
+				// Add full prompt for debugging
+				fullPrompt: fullPromptData,
+				// Context state variables for debugging language detection
+				// Merge SDK's ContextManager state with local chat variables
+				contextState: {
+					// From SDK's ContextManager (includes state injected into tools)
+					...getContextState(),
+					// From local chat-stream variables (for comparison)
+					catalogLanguage,
+					finalLanguage,
+					detectedLanguage: languageInfo?.detectedLanguage,
+					needsValidation: languageInfo?.needsValidation,
+					languageOverrideApplied: languageInfo?.detectedLanguage && languageInfo.detectedLanguage !== catalogLanguage
 				}
 			};
 
@@ -2183,6 +2853,16 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 
 		// Add X-ray data if requested
 		if (enableXRay) {
+			// Build full prompt object for debugging
+			const fullPromptData = {
+				systemPrompt,
+				context: context.substring(0, 10000) + (context.length > 10000 ? '... (truncated)' : ''), // Truncate large contexts
+				contextSize: context.length,
+				chatHistory: chatHistory.slice(-6),
+				userMessage: message,
+				totalTokens: estimateTokens(systemPrompt + context + message + chatHistory.slice(-6).map(m => m.content).join(''))
+			};
+			
 			result.xrayData = {
 				queryType: 'ai-assisted',
 				apiCallsCount: apiCalls.length,
@@ -2219,7 +2899,9 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 						'Context Formatting': `${timings.contextFormatting || 0}ms (${Math.round(((timings.contextFormatting || 0) / totalDuration) * 100)}%)`,
 						'LLM Response Generation': `${timings.llmResponse || 0}ms (${Math.round(((timings.llmResponse || 0) / totalDuration) * 100)}%)`
 					}
-				}
+				},
+				// Add full prompt for debugging complex prompts
+				fullPrompt: fullPromptData
 			};
 		}
 

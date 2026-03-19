@@ -14,18 +14,41 @@ let clientInstance: TranslationHelpsClient | null = null;
  * Get or create the MCP client instance
  */
 export function getMCPClient(serverUrl?: string, enableMetrics = false): TranslationHelpsClient {
+	// Default to streamable HTTP endpoint at /mcp (not /api/mcp)
+	const defaultServerUrl = '/mcp';
+	
 	if (!clientInstance) {
 		clientInstance = new TranslationHelpsClient({
-			serverUrl: serverUrl || undefined, // Will use default if not provided
+			serverUrl: serverUrl || defaultServerUrl,
 			timeout: 90000, // Increased from 30s to 90s for cold cache scenarios
-			enableMetrics // Enable metrics collection for development
+			enableMetrics, // Enable metrics collection for development
+			// ✨ Enable State Injection Interceptor
+			enableInterceptor: true,
+			initialContext: {
+				language: 'en',
+				// organization: 'unfoldingWord',  // ⚠️ Removed - let LLM discover via list_resources_for_language
+				stage: 'prod'
+			},
+			interceptorOptions: {
+				debug: true // Enable debug logging to see injection/sync events
+			}
 		});
 	} else if (enableMetrics && !clientInstance['enableMetrics']) {
 		// If metrics were requested but client doesn't have them, create new instance
 		clientInstance = new TranslationHelpsClient({
-			serverUrl: serverUrl || clientInstance['serverUrl'],
+			serverUrl: serverUrl || defaultServerUrl,
 			timeout: 90000, // Increased from 30s to 90s for cold cache scenarios
-			enableMetrics: true
+			enableMetrics: true,
+			// ✨ Enable State Injection Interceptor
+			enableInterceptor: true,
+			initialContext: {
+				language: 'en',
+				// organization: 'unfoldingWord',  // ⚠️ Removed - let LLM discover via list_resources_for_language
+				stage: 'prod'
+			},
+			interceptorOptions: {
+				debug: true
+			}
 		});
 	}
 	return clientInstance;
@@ -167,6 +190,28 @@ export async function executePrompt(
 	}
 
 	return mcpResponse;
+}
+
+/**
+ * Get the current context state from the SDK's ContextManager
+ * This is useful for debugging and displaying state in the UI
+ */
+export function getContextState(serverUrl?: string, enableMetrics = false): Record<string, any> {
+	const client = getMCPClient(serverUrl, enableMetrics);
+	// Use the public getAllContext() method
+	return client.getAllContext();
+}
+
+/**
+ * Update the SDK's context state
+ * This allows the chat-stream to sync detected languages into the SDK
+ */
+export function updateContext(updates: Record<string, any>, serverUrl?: string, enableMetrics = false): void {
+	const client = getMCPClient(serverUrl, enableMetrics);
+	// Use the public setContext() method for each key
+	Object.entries(updates).forEach(([key, value]) => {
+		client.setContext(key, value);
+	});
 }
 
 /**

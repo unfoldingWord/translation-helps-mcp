@@ -14,6 +14,8 @@
 		response?: any; // Full MCP server response
 		llmResponse?: string; // LLM's final response for comparison
 		isError?: boolean; // Whether this is an error or successful response
+		fullPrompt?: any; // Full prompt sent to LLM for debugging
+		contextState?: Record<string, any>; // SDK ContextManager state for debugging
 	}> = [];
 
 	let isOpen = false;
@@ -301,6 +303,62 @@
 							{#if log.error}
 								<div class="mb-2 rounded border border-red-900/50 bg-red-900/20 px-3 py-2">
 									<p class="text-sm text-red-200">{log.error}</p>
+									
+									<!-- Show recovery data if available -->
+									{#if log.response?.details?.languageVariants}
+										<div class="mt-2 border-t border-red-800/50 pt-2">
+											<p class="text-xs font-semibold text-yellow-300 mb-1">🔄 Auto-Retry Data Available:</p>
+											<p class="text-xs text-yellow-200">
+												Available language variants: <code class="bg-gray-900 px-1 py-0.5 rounded">{log.response.details.languageVariants.join(', ')}</code>
+											</p>
+											<p class="text-xs text-yellow-200 mt-1">
+												Requested: <code class="bg-gray-900 px-1 py-0.5 rounded">{log.response.details.requestedLanguage}</code>
+											</p>
+										</div>
+									{/if}
+									
+							{#if log.response?.details?.availableBooks}
+								<div class="mt-2 border-t border-yellow-800/50 pt-2">
+									<p class="text-xs font-semibold text-yellow-300 mb-1">📖 Available Books in {log.response.details.language}:</p>
+									<p class="text-xs text-yellow-200">
+										Requested: <code class="bg-gray-900 px-1 py-0.5 rounded">{log.response.details.requestedBook}</code> (not available)
+									</p>
+									<p class="text-xs text-yellow-200 mt-1">
+										{log.response.details.availableBooks.length} books available: 
+										<code class="bg-gray-900 px-1 py-0.5 rounded">
+											{log.response.details.availableBooks
+												.slice(0, 5)
+												.map(b => b.name)
+												.join(', ')}
+											{#if log.response.details.availableBooks.length > 5}...{/if}
+										</code>
+									</p>
+								</div>
+							{:else if log.response?.details?.validBookCodes}
+								<div class="mt-2 border-t border-red-800/50 pt-2">
+									<p class="text-xs font-semibold text-yellow-300 mb-1">📚 Valid Book Codes Available:</p>
+									<p class="text-xs text-yellow-200">
+										Invalid: <code class="bg-gray-900 px-1 py-0.5 rounded">{log.response.details.invalidCode}</code>
+									</p>
+									<p class="text-xs text-yellow-200 mt-1">
+										Try: <code class="bg-gray-900 px-1 py-0.5 rounded">
+											{#if Array.isArray(log.response.details.validBookCodes)}
+												{log.response.details.validBookCodes
+													.slice(0, 5)
+													.map(bc => typeof bc === 'object' ? bc.code : bc)
+													.join(', ')}...
+											{/if}
+										</code>
+									</p>
+								</div>
+							{/if}
+								</div>
+							{/if}
+							
+							<!-- Retry Badge (if this is a retry) -->
+							{#if log.response?.isRetry || (typeof log.response === 'object' && 'isRetry' in log.response)}
+								<div class="mb-2 rounded border border-green-900/50 bg-green-900/20 px-3 py-2">
+									<p class="text-xs font-semibold text-green-300">🔄 This is an automatic retry that succeeded</p>
 								</div>
 							{/if}
 
@@ -331,6 +389,136 @@
 										<pre
 											class="max-h-96 overflow-auto font-mono text-xs leading-relaxed break-words whitespace-pre-wrap text-gray-300">
 {formatResponse(log.response)}</pre>
+									</div>
+								</details>
+							{/if}
+
+							<!-- Full Prompt Sent to LLM (for debugging) -->
+							{#if log.fullPrompt}
+								<details class="mt-2">
+									<summary class="cursor-pointer text-xs text-purple-400 hover:text-purple-300">
+										📋 Full Prompt Sent to LLM
+									</summary>
+									<div class="mt-2 rounded bg-gray-950 p-3 space-y-3">
+										<!-- System Prompt -->
+										{#if log.fullPrompt.systemPrompt}
+											<div>
+												<div class="mb-1 text-xs font-semibold text-purple-300">System Prompt:</div>
+												<pre
+													class="max-h-96 overflow-auto font-mono text-xs leading-relaxed break-words whitespace-pre-wrap text-gray-300 p-2 rounded bg-gray-900">{log.fullPrompt.systemPrompt}</pre>
+											</div>
+										{/if}
+
+										<!-- Context (MCP Data) -->
+										{#if log.fullPrompt.context}
+											<div>
+												<div class="mb-1 text-xs font-semibold text-cyan-300">
+													Context (MCP Data):
+													<span class="ml-1 font-normal text-gray-500">
+														{log.fullPrompt.contextSize} chars,
+														~{Math.ceil(log.fullPrompt.contextSize / 4)} tokens
+													</span>
+												</div>
+												<pre
+													class="max-h-64 overflow-auto font-mono text-xs leading-relaxed break-words whitespace-pre-wrap text-gray-300 p-2 rounded bg-gray-900">{log.fullPrompt.context}</pre>
+											</div>
+										{/if}
+
+										<!-- Chat History -->
+										{#if log.fullPrompt.chatHistory && log.fullPrompt.chatHistory.length > 0}
+											<div>
+												<div class="mb-1 text-xs font-semibold text-blue-300">
+													Chat History: ({log.fullPrompt.chatHistory.length} messages)
+												</div>
+												<div class="space-y-1">
+													{#each log.fullPrompt.chatHistory as msg, i}
+														<div class="p-2 rounded bg-gray-900">
+															<div class="text-xs font-semibold {msg.role === 'user' ? 'text-green-400' : 'text-blue-400'}">
+																{msg.role === 'user' ? '👤 User' : '🤖 Assistant'}:
+															</div>
+															<pre
+																class="mt-1 max-h-32 overflow-auto font-mono text-xs leading-relaxed break-words whitespace-pre-wrap text-gray-300">{msg.content}</pre>
+														</div>
+													{/each}
+												</div>
+											</div>
+										{/if}
+
+										<!-- User Message -->
+										{#if log.fullPrompt.userMessage}
+											<div>
+												<div class="mb-1 text-xs font-semibold text-green-300">Current User Message:</div>
+												<pre
+													class="font-mono text-xs leading-relaxed break-words whitespace-pre-wrap text-gray-300 p-2 rounded bg-gray-900">{log.fullPrompt.userMessage}</pre>
+											</div>
+										{/if}
+
+										<!-- Total Token Count -->
+										{#if log.fullPrompt.totalTokens}
+											<div class="pt-2 border-t border-gray-800">
+												<div class="text-xs text-gray-400">
+													<span class="font-semibold">Total Prompt Size:</span>
+													~{log.fullPrompt.totalTokens} tokens
+												</div>
+											</div>
+										{/if}
+									</div>
+								</details>
+							{/if}
+
+							<!-- Context State Variables (for debugging language detection) -->
+							{#if log.contextState}
+								<details class="mt-2">
+									<summary class="cursor-pointer text-xs text-amber-400 hover:text-amber-300">
+										🔍 Context State Variables
+									</summary>
+									<div class="mt-2 rounded bg-gray-950 p-3">
+										<p class="mb-2 text-xs text-gray-500">
+											Language detection and validation state throughout the conversation
+										</p>
+										<div class="space-y-2">
+											<!-- Catalog Language -->
+											<div class="flex items-start gap-2">
+												<span class="text-xs font-semibold text-gray-400 w-40">Catalog Language:</span>
+												<code class="text-xs text-gray-300 bg-gray-900 px-2 py-1 rounded">
+													{log.contextState.catalogLanguage || 'en'}
+												</code>
+											</div>
+											
+											<!-- Final Language -->
+											<div class="flex items-start gap-2">
+												<span class="text-xs font-semibold text-gray-400 w-40">Final Language Used:</span>
+												<code class="text-xs text-gray-300 bg-gray-900 px-2 py-1 rounded">
+													{log.contextState.finalLanguage || 'en'}
+												</code>
+											</div>
+											
+											<!-- Detected Language -->
+											{#if log.contextState.detectedLanguage}
+												<div class="flex items-start gap-2">
+													<span class="text-xs font-semibold text-amber-400 w-40">Detected Language:</span>
+													<code class="text-xs text-amber-300 bg-amber-900/20 px-2 py-1 rounded border border-amber-800/50">
+														{log.contextState.detectedLanguage}
+													</code>
+												</div>
+											{/if}
+											
+											<!-- Needs Validation -->
+											<div class="flex items-start gap-2">
+												<span class="text-xs font-semibold text-gray-400 w-40">Needs Validation:</span>
+												<code class="text-xs text-gray-300 bg-gray-900 px-2 py-1 rounded">
+													{log.contextState.needsValidation ? 'true' : 'false'}
+												</code>
+											</div>
+											
+											<!-- Language Override Applied -->
+											<div class="flex items-start gap-2">
+												<span class="text-xs font-semibold text-gray-400 w-40">Override Applied:</span>
+												<code class="text-xs {log.contextState.languageOverrideApplied ? 'text-amber-300 bg-amber-900/20 border border-amber-800/50' : 'text-gray-300 bg-gray-900'} px-2 py-1 rounded">
+													{log.contextState.languageOverrideApplied ? 'YES' : 'NO'}
+												</code>
+											</div>
+										</div>
 									</div>
 								</details>
 							{/if}

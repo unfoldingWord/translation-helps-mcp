@@ -58,6 +58,7 @@ export interface ZipFetcherProvider {
     language: string,
     organization: string,
     resourceType: "tn" | "tq" | "twl",
+    topic?: string, // Optional topic filter (defaults to tc-ready)
   ): Promise<unknown[]>;
 
   /**

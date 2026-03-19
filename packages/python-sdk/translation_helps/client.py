@@ -21,6 +21,21 @@ from .types import (
     ListSubjectsOptions,
     ListResourcesForLanguageOptions,
 )
+from .context_manager import ContextManager
+from .state_injection_interceptor import (
+    StateInjectionInterceptor,
+    InterceptorOptions,
+    ToolContextConfig
+)
+from .default_tool_config import DEFAULT_TOOL_CONTEXT_CONFIG
+from .validators import (
+    LANGUAGE_CODE_VALIDATOR,
+    ORGANIZATION_VALIDATOR,
+    STAGE_VALIDATOR,
+    REFERENCE_VALIDATOR,
+    FORMAT_VALIDATOR,
+    BOOLEAN_VALIDATOR
+)
 
 DEFAULT_SERVER_URL = "https://tc-helps.mcp.servant.bible/api/mcp"
 DEFAULT_TIMEOUT = 90.0  # Increased from 30s to 90s for cold cache scenarios (DCS ZIP downloads can be slow)
@@ -36,12 +51,23 @@ class TranslationHelpsClient:
         >>> scripture = await client.fetch_scripture(reference="John 3:16")
     """
 
-    def __init__(self, options: Optional[ClientOptions] = None):
+    def __init__(
+        self,
+        options: Optional[ClientOptions] = None,
+        enable_interceptor: bool = False,
+        tool_context_config: Optional[ToolContextConfig] = None,
+        interceptor_options: Optional[InterceptorOptions] = None,
+        initial_context: Optional[Dict[str, Any]] = None,
+    ):
         """
         Initialize the client.
         
         Args:
             options: Optional client configuration
+            enable_interceptor: Enable state injection interceptor
+            tool_context_config: Custom tool-to-context mapping (uses DEFAULT_TOOL_CONTEXT_CONFIG if not provided)
+            interceptor_options: Interceptor configuration options
+            initial_context: Initial context values to pre-populate
         """
         options = options or {}
         self.server_url = options.get("serverUrl") or DEFAULT_SERVER_URL
@@ -54,6 +80,29 @@ class TranslationHelpsClient:
         self.prompts_cache: Optional[List[MCPPrompt]] = None
         self.initialized = False
         self._http_client: Optional[httpx.AsyncClient] = None
+        
+        # Initialize Context Manager
+        self._context_manager = ContextManager()
+        self._interceptor: Optional[StateInjectionInterceptor] = None
+        self._interceptor_enabled = False
+        
+        # Register validation rules
+        self._context_manager.add_validation_rule('language', LANGUAGE_CODE_VALIDATOR)
+        self._context_manager.add_validation_rule('organization', ORGANIZATION_VALIDATOR)
+        self._context_manager.add_validation_rule('stage', STAGE_VALIDATOR)
+        self._context_manager.add_validation_rule('reference', REFERENCE_VALIDATOR)
+        self._context_manager.add_validation_rule('format', FORMAT_VALIDATOR)
+        self._context_manager.add_validation_rule('includeAlignment', BOOLEAN_VALIDATOR)
+        self._context_manager.add_validation_rule('includeContext', BOOLEAN_VALIDATOR)
+        self._context_manager.add_validation_rule('includeIntro', BOOLEAN_VALIDATOR)
+        
+        # Initialize interceptor if enabled
+        if enable_interceptor:
+            self.enable_state_injection(tool_context_config, interceptor_options)
+        
+        # Pre-populate context if provided
+        if initial_context:
+            self._context_manager.set_many(initial_context)
 
     async def connect(self) -> None:
         """Initialize connection to the MCP server."""
@@ -180,12 +229,52 @@ class TranslationHelpsClient:
     async def call_tool(
         self, name: str, arguments: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Call a tool by name."""
+        """
+        Call a tool by name (with interceptor support).
+        
+        Args:
+            name: Tool name
+            arguments: Tool arguments
+            
+        Returns:
+            Tool response with optional state_injection metadata
+        """
         await self._ensure_initialized()
-        return await self._send_request("tools/call", {
+        
+        # Apply state injection interceptor if enabled
+        final_arguments = arguments
+        interception_metadata = None
+        
+        if self._interceptor_enabled and self._interceptor:
+            result = self._interceptor.intercept(name, arguments)
+            final_arguments = result.arguments
+            
+            # Store metadata for debugging/logging
+            if result.modified:
+                interception_metadata = {
+                    'injected': result.injected,
+                    'synced': result.synced,
+                    'original_args': arguments,
+                    'final_args': final_arguments
+                }
+                
+                print(f'[SDK] 🔄 State Injection Applied: tool={name}, '
+                      f'injected={list(result.injected.keys())}, '
+                      f'synced={list(result.synced.keys())}')
+        
+        # Call the MCP server with potentially modified arguments
+        response = await self._send_request("tools/call", {
             "name": name,
-            "arguments": arguments,
+            "arguments": final_arguments,
         })
+        
+        # Attach interception metadata if available
+        if interception_metadata:
+            if not isinstance(response, dict):
+                response = {'result': response}
+            response['_state_injection'] = interception_metadata
+        
+        return response
 
     async def get_prompt(
         self, name: str, arguments: Optional[Dict[str, Any]] = None
@@ -406,6 +495,93 @@ class TranslationHelpsClient:
 
         raise ValueError("Invalid response format from list_resources_for_language")
 
+
+    # ============================================================================
+    # State Injection Interceptor Methods
+    # ============================================================================
+    
+    def enable_state_injection(
+        self,
+        tool_config: Optional[ToolContextConfig] = None,
+        options: Optional[InterceptorOptions] = None
+    ) -> None:
+        """
+        Enable the State Injection Interceptor.
+        
+        Args:
+            tool_config: Custom tool-to-context mapping (uses DEFAULT_TOOL_CONTEXT_CONFIG if not provided)
+            options: Interceptor configuration options
+        """
+        final_config = tool_config or DEFAULT_TOOL_CONTEXT_CONFIG
+        self._interceptor = StateInjectionInterceptor(
+            self._context_manager,
+            final_config,
+            options or InterceptorOptions()
+        )
+        self._interceptor_enabled = True
+
+    def disable_state_injection(self) -> None:
+        """Disable the State Injection Interceptor."""
+        self._interceptor = None
+        self._interceptor_enabled = False
+
+    def get_context_manager(self) -> ContextManager:
+        """Get the context manager instance."""
+        return self._context_manager
+
+    def get_interceptor(self) -> Optional[StateInjectionInterceptor]:
+        """Get the interceptor instance."""
+        return self._interceptor
+
+    def set_context(self, key: str, value: Any) -> bool:
+        """
+        Set a context value.
+        
+        Args:
+            key: Context key
+            value: Context value
+            
+        Returns:
+            True if value was set successfully, False if validation failed
+        """
+        return self._context_manager.set(key, value)
+
+    def get_context(self, key: str, default: Any = None) -> Any:
+        """
+        Get a context value.
+        
+        Args:
+            key: Context key
+            default: Default value if key doesn't exist
+            
+        Returns:
+            Context value or default
+        """
+        return self._context_manager.get(key, default)
+
+    def set_context_many(self, values: Dict[str, Any]) -> Dict[str, bool]:
+        """
+        Set multiple context values at once.
+        
+        Args:
+            values: Dictionary of key-value pairs
+            
+        Returns:
+            Dictionary mapping keys to success status (True/False)
+        """
+        return self._context_manager.set_many(values)
+
+    def clear_context(self) -> None:
+        """Clear all context."""
+        self._context_manager.clear()
+
+    def get_all_context(self) -> Dict[str, Any]:
+        """Get all context values."""
+        return self._context_manager.get_all()
+
+    # ============================================================================
+    # End State Injection Interceptor Methods
+    # ============================================================================
 
     def is_connected(self) -> bool:
         """Check if client is initialized."""

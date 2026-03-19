@@ -1,0 +1,1 @@
+Why do some translationNotes seem to repeat a previous note?

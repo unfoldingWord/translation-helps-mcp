@@ -73,38 +73,47 @@ export const TRANSLATION_WORD_LINKS_PARAMS = createParameterGroup(
 );
 
 /**
- * Parameters for fetching translation words (by term)
+ * Parameters for fetching translation words
+ *
+ * Uses ONLY path - from externalReference in TWL responses
+ * NOTE: reference parameter removed - TW uses path, not references
  */
 export const TRANSLATION_WORD_PARAMS = createParameterGroup(
   'Translation Word Parameters',
   'Parameters for fetching translation word articles',
   [
-    { ...COMMON_PARAMS.term, required: false },
-    { ...COMMON_PARAMS.reference, required: false },
+    { ...COMMON_PARAMS.path, default: 'bible/kt/love' },  // THE ONLY identifier parameter (from externalReference)
     COMMON_PARAMS.language,
     COMMON_PARAMS.organization,
     COMMON_PARAMS.category,
-    COMMON_PARAMS.path,
-    COMMON_PARAMS.rcLink,
     COMMON_PARAMS.topic,
   ]
 );
 
 /**
  * Parameters for fetching translation academy modules
+ *
+ * Uses ONLY path - from externalReference in TN responses
  */
 export const TRANSLATION_ACADEMY_PARAMS = createParameterGroup(
   'Translation Academy Parameters',
   'Parameters for fetching translation academy modules',
   [
-    COMMON_PARAMS.moduleId,
+    { ...COMMON_PARAMS.path, default: 'translate/figs-metaphor' },  // THE ONLY identifier parameter (from externalReference)
     COMMON_PARAMS.language,
     COMMON_PARAMS.organization,
     COMMON_PARAMS.format,
-    COMMON_PARAMS.path,
-    COMMON_PARAMS.rcLink,
     COMMON_PARAMS.topic,
   ]
+);
+
+/**
+ * Parameters for listing tools
+ */
+export const LIST_TOOLS_PARAMS = createParameterGroup(
+  'List Tools Parameters',
+  'Parameters for listing available MCP tools',
+  []  // No parameters - returns all tools
 );
 
 /**
@@ -160,6 +169,7 @@ export const PARAMETER_GROUPS = {
   translationWordLinks: TRANSLATION_WORD_LINKS_PARAMS,
   translationWord: TRANSLATION_WORD_PARAMS,
   translationAcademy: TRANSLATION_ACADEMY_PARAMS,
+  listTools: LIST_TOOLS_PARAMS,
   listLanguages: LIST_LANGUAGES_PARAMS,
   listSubjects: LIST_SUBJECTS_PARAMS,
   listResourcesForLanguage: LIST_RESOURCES_FOR_LANGUAGE_PARAMS,

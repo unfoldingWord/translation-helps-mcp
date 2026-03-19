@@ -24,6 +24,7 @@ export interface TranslationNote {
   supportReference?: string;
   citation?: {
     resource: string;
+    title?: string; // Dynamic title from DCS catalog
     organization: string;
     language: string;
     version: string;
@@ -67,6 +68,7 @@ export interface TranslationNotesResult {
     responseTime: number;
     totalResources?: number;
     organizations?: string[];
+    subject?: string; // From DCS catalog (e.g., "TSV Translation Notes")
   };
 }
 
@@ -93,7 +95,35 @@ async function fetchTranslationNotesFromMultipleResources(
   );
 
   if (!resources || resources.length === 0) {
-    throw new Error(`No translation notes found for ${language}`);
+    // Try to find language variants to help the user
+    const { findLanguageVariants } = await import('./resource-detector.js');
+    const baseLanguage = language.split('-')[0];
+    // For translation notes, search the correct subject
+    const languageVariants = await findLanguageVariants(baseLanguage, 'all', topic, ['TSV Translation Notes']);
+    
+    // Create structured error with recovery data
+    const error: any = new Error(
+      languageVariants.length > 0
+        ? `No translation notes found for language '${language}'.\n\nAvailable language variants: ${languageVariants.join(', ')}\n\nPlease try one of these language codes instead.`
+        : `No translation notes available for language '${language}'.`
+    );
+    
+    // Attach structured data for automatic retry
+    if (languageVariants.length > 0) {
+      error.languageVariants = languageVariants;
+      error.requestedLanguage = language;
+      logger.info('Throwing language variant error for translation notes', {
+        language,
+        variants: languageVariants
+      });
+    } else {
+      error.requestedLanguage = language;
+      logger.info('Throwing language not supported error for translation notes', {
+        language
+      });
+    }
+    
+    throw error;
   }
 
   logger.info(`Found ${resources.length} note resources from multiple organizations`);
@@ -108,6 +138,7 @@ async function fetchTranslationNotesFromMultipleResources(
     url: string;
     version: string;
   }> = [];
+  let resourceSubject: string | undefined; // Capture subject from first resource
 
   // Fetch notes from each resource
   for (const resourceInfo of resources) {
@@ -143,16 +174,24 @@ async function fetchTranslationNotesFromMultipleResources(
         tracer,
       );
 
-      const rows = (await zipFetcherProvider.getTSVData(
+      const tsvResult = await zipFetcherProvider.getTSVData(
         {
           book: parsedRef.book,
           chapter: parsedRef.chapter!,
           verse: parsedRef.verse,
+          endVerse: parsedRef.endVerse,  // Include endVerse for verse ranges
         },
         language,
         resourceInfo.owner || "unfoldingWord",
         "tn",
-      )) as Array<Record<string, string>>;
+      );
+      const rows = tsvResult.data as Array<Record<string, string>>;
+
+      // Capture subject from first successful resource
+      if (!resourceSubject && tsvResult.subject) {
+        resourceSubject = tsvResult.subject;
+        logger.info(`[Multi-resource] Captured subject from catalog: ${resourceSubject}`);
+      }
 
       logger.info(`Fetched ${rows.length} TSV rows from ${resourceInfo.name}`);
 
@@ -163,7 +202,7 @@ async function fetchTranslationNotesFromMultipleResources(
         organization: resourceInfo.owner || "unfoldingWord",
         language,
         url: resourceInfo.url || `https://git.door43.org/${resourceInfo.owner}/${resourceInfo.name}`,
-        version: "master",
+        version: tsvResult.version || "master", // ✅ FROM DCS CATALOG
       };
       citations.push(resourceCitation);
 
@@ -186,9 +225,10 @@ async function fetchTranslationNotesFromMultipleResources(
         supportReference: row.SupportReference || row.supportReference,
         citation: {
           resource: resourceInfo.name,
+          title: resourceInfo.title, // ✅ FROM DCS CATALOG
           organization: resourceInfo.owner || "unfoldingWord",
           language,
-          version: "master",
+          version: tsvResult.version || "master", // ✅ FROM DCS CATALOG
           url: resourceCitation.url,
         },
       }));
@@ -244,6 +284,7 @@ async function fetchTranslationNotesFromMultipleResources(
       responseTime: Date.now() - startTime,
       totalResources: resources.length,
       organizations,
+      subject: resourceSubject, // ✅ FROM DCS CATALOG
     },
   };
 }
@@ -305,9 +346,40 @@ export async function fetchTranslationNotes(
   );
 
   if (!resourceInfo) {
-    throw new Error(
-      `No translation notes found for ${language}/${organization}`,
+    // Try to find language variants to help the user
+    const { findLanguageVariants } = await import('./resource-detector.js');
+    const baseLanguage = language.split('-')[0];
+    // For translation notes, search the correct subject (search all orgs for variants)
+    const languageVariants = await findLanguageVariants(baseLanguage, organization === 'unfoldingWord' ? undefined : organization, topic, ['TSV Translation Notes']);
+
+    // Filter out the current language to prevent infinite retry loops
+    const filteredVariants = languageVariants.filter(v => v !== language);
+
+    // Create structured error with recovery data
+    const error: any = new Error(
+      filteredVariants.length > 0
+        ? `No translation notes found for language '${language}'.\n\nAvailable language variants: ${filteredVariants.join(', ')}\n\nPlease try one of these language codes instead.`
+        : `No translation notes available for language '${language}'.`
     );
+
+    // Attach structured data for automatic retry
+    if (filteredVariants.length > 0) {
+      error.languageVariants = filteredVariants;
+      error.requestedLanguage = language;
+      logger.info('Throwing language variant error for translation notes (single org)', {
+        language,
+        variants: filteredVariants,
+        organization
+      });
+    } else {
+      error.requestedLanguage = language;
+      logger.info('Throwing language not supported error for translation notes (single org)', {
+        language,
+        organization
+      });
+    }
+
+    throw error;
   }
 
   logger.info(`Using resource`, {
@@ -354,18 +426,22 @@ export async function fetchTranslationNotes(
   );
 
   // Get TSV rows from ZIP (already parsed and filtered by reference)
-  const rows = (await zipFetcherProvider.getTSVData(
+  const tsvResult = await zipFetcherProvider.getTSVData(
     {
       book: parsedRef.book,
       chapter: parsedRef.chapter!,
       verse: parsedRef.verse,
+      endVerse: parsedRef.endVerse,  // Include endVerse for verse ranges
     },
     language,
     organization,
     "tn",
-  )) as Array<Record<string, string>>;
+  );
+  const rows = tsvResult.data as Array<Record<string, string>>;
+  const resourceSubject = tsvResult.subject; // ✅ FROM DCS CATALOG
+  const resourceVersion = tsvResult.version; // ✅ FROM DCS CATALOG
 
-  logger.info(`Fetched TSV rows from ZIP`, { count: rows.length });
+  logger.info(`Fetched TSV rows from ZIP`, { count: rows.length, subject: resourceSubject, version: resourceVersion });
 
   // Convert rows to TranslationNote format
   // The rows are already filtered by reference, so we just need to map them
@@ -431,7 +507,7 @@ export async function fetchTranslationNotes(
       url:
         resourceInfo.url ||
         `https://git.door43.org/${organization}/${resourceInfo.name}`,
-      version: "master",
+      version: resourceVersion || "master", // ✅ FROM DCS CATALOG
     },
     metadata: {
       sourceNotesCount: filteredNotes.length,
@@ -439,6 +515,7 @@ export async function fetchTranslationNotes(
       contextNotesCount: contextNotes.length,
       cached: false,
       responseTime: Date.now() - startTime,
+      subject: resourceSubject, // ✅ FROM DCS CATALOG
     },
   };
 

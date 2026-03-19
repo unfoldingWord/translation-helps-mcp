@@ -29,11 +29,9 @@ async function fetchTranslationQuestionsEndpoint(
 		topic: topic || 'tc-ready'
 	});
 
-	// Format response
+	// Format response with standardized metadata
 	return {
 		reference,
-		language: language || 'en',
-		...(organization && { organization }), // Only include if specified
 		...(result.citations && { citations: result.citations }), // Multi-organization response
 		...(result.citation && !result.citations && { citation: result.citation }), // Single organization response
 		...(result.metadata.organizations && { organizations: result.metadata.organizations }),
@@ -45,11 +43,18 @@ async function fetchTranslationQuestionsEndpoint(
 			Tags: q.tags?.join(', ') || '',
 			...(q.citation && { citation: q.citation })
 		})),
-		metadata: {
+		counts: {
 			totalCount: result.metadata.questionsFound,
 			cached: result.metadata.cached,
 			responseTime: result.metadata.responseTime,
 			...(result.metadata.totalResources && { totalResources: result.metadata.totalResources })
+		},
+		metadata: {
+			resourceType: 'tq',
+			subject: result.metadata.subject || 'TSV Translation Questions', // ✅ Dynamic or fallback
+			language: language || 'en',
+			organization: organization || 'all',
+			license: 'CC BY-SA 4.0'
 		}
 	};
 }

@@ -34,6 +34,7 @@
 	let formData: Record<string, any> = {};
 	let currentEndpointName: string | null = null;
 	let copiedResponse = false;
+	let copiedRequest = false;
 	let copiedXRay = false;
 	let selectedFormat: 'auto' | 'json' | 'markdown' | 'text' = 'auto';
 	
@@ -81,6 +82,21 @@
 			copiedResponse = true;
 			setTimeout(() => {
 				copiedResponse = false;
+			}, 2000);
+		} catch (err) {
+			console.error('Failed to copy:', err);
+		}
+	}
+
+	async function copyRequest() {
+		try {
+			const text = endpoint?._lastRequest 
+				? JSON.stringify(endpoint._lastRequest.mcp, null, 2)
+				: JSON.stringify(formData, null, 2);
+			await navigator.clipboard.writeText(text);
+			copiedRequest = true;
+			setTimeout(() => {
+				copiedRequest = false;
 			}, 2000);
 		} catch (err) {
 			console.error('Failed to copy:', err);
@@ -463,6 +479,58 @@
 					{/if}
 				</div>
 			{/if}
+		</div>
+	{/if}
+
+	<!-- Request Display -->
+	{#if endpoint?._lastRequest}
+		<div class="rounded-lg border border-white/10 bg-black/20 mb-4">
+			<details class="group">
+				<summary
+					class="touch-friendly flex cursor-pointer items-center gap-2 p-4 text-sm font-medium text-gray-300 hover:text-white"
+				>
+					<span class="transform transition-transform group-open:rotate-90">▶</span>
+					Request Details
+					<button
+						type="button"
+						on:click|stopPropagation={() => copyRequest()}
+						class="ml-2 rounded bg-green-600/20 px-2 py-1 text-xs font-medium text-green-400 hover:bg-green-600/30 hover:text-green-300"
+					>
+						{copiedRequest ? '✓ Copied!' : 'Copy MCP'}
+					</button>
+					<span class="ml-auto text-xs text-gray-500">
+						{new Date(endpoint._lastRequest.timestamp).toLocaleTimeString()}
+					</span>
+				</summary>
+				<div class="border-t border-white/10 p-4 space-y-4">
+					<!-- MCP Streamable HTTP Request (Full cURL Command) -->
+					<div>
+						<h4 class="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-2">
+							<span class="text-purple-400">🔷</span> MCP Streamable HTTP Request
+						</h4>
+						<pre class="overflow-x-auto rounded bg-gray-900 p-4 text-xs text-purple-400 leading-relaxed"><code>curl -X POST {window.location.origin}{endpoint._lastRequest.mcpHttp.url} \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{JSON.stringify(endpoint._lastRequest.mcpHttp.body)}'</code></pre>
+					</div>
+					
+					<!-- REST API Equivalent -->
+					<div>
+						<h4 class="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-2">
+							<span class="text-blue-400">🌐</span> REST API Equivalent
+						</h4>
+						<pre class="overflow-x-auto rounded bg-gray-900 p-4 text-xs text-blue-400"><code>curl -X GET "{window.location.origin}{endpoint._lastRequest.rest}"</code></pre>
+					</div>
+					
+					<!-- JSON-RPC Body (for reference) -->
+					<div>
+						<h4 class="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-2">
+							<span class="text-gray-500">📦</span> JSON-RPC Body
+						</h4>
+						<pre class="overflow-x-auto rounded bg-gray-900 p-4 text-xs text-gray-300"><code>{JSON.stringify(endpoint._lastRequest.mcp, null, 2)}</code></pre>
+					</div>
+				</div>
+			</details>
 		</div>
 	{/if}
 

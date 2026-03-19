@@ -13,6 +13,7 @@ import type { UnifiedParameterDef } from './types.js';
 export const REFERENCE_PARAM: UnifiedParameterDef<string> = {
   name: 'reference',
   type: 'string',
+  default: 'John 3:16',
   required: true,
   description: 'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")',
   example: 'John 3:16',

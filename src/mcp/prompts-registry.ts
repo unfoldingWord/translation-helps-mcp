@@ -21,13 +21,30 @@ export interface MCPPromptDefinition {
  */
 export const MCP_PROMPTS: MCPPromptDefinition[] = [
   {
-    name: "translation-helps-for-passage",
+    name: "translation-helps-report",
     description:
-      "Get comprehensive translation help for a Bible passage: scripture text, questions, word definitions (with titles), notes, and related academy articles",
+      "Get a CONDENSED translation helps report for a Bible passage: scripture text (full), questions (full), notes (quote + academy link only), key terms list (titles only), and academy article titles (no full content). Perfect for getting an overview without overwhelming context. CRITICAL: Reference parameter MUST use standard 3-letter book codes (GEN, JHN, TIT, etc.), NOT full book names.",
     arguments: [
       {
         name: "reference",
-        description: 'Bible reference (e.g., "John 3:16", "Genesis 1:1-3")',
+        description: 'Bible reference using 3-letter book code. Examples: "JHN 3:16" (NOT "John 3:16"), "TIT 1:15" (NOT "Titus 1:15"), "GEN 1:1-3" (NOT "Genesis 1:1-3")',
+        required: true,
+      },
+      {
+        name: "language",
+        description: 'Language code (default: "en")',
+        required: false,
+      },
+    ],
+  },
+  {
+    name: "translation-helps-for-passage",
+    description:
+      "Get comprehensive translation help for a Bible passage: scripture text, questions, word definitions (with titles), notes, and related academy articles. WARNING: Returns FULL content for all resources which can be very large. Consider using 'translation-helps-report' for a condensed overview. CRITICAL: Reference parameter MUST use standard 3-letter book codes (GEN, JHN, TIT, etc.), NOT full book names.",
+    arguments: [
+      {
+        name: "reference",
+        description: 'Bible reference using 3-letter book code. Examples: "JHN 3:16" (NOT "John 3:16"), "TIT 1:15" (NOT "Titus 1:15"), "GEN 1:1-3" (NOT "Genesis 1:1-3")',
         required: true,
       },
       {
@@ -40,11 +57,11 @@ export const MCP_PROMPTS: MCPPromptDefinition[] = [
   {
     name: "get-translation-words-for-passage",
     description:
-      "Get all translation word definitions for a passage, showing dictionary entry titles (not technical term IDs)",
+      "Get all translation word definitions for a passage, showing dictionary entry titles (not technical term IDs). CRITICAL: Reference parameter MUST use standard 3-letter book codes (GEN, JHN, TIT, etc.), NOT full book names.",
     arguments: [
       {
         name: "reference",
-        description: 'Bible reference (e.g., "John 3:16")',
+        description: 'Bible reference using 3-letter book code. Examples: "JHN 3:16" (NOT "John 3:16"), "TIT 1:15" (NOT "Titus 1:15")',
         required: true,
       },
       {
@@ -57,11 +74,11 @@ export const MCP_PROMPTS: MCPPromptDefinition[] = [
   {
     name: "get-translation-academy-for-passage",
     description:
-      "Get Translation Academy training articles referenced in the translation notes for a passage",
+      "Get Translation Academy training articles referenced in the translation notes for a passage. CRITICAL: Reference parameter MUST use standard 3-letter book codes (GEN, JHN, TIT, etc.), NOT full book names.",
     arguments: [
       {
         name: "reference",
-        description: 'Bible reference (e.g., "John 3:16")',
+        description: 'Bible reference using 3-letter book code. Examples: "JHN 3:16" (NOT "John 3:16"), "TIT 1:15" (NOT "Titus 1:15")',
         required: true,
       },
       {
@@ -122,63 +139,177 @@ export function getPromptTemplate(
   const subject = (args?.subject as string) || "";
 
   switch (name) {
+    case "translation-helps-report":
+      return `Please provide a CONDENSED translation helps report for ${reference} in ${language}.
+
+**CRITICAL**: The reference "${reference}" MUST use standard 3-letter book codes (e.g., "JHN 3:16", "TIT 1:15", "GEN 1"). If the user provided a full book name (like "John" or "Titus"), you must convert it to the 3-letter code first (JHN, TIT, GEN, etc.) before calling any tools.
+
+**CITATION REQUIREMENTS**: Every resource returned includes a citation object. You MUST:
+1. Read the citation object from each response
+2. Extract citation.resource or citation.title for the resource name
+3. Extract citation.version for the version number
+4. Cite using format: [Resource Version - Reference]
+5. NEVER assume resource names - always read from citation object
+
+**CONDENSED FORMAT**: This report provides an OVERVIEW, not full content:
+- Scripture: Full text with citation
+- Questions: Full questions (they're already concise)
+- Translation Notes: ONLY the Greek/Hebrew quote + which academy article it links to
+- Translation Words: ONLY the key term titles (no full definitions)
+- Translation Academy: ONLY the article titles (no full content)
+
+Follow these steps:
+
+1. **Get Scripture Text:**
+   - Use fetch_scripture with reference="${reference}" and language="${language}"
+   - Read scripture.citation object from response
+   - Show FULL scripture text with citation: [citation.resource version - ${reference}]
+
+2. **Get Translation Questions:**
+   - Use fetch_translation_questions with reference="${reference}" and language="${language}"
+   - Read questions.citation object
+   - Show ALL questions (they're already short) with citation
+
+3. **Get Translation Word Links (Titles Only):**
+   - Use fetch_translation_word_links with reference="${reference}" and language="${language}"
+   - Extract all externalReference.path values (e.g., "bible/kt/love")
+   - For EACH path, use fetch_translation_word with path=<path>
+   - Extract ONLY the TITLE from each article (e.g., "Love, Beloved")
+   - DO NOT include full content - just list the titles with citations
+   - Present as: "Key Terms: [Title 1], [Title 2], [Title 3]..."
+
+4. **Get Translation Notes (Condensed):**
+   - Use fetch_translation_notes with reference="${reference}" and language="${language}"
+   - For EACH note, show ONLY:
+     * The Quote field (Greek/Hebrew text)
+     * Any externalReference.path that links to academy articles
+   - Format: "Note on [verse]: [Quote] → See: [Academy Article Path]"
+   - DO NOT show full note explanations
+   - Cite notes with: [citation.resource version - ${reference}]
+
+5. **Get Academy Article Titles (Titles Only):**
+   - From the notes, extract all externalReference.path values
+   - For EACH path, use fetch_translation_academy with path=<path>
+   - Extract ONLY the TITLE (e.g., "Metaphor", "Doble Negativos")
+   - DO NOT include full article content
+   - Present as: "Related Concepts: [Title 1], [Title 2], [Title 3]..."
+
+6. **Organize Condensed Report:**
+   Present in this order with proper citations:
+   
+   **Scripture** [citation]
+   [Full scripture text]
+   
+   **Key Terms** [word links citation]
+   - [Term Title 1]
+   - [Term Title 2]
+   ...
+   
+   **Translation Questions** [questions citation]
+   - [Question 1]
+   - [Question 2]
+   ...
+   
+   **Translation Notes** [notes citation]
+   - Verse X: [Greek/Hebrew Quote] → See: [Academy Article Path]
+   - Verse Y: [Greek/Hebrew Quote] → See: [Academy Article Path]
+   ...
+   
+   **Related Translation Concepts** [academy citations]
+   - [Concept Title 1]
+   - [Concept Title 2]
+   ...
+
+**REMEMBER**: 
+- This is a CONDENSED report - no full articles
+- Users can request full content for specific items if needed
+- Always cite using actual citation objects
+- Keep it concise and scannable
+
+The goal is to provide a clear OVERVIEW that helps translators see what resources are available without overwhelming them with content.`;
+
     case "translation-helps-for-passage":
       return `Please provide comprehensive translation help for ${reference} in ${language}.
+
+**CRITICAL**: The reference "${reference}" MUST use standard 3-letter book codes (e.g., "JHN 3:16", "TIT 1:15", "GEN 1"). If the user provided a full book name (like "John" or "Titus"), you must convert it to the 3-letter code first (JHN, TIT, GEN, etc.) before calling any tools.
+
+**CITATION REQUIREMENTS**: Every resource returned includes a citation object. You MUST:
+1. Read the citation object from each response
+2. Extract citation.resource or citation.title for the resource name
+3. Extract citation.version for the version number
+4. Cite scripture and all resources using this format: [Resource Version - Reference]
+5. NEVER assume resource names (like "ULT") - always read from citation object
+
+Example: If citation = {"resource": "glt", "title": "Texto Puente Literal", "version": "v41"}, cite as [GLT v41 - Reference] or [Texto Puente Literal v41 - Reference]
 
 Follow these steps to gather all relevant information:
 
 1. **Get the Scripture Text:**
    - Use fetch_scripture tool with reference="${reference}" and language="${language}"
+   - IMPORTANT: Ensure reference uses 3-letter code (e.g., "JHN 3:16" not "John 3:16")
+   - Read scripture.citation object from the response
+   - Cite scripture using: [citation.resource version - ${reference}] (e.g., [GLT v41 - ${reference}])
    - This provides the actual Bible text to work with
 
 2. **Get Translation Questions:**
    - Use fetch_translation_questions with reference="${reference}" and language="${language}"
+   - Read questions.citation object from the response
+   - Cite questions using: [citation.resource version - ${reference}] (e.g., [es-419_tq v38 - ${reference}])
    - These help check comprehension and guide translation decisions
 
 3. **Get Translation Word Links and Fetch Titles:**
    - Use fetch_translation_word_links with reference="${reference}" and language="${language}"
-   - This returns a list of terms (e.g., [{term: "love", category: "kt", path: "..."}])
-   - For EACH term in the response, use fetch_translation_word tool with term=<term_value> to get the full article
+   - This returns items with externalReference: [{externalReference: {target: "tw", path: "bible/kt/love", category: "kt"}}]
+   - For EACH item that has externalReference.path, use fetch_translation_word tool with path=<externalReference.path> (e.g., path="bible/kt/love")
    - Extract the TITLE from each article (found in the first H1 heading or title field)
    - Show the user these dictionary entry TITLES, not the technical term IDs
    - Example: Show "Love, Beloved" not "love"; show "Son of God, Son" not "sonofgod"
 
 4. **Get Translation Notes:**
    - Use fetch_translation_notes with reference="${reference}" and language="${language}"
+   - Read notes.citation object from the response
+   - Cite notes using: [citation.resource version - ${reference}] (e.g., [es-419_tn v66 - ${reference}])
    - Notes contain supportReference fields that link to Translation Academy articles
 
 5. **Get Related Translation Academy Articles:**
-   - From the translation notes response, extract all supportReference values
-   - These are RC links like "rc://*/ta/man/translate/figs-metaphor"
-   - For each supportReference, use fetch_translation_academy tool with rcLink=<supportReference_value>
+   - From the translation notes response, extract all externalReference.path values
+   - These are paths like "translate/figs-metaphor" (NOT RC links)
+   - For each externalReference.path, use fetch_translation_academy tool with path=<path_value>
    - Extract the TITLE from each academy article
    - Show these training article titles to help the user understand translation concepts
 
 6. **Organize the Response:**
-   Present everything in a clear, structured way:
-   - Scripture text at the top
-   - List of translation word titles (dictionary entries)
-   - Translation questions for comprehension
-   - Translation notes with guidance
-   - Related academy article titles for deeper learning
+   Present everything in a clear, structured way with proper citations:
+   - Scripture text at the top with citation: [Resource Version - Reference]
+   - List of translation word titles (dictionary entries) with citations
+   - Translation questions for comprehension with citation
+   - Translation notes with guidance with citation
+   - Related academy article titles for deeper learning with citations
 
-The goal is to provide EVERYTHING a translator needs for this passage in one comprehensive response.`;
+**REMEMBER**: Always read and use the citation object from each response. Never assume resource names like "ULT" or "UST".
+
+The goal is to provide EVERYTHING a translator needs for this passage in one comprehensive response with accurate source citations.`;
 
     case "get-translation-words-for-passage":
       return `Please show me all the translation word definitions for ${reference} in ${language}.
+
+**CRITICAL**: The reference "${reference}" MUST use standard 3-letter book codes (e.g., "JHN 3:16", "TIT 1:15"). If the user provided a full book name, convert it to the 3-letter code first before calling any tools.
+
+**CITATION REQUIREMENTS**: Each translation word article includes a citation object. Always read and cite using [citation.resource version - term] format.
 
 Follow these steps:
 
 1. **Get Translation Word Links:**
    - Use fetch_translation_word_links with reference="${reference}" and language="${language}"
-   - This returns links like: [{term: "love", category: "kt", ...}, {term: "god", ...}]
+   - IMPORTANT: Ensure reference uses 3-letter code (e.g., "JHN 3:16" not "John 3:16")
+   - This returns items with externalReference: [{externalReference: {target: "tw", path: "bible/kt/love", category: "kt"}}]
 
 2. **Fetch Full Articles and Extract Titles:**
-   - For EACH term in the links result, call fetch_translation_word with term=<term_value>
-   - From each article response, extract the TITLE (not the term ID)
+   - For EACH item that has externalReference.path, call fetch_translation_word with path=<externalReference.path> (e.g., path="bible/kt/love")
+   - From each article response, extract the TITLE (not the path)
    - The title is usually in the first H1 heading or a dedicated title field
-   - Example: The term "love" might have title "Love, Beloved"
-   - Example: The term "sonofgod" might have title "Son of God, Son"
+   - Example: The path "bible/kt/love" might have title "Love, Beloved"
+   - Example: The path "bible/kt/sonofgod" might have title "Son of God, Son"
 
 3. **Present to User:**
    - Show the dictionary entry TITLES in a clear list
@@ -191,22 +322,24 @@ Focus on making the translation words accessible by showing their proper titles.
     case "get-translation-academy-for-passage":
       return `Please find all the Translation Academy training articles related to ${reference} in ${language}.
 
+**CRITICAL**: The reference "${reference}" MUST use standard 3-letter book codes (e.g., "JHN 3:16", "TIT 1:15"). If the user provided a full book name, convert it to the 3-letter code first before calling any tools.
+
+**CITATION REQUIREMENTS**: Each academy article includes a citation object. Always read and cite using [citation.resource version - article] format.
+
 Follow these steps:
 
 1. **Get Translation Notes:**
    - Use fetch_translation_notes with reference="${reference}" and language="${language}"
+   - IMPORTANT: Ensure reference uses 3-letter code (e.g., "JHN 3:16" not "John 3:16")
    - Translation notes contain supportReference fields that link to academy articles
 
-2. **Extract Support References:**
-   - From the notes response, find all supportReference values
-   - These are RC links in format: "rc://*/ta/man/translate/figs-metaphor"
-   - Or they might be moduleIds like: "figs-metaphor", "translate-names"
-   - Collect all unique support references
+2. **Extract External References:**
+   - From the notes response, find all externalReference.path values
+   - These are paths in format: "translate/figs-metaphor", "translate-names"
+   - Collect all unique external reference paths
 
 3. **Fetch Academy Articles:**
-   - For each supportReference, use fetch_translation_academy tool
-   - If it's an RC link: use rcLink=<supportReference_value>
-   - If it's a moduleId: use moduleId=<supportReference_value>
+   - For each externalReference.path, use fetch_translation_academy tool with path=<path_value>
    - Each call returns an academy article with training content
 
 4. **Extract Titles:**

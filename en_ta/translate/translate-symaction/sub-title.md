@@ -1,0 +1,1 @@
+What is a symbolic action and how do I translate it?
