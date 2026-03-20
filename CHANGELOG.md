@@ -4,6 +4,78 @@ All notable changes to this project will be documented in this file. See [standa
 
 ## [Unreleased]
 
+## [7.4.0] - 2026-03-16
+
+### Added
+
+- **Enhanced Translation Notes Display Format** - LLM now quotes actual scripture words instead of Greek/Hebrew
+  - Updated system prompts to instruct LLM to quote scripture words instead of Greek/Hebrew
+  - Added step-by-step matching process: Greek Quote field → Find in scripture → Quote translated words
+  - Format: `**«scripture words»** - {Complete Note}` instead of `**«Greek text»** - {Note}`
+  - Prevents LLM from creating generic labels like "Términos de autoridad"
+  - Ensures all notes are shown individually (no combining or merging)
+  - Example improvement:
+    - ❌ Before: "**Términos de autoridad**: Estas palabras..." (generic label)
+    - ❌ Before: "**ἀρχαῖς, ἐξουσίαις**: Estas palabras..." (Greek text)
+    - ✅ Now: "**«los gobernantes y a las autoridades»** - Estas palabras..." (scripture words)
+  - Files modified: `packages/js-sdk/src/prompts.ts`, `ui/src/routes/api/chat-stream/+server.ts`
+
+- **Language Variant Fallback for Resource Discovery** - `list_resources_for_language` tool now automatically falls back to language variants
+  - Added automatic fallback: `es` → `es-419`, `pt` → `pt-br`, etc.
+  - Implemented two-tier caching strategy (variant mapping + resource lists)
+  - Improved cache key generation for consistent caching
+  - Added response fields: `actualLanguageUsed` and `note` to inform users of fallback
+  - Implemented negative caching (cache empty results to prevent repeated API calls)
+  - Performance: First call ~6000ms, subsequent calls use cached variant mapping
+  - Files modified: `src/tools/listResourcesForLanguage.ts`, `src/mcp/tools-registry.ts`
+
+- **System Prompt Enhancements** - Improved LLM instruction clarity
+  - Added 🚨 emoji-tagged mandatory format section at top of prompt
+  - Clear 3-step process for matching Greek to scripture
+  - Multiple wrong vs. correct formatting examples throughout prompt
+  - Explicit instruction to count `verseNotes.length` and show all notes
+  - Tool calling updates: Instructs LLM to call both `fetch_scripture` and `fetch_translation_notes` together
+
+- **Context Builder Improvements** - Enhanced translation notes context formatting
+  - Structured format with `Quote (Greek):` and `Note:` on separate lines
+  - Explicit count: "COUNT: 6 notes - you MUST show all 6 individually"
+  - Added matching instructions directly in the context
+  - Provides format example in the context itself
+
+### Changed
+
+- **JS SDK** - Updated to v1.4.1 with improved translation notes prompts
+  - Updated system prompts for improved translation notes formatting
+  - No breaking changes to public API
+  - Improved LLM instruction clarity for note display
+
+- **Caching Strategy** - Enhanced caching implementation
+  - Two-tier caching: Variant mapping cache + resource list cache
+  - Consistent cache keys with fixed organization parameter handling
+  - Negative caching to prevent repeated API calls for non-existent languages
+  - Switched to `cache` module for better performance over `getKVCache()`
+
+### Fixed
+
+- **Translation Notes Display Issues**
+  - Fixed LLM creating generic labels instead of quoting scripture
+  - Fixed LLM showing Greek text when scripture was available
+  - Fixed LLM combining or merging similar notes
+  - Fixed LLM showing incomplete note content
+
+- **Resource Discovery Issues**
+  - Fixed `list_resources_for_language` not finding resources for base languages (e.g., `es`)
+  - Fixed poor cache performance due to incorrect cache key generation
+  - Fixed no fallback when base language has no resources
+
+### Testing
+
+- Verified Spanish `es` → `es-419` fallback (7 resources)
+- Verified English direct query (9 resources)
+- Verified language variant direct query
+- Verified translation notes display with Titus 3:1 (all 6 notes shown)
+- Verified scripture word quoting instead of Greek
+
 ### Fixed
 
 - **CRITICAL: MCP Schema Discovery** - Fixed empty input schemas in `tools/list` endpoint

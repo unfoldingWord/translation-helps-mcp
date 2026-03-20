@@ -2,17 +2,243 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-## Unreleased
+## [Unreleased]
+
+## [7.4.0] - 2026-03-16
+
+### Added
+
+- **Enhanced Translation Notes Display Format** - LLM now quotes actual scripture words instead of Greek/Hebrew
+  - Updated system prompts to instruct LLM to quote scripture words instead of Greek/Hebrew
+  - Added step-by-step matching process: Greek Quote field → Find in scripture → Quote translated words
+  - Format: `**«scripture words»** - {Complete Note}` instead of `**«Greek text»** - {Note}`
+  - Prevents LLM from creating generic labels like "Términos de autoridad"
+  - Ensures all notes are shown individually (no combining or merging)
+  - Example improvement:
+    - ❌ Before: "**Términos de autoridad**: Estas palabras..." (generic label)
+    - ❌ Before: "**ἀρχαῖς, ἐξουσίαις**: Estas palabras..." (Greek text)
+    - ✅ Now: "**«los gobernantes y a las autoridades»** - Estas palabras..." (scripture words)
+  - Files modified: `packages/js-sdk/src/prompts.ts`, `ui/src/routes/api/chat-stream/+server.ts`
+
+- **Language Variant Fallback for Resource Discovery** - `list_resources_for_language` tool now automatically falls back to language variants
+  - Added automatic fallback: `es` → `es-419`, `pt` → `pt-br`, etc.
+  - Implemented two-tier caching strategy (variant mapping + resource lists)
+  - Improved cache key generation for consistent caching
+  - Added response fields: `actualLanguageUsed` and `note` to inform users of fallback
+  - Implemented negative caching (cache empty results to prevent repeated API calls)
+  - Performance: First call ~6000ms, subsequent calls use cached variant mapping
+  - Files modified: `src/tools/listResourcesForLanguage.ts`, `src/mcp/tools-registry.ts`
+
+- **System Prompt Enhancements** - Improved LLM instruction clarity
+  - Added 🚨 emoji-tagged mandatory format section at top of prompt
+  - Clear 3-step process for matching Greek to scripture
+  - Multiple wrong vs. correct formatting examples throughout prompt
+  - Explicit instruction to count `verseNotes.length` and show all notes
+  - Tool calling updates: Instructs LLM to call both `fetch_scripture` and `fetch_translation_notes` together
+
+- **Context Builder Improvements** - Enhanced translation notes context formatting
+  - Structured format with `Quote (Greek):` and `Note:` on separate lines
+  - Explicit count: "COUNT: 6 notes - you MUST show all 6 individually"
+  - Added matching instructions directly in the context
+  - Provides format example in the context itself
+
+### Changed
+
+- **JS SDK** - Updated to v1.4.1 with improved translation notes prompts
+  - Updated system prompts for improved translation notes formatting
+  - No breaking changes to public API
+  - Improved LLM instruction clarity for note display
+
+- **Caching Strategy** - Enhanced caching implementation
+  - Two-tier caching: Variant mapping cache + resource list cache
+  - Consistent cache keys with fixed organization parameter handling
+  - Negative caching to prevent repeated API calls for non-existent languages
+  - Switched to `cache` module for better performance over `getKVCache()`
+
+### Fixed
+
+- **Translation Notes Display Issues**
+  - Fixed LLM creating generic labels instead of quoting scripture
+  - Fixed LLM showing Greek text when scripture was available
+  - Fixed LLM combining or merging similar notes
+  - Fixed LLM showing incomplete note content
+
+- **Resource Discovery Issues**
+  - Fixed `list_resources_for_language` not finding resources for base languages (e.g., `es`)
+  - Fixed poor cache performance due to incorrect cache key generation
+  - Fixed no fallback when base language has no resources
+
+### Testing
+
+- Verified Spanish `es` → `es-419` fallback (7 resources)
+- Verified English direct query (9 resources)
+- Verified language variant direct query
+- Verified translation notes display with Titus 3:1 (all 6 notes shown)
+- Verified scripture word quoting instead of Greek
+
+### Fixed
+
+- **CRITICAL: MCP Schema Discovery** - Fixed empty input schemas in `tools/list` endpoint
+  - Root cause: Zod version mismatch between packages (v3 vs v4)
+  - Fixed UI package to use Zod v3.22.4 (aligned with root package)
+  - Fixed zod-to-json-schema to use v3.24.6 (compatible with Zod v3)
+  - Impact: MCP clients (like Claude) can now properly discover tool parameters
+  - Eliminates retry loops and guessing on tool calls
+  - All 9 tools now return complete schemas with 45+ parameters
+  - SDKs automatically benefit from fix (no SDK updates needed)
+  - Reported by: BT-Servant developer
+  - Tests added: `test:mcp-schemas` and `test:mcp-schemas:unit`
+
+### Changed
+
+- **Domain Migration** - Updated server domain from `translation-helps-mcp-945.pages.dev` to `tc-helps.mcp.servant.bible`
+  - All default server URLs updated in SDKs
+  - Documentation and examples updated
+  - JS SDK v1.2.1 and Python SDK v1.3.1 published with new domain
+
+- **SDK Updates** - Published new versions with discovery tools and domain updates
+  - JS SDK v1.2.1: Updated default server URL to new domain
+  - Python SDK v1.3.1: Updated default server URL to new domain
+  - Both SDKs now include all 11 MCP tools including discovery tools
+
+### Features
+
+- **Optimized System Prompts in SDKs** - 60-70% token reduction for AI interactions
+  - JS SDK v1.1.0: Added `getSystemPrompt()` and `detectRequestType()` functions
+  - Python SDK v1.2.0: Added `get_system_prompt()` and `detect_request_type()` functions
+  - Contextual rules based on request type (comprehensive, list, explanation, term, concept)
+  - Automatic request type detection from endpoint calls and messages
+  - Integrated into Svelte UI chat-stream endpoint
+  - Single source of truth for prompt management across all clients
+  - Type-safe implementations (TypeScript + Python type hints)
+
+- **Offline-First CLI with Local AI** - Complete CLI application with Ollama integration
+  - Interactive chat interface with streaming responses
+  - MCP client connecting via stdio transport
+  - AI provider abstraction (Ollama + OpenAI fallback)
+  - Configuration management system
+  - Full offline capability with local Ollama AI
+  - Special commands: /help, /status, /config, /providers, /model, /offline, /clear, /exit
+
+- **Pluggable Cache Provider System** - Flexible, configurable caching architecture
+  - CacheProvider interface for custom implementations
+  - 4 built-in providers: Memory, File System, Cloudflare KV, Door43
+  - CacheChain manager with dynamic add/remove/reorder
+  - Configurable provider priority and fallback chain
+  - Automatic filtering of unavailable providers
+  - Cache warming between tiers
+
+- **Offline Resource Management** - Download and share translation helps offline
+  - ResourceSync service for downloading from Door43
+  - ResourceTransfer service for import/export
+  - Share package format with manifests and checksums
+  - Network detection with graceful offline fallback
+  - File system cache in ~/.translation-helps-mcp/cache/
+
+- **Peer-to-Peer Resource Sharing** - Share translation helps via USB/Bluetooth
+  - Export resources as portable ZIP packages
+  - Import share packages with integrity verification
+  - Custom bundles (select specific resources)
+  - Split large exports for limited storage
+  - Complete offline workflow support
+
+### Documentation
+
+- **Cache Architecture Guide** - Detailed cache provider system documentation
+- **Offline Architecture Guide** - Offline-first design principles and flows
+- **Resource Sharing Guide** - Complete guide for offline sharing workflows
+- **Offline Getting Started** - Quick start guide for offline setup
+- **CLI README** - Comprehensive CLI installation and usage guide
+- **Clients README** - Overview of client architecture
+- **Implementation Summary** - Technical summary of offline implementation
+
+### Files Added
+
+**Server Infrastructure:**
+
+- `src/functions/caches/cache-provider.ts` - Base provider interface
+- `src/functions/caches/memory-cache-provider.ts` - Memory cache implementation
+- `src/functions/caches/kv-cache-provider.ts` - Cloudflare KV implementation
+- `src/functions/caches/fs-cache-provider.ts` - File system implementation
+- `src/functions/caches/door43-provider.ts` - Door43 upstream provider
+- `src/functions/caches/cache-chain.ts` - Configurable cache chain manager
+- `src/functions/unified-cache-v2.ts` - New unified cache with pluggable providers
+- `src/services/ResourceSync.ts` - Resource download service
+- `src/services/ResourceTransfer.ts` - Import/export service
+- `src/utils/network-detector.ts` - Online/offline detection
+
+**CLI Client:**
+
+- `clients/cli/src/index.ts` - Main entry point
+- `clients/cli/src/mcp-client.ts` - MCP protocol client
+- `clients/cli/src/ai-provider.ts` - AI provider abstraction
+- `clients/cli/src/chat-interface.ts` - Interactive REPL
+- `clients/cli/src/config.ts` - Configuration management
+- `clients/cli/package.json` - CLI package configuration
+- `clients/cli/tsconfig.json` - TypeScript configuration
+- `clients/cli/README.md` - CLI documentation
+
+**Documentation:**
+
+- `docs/CACHE_ARCHITECTURE.md`
+- `docs/OFFLINE_ARCHITECTURE.md`
+- `docs/OFFLINE_GETTING_STARTED.md`
+- `docs/SHARING_GUIDE.md`
+- `clients/README.md`
+- `OFFLINE_CLI_IMPLEMENTATION_SUMMARY.md`
+
+### Technical Details
+
+**Lines of Code:** ~9,200 lines added across 26 files
+
+**Capabilities Enabled:**
+
+- Bible translation work completely offline
+- Zero API costs with local Ollama AI
+- Complete privacy (no cloud dependencies)
+- Resource sharing via USB/Bluetooth
+- Configurable cache providers (add/remove/reorder)
+- Cross-platform support (Windows/Mac/Linux)
+
+**Storage Requirements:**
+
+- Ollama + Mistral 7B: ~4.6GB
+- English resources: ~600MB
+- Total: ~5.2GB for complete offline setup
+
+**Future Roadmap:**
+
+- Implement CLI commands (sync, import, export, cache)
+- Desktop app with Electron/Tauri
+- Mobile support (iOS/Android)
+- Background sync and updates
+
+## [7.3.0](https://github.com/klappy/translation-helps-mcp/compare/v7.2.0...v7.3.0) (2025-11-12)
+
+### Features
+
+- add contextual conversational follow-up patterns to chat ([30334bb](https://github.com/klappy/translation-helps-mcp/commit/30334bb35cd3d30641bd473b647386f8d74c13ec))
+- add dotenv support for chat in Vite dev mode ([54f2c27](https://github.com/klappy/translation-helps-mcp/commit/54f2c27ff9efc5d6e8414cc4bc9f0bf09c899feb))
+- add intelligent intent mapping to chat system prompt ([06a5152](https://github.com/klappy/translation-helps-mcp/commit/06a51520e704719f0935dd851e99b4ec1e884d51))
+- add M server debugging tools and guide ([c2445c5](https://github.com/klappy/translation-helps-mcp/commit/c2445c56441ebb13401444ee251af44dcbd81e99))
+- implement two-phase learning approach in chat ([15f99a7](https://github.com/klappy/translation-helps-mcp/commit/15f99a7ae1009e2f58ae3e12f004236385166f72))
+- integrate M prompts into chat assistant ([1931868](https://github.com/klappy/translation-helps-mcp/commit/1931868e4b1e96711ae52842fa34b35878b5ff99))
+- require ranslation Academy section and follow-up questions in chat ([cf22cff](https://github.com/klappy/translation-helps-mcp/commit/cf22cff48eb9fb42e6fcb86d5d1a97c2ed40ece4))
+- show English phrases instead of Greek/ebrew in translation notes overview ([5a24f83](https://github.com/klappy/translation-helps-mcp/commit/5a24f83b1661c3fa47a688ebe7f94da97ae28d8d))
+- transform chat into guided multi-turn learning conversation ([7b69ea0](https://github.com/klappy/translation-helps-mcp/commit/7b69ea02733c98ab7cfb48f81c212deba33fb8f7))
 
 ### Bug Fixes
 
-- **MCP Tools**: Fixed critical undefined variable bugs preventing tools from working in Cursor
-  - **Scripture Service**: Fixed `ReferenceError: filePath is not defined` by using `ingredient.path` from resource discovery
-  - **Translation Notes Service**: Fixed `Failed to parse URL from undefined` by building URL from `ingredient.path`
-  - **Translation Questions Service**: Fixed `Failed to parse URL from undefined` by building URL from `ingredient.path`
-  - **Translation Words Service**: Fixed `linksUrl undefined` by building URL from `linksIngredient.path`
-  - All services now correctly construct DCS raw file URLs from discovered ingredient paths
-  - MCP server now successfully responds to all tool calls from Cursor and other MCP clients
+- enforce listing ALL items in comprehensive overview response ([9d40226](https://github.com/klappy/translation-helps-mcp/commit/9d402264bc517858c0b6a5bdd86f43b24857dc99))
+- increase max_tokens for comprehensive chat responses ([f8f774d](https://github.com/klappy/translation-helps-mcp/commit/f8f774d09e570c64f3a98de84d372f4676caa06a))
+- resolve undefined variable bugs in M tools ([196416b](https://github.com/klappy/translation-helps-mcp/commit/196416bee033df98820d4af88ff4e71ebb25e1ad))
+- use SvelteKit env for loudflare compatibility ([438c73a](https://github.com/klappy/translation-helps-mcp/commit/438c73ae773f4dc42ecf709787ab57384e9c4ab1))
+
+### Documentation
+
+- add OpenA chat setup guide ([5e41dd7](https://github.com/klappy/translation-helps-mcp/commit/5e41dd72c382a79e8a59d4ff8ad46cd3062dd590))
+- simplify chat setup ([a37ebaa](https://github.com/klappy/translation-helps-mcp/commit/a37ebaa48f026471a1766766b72e2197bf88a50e))
+- update chat setup guide ([ddac97f](https://github.com/klappy/translation-helps-mcp/commit/ddac97f6875b06b53da53ad6650884e4ee0623fc))
 
 ## 7.2.0 (2025-11-11)
 
