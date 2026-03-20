@@ -1,18 +1,18 @@
 /**
  * Parameter Groups
- * 
+ *
  * Organized collections of parameters for different tool/endpoint categories
  */
 
-import { createParameterGroup } from './types.js';
-import { COMMON_PARAMS } from './common.js';
+import { createParameterGroup } from "./types.js";
+import { COMMON_PARAMS } from "./common.js";
 
 /**
  * Parameters for fetching scripture
  */
 export const SCRIPTURE_PARAMS = createParameterGroup(
-  'Scripture Parameters',
-  'Parameters for fetching Bible scripture text',
+  "Scripture Parameters",
+  "Parameters for fetching Bible scripture text",
   [
     COMMON_PARAMS.reference,
     COMMON_PARAMS.language,
@@ -22,15 +22,15 @@ export const SCRIPTURE_PARAMS = createParameterGroup(
     COMMON_PARAMS.includeAlignment,
     COMMON_PARAMS.includeVerseNumbers,
     COMMON_PARAMS.topic,
-  ]
+  ],
 );
 
 /**
  * Parameters for fetching translation notes
  */
 export const TRANSLATION_NOTES_PARAMS = createParameterGroup(
-  'Translation Notes Parameters',
-  'Parameters for fetching translation notes',
+  "Translation Notes Parameters",
+  "Parameters for fetching translation notes. Prefer omitting organization so every Door43 org is searched; unfoldingWord does not publish TN for many languages (e.g. Spanish).",
   [
     COMMON_PARAMS.reference,
     COMMON_PARAMS.language,
@@ -39,37 +39,37 @@ export const TRANSLATION_NOTES_PARAMS = createParameterGroup(
     COMMON_PARAMS.includeContext,
     COMMON_PARAMS.includeIntro,
     COMMON_PARAMS.topic,
-  ]
+  ],
 );
 
 /**
  * Parameters for fetching translation questions
  */
 export const TRANSLATION_QUESTIONS_PARAMS = createParameterGroup(
-  'Translation Questions Parameters',
-  'Parameters for fetching translation questions',
+  "Translation Questions Parameters",
+  "Parameters for fetching translation questions",
   [
     COMMON_PARAMS.reference,
     COMMON_PARAMS.language,
     COMMON_PARAMS.organization,
     COMMON_PARAMS.format,
     COMMON_PARAMS.topic,
-  ]
+  ],
 );
 
 /**
  * Parameters for fetching translation word links
  */
 export const TRANSLATION_WORD_LINKS_PARAMS = createParameterGroup(
-  'Translation Word Links Parameters',
-  'Parameters for fetching translation word links',
+  "Translation Word Links Parameters",
+  "Parameters for fetching translation word links",
   [
     COMMON_PARAMS.reference,
     COMMON_PARAMS.language,
     COMMON_PARAMS.organization,
     COMMON_PARAMS.format,
     COMMON_PARAMS.topic,
-  ]
+  ],
 );
 
 /**
@@ -79,15 +79,15 @@ export const TRANSLATION_WORD_LINKS_PARAMS = createParameterGroup(
  * NOTE: reference parameter removed - TW uses path, not references
  */
 export const TRANSLATION_WORD_PARAMS = createParameterGroup(
-  'Translation Word Parameters',
-  'Parameters for fetching translation word articles',
+  "Translation Word Parameters",
+  "Parameters for fetching translation word articles",
   [
-    { ...COMMON_PARAMS.path, default: 'bible/kt/love' },  // THE ONLY identifier parameter (from externalReference)
+    { ...COMMON_PARAMS.path, default: "bible/kt/love" }, // THE ONLY identifier parameter (from externalReference)
     COMMON_PARAMS.language,
     COMMON_PARAMS.organization,
     COMMON_PARAMS.category,
     COMMON_PARAMS.topic,
-  ]
+  ],
 );
 
 /**
@@ -96,59 +96,55 @@ export const TRANSLATION_WORD_PARAMS = createParameterGroup(
  * Uses ONLY path - from externalReference in TN responses
  */
 export const TRANSLATION_ACADEMY_PARAMS = createParameterGroup(
-  'Translation Academy Parameters',
-  'Parameters for fetching translation academy modules',
+  "Translation Academy Parameters",
+  "Parameters for fetching translation academy modules",
   [
-    { ...COMMON_PARAMS.path, default: 'translate/figs-metaphor' },  // THE ONLY identifier parameter (from externalReference)
+    { ...COMMON_PARAMS.path, default: "translate/figs-metaphor" }, // THE ONLY identifier parameter (from externalReference)
     COMMON_PARAMS.language,
     COMMON_PARAMS.organization,
     COMMON_PARAMS.format,
     COMMON_PARAMS.topic,
-  ]
+  ],
 );
 
 /**
  * Parameters for listing tools
  */
 export const LIST_TOOLS_PARAMS = createParameterGroup(
-  'List Tools Parameters',
-  'Parameters for listing available MCP tools',
-  []  // No parameters - returns all tools
+  "List Tools Parameters",
+  "Parameters for listing available MCP tools",
+  [], // No parameters - returns all tools
 );
 
 /**
  * Parameters for listing languages
  */
 export const LIST_LANGUAGES_PARAMS = createParameterGroup(
-  'List Languages Parameters',
-  'Parameters for listing available languages',
-  [
-    COMMON_PARAMS.organization,
-    COMMON_PARAMS.stage,
-    COMMON_PARAMS.topic,
-  ]
+  "List Languages Parameters",
+  "Parameters for listing available languages",
+  [COMMON_PARAMS.organization, COMMON_PARAMS.stage, COMMON_PARAMS.topic],
 );
 
 /**
  * Parameters for listing subjects
  */
 export const LIST_SUBJECTS_PARAMS = createParameterGroup(
-  'List Subjects Parameters',
-  'Parameters for listing available resource subjects',
+  "List Subjects Parameters",
+  "Parameters for listing available resource subjects",
   [
     COMMON_PARAMS.language,
     COMMON_PARAMS.organization,
     COMMON_PARAMS.stage,
     COMMON_PARAMS.topic,
-  ]
+  ],
 );
 
 /**
  * Parameters for listing resources for a language
  */
 export const LIST_RESOURCES_FOR_LANGUAGE_PARAMS = createParameterGroup(
-  'List Resources for Language Parameters',
-  'Parameters for listing all resources available in a specific language',
+  "List Resources for Language Parameters",
+  "Parameters for listing all resources available in a specific language",
   [
     { ...COMMON_PARAMS.language, required: true },
     COMMON_PARAMS.organization,
@@ -156,7 +152,7 @@ export const LIST_RESOURCES_FOR_LANGUAGE_PARAMS = createParameterGroup(
     COMMON_PARAMS.subject,
     COMMON_PARAMS.limit,
     COMMON_PARAMS.topic,
-  ]
+  ],
 );
 
 /**

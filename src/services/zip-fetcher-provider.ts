@@ -7,6 +7,7 @@
  */
 
 import { EdgeXRayTracer } from "../functions/edge-xray.js";
+import { getR2Env } from "../functions/r2-env.js";
 import { ZipResourceFetcher2 } from "./ZipResourceFetcher2.js";
 import { LocalZipFetcher } from "./LocalZipFetcher.js";
 import * as os from "os";
@@ -59,7 +60,7 @@ export interface ZipFetcherProvider {
     organization: string,
     resourceType: "tn" | "tq" | "twl",
     topic?: string, // Optional topic filter (defaults to tc-ready)
-  ): Promise<unknown[]>;
+  ): Promise<{ data: unknown[]; subject?: string; version?: string }>;
 
   /**
    * Check if this provider is currently available
@@ -122,7 +123,7 @@ export class R2ZipFetcherProvider implements ZipFetcherProvider {
     language: string,
     organization: string,
     resourceType: "tn" | "tq" | "twl",
-  ): Promise<unknown[]> {
+  ): Promise<{ data: unknown[]; subject?: string; version?: string }> {
     // ZipResourceFetcher2.getTSVData expects ParsedReference, but we only need the basic fields
     return this.fetcher.getTSVData(
       reference as any,
@@ -211,13 +212,18 @@ export class FSZipFetcherProvider implements ZipFetcherProvider {
     language: string,
     organization: string,
     resourceType: "tn" | "tq" | "twl",
-  ): Promise<unknown[]> {
-    return this.fetcher.getTSVData(
+  ): Promise<{ data: unknown[]; subject?: string; version?: string }> {
+    const raw = await this.fetcher.getTSVData(
       reference,
       language,
       organization,
       resourceType,
     );
+    // LocalZipFetcher returns a bare row array; ZipResourceFetcher2 returns an object.
+    if (Array.isArray(raw)) {
+      return { data: raw, subject: undefined, version: undefined };
+    }
+    return raw as { data: unknown[]; subject?: string; version?: string };
   }
 
   async isAvailable(): Promise<boolean> {
@@ -249,27 +255,38 @@ export class ZipFetcherFactory {
   ): ZipFetcherProvider {
     // Auto-detect if not specified
     if (providerName === "auto") {
-      // Check if we're in a true Node.js environment (not Vite SSR)
-      // Vite SSR stubs process and os modules, so we need to detect this
+      // Cloudflare Pages + nodejs_compat exposes process.versions.node, so "true Node"
+      // heuristics alone wrongly pick LocalZipFetcher (no real FS; getTSVData can fail).
+      // When simpleEndpoint has initialized R2 (ZIP_FILES binding), always use R2.
+      const { bucket: r2Bucket } = getR2Env();
       const isTrueNodeJS =
         typeof process !== "undefined" &&
         typeof process.versions?.node !== "undefined" &&
         typeof require !== "undefined";
 
-      const useLocalStorage =
-        isTrueNodeJS &&
-        (process.env.USE_FS_CACHE === "true" ||
-          process.env.NODE_ENV === "development");
+      if (r2Bucket != null) {
+        providerName = "r2";
+        logger.info(`Auto-detected ZIP fetcher provider`, {
+          isTrueNodeJS,
+          chosen: providerName,
+          reason: "R2 bucket binding present (Cloudflare / production)",
+        });
+      } else {
+        const useLocalStorage =
+          isTrueNodeJS &&
+          (process.env.USE_FS_CACHE === "true" ||
+            process.env.NODE_ENV === "development");
 
-      providerName = useLocalStorage ? "fs" : "r2";
+        providerName = useLocalStorage ? "fs" : "r2";
 
-      logger.info(`Auto-detected ZIP fetcher provider`, {
-        isTrueNodeJS,
-        chosen: providerName,
-        reason: useLocalStorage
-          ? "Node.js development mode"
-          : "SSR/Edge environment",
-      });
+        logger.info(`Auto-detected ZIP fetcher provider`, {
+          isTrueNodeJS,
+          chosen: providerName,
+          reason: useLocalStorage
+            ? "Node.js development mode"
+            : "SSR/Edge environment",
+        });
+      }
     }
 
     switch (providerName) {

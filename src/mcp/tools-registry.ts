@@ -50,7 +50,7 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
     {
       name: "fetch_translation_notes",
       description:
-        "Fetch translator notes explaining difficult passages, cultural context, and translation recommendations. Returns verseNotes (verse-specific) and contextNotes (book/chapter background) separately. CRITICAL: Always use standard 3-letter book codes (TIT=Titus, JHN=John, etc.). NEVER use full book names or names in other languages.",
+        "Fetch translator notes explaining difficult passages, cultural context, and translation recommendations. Returns verseNotes (verse-specific) and contextNotes (book/chapter background) separately. CRITICAL: Always use standard 3-letter book codes (TIT=Titus, JHN=John, etc.). NEVER use full book names or names in other languages. For non-English languages, OMIT organization (search all Door43 orgs)—unfoldingWord does not publish translation notes for many languages; Spanish and others are usually under language-specific organizations.",
       inputSchema: FetchTranslationNotesArgs.omit({ reference: true }).extend({
         reference: z
           .string()

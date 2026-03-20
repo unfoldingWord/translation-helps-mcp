@@ -27,7 +27,8 @@ export const MCP_PROMPTS: MCPPromptDefinition[] = [
     arguments: [
       {
         name: "reference",
-        description: 'Bible reference using 3-letter book code. Examples: "JHN 3:16" (NOT "John 3:16"), "TIT 1:15" (NOT "Titus 1:15"), "GEN 1:1-3" (NOT "Genesis 1:1-3")',
+        description:
+          'Bible reference using 3-letter book code. Examples: "JHN 3:16" (NOT "John 3:16"), "TIT 1:15" (NOT "Titus 1:15"), "GEN 1:1-3" (NOT "Genesis 1:1-3")',
         required: true,
       },
       {
@@ -44,7 +45,8 @@ export const MCP_PROMPTS: MCPPromptDefinition[] = [
     arguments: [
       {
         name: "reference",
-        description: 'Bible reference using 3-letter book code. Examples: "JHN 3:16" (NOT "John 3:16"), "TIT 1:15" (NOT "Titus 1:15"), "GEN 1:1-3" (NOT "Genesis 1:1-3")',
+        description:
+          'Bible reference using 3-letter book code. Examples: "JHN 3:16" (NOT "John 3:16"), "TIT 1:15" (NOT "Titus 1:15"), "GEN 1:1-3" (NOT "Genesis 1:1-3")',
         required: true,
       },
       {
@@ -61,7 +63,8 @@ export const MCP_PROMPTS: MCPPromptDefinition[] = [
     arguments: [
       {
         name: "reference",
-        description: 'Bible reference using 3-letter book code. Examples: "JHN 3:16" (NOT "John 3:16"), "TIT 1:15" (NOT "Titus 1:15")',
+        description:
+          'Bible reference using 3-letter book code. Examples: "JHN 3:16" (NOT "John 3:16"), "TIT 1:15" (NOT "Titus 1:15")',
         required: true,
       },
       {
@@ -78,7 +81,8 @@ export const MCP_PROMPTS: MCPPromptDefinition[] = [
     arguments: [
       {
         name: "reference",
-        description: 'Bible reference using 3-letter book code. Examples: "JHN 3:16" (NOT "John 3:16"), "TIT 1:15" (NOT "Titus 1:15")',
+        description:
+          'Bible reference using 3-letter book code. Examples: "JHN 3:16" (NOT "John 3:16"), "TIT 1:15" (NOT "Titus 1:15")',
         required: true,
       },
       {
@@ -179,7 +183,7 @@ Follow these steps:
    - Present as: "Key Terms: [Title 1], [Title 2], [Title 3]..."
 
 4. **Get Translation Notes (Condensed):**
-   - Use fetch_translation_notes with reference="${reference}" and language="${language}"
+   - Use fetch_translation_notes with reference="${reference}" and language="${language}" (omit organization unless you need one owner—search all orgs for non-English TN)
    - For EACH note, show ONLY:
      * The Quote field (Greek/Hebrew text)
      * Any externalReference.path that links to academy articles
@@ -419,8 +423,8 @@ Follow these steps:
      * fetch_translation_word with language="en" and term="love"
      * fetch_translation_word with language="es-419" and term="amor"
    - Examples for "Translation Notes" subject:
-     * fetch_translation_notes with language="en" and reference="John 3:16"
-     * fetch_translation_notes with language="es-419" and reference="John 3:16"
+     * fetch_translation_notes with language="en", reference="JHN 3:16", organization="unfoldingWord" (English TN under uw is common)
+     * fetch_translation_notes with language="es", reference="TIT 3:15" — omit organization so all orgs are searched (uw does not publish Spanish TN)
 
 5. **Guide Next Steps:**
    - Explain that the user can now use any of the discovered languages with tools that support that resource type

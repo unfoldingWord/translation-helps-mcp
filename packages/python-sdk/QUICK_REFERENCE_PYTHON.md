@@ -16,6 +16,7 @@ client = TranslationHelpsClient(
 ## 🎯 **Common Operations**
 
 ### **Set Context**
+
 ```python
 client.set_context('language', 'en')
 client.set_context('organization', 'unfoldingWord')
@@ -29,12 +30,14 @@ client.set_context_many({
 ```
 
 ### **Get Context**
+
 ```python
 language = client.get_context('language')  # 'en'
 all_context = client.get_all_context()  # {'language': 'en', ...}
 ```
 
 ### **Clear Context**
+
 ```python
 client.clear_context()  # Clear all
 ```
@@ -152,12 +155,12 @@ async def test_should_inject_language_from_context():
         enable_interceptor=True,
         initial_context={'language': 'en'}
     )
-    
+
     await client.connect()
-    
+
     # Language will be injected automatically
     result = await client.fetch_scripture(reference='John 3:16')
-    
+
     assert result is not None
 ```
 
@@ -167,17 +170,19 @@ async def test_should_inject_language_from_context():
 
 These tools automatically get context injection:
 
-| Tool | Required Context |
-|------|------------------|
-| `fetch_scripture` | `language`, `organization`, `stage` |
-| `fetch_translation_notes` | `language`, `organization`, `stage` |
-| `fetch_translation_questions` | `language`, `organization`, `stage` |
-| `fetch_translation_word` | `language`, `organization`, `stage` |
-| `fetch_translation_word_links` | `language`, `organization`, `stage` |
-| `fetch_translation_academy` | `language`, `organization`, `stage` |
-| `list_languages` | `stage` |
-| `list_subjects` | `stage` |
-| `list_resources_for_language` | `stage` |
+| Tool                           | Injected context (default) |
+| ------------------------------ | -------------------------- |
+| `fetch_scripture`              | `language`, `stage`        |
+| `fetch_translation_notes`      | `language`, `stage`        |
+| `fetch_translation_questions`  | `language`, `stage`        |
+| `fetch_translation_word`       | `language`, `stage`        |
+| `fetch_translation_word_links` | `language`, `stage`        |
+| `fetch_translation_academy`    | `language`, `stage`        |
+| `list_languages`               | `stage`                    |
+| `list_subjects`                | `stage`                    |
+| `list_resources_for_language`  | `stage`                    |
+
+TN/TQ and many languages: omit `organization` so all Door43 orgs are searched (Spanish TN is rarely under unfoldingWord). Pass `organization` only when you want a specific owner.
 
 ---
 
@@ -205,6 +210,7 @@ from translation_helps.validators import (
 ## 🚨 **Troubleshooting**
 
 ### **Interceptor not working?**
+
 ```python
 # Check if enabled
 interceptor = client.get_interceptor()
@@ -215,6 +221,7 @@ print('Context:', client.get_all_context())
 ```
 
 ### **Parameters not being injected?**
+
 ```python
 # Enable debug mode
 from translation_helps.state_injection_interceptor import InterceptorOptions
@@ -230,6 +237,7 @@ print('Config:', interceptor.get_tool_config())
 ```
 
 ### **Validation failing?**
+
 ```python
 # Check which validator is rejecting
 context_manager = client.get_context_manager()

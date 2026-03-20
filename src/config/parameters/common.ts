@@ -1,122 +1,128 @@
 /**
  * Common Parameter Definitions
- * 
+ *
  * Single source of truth for all commonly used parameters across MCP tools and REST API
  */
 
-import { z } from 'zod';
-import type { UnifiedParameterDef } from './types.js';
+import { z } from "zod";
+import type { UnifiedParameterDef } from "./types.js";
 
 /**
  * Reference parameter (e.g., "John 3:16", "Genesis 1:1-5")
  */
 export const REFERENCE_PARAM: UnifiedParameterDef<string> = {
-  name: 'reference',
-  type: 'string',
-  default: 'John 3:16',
+  name: "reference",
+  type: "string",
+  default: "John 3:16",
   required: true,
-  description: 'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")',
-  example: 'John 3:16',
-  pattern: '^[1-3]?\\s?[A-Za-z]+\\s+\\d+(:\\d+)?(-\\d+(:\\d+)?)?$',
+  description:
+    'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")',
+  example: "John 3:16",
+  pattern: "^[1-3]?\\s?[A-Za-z]+\\s+\\d+(:\\d+)?(-\\d+(:\\d+)?)?$",
 };
 
 /**
  * Language code parameter
  */
 export const LANGUAGE_PARAM: UnifiedParameterDef<string> = {
-  name: 'language',
-  type: 'string',
+  name: "language",
+  type: "string",
   required: false,
-  default: 'en',
+  default: "en",
   description: 'Language code (default: "en")',
-  example: 'en',
-  pattern: '^[a-z]{2,3}(-[A-Z]{2})?$',
+  example: "en",
+  pattern: "^[a-z]{2,3}(-[A-Z]{2})?$",
 };
 
 /**
  * Organization parameter (can be single, array, or undefined for multi-org)
  */
-export const ORGANIZATION_PARAM: UnifiedParameterDef<string | string[] | undefined> = {
-  name: 'organization',
-  type: 'string',
+export const ORGANIZATION_PARAM: UnifiedParameterDef<
+  string | string[] | undefined
+> = {
+  name: "organization",
+  type: "string",
   required: false,
-  description: 'Organization(s) to search. Can be a single organization (string), multiple organizations (array), or omitted to search all organizations. Examples: "unfoldingWord", ["unfoldingWord", "es-419_gl"], or undefined for all.',
-  example: 'unfoldingWord',
+  description:
+    'Door43 organization(s) to search, or omit to search all organizations. For translation helps in many languages (e.g. Spanish), notes/questions often live under language-specific orgs—not unfoldingWord—so omit this parameter unless the user needs a specific owner. Examples: omit (all orgs), "unfoldingWord" (English-focused), "es-419_gl", or ["unfoldingWord","Door43-Catalog"].',
+  example: "(omit for all organizations)",
   transform: (value: any) => {
     // Convert empty string to undefined for multi-org fetching
-    if (value === '' || value === null) return undefined;
+    if (value === "" || value === null) return undefined;
     return value;
   },
-  zodSchema: () => z.union([
-    z.string(),
-    z.array(z.string()),
-    z.undefined()
-  ]).optional().transform((value) => {
-    if (value === '' || value === null) return undefined;
-    return value;
-  }),
+  zodSchema: () =>
+    z
+      .union([z.string(), z.array(z.string()), z.undefined()])
+      .optional()
+      .transform((value) => {
+        if (value === "" || value === null) return undefined;
+        return value;
+      }),
 };
 
 /**
  * Topic parameter for filtering resources
  */
 export const TOPIC_PARAM: UnifiedParameterDef<string> = {
-  name: 'topic',
-  type: 'string',
+  name: "topic",
+  type: "string",
   required: false,
-  default: 'tc-ready',
-  description: 'Filter by topic tag (e.g., "tc-ready" for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.',
-  example: 'tc-ready',
-  options: ['tc-ready'] as const,
+  default: "tc-ready",
+  description:
+    'Filter by topic tag (e.g., "tc-ready" for translationCore-ready resources). Topics are metadata tags that indicate resource status or readiness.',
+  example: "tc-ready",
+  options: ["tc-ready"] as const,
 };
 
 /**
  * Format parameter for output formatting
  */
 export const FORMAT_PARAM: UnifiedParameterDef<string> = {
-  name: 'format',
-  type: 'string',
+  name: "format",
+  type: "string",
   required: false,
-  default: 'json',
+  default: "json",
   description: 'Output format (default: "json")',
-  example: 'json',
-  options: ['text', 'usfm', 'json', 'md', 'markdown'] as const,
+  example: "json",
+  options: ["text", "usfm", "json", "md", "markdown"] as const,
 };
 
 /**
  * Stage parameter for resource stage
  */
 export const STAGE_PARAM: UnifiedParameterDef<string> = {
-  name: 'stage',
-  type: 'string',
+  name: "stage",
+  type: "string",
   required: false,
-  default: 'prod',
+  default: "prod",
   description: 'Resource stage (default: "prod")',
-  example: 'prod',
-  options: ['prod', 'preprod', 'draft', 'latest'] as const,
+  example: "prod",
+  options: ["prod", "preprod", "draft", "latest"] as const,
 };
 
 /**
  * Resource parameter for scripture resources
  */
 export const RESOURCE_PARAM: UnifiedParameterDef<string> = {
-  name: 'resource',
-  type: 'string',
+  name: "resource",
+  type: "string",
   required: false,
-  default: 'all',
-  description: 'Scripture resource type(s) - single resource (ult, ust, t4t, ueb), comma-separated (ult,ust), or "all" for all available',
-  example: 'ult',
+  default: "all",
+  description:
+    'Scripture resource type(s) - single resource (ult, ust, t4t, ueb), comma-separated (ult,ust), or "all" for all available',
+  example: "ult",
 };
 
 /**
  * Include alignment parameter for scripture
  */
 export const INCLUDE_ALIGNMENT_PARAM: UnifiedParameterDef<boolean> = {
-  name: 'includeAlignment',
-  type: 'boolean',
+  name: "includeAlignment",
+  type: "boolean",
   required: false,
   default: false,
-  description: 'Include word alignment data (only available with USFM format)',
+  description: "Include word alignment data (only available with USFM format)",
   example: false,
 };
 
@@ -124,11 +130,11 @@ export const INCLUDE_ALIGNMENT_PARAM: UnifiedParameterDef<boolean> = {
  * Include verse numbers parameter
  */
 export const INCLUDE_VERSE_NUMBERS_PARAM: UnifiedParameterDef<boolean> = {
-  name: 'includeVerseNumbers',
-  type: 'boolean',
+  name: "includeVerseNumbers",
+  type: "boolean",
   required: false,
   default: true,
-  description: 'Include verse numbers in the text (default: true)',
+  description: "Include verse numbers in the text (default: true)",
   example: true,
 };
 
@@ -136,11 +142,11 @@ export const INCLUDE_VERSE_NUMBERS_PARAM: UnifiedParameterDef<boolean> = {
  * Include context parameter for translation notes
  */
 export const INCLUDE_CONTEXT_PARAM: UnifiedParameterDef<boolean> = {
-  name: 'includeContext',
-  type: 'boolean',
+  name: "includeContext",
+  type: "boolean",
   required: false,
   default: true,
-  description: 'Include contextual notes from related passages (default: true)',
+  description: "Include contextual notes from related passages (default: true)",
   example: true,
 };
 
@@ -148,11 +154,12 @@ export const INCLUDE_CONTEXT_PARAM: UnifiedParameterDef<boolean> = {
  * Include intro parameter for translation notes
  */
 export const INCLUDE_INTRO_PARAM: UnifiedParameterDef<boolean> = {
-  name: 'includeIntro',
-  type: 'boolean',
+  name: "includeIntro",
+  type: "boolean",
   required: false,
   default: true,
-  description: 'Include book and chapter introduction notes for context (default: true)',
+  description:
+    "Include book and chapter introduction notes for context (default: true)",
   example: true,
 };
 
@@ -160,67 +167,71 @@ export const INCLUDE_INTRO_PARAM: UnifiedParameterDef<boolean> = {
  * Term parameter for translation words
  */
 export const TERM_PARAM: UnifiedParameterDef<string> = {
-  name: 'term',
-  type: 'string',
+  name: "term",
+  type: "string",
   required: false,
-  description: 'Translation word term to lookup (e.g., "love", "grace", "salvation", "paul", "god", "faith")',
-  example: 'love',
+  description:
+    'Translation word term to lookup (e.g., "love", "grace", "salvation", "paul", "god", "faith")',
+  example: "love",
 };
 
 /**
  * Category parameter for translation words
  */
 export const CATEGORY_PARAM: UnifiedParameterDef<string> = {
-  name: 'category',
-  type: 'string',
+  name: "category",
+  type: "string",
   required: false,
-  description: 'Filter by category (kt, names, other) - only used with reference',
-  example: 'kt',
-  options: ['kt', 'names', 'other'] as const,
+  description:
+    "Filter by category (kt, names, other) - only used with reference",
+  example: "kt",
+  options: ["kt", "names", "other"] as const,
 };
 
 /**
  * Path parameter for resource paths
  */
 export const PATH_PARAM: UnifiedParameterDef<string> = {
-  name: 'path',
-  type: 'string',
+  name: "path",
+  type: "string",
   required: false,
-  description: 'Explicit path to the resource file (e.g., bible/kt/love.md)',
-  example: 'bible/kt/love.md',
+  description: "Explicit path to the resource file (e.g., bible/kt/love.md)",
+  example: "bible/kt/love.md",
 };
 
 /**
  * RC Link parameter
  */
 export const RC_LINK_PARAM: UnifiedParameterDef<string> = {
-  name: 'rcLink',
-  type: 'string',
+  name: "rcLink",
+  type: "string",
   required: false,
   description: 'RC link to the resource (e.g., "rc://*/tw/dict/bible/kt/love")',
-  example: 'rc://*/tw/dict/bible/kt/love',
+  example: "rc://*/tw/dict/bible/kt/love",
 };
 
 /**
  * Module ID parameter for translation academy
  */
 export const MODULE_ID_PARAM: UnifiedParameterDef<string> = {
-  name: 'moduleId',
-  type: 'string',
+  name: "moduleId",
+  type: "string",
   required: false,
-  description: 'Academy module ID (e.g., "figs-metaphor"). Searches in order: translate, process, checking, intro',
-  example: 'figs-metaphor',
+  description:
+    'Academy module ID (e.g., "figs-metaphor"). Searches in order: translate, process, checking, intro',
+  example: "figs-metaphor",
 };
 
 /**
  * Subject parameter for resource discovery
  */
 export const SUBJECT_PARAM: UnifiedParameterDef<string | string[]> = {
-  name: 'subject',
-  type: 'string',
+  name: "subject",
+  type: "string",
   required: false,
-  description: 'Comma-separated list or array of subjects to search for (e.g., "Bible", "Translation Words,Translation Academy"). If not provided, searches 7 default subjects: Bible, Aligned Bible, Translation Words, Translation Academy, TSV Translation Notes, TSV Translation Questions, and TSV Translation Words Links.',
-  example: 'Bible',
+  description:
+    'Comma-separated list or array of subjects to search for (e.g., "Bible", "Translation Words,Translation Academy"). If not provided, searches 7 default subjects: Bible, Aligned Bible, Translation Words, Translation Academy, TSV Translation Notes, TSV Translation Questions, and TSV Translation Words Links.',
+  example: "Bible",
   zodSchema: () => z.union([z.string(), z.array(z.string())]).optional(),
 };
 
@@ -228,10 +239,11 @@ export const SUBJECT_PARAM: UnifiedParameterDef<string | string[]> = {
  * Limit parameter for pagination
  */
 export const LIMIT_PARAM: UnifiedParameterDef<number> = {
-  name: 'limit',
-  type: 'number',
+  name: "limit",
+  type: "number",
   required: false,
-  description: 'Maximum number of resources to return per request. If not specified, fetches all available resources (up to 10000).',
+  description:
+    "Maximum number of resources to return per request. If not specified, fetches all available resources (up to 10000).",
   example: 100,
   min: 1,
   max: 10000,

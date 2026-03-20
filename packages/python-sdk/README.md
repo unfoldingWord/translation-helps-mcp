@@ -127,7 +127,7 @@ text = await client.fetch_scripture({
 
 ##### `async fetch_translation_notes(options: FetchTranslationNotesOptions) -> Dict`
 
-Fetch translation notes for a passage.
+Fetch translation notes for a passage. **Omit `organization`** unless you need a specific Door43 owner; many languages (e.g. Spanish) have TN under language teams, not unfoldingWord.
 
 ```python
 notes = await client.fetch_translation_notes({
@@ -135,6 +135,12 @@ notes = await client.fetch_translation_notes({
     "language": "en",
     "includeIntro": True,
     "includeContext": True
+})
+
+# Spanish: search all orgs (do not pass organization)
+notes_es = await client.fetch_translation_notes({
+    "reference": "TIT 3:15",
+    "language": "es",
 })
 
 # Response structure:
@@ -151,6 +157,7 @@ notes = await client.fetch_translation_notes({
 ```
 
 **Response Structure:**
+
 - `verseNotes`: Array of notes specific to the requested verse reference
 - `contextNotes`: Array of book/chapter introductions (each has `contextType: "book" | "chapter"`)
 - `counts`: Separate counts for verse-specific and contextual notes

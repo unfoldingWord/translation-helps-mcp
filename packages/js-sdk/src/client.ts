@@ -460,7 +460,9 @@ export class TranslationHelpsClient {
   }
 
   /**
-   * Fetch translation notes
+   * Fetch translation notes.
+   * Omit `organization` to search all Door43 orgs; for languages like Spanish, TN is
+   * often not under unfoldingWord.
    */
   async fetchTranslationNotes(
     options: FetchTranslationNotesOptions,

@@ -68,6 +68,31 @@ curl "http://localhost:5173/api/health" | jq .cache
 curl "http://localhost:5173/api/fetch-scripture?reference=John%203:16&language=en&organization=unfoldingWord&bypassCache=true"
 ```
 
+### Cloudflare Pages logs (production / preview)
+
+When a failure only happens on the deployed MCP UI (Pages Functions), **tail live logs** while you reproduce the request. Requires [Wrangler](https://developers.cloudflare.com/workers/wrangler/install-and-update/) and a one-time `npx wrangler login` (or `CLOUDFLARE_API_TOKEN` with appropriate permissions).
+
+```bash
+# From repo root; project name matches wrangler.toml "name"
+# Non-interactive shells must pass a deployment id (or URL). List recent ones:
+CLOUDFLARE_ACCOUNT_ID=<account_id> npx wrangler pages deployment list --project-name=translation-helps-mcp
+
+# Then tail that deployment (production example):
+CLOUDFLARE_ACCOUNT_ID=<account_id> npx wrangler pages deployment tail <deployment-uuid> --project-name=translation-helps-mcp --format=json
+
+# Interactive terminal only: tail latest production without an id
+npx wrangler pages deployment tail --project-name=translation-helps-mcp --environment=production
+
+# Preview deployments (PR branches)
+npx wrangler pages deployment tail --project-name=translation-helps-mcp --environment=preview
+
+# Narrow to errors or a substring from console.log
+npx wrangler pages deployment tail --project-name=translation-helps-mcp --status=error
+npx wrangler pages deployment tail --project-name=translation-helps-mcp --search=translation-notes
+```
+
+The dashboard path **Workers & Pages → translation-helps-mcp → Logs** is equivalent for browsing recent invocations. Use tails when correlating a specific HTTP/MCP call with stack traces or `console.log` output.
+
 ## 🐛 **COMMON ISSUES & FIXES**
 
 ### Issue 1: "No translation resources found"
