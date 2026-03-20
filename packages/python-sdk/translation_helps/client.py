@@ -320,7 +320,12 @@ class TranslationHelpsClient:
     async def fetch_translation_notes(
         self, options: FetchTranslationNotesOptions
     ) -> Dict[str, Any]:
-        """Fetch translation notes."""
+        """Fetch translation notes.
+
+        Omit ``organization`` to search all Door43 organizations. For languages such as
+        Spanish, notes are usually not under unfoldingWord—passing only reference and
+        language is the right default.
+        """
         params: Dict[str, Any] = {
             "reference": options["reference"],
             "language": options.get("language", "en"),

@@ -7,7 +7,6 @@
 
 import { getKVCache, initializeKVCache } from "../functions/kv-cache.js";
 import { parseReference } from "../functions/reference-parser.js";
-import { normalizeReference as normalizeReferenceNew } from "../parsers/referenceParser.js";
 import { DCSApiClient } from "../services/DCSApiClient.js";
 import { ZipResourceFetcher2 } from "../services/ZipResourceFetcher2.js";
 import { logger } from "../utils/logger.js";
@@ -102,9 +101,6 @@ export const createZIPFetcher = (
       throw err;
     }
     // If chapter/verse clearly impossible, also throw 400 (but allow full book references)
-    const chap = Number(
-      (params.reference as string)?.match(/\s(\d+)/)?.[1] || 0,
-    );
     const verse = Number(
       (params.reference as string)?.match(/:(\d+)/)?.[1] || 0,
     );
@@ -305,13 +301,16 @@ export const createZIPFetcher = (
               resourceType: zipConfig.resourceType,
             },
           );
-          const rows = await zipFetcher.getTSVData(
+          const tsvBundle = await zipFetcher.getTSVData(
             reference,
             language,
             organization,
             zipConfig.resourceType,
           );
-          const count = Array.isArray(rows) ? rows.length : 0;
+          const rows = Array.isArray(tsvBundle)
+            ? tsvBundle
+            : ((tsvBundle as { data?: unknown[] })?.data ?? []);
+          const count = rows.length;
           return {
             data: rows,
             _metadata: {

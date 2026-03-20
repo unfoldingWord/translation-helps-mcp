@@ -249,7 +249,7 @@ headers: {
 **Monitoring Tools:**
 
 - Cloudflare Analytics Dashboard
-- Worker Logs via `wrangler tail`
+- **Pages Functions logs**: `npx wrangler pages deployment tail --project-name=translation-helps-mcp` (see [Debugging Guide](DEBUGGING_GUIDE.md#cloudflare-pages-logs-production--preview)); Workers use `wrangler tail`
 - Custom health check endpoints
 - Performance testing with load tools
 

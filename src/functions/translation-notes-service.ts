@@ -4,10 +4,8 @@
  * Uses unified resource discovery to minimize DCS API calls
  */
 
-import { parseTSV } from "../config/RouteGenerator";
 import { logger } from "../utils/logger.js";
 import { proxyFetch } from "../utils/httpClient.js";
-import { cache } from "./cache";
 import { parseReference } from "./reference-parser";
 import { getResourceForBook, getResourcesForBook } from "./resource-detector";
 import { ZipFetcherFactory } from "../services/zip-fetcher-provider.js";
@@ -96,37 +94,47 @@ async function fetchTranslationNotesFromMultipleResources(
 
   if (!resources || resources.length === 0) {
     // Try to find language variants to help the user
-    const { findLanguageVariants } = await import('./resource-detector.js');
-    const baseLanguage = language.split('-')[0];
+    const { findLanguageVariants } = await import("./resource-detector.js");
+    const baseLanguage = language.split("-")[0];
     // For translation notes, search the correct subject
-    const languageVariants = await findLanguageVariants(baseLanguage, 'all', topic, ['TSV Translation Notes']);
-    
+    const languageVariants = await findLanguageVariants(
+      baseLanguage,
+      "all",
+      topic,
+      ["TSV Translation Notes"],
+    );
+
     // Create structured error with recovery data
     const error: any = new Error(
       languageVariants.length > 0
-        ? `No translation notes found for language '${language}'.\n\nAvailable language variants: ${languageVariants.join(', ')}\n\nPlease try one of these language codes instead.`
-        : `No translation notes available for language '${language}'.`
+        ? `No translation notes found for language '${language}'.\n\nAvailable language variants: ${languageVariants.join(", ")}\n\nPlease try one of these language codes instead.`
+        : `No translation notes available for language '${language}'.`,
     );
-    
+
     // Attach structured data for automatic retry
     if (languageVariants.length > 0) {
       error.languageVariants = languageVariants;
       error.requestedLanguage = language;
-      logger.info('Throwing language variant error for translation notes', {
+      logger.info("Throwing language variant error for translation notes", {
         language,
-        variants: languageVariants
+        variants: languageVariants,
       });
     } else {
       error.requestedLanguage = language;
-      logger.info('Throwing language not supported error for translation notes', {
-        language
-      });
+      logger.info(
+        "Throwing language not supported error for translation notes",
+        {
+          language,
+        },
+      );
     }
-    
+
     throw error;
   }
 
-  logger.info(`Found ${resources.length} note resources from multiple organizations`);
+  logger.info(
+    `Found ${resources.length} note resources from multiple organizations`,
+  );
 
   const allVerseNotes: TranslationNote[] = [];
   const allContextNotes: TranslationNote[] = [];
@@ -168,8 +176,7 @@ async function fetchTranslationNotesFromMultipleResources(
         "translation-notes-service",
       );
       const zipFetcherProvider = ZipFetcherFactory.create(
-        (process.env.ZIP_FETCHER_PROVIDER as "r2" | "fs" | "auto") ||
-          "auto",
+        (process.env.ZIP_FETCHER_PROVIDER as "r2" | "fs" | "auto") || "auto",
         process.env.CACHE_PATH,
         tracer,
       );
@@ -179,7 +186,7 @@ async function fetchTranslationNotesFromMultipleResources(
           book: parsedRef.book,
           chapter: parsedRef.chapter!,
           verse: parsedRef.verse,
-          endVerse: parsedRef.endVerse,  // Include endVerse for verse ranges
+          endVerse: parsedRef.endVerse, // Include endVerse for verse ranges
         },
         language,
         resourceInfo.owner || "unfoldingWord",
@@ -190,7 +197,9 @@ async function fetchTranslationNotesFromMultipleResources(
       // Capture subject from first successful resource
       if (!resourceSubject && tsvResult.subject) {
         resourceSubject = tsvResult.subject;
-        logger.info(`[Multi-resource] Captured subject from catalog: ${resourceSubject}`);
+        logger.info(
+          `[Multi-resource] Captured subject from catalog: ${resourceSubject}`,
+        );
       }
 
       logger.info(`Fetched ${rows.length} TSV rows from ${resourceInfo.name}`);
@@ -201,7 +210,9 @@ async function fetchTranslationNotesFromMultipleResources(
         title: resourceInfo.title,
         organization: resourceInfo.owner || "unfoldingWord",
         language,
-        url: resourceInfo.url || `https://git.door43.org/${resourceInfo.owner}/${resourceInfo.name}`,
+        url:
+          resourceInfo.url ||
+          `https://git.door43.org/${resourceInfo.owner}/${resourceInfo.name}`,
         version: tsvResult.version || "master", // ✅ FROM DCS CATALOG
       };
       citations.push(resourceCitation);
@@ -238,24 +249,29 @@ async function fetchTranslationNotesFromMultipleResources(
       if (!includeIntro && !includeContext) {
         filteredNotes = notes.filter(
           (note) =>
-            !note.reference.includes("intro") && !note.reference.includes("front:"),
+            !note.reference.includes("intro") &&
+            !note.reference.includes("front:"),
         );
       } else if (!includeIntro) {
-        filteredNotes = notes.filter((note) => !note.reference.includes("front:"));
+        filteredNotes = notes.filter(
+          (note) => !note.reference.includes("front:"),
+        );
       } else if (!includeContext) {
-        filteredNotes = notes.filter((note) => !note.reference.includes(":intro"));
+        filteredNotes = notes.filter(
+          (note) => !note.reference.includes(":intro"),
+        );
       }
 
-      // Split into verse notes and context notes
-      const verseNotes = filteredNotes.filter((note) => {
-        const ref = note.reference || "";
-        return ref.match(/\d+:\d+/) && !ref.includes("intro");
-      });
-
-      const contextNotes = filteredNotes.filter((note) => {
-        const ref = note.reference || "";
-        return ref.includes("intro") || ref.includes("front:");
-      });
+      // Split: intro/front = context; everything else is verse-scoped (TN Reference
+      // shapes vary — requiring \\d+:\\d+ dropped valid rows and caused false 404s).
+      const isContextRef = (ref: string) =>
+        ref.includes("intro") || ref.includes("front:");
+      const verseNotes = filteredNotes.filter(
+        (note) => !isContextRef(note.reference || ""),
+      );
+      const contextNotes = filteredNotes.filter((note) =>
+        isContextRef(note.reference || ""),
+      );
 
       allVerseNotes.push(...verseNotes);
       allContextNotes.push(...contextNotes);
@@ -347,36 +363,47 @@ export async function fetchTranslationNotes(
 
   if (!resourceInfo) {
     // Try to find language variants to help the user
-    const { findLanguageVariants } = await import('./resource-detector.js');
-    const baseLanguage = language.split('-')[0];
+    const { findLanguageVariants } = await import("./resource-detector.js");
+    const baseLanguage = language.split("-")[0];
     // For translation notes, search the correct subject (search all orgs for variants)
-    const languageVariants = await findLanguageVariants(baseLanguage, organization === 'unfoldingWord' ? undefined : organization, topic, ['TSV Translation Notes']);
+    const languageVariants = await findLanguageVariants(
+      baseLanguage,
+      organization === "unfoldingWord" ? undefined : organization,
+      topic,
+      ["TSV Translation Notes"],
+    );
 
     // Filter out the current language to prevent infinite retry loops
-    const filteredVariants = languageVariants.filter(v => v !== language);
+    const filteredVariants = languageVariants.filter((v) => v !== language);
 
     // Create structured error with recovery data
     const error: any = new Error(
       filteredVariants.length > 0
-        ? `No translation notes found for language '${language}'.\n\nAvailable language variants: ${filteredVariants.join(', ')}\n\nPlease try one of these language codes instead.`
-        : `No translation notes available for language '${language}'.`
+        ? `No translation notes found for language '${language}'.\n\nAvailable language variants: ${filteredVariants.join(", ")}\n\nPlease try one of these language codes instead.`
+        : `No translation notes available for language '${language}'.`,
     );
 
     // Attach structured data for automatic retry
     if (filteredVariants.length > 0) {
       error.languageVariants = filteredVariants;
       error.requestedLanguage = language;
-      logger.info('Throwing language variant error for translation notes (single org)', {
-        language,
-        variants: filteredVariants,
-        organization
-      });
+      logger.info(
+        "Throwing language variant error for translation notes (single org)",
+        {
+          language,
+          variants: filteredVariants,
+          organization,
+        },
+      );
     } else {
       error.requestedLanguage = language;
-      logger.info('Throwing language not supported error for translation notes (single org)', {
-        language,
-        organization
-      });
+      logger.info(
+        "Throwing language not supported error for translation notes (single org)",
+        {
+          language,
+          organization,
+        },
+      );
     }
 
     throw error;
@@ -431,7 +458,7 @@ export async function fetchTranslationNotes(
       book: parsedRef.book,
       chapter: parsedRef.chapter!,
       verse: parsedRef.verse,
-      endVerse: parsedRef.endVerse,  // Include endVerse for verse ranges
+      endVerse: parsedRef.endVerse, // Include endVerse for verse ranges
     },
     language,
     organization,
@@ -441,7 +468,11 @@ export async function fetchTranslationNotes(
   const resourceSubject = tsvResult.subject; // ✅ FROM DCS CATALOG
   const resourceVersion = tsvResult.version; // ✅ FROM DCS CATALOG
 
-  logger.info(`Fetched TSV rows from ZIP`, { count: rows.length, subject: resourceSubject, version: resourceVersion });
+  logger.info(`Fetched TSV rows from ZIP`, {
+    count: rows.length,
+    subject: resourceSubject,
+    version: resourceVersion,
+  });
 
   // Convert rows to TranslationNote format
   // The rows are already filtered by reference, so we just need to map them
@@ -484,16 +515,14 @@ export async function fetchTranslationNotes(
 
   logger.info(`Parsed translation notes`, { count: filteredNotes.length });
 
-  // Split notes into verse notes and context notes based on reference patterns
-  const verseNotes = filteredNotes.filter((note) => {
-    const ref = note.reference || "";
-    return ref.match(/\d+:\d+/) && !ref.includes("intro");
-  });
-
-  const contextNotes = filteredNotes.filter((note) => {
-    const ref = note.reference || "";
-    return ref.includes("intro") || ref.includes("front:");
-  });
+  const isContextRef = (ref: string) =>
+    ref.includes("intro") || ref.includes("front:");
+  const verseNotes = filteredNotes.filter(
+    (note) => !isContextRef(note.reference || ""),
+  );
+  const contextNotes = filteredNotes.filter((note) =>
+    isContextRef(note.reference || ""),
+  );
 
   // Return the format matching the interface
   const result: TranslationNotesResult = {
@@ -618,53 +647,4 @@ export async function getTranslationNotes(args: {
     }));
 
   return { notes };
-}
-
-/**
- * Parse Translation Notes from TSV data - using automatic parsing
- */
-function parseTNFromTSV(
-  tsvData: string,
-  reference: { book: string; chapter: number; verse?: number },
-  includeIntro: boolean,
-  includeContext: boolean,
-): Array<Record<string, string>> {
-  // Use the generic parseTSV to preserve exact structure
-  const allRows = parseTSV(tsvData);
-
-  // Filter rows based on reference
-  return allRows
-    .filter((row) => {
-      const ref = row.Reference;
-      if (!ref) return false;
-
-      if (ref.includes("front:intro")) {
-        return includeIntro || includeContext;
-      } else if (ref.match(/^\d+:intro$/)) {
-        const chapterMatch = ref.match(/^(\d+):intro$/);
-        const chapterNum = parseInt(chapterMatch[1]);
-        return (
-          (includeIntro || includeContext) && chapterNum === reference.chapter
-        );
-      } else {
-        const refMatch = ref.match(/(\d+):(\d+)/);
-        if (refMatch) {
-          const chapterNum = parseInt(refMatch[1]);
-          const verseNum = parseInt(refMatch[2]);
-
-          if (reference.verse) {
-            return (
-              chapterNum === reference.chapter && verseNum === reference.verse
-            );
-          } else {
-            return chapterNum === reference.chapter;
-          }
-        }
-      }
-      return false;
-    })
-    .map((row) => ({
-      ...row,
-      Reference: `${reference.book} ${row.Reference}`, // Keep original field name
-    }));
 }

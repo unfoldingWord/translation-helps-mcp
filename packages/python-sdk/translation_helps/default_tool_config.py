@@ -14,13 +14,12 @@ ToolContextConfig = Dict[str, List[str]]
 
 # Default context requirements for Translation Helps MCP tools
 # 
-# NOTE: 'organization' is intentionally NOT in the default context injection list
-# because it varies by language. The LLM should:
-# 1. Use list_resources_for_language to discover available organizations for a language
-# 2. Explicitly specify organization in the first tool call for that language
-# 3. The interceptor will then sync it to context for subsequent calls
+# NOTE: 'organization' is intentionally NOT in the default context injection list.
+# For translation notes/questions in many languages, omit organization so all Door43
+# orgs are searched (unfoldingWord often has no TN/TQ for those languages).
+# Optionally use list_resources_for_language to pick a specific owner.
 DEFAULT_TOOL_CONTEXT_CONFIG: ToolContextConfig = {
-    # Scripture fetching tools - language and stage auto-injected, organization must be explicit first time
+    # Scripture fetching tools - language and stage auto-injected
     'fetch_scripture': ['language', 'stage'],
     
     # Translation Notes tools
