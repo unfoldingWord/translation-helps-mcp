@@ -1,0 +1,1 @@
+How do I use the Alignment Tool in translationCore to do alignment checking?

@@ -1,0 +1,1 @@
+What are some common metonymies used in the Bible?

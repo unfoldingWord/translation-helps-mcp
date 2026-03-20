@@ -45,17 +45,9 @@ export class UnifiedMCPHandler {
 		// Apply defaults based on common parameter patterns
 		const finalArgs = { ...args };
 		if (!finalArgs.language) finalArgs.language = 'en';
-		// Don't auto-default organization - empty string means "all organizations"
-		// Only set default if the parameter is completely missing (undefined)
-		if (finalArgs.organization === undefined) {
-			// For discovery tools, allow searching all organizations
-			if (['list_languages', 'list_subjects', 'list_resources_for_language'].includes(toolName)) {
-				// Leave organization undefined to search all
-			} else {
-				// For other tools, default to unfoldingWord
-				finalArgs.organization = 'unfoldingWord';
-			}
-		}
+		// Don't auto-default organization - empty string or undefined means "all organizations"
+		// This allows fetch_scripture and other tools to use dynamic discovery
+		// (No default organization - let the underlying service handle undefined)
 		if (!finalArgs.format) finalArgs.format = 'json'; // Default to JSON for structured data
 
 		// Log final parameters (after defaults)
@@ -65,7 +57,8 @@ export class UnifiedMCPHandler {
 		);
 
 		Object.entries(finalArgs).forEach(([key, value]) => {
-			if (value !== undefined && value !== null) {
+			// Skip undefined, null, and empty strings (especially for organization - empty means "all orgs")
+			if (value !== undefined && value !== null && value !== '') {
 				params.set(key, String(value));
 			}
 		});
@@ -76,7 +69,38 @@ export class UnifiedMCPHandler {
 		const response = await this.fetchFn(`${base}${tool.endpoint}?${params}`);
 
 		if (!response.ok) {
-			throw new Error(`Tool endpoint failed: ${response.status}`);
+			// Try to get detailed error info from response body
+			let errorDetails: any = {};
+			let errorBody: any = null;
+			
+			try {
+				errorBody = await response.json();
+				errorDetails = errorBody.details || {};
+			} catch (parseError) {
+				// If we can't parse the error body, use empty details
+				console.warn('[UNIFIED HANDLER] Failed to parse error response body');
+			}
+			
+			// Create enhanced error with details attached
+			const error: any = new Error(`Tool endpoint failed: ${response.status}`);
+			error.status = response.status;
+			error.details = errorDetails;
+			
+			// Include helpful book code info for AI agents
+			if (errorDetails.validBookCodes) {
+				error.validBookCodes = errorDetails.validBookCodes;
+				error.invalidCode = errorDetails.invalidCode;
+				console.log(`[UNIFIED HANDLER] Attached ${errorDetails.validBookCodes.length} valid book codes to error`);
+			}
+
+			// Include language variant info for AI agents
+			if (errorDetails.languageVariants) {
+				error.languageVariants = errorDetails.languageVariants;
+				error.requestedLanguage = errorDetails.requestedLanguage;
+				console.log(`[UNIFIED HANDLER] Attached ${errorDetails.languageVariants.length} language variants to error`);
+			}
+			
+			throw error;
 		}
 
 		// Capture diagnostic headers for metrics/debugging

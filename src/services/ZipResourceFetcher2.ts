@@ -18,6 +18,11 @@ import {
 import type { ParsedReference } from "../parsers/referenceParser.js";
 import { logger } from "../utils/logger.js";
 
+// In-memory blacklist for resources that have failed 404 (prevents repeated downloads)
+// Format: "owner/repo:ref" -> timestamp of failure
+const resourceBlacklist = new Map<string, number>();
+const BLACKLIST_TTL = 300000; // 5 minutes - retry after this period
+
 interface CatalogResource {
   name: string;
   repo: string;
@@ -178,7 +183,23 @@ export class ZipResourceFetcher2 {
     language: string,
     organization: string,
     version?: string,
-  ): Promise<Array<{ text: string; translation: string }>> {
+  ): Promise<Array<{ 
+    text: string; 
+    translation: string;
+    citation?: {
+      resource: string;
+      title?: string; // Dynamic title from DCS catalog
+      organization: string;
+      language: string;
+      version: string;
+      url?: string;
+    };
+    metadata?: {
+      resourceType: string;
+      subject?: string;
+      license: string;
+    };
+  }>> {
     logger.debug("getScripture called", {
       reference,
       language,
@@ -200,10 +221,21 @@ export class ZipResourceFetcher2 {
       // CRITICAL: request RC metadata so ingredients are included
       params.set("metadataType", "rc");
       params.set("includeMetadata", "true");
+      // Filter to tc-ready (translationCore-ready) resources by default
+      params.set("topic", "tc-ready");
       const catalogUrl = `${baseCatalog}?${params.toString()}`;
 
       // KV+memory cached catalog per (lang, org, stage=prod, subject)
       const catalogCacheKey = catalogUrl; // Use exact URL as KV key
+      
+      // 🔍 CACHE KEY TRACE: Log the exact cache key for debugging variant resolution
+      console.log(`[CACHE KEY TRACE] Scripture catalog cache key:`, {
+        language,
+        organization,
+        cacheKey: catalogCacheKey,
+        url: catalogUrl
+      });
+      
       let catalogData: { data?: CatalogResource[] } | null = null;
       const cacheStart =
         typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -253,6 +285,7 @@ export class ZipResourceFetcher2 {
               source: cacheSource,
               duration: cacheDuration,
               key: catalogCacheKey,
+              language: language, // 🔍 Log the language used
               dataLength: parsed.data.length,
             });
 
@@ -300,6 +333,12 @@ export class ZipResourceFetcher2 {
       }
       // unified discovery uses KV+memory cache; no local flag needed
       if (!catalogData) {
+        // 🔍 CACHE KEY TRACE: Log cache miss
+        console.log(`[CACHE KEY TRACE] ❌ Catalog cache MISS - fetching from network:`, {
+          language,
+          organization,
+          cacheKey: catalogCacheKey
+        });
         logger.info(`Fetching catalog: ${catalogUrl}`);
         const catalogResponse = await trackedFetch(this.tracer, catalogUrl, {
           headers: this.getClientHeaders(),
@@ -319,14 +358,26 @@ export class ZipResourceFetcher2 {
           catalogData.data.length > 0
         ) {
           try {
+            // 🔍 CACHE KEY TRACE: Log cache save
+            console.log(`[CACHE KEY TRACE] 💾 Saving catalog to cache:`, {
+              language,
+              organization,
+              cacheKey: catalogCacheKey,
+              resourceCount: catalogData.data.length,
+              ttl: 3600
+            });
+            
             await this.kvCache.set(
               catalogCacheKey,
               JSON.stringify(catalogData),
               3600,
             );
+            
+            console.log(`[CACHE KEY TRACE] ✅ Catalog successfully cached`);
           } catch (err) {
             // eslint-disable-next-line no-empty -- best-effort KV set failure can be ignored
             logger.warn(`Failed to cache catalog data: ${err}`);
+            console.log(`[CACHE KEY TRACE] ❌ Failed to save catalog to cache:`, err);
           }
         } else {
           logger.warn(
@@ -346,10 +397,51 @@ export class ZipResourceFetcher2 {
         return true;
       });
 
-      // If cache yielded zero resources AND we haven't forced refresh, retry with force refresh
+      // 🚀 OPTIMIZATION: If zero resources, check for language variants IMMEDIATELY
+      // instead of wasting time on force refresh retry
       if (resources.length === 0 && !forceRefresh) {
-        logger.warn(`Got 0 resources from cache, retrying with force refresh`);
-        // Temporarily set the force refresh header and retry
+        logger.info(`No resources found for language=${language}, checking for variants BEFORE retry`);
+        
+        try {
+          // Import variant discovery function
+          const { findLanguageVariants } = await import("../functions/resource-detector.js");
+          const baseLanguage = language.split('-')[0];
+          
+          // Quick check: do variants exist for this base language?
+          const variants = await findLanguageVariants(
+            baseLanguage,
+            organization === 'all' ? undefined : organization,
+            'tc-ready',
+            ['Bible', 'Aligned Bible']
+          );
+          
+          // If variants exist but current language isn't in the list, throw helpful error
+          // The simpleEndpoint auto-retry will catch this and retry with the variant
+          if (variants.length > 0 && !variants.includes(language)) {
+            logger.info(`Found variants for ${baseLanguage}, throwing error for auto-retry`, { variants });
+            // Throw error with variants for simpleEndpoint to handle
+            const error: any = new Error(`No scripture resources found for language '${language}'`);
+            error.languageVariants = variants;
+            error.requestedLanguage = language;
+            throw error;
+          }
+          
+          // If current language IS in variants or no variants found, do force refresh as fallback
+          logger.info(`Variant check passed, proceeding with force refresh`, { 
+            languageInVariants: variants.includes(language),
+            variantCount: variants.length 
+          });
+        } catch (variantError: any) {
+          // If it's our intentional error with variants, re-throw it
+          if (variantError.languageVariants) {
+            throw variantError;
+          }
+          // Otherwise, log and continue to force refresh
+          logger.warn(`Variant check failed, proceeding with force refresh`, { error: variantError });
+        }
+        
+        // Only reach here if variant check passed or failed - do force refresh as fallback
+        logger.warn(`Proceeding with force refresh retry`);
         const originalHeaders = this.requestHeaders;
         this.requestHeaders = {
           ...this.requestHeaders,
@@ -386,7 +478,8 @@ export class ZipResourceFetcher2 {
       };
 
       // Get equivalent types for the requested version
-      const requestedTypes = version
+      // Special handling: 'all' means don't filter by version
+      const requestedTypes = version && version.toLowerCase() !== 'all'
         ? resourceTypeEquivalents[version.toLowerCase()] || [
             version.toLowerCase(),
           ]
@@ -404,7 +497,8 @@ export class ZipResourceFetcher2 {
             ),
         )
         .filter((r) => {
-          if (!version) return true; // No version specified, return all
+          // If version='all' or no version, return all resources
+          if (!version || version.toLowerCase() === 'all') return true;
           if (!requestedTypes) return r.name.endsWith(`_${version}`);
           // Check if resource name ends with any of the equivalent types
           return requestedTypes.some((type) => r.name.endsWith(`_${type}`));
@@ -418,7 +512,23 @@ export class ZipResourceFetcher2 {
           return as - bs;
         });
 
-      type ScriptureResult = { text: string; translation: string };
+      type ScriptureResult = { 
+        text: string; 
+        translation: string;
+        citation?: {
+          resource: string;
+          title?: string; // Dynamic title from DCS catalog
+          organization: string;
+          language: string;
+          version: string;
+          url?: string;
+        };
+        metadata?: {
+          resourceType: string;
+          subject?: string;
+          license: string;
+        };
+      };
       const results: ScriptureResult[] = [];
 
       // Prepare targets with resolved ingredient path and zip info
@@ -487,6 +597,8 @@ export class ZipResourceFetcher2 {
             ingredientPath: ingredient.path,
             refTag,
             zipballUrl,
+            subject: resource.subject, // ✅ FROM DCS CATALOG
+            title: resource.title, // ✅ FROM DCS CATALOG
           };
         })
         .filter(
@@ -498,6 +610,8 @@ export class ZipResourceFetcher2 {
             ingredientPath: string;
             refTag: string | null;
             zipballUrl: string | null;
+            subject?: string;
+            title?: string;
           } => Boolean(v),
         );
 
@@ -564,36 +678,74 @@ export class ZipResourceFetcher2 {
       // KISS: no per-request target de-duplication; rely on in-flight coalescing instead
 
       // First: try R2/Cache for extracted file content (no ZIP needed on hit)
-      const misses: number[] = [];
-      for (let i = 0; i < targets.length; i++) {
-        const t = targets[i];
+      // ⚡ PARALLEL FETCH: Fetch all files simultaneously instead of sequentially
+      console.log(`[PARALLEL FETCH] Starting parallel fetch for ${targets.length} resources`);
+      
+      // Create single R2Storage instance to share memory cache across all fetches
+      const { bucket, caches } = getR2Env();
+      const r2 = new R2Storage(bucket as any, caches as any);
+      
+      const fetchPromises = targets.map(async (t, i) => {
         const zipUrl =
           t.zipballUrl ||
           `https://git.door43.org/${t.owner}/${t.name}/archive/${encodeURIComponent(t.refTag || "master")}.zip`;
         const { key: r2Key } = r2KeyFromUrl(zipUrl);
         const cleanInner = t.ingredientPath.replace(/^(\.\/|\/)+/, "");
         const fileKey = `${r2Key}/files/${cleanInner}`;
-        const { bucket, caches } = getR2Env();
-        const r2 = new R2Storage(bucket as any, caches as any);
         const ext = cleanInner.toLowerCase();
         const contentType = ext.endsWith(".md")
           ? "text/markdown; charset=utf-8"
           : ext.endsWith(".tsv")
             ? "text/tab-separated-values; charset=utf-8"
             : "text/plain; charset=utf-8";
-        const {
-          data: contentStr,
-          source,
-          durationMs,
-          size,
-        } = await r2.getFileWithInfo(fileKey, contentType);
+        
+        try {
+          const {
+            data: contentStr,
+            source,
+            durationMs,
+            size,
+          } = await r2.getFileWithInfo(fileKey, contentType);
+          
+          return {
+            index: i,
+            target: t,
+            contentStr,
+            source,
+            durationMs,
+            size,
+            fileKey,
+          };
+        } catch (error) {
+          console.error(`[PARALLEL FETCH] Error fetching ${fileKey}:`, error);
+          return {
+            index: i,
+            target: t,
+            contentStr: null,
+            source: "error" as const,
+            durationMs: 0,
+            size: 0,
+            fileKey,
+          };
+        }
+      });
+
+      const fetchResults = await Promise.all(fetchPromises);
+      console.log(`[PARALLEL FETCH] Completed ${fetchResults.length} fetches in parallel`);
+
+      // Process results
+      const misses: number[] = [];
+      for (const result of fetchResults) {
+        const { index: i, target: t, contentStr, source, durationMs, size, fileKey } = result;
+        
         if (!contentStr) {
           misses.push(i);
           continue;
         }
+        
         try {
-          // R2 is a cache layer - both "cache" (Cache API) and "r2" (R2 bucket) are cache hits
-          const isCacheHit = source === "cache" || source === "r2";
+          // All cache layers (memory, Cache API, R2) are cache hits
+          const isCacheHit = source === "memory" || source === "cache" || source === "r2";
           console.log(`[CACHE TRACE] R2 file result:`, {
             fileKey,
             source,
@@ -643,8 +795,19 @@ export class ZipResourceFetcher2 {
           results.push({
             text: verseText,
             translation: withVersion,
-            // @ts-expect-error - Adding organization tracking for accurate source attribution
-            actualOrganization: t.owner,
+            citation: {
+              resource: name.toLowerCase(),
+              title: t.title, // ✅ FROM DCS CATALOG
+              organization: t.owner,
+              language,
+              version: t.refTag || 'unknown',
+              url: t.zipballUrl || `https://git.door43.org/${t.owner}/${t.name}`
+            },
+            metadata: {
+              resourceType: 'scripture',
+              subject: t.subject, // ✅ FROM DCS CATALOG (e.g., "Bible", "Aligned Bible")
+              license: 'CC BY-SA 4.0'
+            }
           });
         }
       }
@@ -723,16 +886,50 @@ export class ZipResourceFetcher2 {
           results.push({
             text: verseText,
             translation: withVersion,
-            // @ts-expect-error - Adding organization tracking for accurate source attribution
-            actualOrganization: t.owner,
+            citation: {
+              resource: name.toLowerCase(),
+              title: t.title, // ✅ FROM DCS CATALOG
+              organization: t.owner,
+              language,
+              version: t.refTag || 'unknown',
+              url: t.zipballUrl || `https://git.door43.org/${t.owner}/${t.name}`
+            },
+            metadata: {
+              resourceType: 'scripture',
+              subject: t.subject, // ✅ FROM DCS CATALOG (e.g., "Bible", "Aligned Bible")
+              license: 'CC BY-SA 4.0'
+            }
           });
         }
+      }
+
+      // Check if files were fetched but verse extraction returned empty
+      // This means the verse doesn't exist in the available resources
+      if (results.length === 0 && targets.length > 0) {
+        const verseInfo = reference.verse 
+          ? (reference.endVerse ? `verses ${reference.verse}-${reference.endVerse}` : `verse ${reference.verse}`)
+          : 'this verse';
+        
+        const error: any = new Error(
+          `Unable to find ${verseInfo} in ${reference.book} chapter ${reference.chapter}.\n\n` +
+          `The book is available in the catalog, but the requested verse could not be found. ` +
+          `This verse may not exist in this chapter.`
+        );
+        error.verseNotFound = true;
+        error.requestedBook = reference.book;
+        error.chapter = reference.chapter;
+        error.verse = reference.verse;
+        error.endVerse = reference.endVerse;
+        error.language = language;
+        error.resourcesChecked = targets.length;
+        
+        throw error;
       }
 
       return results;
     } catch (error) {
       logger.error("Error in getScripture:", error as Error);
-      return [];
+      throw error; // Re-throw to preserve error information
     }
   }
 
@@ -788,7 +985,8 @@ export class ZipResourceFetcher2 {
     language: string,
     organization: string,
     resourceType: "tn" | "tq" | "twl",
-  ): Promise<unknown[]> {
+    topic: string = "tc-ready", // Default to tc-ready if not provided
+  ): Promise<{ data: unknown[]; subject?: string; version?: string }> {
     try {
       // Map resource types to proper subject filters
       const subjectMap = {
@@ -807,6 +1005,7 @@ export class ZipResourceFetcher2 {
       params.set("type", "text");
       params.set("stage", "prod");
       params.set("subject", subject);
+      params.set("topic", topic); // ✅ Filter by topic (defaults to tc-ready)
       params.set("metadataType", "rc");
       params.set("includeMetadata", "true");
       const catalogUrl = `${baseCatalog}?${params.toString()}`;
@@ -847,7 +1046,7 @@ export class ZipResourceFetcher2 {
         const networkRes = await trackedFetch(this.tracer, catalogUrl, {
           headers: this.getClientHeaders(),
         });
-        if (!networkRes.ok) return [];
+        if (!networkRes.ok) return { data: [], subject: undefined };
         const body = await networkRes.text();
         try {
           const parsed = JSON.parse(body) as { data?: CatalogResource[] };
@@ -873,58 +1072,302 @@ export class ZipResourceFetcher2 {
             );
           }
         } catch {
-          return [];
+          return { data: [], subject: undefined };
         }
       }
 
-      // 2. Find the right resource (API filtering already applied)
-      const resource = resources[0]; // Should only have resources matching our subject
-      if (!resource) return [];
+      // 2. Process ALL matching resources (not just first one)
+      // 🚀 OPTIMIZATION: If zero resources, check for language variants IMMEDIATELY
+      // instead of wasting time on empty results (same pattern as getScripture)
+      if (resources.length === 0) {
+        logger.info(`No ${resourceType} resources found for language=${language}, checking for variants BEFORE returning empty`);
+        
+        try {
+          // Import variant discovery function
+          const { findLanguageVariants } = await import("../functions/resource-detector.js");
+          const baseLanguage = language.split('-')[0];
+          
+          // Quick check: do variants exist for this base language?
+          const variants = await findLanguageVariants(
+            baseLanguage,
+            organization === 'all' ? undefined : organization,
+            topic,
+            [subject] // Use the TSV subject (e.g., "TSV Translation Notes")
+          );
+          
+          // If variants exist but current language isn't in the list, throw helpful error
+          // The simpleEndpoint auto-retry will catch this and retry with the variant
+          if (variants.length > 0 && !variants.includes(language)) {
+            logger.info(`Found variants for ${baseLanguage}, throwing error for auto-retry`, { variants, resourceType });
+            // Throw error with variants for simpleEndpoint to handle
+            const error: any = new Error(`No ${resourceType} resources found for language '${language}'`);
+            error.languageVariants = variants;
+            error.requestedLanguage = language;
+            throw error;
+          }
+          
+          // If current language IS in variants or no variants found, return empty
+          logger.info(`No variants found or current language in variants list, returning empty`, { 
+            languageInVariants: variants.includes(language),
+            variantCount: variants.length 
+          });
+        } catch (variantError: any) {
+          // If it's our intentional error with variants, re-throw it
+          if (variantError.languageVariants) {
+            throw variantError;
+          }
+          // Otherwise, log and continue to return empty
+          logger.warn(`Variant check failed, returning empty`, { error: variantError });
+        }
+        
+        return { data: [], subject: undefined };
+      }
 
-      // 3. Find the ingredient for this book
+      logger.info(`Found ${resources.length} ${resourceType.toUpperCase()} resources`);
+
+      // 3. Find ingredients for this book in ALL resources
       const bookCode = this.getBookCode(reference.book);
-      let targetIngredient: { path: string } | null = null;
+      const targets: Array<{
+        resource: CatalogResource;
+        ingredientPath: string;
+        refTag: string;
+        zipballUrl?: string;
+      }> = [];
 
-      // TSV files might be named differently, check various patterns
-      for (const ingredient of resource.ingredients || []) {
-        const path = (ingredient.path || "").toLowerCase();
-        if (path.includes(bookCode.toLowerCase()) && path.endsWith(".tsv")) {
-          targetIngredient = { path: ingredient.path };
-          break;
+      for (const resource of resources) {
+        // Check if resource is blacklisted (previously failed 404)
+        const blacklistKey = `${resource.owner}/${resource.name}:${this.resolveRefAndZip(resource as unknown).refTag}`;
+        const blacklistTime = resourceBlacklist.get(blacklistKey);
+        if (blacklistTime) {
+          const age = Date.now() - blacklistTime;
+          if (age < BLACKLIST_TTL) {
+            logger.info(`⏭️ Skipping blacklisted resource (404): ${blacklistKey} (age: ${Math.round(age/1000)}s)`);
+            continue; // Skip this resource
+          } else {
+            // TTL expired, remove from blacklist and retry
+            resourceBlacklist.delete(blacklistKey);
+            logger.info(`🔄 Blacklist TTL expired for ${blacklistKey}, retrying`);
+          }
+        }
+
+        // Find TSV ingredient for this book
+        let targetIngredient: { path: string } | null = null;
+        for (const ingredient of resource.ingredients || []) {
+          const path = (ingredient.path || "").toLowerCase();
+          if (path.includes(bookCode.toLowerCase()) && path.endsWith(".tsv")) {
+            targetIngredient = { path: ingredient.path };
+            break;
+          }
+        }
+
+        if (targetIngredient) {
+          const { refTag, zipballUrl } = this.resolveRefAndZip(resource as unknown);
+          targets.push({
+            resource,
+            ingredientPath: targetIngredient.path,
+            refTag,
+            zipballUrl,
+          });
+        } else {
+          logger.debug(
+            `No TSV ingredient found for ${reference.book} in ${resource.name}`,
+          );
         }
       }
 
-      if (!targetIngredient) {
-        logger.debug(
-          `No TSV ingredient found for ${reference.book} in ${resource.name}`,
-        );
-        return [];
+      if (targets.length === 0) return [];
+
+      // 4. PARALLEL FETCH: Fetch all TSV files simultaneously
+      logger.info(`[PARALLEL FETCH] Starting parallel fetch for ${targets.length} ${resourceType.toUpperCase()} resources`);
+      
+      // Create single R2Storage instance to share memory cache
+      const { bucket, caches } = getR2Env();
+      const r2 = new R2Storage(bucket as any, caches as any);
+      
+      const fetchPromises = targets.map(async (target) => {
+        const zipUrl =
+          target.zipballUrl ||
+          `https://git.door43.org/${target.resource.owner}/${target.resource.name}/archive/${encodeURIComponent(target.refTag || "master")}.zip`;
+        const { key: r2Key } = r2KeyFromUrl(zipUrl);
+        const cleanInner = target.ingredientPath.replace(/^(\.\/|\/)+/, "");
+        const fileKey = `${r2Key}/files/${cleanInner}`;
+        
+        logger.info(`[DEBUG] Attempting to fetch TSV file:`, {
+          resource: target.resource.name,
+          ingredientPath: target.ingredientPath,
+          cleanInner,
+          fileKey,
+          zipUrl,
+          bookCode: this.getBookCode(reference.book)
+        });
+        
+        try {
+          const {
+            data: tsvContent,
+            source,
+            durationMs,
+            size,
+          } = await r2.getFileWithInfo(fileKey, "text/tab-separated-values; charset=utf-8");
+          
+          logger.info(`[DEBUG] getFileWithInfo result:`, {
+            resource: target.resource.name,
+            hasTsvContent: !!tsvContent,
+            tsvLength: tsvContent?.length || 0,
+            source,
+            durationMs,
+            size
+          });
+          
+          // Log cache trace
+          try {
+            const isCacheHit = source === "memory" || source === "cache" || source === "r2";
+            this.tracer.addApiCall({
+              url: `internal://${source}/file/${fileKey}`,
+              duration: durationMs,
+              status: 200,
+              size,
+              cached: isCacheHit,
+            });
+          } catch {
+            // ignore tracer issues
+          }
+          
+          return {
+            resource: target.resource,
+            tsvContent,
+            success: !!tsvContent,
+          };
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          const errorStack = error instanceof Error ? error.stack : undefined;
+          logger.error(`[DEBUG] Error fetching TSV for ${target.resource.name}:`, {
+            error: errorMsg,
+            stack: errorStack,
+            fileKey,
+            zipUrl
+          });
+          return {
+            resource: target.resource,
+            tsvContent: null,
+            success: false,
+          };
+        }
+      });
+
+      const fetchResults = await Promise.all(fetchPromises);
+      logger.info(`[PARALLEL FETCH] Completed ${fetchResults.length} ${resourceType.toUpperCase()} fetches in parallel`);
+
+      // DEBUG: Log fetch results
+      logger.info(`[DEBUG] Fetch results summary:`, {
+        totalResults: fetchResults.length,
+        successCount: fetchResults.filter(r => r.success).length,
+        results: fetchResults.map(r => ({
+          resource: r.resource.name,
+          success: r.success,
+          hasContent: !!r.tsvContent,
+          contentLength: r.tsvContent?.length || 0
+        }))
+      });
+
+      // 5. Parse TSV from all resources and combine results
+      const allResults: unknown[] = [];
+      const misses: Array<{ index: number; target: typeof targets[0]; result: typeof fetchResults[0] }> = [];
+      
+      // First pass: process cache hits
+      for (let i = 0; i < fetchResults.length; i++) {
+        const result = fetchResults[i];
+        logger.info(`[DEBUG] Processing result for ${result.resource.name}:`, {
+          success: result.success,
+          hasContent: !!result.tsvContent,
+          contentLength: result.tsvContent?.length || 0
+        });
+        
+        if (result.success && result.tsvContent) {
+          // DEBUG: Log TSV content details
+          const lines = result.tsvContent.split('\n');
+          logger.info(`[DEBUG] TSV content for ${result.resource.name}:`, {
+            totalLines: lines.length,
+            firstLine: lines[0]?.substring(0, 150),
+            secondLine: lines[1]?.substring(0, 150),
+            thirdLine: lines[2]?.substring(0, 150)
+          });
+          
+          const parsed = this.parseTSVForReference(result.tsvContent, reference);
+          logger.info(`[DEBUG] Parsed ${parsed.length} rows from ${result.resource.name} for reference:`, {
+            book: reference.book,
+            chapter: reference.chapter,
+            verse: reference.verse
+          });
+          allResults.push(...parsed);
+        } else {
+          logger.warn(`[DEBUG] Skipping result for ${result.resource.name}: success=${result.success}, hasContent=${!!result.tsvContent}`);
+          misses.push({ index: i, target: targets[i], result });
+        }
       }
 
-      // 4. Get ZIP and extract (prefer catalog-provided ref and zipball URL)
-      const { refTag, zipballUrl } = this.resolveRefAndZip(resource as unknown);
-      const zipData = await this.getOrDownloadZip(
-        resource.owner,
-        resource.name,
-        refTag,
-        zipballUrl,
-      );
-      if (!zipData) return [];
+      // Second pass: handle cache misses by downloading and extracting
+      if (misses.length > 0) {
+        logger.info(`[CACHE MISS FALLBACK] Processing ${misses.length} cache misses for ${resourceType.toUpperCase()}`);
+        
+        for (let m = 0; m < misses.length; m++) {
+          const miss = misses[m];
+          const t = miss.target;
+          
+          try {
+            // Add human-like delay between downloads (200-800ms)
+            if (m > 0) {
+              const delay = Math.floor(Math.random() * 600) + 200;
+              await new Promise((resolve) => setTimeout(resolve, delay));
+            }
 
-      const tsvContent = await this.extractFileFromZip(
-        zipData,
-        targetIngredient.path,
-        resource.name,
-        `zip:${resource.owner}/${resource.name}:${refTag}`,
-      );
+            // Download ZIP
+            logger.info(`[CACHE MISS] Downloading ZIP for ${t.resource.name}`);
+            const zipData = await this.getOrDownloadZip(
+              t.resource.owner || "unfoldingWord",
+              t.resource.name,
+              t.refTag,
+              t.zipballUrl,
+            );
 
-      if (!tsvContent) return [];
+            if (!zipData) {
+              logger.warn(`Failed to download ZIP for ${t.resource.name}`);
+              continue;
+            }
 
-      // 5. Parse TSV and filter by reference
-      return this.parseTSVForReference(tsvContent, reference);
+            // Extract TSV file from ZIP
+            const { key: r2Key } = r2KeyFromUrl(
+              t.zipballUrl ||
+                `https://git.door43.org/${t.resource.owner}/${t.resource.name}/archive/${encodeURIComponent(t.refTag || "master")}.zip`
+            );
+            const tsvContent = await this.extractFileFromZip(
+              zipData,
+              t.ingredientPath,
+              t.resource.name,
+              r2Key,
+            );
+
+            if (tsvContent) {
+              logger.info(`[CACHE MISS] Successfully extracted TSV for ${t.resource.name}`);
+              const parsed = this.parseTSVForReference(tsvContent, reference);
+              logger.info(`[CACHE MISS] Parsed ${parsed.length} rows from ${t.resource.name} after fallback`);
+              allResults.push(...parsed);
+            }
+          } catch (error) {
+            logger.error(`Error handling cache miss for ${t.resource.name}:`, error as Error);
+          }
+        }
+      }
+
+      // Extract subject and version from first resource in catalog (dynamic, not hardcoded)
+      const resourceSubject = resources.length > 0 ? resources[0].subject : undefined;
+      const resourceVersion = targets.length > 0 ? targets[0].refTag : undefined;
+      logger.info(`[getTSVData] Dynamic subject from catalog: ${resourceSubject}`);
+      logger.info(`[getTSVData] Dynamic version from catalog: ${resourceVersion}`);
+
+      return { data: allResults, subject: resourceSubject, version: resourceVersion };
     } catch (error) {
       logger.error("Error in getTSVData:", error as Error);
-      return [];
+      return { data: [], subject: undefined, version: undefined };
     }
   }
 
@@ -940,6 +1383,7 @@ export class ZipResourceFetcher2 {
     resourceType: "tw" | "ta",
     identifier?: string,
     forceRefresh = false,
+    topic?: string,
   ): Promise<unknown> {
     logger.info(`[getMarkdownContent] START`, {
       language,
@@ -947,23 +1391,29 @@ export class ZipResourceFetcher2 {
       resourceType,
       identifier,
       forceRefresh,
+      topic,
     });
+    
+    logger.info(`🔍 TOPIC PARAMETER DEBUG: ${topic || 'undefined'}`);
 
     try {
-      // Map resource types to proper subject filters
+      // Map resource types to proper subject filters for catalog search
       const subjectMap = {
         tw: "Translation Words",
         ta: "Translation Academy",
       };
-      const subject = subjectMap[resourceType];
+      const catalogSubjectFilter = subjectMap[resourceType];
 
-      logger.info(`[getMarkdownContent] Subject: ${subject}`);
+      logger.info(`[getMarkdownContent] Catalog subject filter: ${catalogSubjectFilter}`);
 
       // 1) Catalog lookup with subject-specific filtering (KV + memory cached)
       const baseCatalog = `https://git.door43.org/api/v1/catalog/search`;
       const params = new URLSearchParams();
       params.set("lang", language);
-      params.set("owner", organization);
+      // Only set owner if not "all" (DCS API doesn't support owner=all)
+      if (organization && organization !== "all") {
+        params.set("owner", organization);
+      }
       params.set("stage", "prod");
 
       // Translation Academy uses flavor_type="gloss", not type="text"
@@ -972,9 +1422,15 @@ export class ZipResourceFetcher2 {
         params.set("type", "text");
       }
 
-      params.set("subject", subject);
+      params.set("subject", catalogSubjectFilter);
       params.set("metadataType", "rc");
       params.set("includeMetadata", "true");
+      
+      // Add topic filter if provided (reduces resource count)
+      if (topic) {
+        params.set("topic", topic);
+      }
+      
       const catalogUrl = `${baseCatalog}?${params.toString()}`;
 
       // KV-backed cache key aligned with other helpers
@@ -1006,7 +1462,7 @@ export class ZipResourceFetcher2 {
               catalogData = parsed;
               // Log synthetic cache hit for X-Ray
               this.tracer.addApiCall({
-                url: `internal://kv/catalog/${language}/${organization}/${subject}`,
+                url: `internal://kv/catalog/${language}/${organization}/${catalogSubjectFilter}`,
                 duration: Math.max(
                   1,
                   Math.round(
@@ -1086,26 +1542,64 @@ export class ZipResourceFetcher2 {
           }
         } catch {
           return resourceType === "tw"
-            ? { articles: [] }
-            : { modules: [], categories: [] };
+            ? { articles: [], subject: undefined }
+            : { modules: [], categories: [], subject: undefined };
         }
       }
 
-      const resource = (catalogData?.data || [])[0]; // API filtering already applied
+      const resources = catalogData?.data || []; // API filtering already applied
 
       logger.info(`[getMarkdownContent] Catalog data:`, {
         hasData: !!catalogData,
-        dataLength: catalogData?.data?.length || 0,
-        hasResource: !!resource,
-        resourceName: resource?.name,
+        dataLength: resources.length,
+        resourceNames: resources.map(r => r.name),
       });
 
-      // If cache yielded zero resources, delete the bad cache and retry fresh
-      if (
-        !resource &&
-        (!catalogData?.data || catalogData.data.length === 0) &&
-        !forceRefresh
-      ) {
+      // 🚀 OPTIMIZATION: If zero resources, check for language variants IMMEDIATELY
+      // BEFORE doing wasteful force refresh retry (same pattern as getScripture and getTSVData)
+      if (resources.length === 0 && !forceRefresh) {
+        logger.info(`No ${resourceType} resources found for language=${language}, checking for variants BEFORE force refresh`);
+        
+        try {
+          // Import variant discovery function
+          const { findLanguageVariants } = await import("../functions/resource-detector.js");
+          const baseLanguage = language.split('-')[0];
+          
+          // Quick check: do variants exist for this base language?
+          const subjectForVariantCheck = resourceType === "tw" ? "Translation Words" : "Translation Academy";
+          const variants = await findLanguageVariants(
+            baseLanguage,
+            organization === 'all' ? undefined : organization,
+            topic || 'tc-ready',
+            [subjectForVariantCheck]
+          );
+          
+          // If variants exist but current language isn't in the list, throw helpful error
+          // The simpleEndpoint auto-retry will catch this and retry with the variant
+          if (variants.length > 0 && !variants.includes(language)) {
+            logger.info(`Found variants for ${baseLanguage}, throwing error for auto-retry`, { variants, resourceType });
+            // Throw error with variants for simpleEndpoint to handle
+            const error: any = new Error(`No ${resourceType} resources found for language '${language}'`);
+            error.languageVariants = variants;
+            error.requestedLanguage = language;
+            throw error;
+          }
+          
+          // If current language IS in variants or no variants found, do force refresh as fallback
+          logger.info(`Variant check passed, proceeding with force refresh`, { 
+            languageInVariants: variants.includes(language),
+            variantCount: variants.length 
+          });
+        } catch (variantError: any) {
+          // If it's our intentional error with variants, re-throw it
+          if (variantError.languageVariants) {
+            throw variantError;
+          }
+          // Otherwise, log and continue to force refresh
+          logger.warn(`Variant check failed, proceeding with force refresh`, { error: variantError });
+        }
+        
+        // Only reach here if variant check passed or failed - do force refresh as fallback
         logger.warn(
           `[getMarkdownContent] Got empty catalog from cache, invalidating and retrying with force refresh`,
           { key: catalogCacheKey },
@@ -1124,18 +1618,77 @@ export class ZipResourceFetcher2 {
           resourceType,
           identifier,
           true, // forceRefresh=true to bypass memory cache
+          topic, // Pass topic to recursive call
         );
       }
-
-      if (!resource) {
+      
+      // After force refresh, if still no resources, return empty
+      if (resources.length === 0) {
         logger.warn(
-          `[getMarkdownContent] No resource found in catalog for ${resourceType}`,
+          `[getMarkdownContent] No resources found in catalog for ${resourceType}`,
         );
         return resourceType === "tw"
-          ? { articles: [] }
-          : { modules: [], categories: [] };
+          ? { articles: [], subject: undefined }
+          : { modules: [], categories: [], subject: undefined };
       }
 
+      // PARALLEL FETCH: Process all resources simultaneously
+      logger.info(`[PARALLEL FETCH] Processing ${resources.length} ${resourceType.toUpperCase()} resources in parallel`);
+      
+      const resourcePromises = resources.map(async (resource) => {
+        return this.processMarkdownResource(
+          resource,
+          resourceType,
+          identifier,
+          language
+        );
+      });
+
+      const resourceResults = await Promise.all(resourcePromises);
+      logger.info(`[PARALLEL FETCH] Completed ${resourceResults.length} ${resourceType.toUpperCase()} fetches`);
+
+      // Extract subject from first resource in catalog (dynamic, not hardcoded)
+      const resourceSubject = resources.length > 0 ? resources[0].subject : undefined;
+      logger.info(`[getMarkdownContent] Dynamic subject from catalog: ${resourceSubject}`);
+
+      // Combine results from all resources
+      if (resourceType === "tw") {
+        const allArticles = resourceResults.flatMap(r => r.articles || []);
+        return { articles: allArticles, subject: resourceSubject };
+      } else { // ta
+        const allModules = resourceResults.flatMap(r => r.modules || []);
+        const allCategories = [...new Set(resourceResults.flatMap(r => r.categories || []))];
+        return { modules: allModules, categories: allCategories, subject: resourceSubject };
+      }
+    } catch (error) {
+      logger.error("Error in getMarkdownContent:", {
+        error: error as Error,
+        message: (error as Error).message,
+        stack: (error as Error).stack,
+        resourceType,
+        identifier,
+        language,
+        organization,
+      });
+      return resourceType === "tw"
+        ? { articles: [] }
+        : { modules: [], categories: [] };
+    }
+  }
+
+  /**
+   * Process markdown content from a single resource
+   * Extracted for parallel processing of multiple resources
+   */
+  private async processMarkdownResource(
+    resource: CatalogResource,
+    resourceType: "tw" | "ta",
+    identifier: string | undefined,
+    language: string
+  ): Promise<{ articles?: any[], modules?: any[], categories?: string[] }> {
+    try {
+      logger.info(`[processMarkdownResource] Processing ${resource.name}`);
+      
       // 2) Download ZIP (prefer catalog-provided ref and zipball URL)
       const { refTag, zipballUrl } = this.resolveRefAndZip(resource as unknown);
 
@@ -2016,6 +2569,14 @@ export class ZipResourceFetcher2 {
           console.log(
             `[ZIP] Initial ZIP fetch failed: ${response.status} ${response.statusText}`,
           );
+          
+          // If 404, blacklist this resource to prevent future attempts
+          if (response.status === 404) {
+            const blacklistKey = `${organization}/${repository}:${ref || 'master'}`;
+            resourceBlacklist.set(blacklistKey, Date.now());
+            logger.warn(`⛔ Blacklisting resource (404): ${blacklistKey}`);
+          }
+          
           // Prefer plain tag tar.gz first
           let tarResp = await trackedFetch(this.tracer, tarUrl, {
             headers: this.getClientHeaders(),
@@ -2024,6 +2585,14 @@ export class ZipResourceFetcher2 {
             console.log(
               `[ZIP] TAR.GZ fetch also failed: ${tarResp.status} ${tarResp.statusText}`,
             );
+            
+            // If TAR.GZ also 404, ensure blacklisted
+            if (tarResp.status === 404) {
+              const blacklistKey = `${organization}/${repository}:${ref || 'master'}`;
+              resourceBlacklist.set(blacklistKey, Date.now());
+              logger.warn(`⛔ Blacklisting resource after TAR.GZ 404: ${blacklistKey}`);
+            }
+            
             // Then try immutable Link header (often commit tarball) if available
             const linkHeader =
               response.headers.get("link") || response.headers.get("Link");
@@ -2101,6 +2670,8 @@ export class ZipResourceFetcher2 {
    * Get book code from book name
    */
   private getBookCode(book: string): string {
+    logger.debug('[getBookCode] Input:', { book, type: typeof book });
+    
     const bookMap: Record<string, string> = {
       genesis: "GEN",
       gen: "GEN",
@@ -2252,7 +2823,16 @@ export class ZipResourceFetcher2 {
     };
 
     const normalized = book.toLowerCase().trim();
-    return bookMap[normalized] || book.toUpperCase().substring(0, 3);
+    const result = bookMap[normalized] || book.toUpperCase().substring(0, 3);
+    
+    logger.debug('[getBookCode] Result:', { 
+      input: book, 
+      normalized, 
+      foundInMap: !!bookMap[normalized],
+      result 
+    });
+    
+    return result;
   }
 
   /**
@@ -2285,8 +2865,8 @@ export class ZipResourceFetcher2 {
           );
           if (data !== null) {
             try {
-              // R2 is a cache layer - both "cache" (Cache API) and "r2" (R2 bucket) are cache hits
-              const isCacheHit = source === "cache" || source === "r2";
+              // All cache layers (memory, Cache API, R2) are cache hits
+              const isCacheHit = source === "memory" || source === "cache" || source === "r2";
               this.tracer.addApiCall({
                 url: `internal://${source}/file/${fileKey}`,
                 duration: durationMs,
@@ -2787,7 +3367,7 @@ export class ZipResourceFetcher2 {
     try {
       const lines = tsv.split("\n");
       if (lines.length < 2) {
-        logger.debug("parseTSVForReference: TSV has less than 2 lines", {
+        logger.info("parseTSVForReference: TSV has less than 2 lines", {
           lineCount: lines.length,
         });
         return [];
@@ -2795,14 +3375,16 @@ export class ZipResourceFetcher2 {
 
       // Parse header
       const headers = lines[0].split("\t");
-      logger.debug("parseTSVForReference: Parsing TSV", {
+      logger.info("parseTSVForReference: Parsing TSV", {
         totalLines: lines.length,
+        headers: headers,
         reference:
           reference.originalText ||
           `${reference.book} ${reference.chapter}:${reference.verse}${reference.endVerse ? `-${reference.endVerse}` : ""}`,
         chapter: reference.chapter,
         verse: reference.verse,
         endVerse: reference.endVerse,
+        book: reference.book,
       });
 
       // Parse data rows
@@ -2820,6 +3402,11 @@ export class ZipResourceFetcher2 {
         headers.forEach((header, index) => {
           row[header] = values[index] || "";
         });
+
+        // Log first few rows for debugging
+        if (i <= 3) {
+          logger.info(`Sample TSV row ${i}:`, { row });
+        }
 
         // Check if this row matches our reference
         const ref = (row.Reference || row.reference || "").trim();
@@ -2915,7 +3502,7 @@ export class ZipResourceFetcher2 {
         }
       }
 
-      logger.debug("parseTSVForReference: Filtering complete", {
+      logger.info("parseTSVForReference: Filtering complete", {
         processedRows,
         matchedRows,
         totalResults: results.length,

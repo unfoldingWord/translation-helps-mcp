@@ -1,101 +1,57 @@
 /**
  * Fetch Translation Notes Tool
  * Tool for fetching translation notes for a specific Bible reference
- * Uses shared core service for consistency with Netlify functions
+ * Uses unified service layer for consistency across MCP and REST endpoints
  */
 
 import { z } from "zod";
 import { logger } from "../utils/logger.js";
-import { fetchTranslationNotes } from "../functions/translation-notes-service.js";
-import { buildMetadata } from "../utils/metadata-builder.js";
 import { handleMCPError } from "../utils/mcp-error-handler.js";
-import {
-  ReferenceParam,
-  LanguageParam,
-  OrganizationParam,
-  IncludeIntroParam,
-  IncludeContextParam,
-  FormatParam,
-} from "../schemas/common-params.js";
+import { createTranslationNotesService, type TranslationNotesParams } from "../unified-services/index.js";
+import { toZodObject, PARAMETER_GROUPS } from "../config/parameters/index.js";
 
-// Input schema - using shared common parameters
-export const FetchTranslationNotesArgs = z.object({
-  reference: ReferenceParam,
-  language: LanguageParam,
-  organization: OrganizationParam,
-  includeIntro: IncludeIntroParam,
-  includeContext: IncludeContextParam,
-  format: FormatParam,
-});
+// Input schema - generated from unified parameter definitions
+export const FetchTranslationNotesArgs = toZodObject(PARAMETER_GROUPS.translationNotes.parameters);
 
-export type FetchTranslationNotesArgs = z.infer<
-  typeof FetchTranslationNotesArgs
->;
+export type FetchTranslationNotesArgs = z.infer<typeof FetchTranslationNotesArgs>;
 
 /**
  * Handle the fetch translation notes tool call
+ * Uses unified service layer for consistent business logic
  */
 export async function handleFetchTranslationNotes(
   args: FetchTranslationNotesArgs,
 ) {
-  const startTime = Date.now();
-
   try {
-    logger.info("Fetching translation notes", {
-      reference: args.reference,
-      language: args.language,
-      organization: args.organization,
-      includeIntro: args.includeIntro,
-      includeContext: args.includeContext,
+    logger.info("Fetching translation notes", args);
+
+    // Create and execute unified service
+    const service = createTranslationNotesService();
+    const response = await service.execute(args as TranslationNotesParams, {
+      platform: 'mcp',
     });
 
-    // Use the shared translation notes service (same as Netlify functions)
-    const result = await fetchTranslationNotes({
-      reference: args.reference,
-      language: args.language,
-      organization: args.organization,
-      includeIntro: args.includeIntro,
-      includeContext: args.includeContext,
-    });
+    // Format response for MCP
+    const textContent = typeof response.data === 'string' 
+      ? response.data 
+      : JSON.stringify(response.data, null, 2);
 
-    // Build metadata using shared utility
-    const metadata = buildMetadata({
-      startTime,
-      data: result,
-      serviceMetadata: result.metadata,
-      additionalFields: {
-        verseNotesCount: result.metadata.verseNotesCount,
-        contextNotesCount: result.metadata.contextNotesCount,
-        totalNotesCount: result.metadata.sourceNotesCount,
-      },
-    });
-
-    // Build enhanced response format for MCP
-    const response = {
-      verseNotes: result.verseNotes,
-      contextNotes: result.contextNotes,
-      translationNotes: result.translationNotes, // Keep original for backward compatibility
-      citation: result.citation,
-      language: args.language,
-      organization: args.organization,
-      metadata,
+    return {
+      content: [
+        {
+          type: "text",
+          text: textContent,
+        },
+      ],
+      isError: false,
+      ...(response.metadata && { metadata: response.metadata }),
     };
-
-    logger.info("Translation notes fetched successfully", {
-      reference: args.reference,
-      ...metadata,
-    });
-
-    return response;
-  } catch (error) {
+  } catch (error: any) {
+    logger.error("Failed to fetch translation notes", { error, args });
     return handleMCPError({
       toolName: "fetch_translation_notes",
-      args: {
-        reference: args.reference,
-        language: args.language,
-        organization: args.organization,
-      },
-      startTime,
+      args,
+      startTime: Date.now(),
       originalError: error,
     });
   }

@@ -1,42 +1,87 @@
-import { defineConfig } from "vitest/config";
-import path from "path";
+import { defineConfig } from 'vitest/config';
+import path from 'path';
 
 export default defineConfig({
-  resolve: {
-    alias: {
-      // Resolve SvelteKit $lib alias for tests
-      $lib: path.resolve(__dirname, "ui/src/lib"),
-      // Resolve $env alias
-      "$env/dynamic/private": path.resolve(__dirname, "ui/src/lib/env-mock.ts"),
-    },
+  esbuild: {
+    target: 'esnext',
+    platform: 'node',
+    format: 'esm',
   },
   test: {
-    // Global setup is optional - only runs if Wrangler is needed
-    // API tests in ui/tests/api don't require Wrangler
-    globalSetup: "./tests/global-setup.ts",
-
-    // Set environment variables for ALL tests
-    env: {
-      // Default to dev server (port 8174) - can be overridden for Wrangler tests
-      TEST_BASE_URL: process.env.TEST_BASE_URL || "http://localhost:8174",
-      // Disable any other ports
-      BASE_URL: undefined,
-      API_BASE_URL: undefined,
-      TEST_URL: undefined,
+    // Environment
+    environment: 'node',
+    
+    // Timeouts
+    testTimeout: 30000,  // 30s for network calls
+    hookTimeout: 10000,   // 10s for setup/teardown
+    
+    // Globals
+    globals: true,
+    
+    // Enable TypeScript
+    typecheck: {
+      enabled: false,
     },
-
-    // Test timeouts
-    testTimeout: 30000,
-    hookTimeout: 30000,
-
-    // Reporter options
-    reporters: ["default"],
-
-    // Coverage settings
+    
+    // Pool options for better compatibility
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: false,
+      },
+    },
+    
+    // Coverage
     coverage: {
-      provider: "v8",
-      reporter: ["text", "json", "html"],
-      exclude: ["node_modules/**", "tests/**", "**/*.test.ts", "**/*.spec.ts"],
+      provider: 'v8',
+      reporter: ['text', 'json', 'html', 'lcov'],
+      include: [
+        'src/**/*.ts',
+        'ui/src/**/*.ts',
+        'packages/**/*.ts',
+      ],
+      exclude: [
+        '**/*.test.ts',
+        '**/*.spec.ts',
+        '**/node_modules/**',
+        '**/dist/**',
+        '**/.svelte-kit/**',
+        '**/build/**',
+      ],
+      all: true,
+      clean: true,
+      // Thresholds
+      lines: 60,
+      functions: 60,
+      branches: 60,
+      statements: 60,
     },
+    
+    // Reporters
+    reporters: ['verbose'],
+    
+    // Test setup
+    setupFiles: [],
+    
+    // File patterns
+    include: ['tests/**/*.test.ts', 'tests/**/*.spec.ts'],
+    exclude: ['**/node_modules/**', '**/dist/**'],
+    
+    // Parallelization
+    threads: true,
+    maxThreads: 4,
+    minThreads: 1,
+    
+    // Retry failed tests
+    retry: 1,
+  },
+  
+  // Resolve
+  resolve: {
+    alias: {
+      '$lib': path.resolve(__dirname, './ui/src/lib'),
+      '$src': path.resolve(__dirname, './src'),
+    },
+    extensions: ['.ts', '.js', '.json'],
   },
 });

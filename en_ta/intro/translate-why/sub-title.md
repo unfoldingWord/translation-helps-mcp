@@ -1,0 +1,1 @@
+Why should we translate the Bible?

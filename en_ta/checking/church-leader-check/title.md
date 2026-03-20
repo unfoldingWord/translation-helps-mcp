@@ -1,0 +1,1 @@
+Accuracy Checking by Church Leaders

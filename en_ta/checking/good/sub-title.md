@@ -1,0 +1,1 @@
+How can church leaders affirm that the translation is accurate, clear, natural, and acceptable to the community?

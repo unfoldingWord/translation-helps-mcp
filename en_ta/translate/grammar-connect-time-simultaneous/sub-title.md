@@ -1,0 +1,1 @@
+How can I translate clauses with a simultaneous time relationship?

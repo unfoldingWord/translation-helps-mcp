@@ -48,7 +48,7 @@ export function handleCommonErrors(error: Error): ErrorResponse | null {
 		};
 	}
 
-	// Invalid reference errors
+	// Invalid reference errors (check specific patterns FIRST before generic "not found")
 	if (message.includes('invalid reference') || message.includes('passage could not be found')) {
 		return {
 			status: 400,
@@ -56,8 +56,25 @@ export function handleCommonErrors(error: Error): ErrorResponse | null {
 		};
 	}
 
-	// Resource not found
-	if (message.includes('not found') || message.includes('404')) {
+	// Invalid book code errors (400 Bad Request) - must check BEFORE generic "not found"
+	if (message.includes('book code') || message.includes('3-letter')) {
+		// Return the original detailed error message with book code guidance
+		return {
+			status: 400,
+			message: error.message
+		};
+	}
+
+	// Resource not found (404) - check for errors with recovery data or unsupported language
+	if ((error as any)?.availableBooks || (error as any)?.languageVariants || (error as any)?.requestedLanguage) {
+		return {
+			status: 404,
+			message: error.message // Keep the detailed message with suggestions
+		};
+	}
+
+	// Resource not found (404) - check LAST since it's generic
+	if (message.includes('not found') || message.includes('not available') || message.includes('404')) {
 		return {
 			status: 404,
 			message: 'The requested resource was not found.'

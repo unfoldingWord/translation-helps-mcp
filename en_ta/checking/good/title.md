@@ -1,0 +1,1 @@
+Affirmation of Accuracy and Community Acceptance

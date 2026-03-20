@@ -21,6 +21,7 @@ export interface ResourceOptions {
   resources: string[];
   includeIntro?: boolean;
   includeContext?: boolean;
+  topic?: string;
 }
 
 export interface Scripture {
@@ -198,8 +199,9 @@ export class ResourceAggregator {
     options: ResourceOptions,
   ): Promise<Scripture[] | undefined> {
     try {
+      const topic = options.topic || "tc-ready";
       // STEP 1: Get resource metadata from catalog
-      const searchUrl = `https://git.door43.org/api/v1/catalog/search?lang=${options.language}&owner=${options.organization}&type=text&subject=Bible,Aligned%20Bible&metadataType=rc&includeMetadata=true`;
+      const searchUrl = `https://git.door43.org/api/v1/catalog/search?lang=${options.language}&owner=${options.organization}&type=text&subject=Bible,Aligned%20Bible&metadataType=rc&includeMetadata=true&topic=${topic}`;
       logger.debug(`Fetching Bible catalog: ${searchUrl}`);
       const searchResponse = await fetch(searchUrl);
 
@@ -321,8 +323,9 @@ export class ResourceAggregator {
     options: ResourceOptions,
   ): Promise<TranslationNote[]> {
     try {
+      const topic = options.topic || "tc-ready";
       // STEP 1: Get resource metadata from catalog
-      const searchUrl = `https://git.door43.org/api/v1/catalog/search?lang=${options.language}&owner=${options.organization}&type=text&subject=TSV%20Translation%20Notes&metadataType=rc&includeMetadata=true`;
+      const searchUrl = `https://git.door43.org/api/v1/catalog/search?lang=${options.language}&owner=${options.organization}&type=text&subject=TSV%20Translation%20Notes&metadataType=rc&includeMetadata=true&topic=${topic}`;
       const searchResponse = await fetch(searchUrl);
 
       if (!searchResponse.ok) {
@@ -441,8 +444,9 @@ export class ResourceAggregator {
     options: ResourceOptions,
   ): Promise<TranslationQuestion[]> {
     try {
+      const topic = options.topic || "tc-ready";
       // Use catalog search with ingredients pattern
-      const searchUrl = `https://git.door43.org/api/v1/catalog/search?subject=TSV%20Translation%20Questions&lang=${options.language}&owner=${options.organization}&metadataType=rc&includeMetadata=true`;
+      const searchUrl = `https://git.door43.org/api/v1/catalog/search?subject=TSV%20Translation%20Questions&lang=${options.language}&owner=${options.organization}&metadataType=rc&includeMetadata=true&topic=${topic}`;
       const searchResponse = await fetch(searchUrl);
 
       if (!searchResponse.ok) {
@@ -500,8 +504,9 @@ export class ResourceAggregator {
     options: ResourceOptions,
   ): Promise<TranslationWord[]> {
     try {
+      const topic = options.topic || "tc-ready";
       // STEP 1: Get resource metadata from catalog
-      const searchUrl = `https://git.door43.org/api/v1/catalog/search?lang=${options.language}&owner=${options.organization}&type=text&subject=TSV%20Translation%20Words&metadataType=rc&includeMetadata=true`;
+      const searchUrl = `https://git.door43.org/api/v1/catalog/search?lang=${options.language}&owner=${options.organization}&type=text&subject=TSV%20Translation%20Words&metadataType=rc&includeMetadata=true&topic=${topic}`;
       const searchResponse = await fetch(searchUrl);
 
       if (!searchResponse.ok) {
@@ -616,8 +621,9 @@ export class ResourceAggregator {
     options: ResourceOptions,
   ): Promise<Record<string, unknown>[]> {
     try {
+      const topic = options.topic || "tc-ready";
       // STEP 1: Get resource metadata from catalog
-      const searchUrl = `https://git.door43.org/api/v1/catalog/search?lang=${options.language}&owner=${options.organization}&type=text&subject=TSV%20Translation%20Words%20Links&metadataType=rc&includeMetadata=true`;
+      const searchUrl = `https://git.door43.org/api/v1/catalog/search?lang=${options.language}&owner=${options.organization}&type=text&subject=TSV%20Translation%20Words%20Links&metadataType=rc&includeMetadata=true&topic=${topic}`;
       const searchResponse = await fetch(searchUrl);
 
       if (!searchResponse.ok) {

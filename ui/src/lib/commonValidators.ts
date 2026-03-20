@@ -133,6 +133,13 @@ export const COMMON_PARAMS = {
 				return value.every((org) => typeof org === 'string' && isValidOrganization(org));
 			}
 			return false;
+		},
+		transform: (value: any) => {
+			// Normalize empty strings to undefined for multi-org fetch
+			if (value === '' || value === null) {
+				return undefined;
+			}
+			return value;
 		}
 	},
 
@@ -144,5 +151,44 @@ export const COMMON_PARAMS = {
 	subject: {
 		name: 'subject',
 		validate: isValidSubject
+	},
+
+	path: {
+		name: 'path',
+		required: false, // Optional - when omitted returns TOC
+		validate: (value: any) => {
+			if (!value) return true; // Optional parameter
+			if (typeof value !== 'string') return false;
+			// Should NOT end with .md (we add that internally)
+			return !value.endsWith('.md');
+		}
+	},
+
+	topic: {
+		name: 'topic',
+		default: 'tc-ready',
+		validate: (value: any) => {
+			if (!value) return true; // Optional
+			return typeof value === 'string';
+		}
+	},
+
+	format: {
+		name: 'format',
+		default: 'json',
+		validate: (value: any) => {
+			if (!value) return true; // Optional
+			const validFormats = ['text', 'usfm', 'json', 'md', 'markdown'];
+			return typeof value === 'string' && validFormats.includes(value);
+		}
+	},
+
+	category: {
+		name: 'category',
+		validate: (value: any) => {
+			if (!value) return true; // Optional
+			const validCategories = ['kt', 'names', 'other'];
+			return typeof value === 'string' && validCategories.includes(value);
+		}
 	}
 };

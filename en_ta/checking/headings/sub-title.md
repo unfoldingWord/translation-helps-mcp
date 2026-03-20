@@ -1,0 +1,1 @@
+What kind of section headings should we use?

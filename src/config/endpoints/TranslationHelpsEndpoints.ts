@@ -3,6 +3,8 @@
  *
  * Defines all translation help endpoints: Translation Notes (tN), Translation Academy (tA),
  * Translation Questions (tQ), Translation Word Links (tWL), and Translation Words (tW).
+ * 
+ * Uses unified parameter definitions for automatic consistency with MCP.
  */
 
 import type { EndpointConfig } from "../EndpointConfig.js";
@@ -13,60 +15,24 @@ import {
   TRANSLATION_WORDS_SHAPE,
   TRANSLATION_WORD_LINKS_SHAPE,
 } from "../ResponseShapes.js";
+import { toEndpointParams, PARAMETER_GROUPS } from "../parameters/index.js";
 
 /**
  * Common parameters for reference-based endpoints
+ * Auto-generated from unified parameter definitions
  */
-const REFERENCE_PARAMS = {
-  reference: {
-    type: "string" as const,
-    required: true,
-    description:
-      'Scripture reference (e.g., "John 3:16", "Genesis 1:1-5", "Psalm 23")',
-    example: "John 3:16",
-    pattern: "^[1-3]?\\s?[A-Za-z]+\\s+\\d+(?::\\d+(?:-\\d+)?)?$",
-    min: 3,
-    max: 50,
-  },
-  language: {
-    type: "string" as const,
-    required: false,
-    default: "en",
-    description: "Language code for the translation helps",
-    example: "en",
-    options: ["en", "es", "fr", "sw", "hi", "ar", "zh", "pt"],
-  },
-  organization: {
-    type: "string" as const,
-    required: false,
-    default: "unfoldingWord",
-    description: "Organization providing the translation helps",
-    example: "unfoldingWord",
-    options: ["unfoldingWord", "Door43-Catalog"],
-  },
-  format: {
-    type: "string" as const,
-    required: false,
-    default: "json",
-    description: "Response format",
-    example: "json",
-    options: ["json", "md", "text"],
-  },
-};
+const REFERENCE_PARAMS = toEndpointParams(PARAMETER_GROUPS.translationNotes.parameters);
 
 /**
  * Common parameters for term-based endpoints
+ * Auto-generated from unified parameter definitions
  */
-const TERM_PARAMS = {
-  term: {
-    type: "string" as const,
-    required: false,
-    description:
-      'Translation word term to lookup (e.g., "love", "grace", "salvation")',
-    example: "love",
-    min: 2,
-    max: 50,
-  },
+const TERM_PARAMS = toEndpointParams(PARAMETER_GROUPS.translationWord.parameters);
+
+/**
+ * Legacy path parameter (keeping for backward compatibility)
+ */
+const PATH_PARAM = {
   path: {
     type: "string" as const,
     required: false,
@@ -89,6 +55,7 @@ const TERM_PARAMS = {
   language: REFERENCE_PARAMS.language,
   organization: REFERENCE_PARAMS.organization,
   format: REFERENCE_PARAMS.format,
+  topic: REFERENCE_PARAMS.topic,
 };
 
 /**

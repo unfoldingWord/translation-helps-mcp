@@ -38,7 +38,7 @@ function getPublishedVersion(packageName) {
       stdio: "pipe",
     });
     return result.trim();
-  } catch (error) {
+  } catch (_error) {
     // Package might not exist on npm yet
     return null;
   }
@@ -52,21 +52,24 @@ function hasUncommittedChanges(packagePath) {
       stdio: "pipe",
     });
     return result.trim().length > 0;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }
 
 function hasUnpushedCommits(packagePath) {
   try {
-    // Check if there are commits in the package directory that aren't pushed
-    const result = execSync(
-      `git log origin/main..HEAD --oneline -- ${packagePath}`,
-      { encoding: "utf-8", cwd: rootDir, stdio: "pipe" },
-    );
+    // Commits on this branch that exist locally but are not on the upstream
+    // tracking branch yet. Using origin/main..HEAD incorrectly flags every
+    // feature-branch commit that touches the SDK as "unpushed."
+    const result = execSync(`git log @{u}..HEAD --oneline -- ${packagePath}`, {
+      encoding: "utf-8",
+      cwd: rootDir,
+      stdio: "pipe",
+    });
     return result.trim().length > 0;
-  } catch (error) {
-    // If origin/main doesn't exist or other error, assume no unpushed commits
+  } catch (_error) {
+    // No upstream, detached HEAD, or other git error → skip this signal
     return false;
   }
 }

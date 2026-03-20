@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Clock, Database, Loader, Play, Zap } from 'lucide-svelte';
 	import { createEventDispatcher, onMount } from 'svelte';
+	import ResponsePreviewer from './ResponsePreviewer.svelte';
 
 	interface Parameter {
 		name: string;
@@ -33,7 +34,13 @@
 	let formData: Record<string, any> = {};
 	let currentEndpointName: string | null = null;
 	let copiedResponse = false;
+	let copiedRequest = false;
 	let copiedXRay = false;
+	let selectedFormat: 'auto' | 'json' | 'markdown' | 'text' = 'auto';
+	
+	// Check if user explicitly requested a format
+	$: userRequestedFormat = formData?.format || formData?.outputFormat || null;
+	$: showFormatSwitcher = !userRequestedFormat || userRequestedFormat === 'json';
 
 	// Initialize form data only when endpoint actually changes (not on every reactive cycle)
 	function initializeFormData() {
@@ -75,6 +82,21 @@
 			copiedResponse = true;
 			setTimeout(() => {
 				copiedResponse = false;
+			}, 2000);
+		} catch (err) {
+			console.error('Failed to copy:', err);
+		}
+	}
+
+	async function copyRequest() {
+		try {
+			const text = endpoint?._lastRequest 
+				? JSON.stringify(endpoint._lastRequest.mcp, null, 2)
+				: JSON.stringify(formData, null, 2);
+			await navigator.clipboard.writeText(text);
+			copiedRequest = true;
+			setTimeout(() => {
+				copiedRequest = false;
 			}, 2000);
 		} catch (err) {
 			console.error('Failed to copy:', err);
@@ -460,6 +482,58 @@
 		</div>
 	{/if}
 
+	<!-- Request Display -->
+	{#if endpoint?._lastRequest}
+		<div class="rounded-lg border border-white/10 bg-black/20 mb-4">
+			<details class="group">
+				<summary
+					class="touch-friendly flex cursor-pointer items-center gap-2 p-4 text-sm font-medium text-gray-300 hover:text-white"
+				>
+					<span class="transform transition-transform group-open:rotate-90">▶</span>
+					Request Details
+					<button
+						type="button"
+						on:click|stopPropagation={() => copyRequest()}
+						class="ml-2 rounded bg-green-600/20 px-2 py-1 text-xs font-medium text-green-400 hover:bg-green-600/30 hover:text-green-300"
+					>
+						{copiedRequest ? '✓ Copied!' : 'Copy MCP'}
+					</button>
+					<span class="ml-auto text-xs text-gray-500">
+						{new Date(endpoint._lastRequest.timestamp).toLocaleTimeString()}
+					</span>
+				</summary>
+				<div class="border-t border-white/10 p-4 space-y-4">
+					<!-- MCP Streamable HTTP Request (Full cURL Command) -->
+					<div>
+						<h4 class="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-2">
+							<span class="text-purple-400">🔷</span> MCP Streamable HTTP Request
+						</h4>
+						<pre class="overflow-x-auto rounded bg-gray-900 p-4 text-xs text-purple-400 leading-relaxed"><code>curl -X POST {window.location.origin}{endpoint._lastRequest.mcpHttp.url} \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{JSON.stringify(endpoint._lastRequest.mcpHttp.body)}'</code></pre>
+					</div>
+					
+					<!-- REST API Equivalent -->
+					<div>
+						<h4 class="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-2">
+							<span class="text-blue-400">🌐</span> REST API Equivalent
+						</h4>
+						<pre class="overflow-x-auto rounded bg-gray-900 p-4 text-xs text-blue-400"><code>curl -X GET "{window.location.origin}{endpoint._lastRequest.rest}"</code></pre>
+					</div>
+					
+					<!-- JSON-RPC Body (for reference) -->
+					<div>
+						<h4 class="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-2">
+							<span class="text-gray-500">📦</span> JSON-RPC Body
+						</h4>
+						<pre class="overflow-x-auto rounded bg-gray-900 p-4 text-xs text-gray-300"><code>{JSON.stringify(endpoint._lastRequest.mcp, null, 2)}</code></pre>
+					</div>
+				</div>
+			</details>
+		</div>
+	{/if}
+
 	<!-- Response Display -->
 	{#if result}
 		<div class="rounded-lg border border-white/10 bg-black/20">
@@ -483,35 +557,49 @@
 						).toLocaleString()} chars
 					</span>
 				</summary>
-				<div class="border-t border-white/10 p-4">
-					{#if typeof result === 'string'}
-						<pre
-							class="overflow-x-auto text-xs break-words whitespace-pre-wrap text-gray-300 lg:text-sm">{result}</pre>
-					{:else if result?.metadata?.format === 'markdown' && typeof result?.data === 'string'}
-						<!-- JSON response with markdown content -->
-						<div class="space-y-4">
-							<div class="border-b border-white/10 pb-2 text-xs text-gray-500">
-								<strong>Format:</strong> Markdown |
-								{#if result.metadata.category}<strong>Category:</strong>
-									{result.metadata.category} |
-								{/if}
-								{#if result.metadata.moduleCount}<strong>Modules:</strong>
-									{result.metadata.moduleCount} |
-								{/if}
-								<strong>Source:</strong>
-								{result.metadata.source || 'N/A'}
-							</div>
-							<pre
-								class="overflow-x-auto text-xs break-words whitespace-pre-wrap text-gray-300 lg:text-sm">{result.data}</pre>
+				<div class="border-t border-white/10">
+					<!-- Format Tabs (only show when format not explicitly requested) -->
+					{#if showFormatSwitcher}
+						<div class="flex border-b border-white/10 bg-gray-900/50 px-4">
+							<button
+								class="format-tab {selectedFormat === 'auto' ? 'active' : ''}"
+								on:click={() => (selectedFormat = 'auto')}
+							>
+								Auto
+							</button>
+							<button
+								class="format-tab {selectedFormat === 'json' ? 'active' : ''}"
+								on:click={() => (selectedFormat = 'json')}
+							>
+								JSON
+							</button>
+							<button
+								class="format-tab {selectedFormat === 'markdown' ? 'active' : ''}"
+								on:click={() => (selectedFormat = 'markdown')}
+							>
+								Markdown
+							</button>
+							<button
+								class="format-tab {selectedFormat === 'text' ? 'active' : ''}"
+								on:click={() => (selectedFormat = 'text')}
+							>
+								Text
+							</button>
 						</div>
 					{:else}
-						<pre
-							class="overflow-x-auto text-xs break-words whitespace-pre-wrap text-gray-300 lg:text-sm">{JSON.stringify(
-								result,
-								null,
-								2
-							)}</pre>
+						<!-- Show format indicator when user explicitly requested a format -->
+						<div class="flex items-center gap-2 border-b border-white/10 bg-gray-900/50 px-4 py-2">
+							<span class="text-xs text-gray-400">Requested format:</span>
+							<span class="rounded bg-blue-600/20 px-2 py-1 text-xs font-medium text-blue-400">
+								{userRequestedFormat}
+							</span>
+						</div>
 					{/if}
+
+					<!-- Response Previewer -->
+					<div class="p-4">
+						<ResponsePreviewer {result} format={showFormatSwitcher ? selectedFormat : 'auto'} />
+					</div>
 				</div>
 			</details>
 		</div>
@@ -699,3 +787,37 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	.format-tab {
+		padding: 0.75rem 1.25rem;
+		border-bottom: 2px solid transparent;
+		color: rgb(156 163 175);
+		font-size: 0.875rem;
+		font-weight: 500;
+		background: transparent;
+		cursor: pointer;
+		transition: all 200ms;
+		min-width: 80px;
+		text-align: center;
+	}
+
+	.format-tab:hover {
+		color: rgb(209 213 219);
+		background: rgba(255, 255, 255, 0.05);
+	}
+
+	.format-tab.active {
+		color: rgb(96 165 250);
+		border-bottom-color: rgb(59 130 246);
+		background: rgba(59, 130, 246, 0.1);
+	}
+
+	@media (max-width: 768px) {
+		.format-tab {
+			padding: 0.5rem 0.75rem;
+			font-size: 0.75rem;
+			min-width: 60px;
+		}
+	}
+</style>

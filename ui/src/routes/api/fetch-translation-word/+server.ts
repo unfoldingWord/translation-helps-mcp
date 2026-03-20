@@ -58,23 +58,43 @@ function generateTableOfContents(language: string, organization: string) {
 }
 
 async function getTranslationWord(params: Record<string, any>, request: Request): Promise<any> {
-	const { term, path, rcLink, language = 'en', organization = 'unfoldingWord' } = params;
+	const { path, language = 'en', organization, topic } = params;
+
+	// Check for deprecated parameters in the raw URL and provide helpful error
+	const url = new URL(request.url);
+	const deprecatedParams = ['term', 'rcLink', 'entryLink'];
+	const usedDeprecated = deprecatedParams.find((param) => url.searchParams.has(param));
+	if (usedDeprecated) {
+		throw new Error(
+			`Parameter "${usedDeprecated}" is no longer supported. Please use "path" instead. ` +
+				`The path parameter accepts clean resource paths (e.g., "bible/kt/love"). ` +
+				`Extract the path from the externalReference field in translation word links responses.`
+		);
+	}
 
 	// Create tracer for this request (moved up for debug use)
 	const tracer = new EdgeXRayTracer(`tw-${Date.now()}`, 'fetch-translation-word');
 
+	// If no path provided, return 404 with Table of Contents for discovery
+	if (!path) {
+		const toc = generateTableOfContents(language, organization);
+		const error = new Error('No path provided. Please specify a translation word path (e.g., "bible/kt/love").');
+		(error as any).toc = toc;
+		throw error;
+	}
+
 	// TEMPORARY DEBUG - show what's happening
-	if (term === 'debug-info') {
+	if (path === 'debug-info') {
 		return {
 			debug: true,
 			message: 'Debug mode active - returning diagnostic info',
-			params: { term, path, rcLink, language, organization },
+			params: { path, language, organization, topic },
 			timestamp: new Date().toISOString()
 		};
 	}
 
 	// SUPER DEBUG MODE - trace the entire flow
-	if (term === 'love-debug') {
+	if (path === 'bible/kt/love-debug') {
 		const debugTrace: any[] = [];
 		debugTrace.push({ step: 1, message: 'Starting debug trace for love term' });
 
@@ -85,9 +105,9 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 			debugTrace.push({
 				step: 3,
 				message: 'Calling fetchTranslationWord',
-				params: { term: 'love', language, organization }
+				params: { path: 'bible/kt/love', language, organization }
 			});
-			const result = await fetcher.fetchTranslationWord('love', language, organization);
+			const result = await fetcher.fetchTranslationWord('love', language, organization, 'bible/kt/love.md', topic);
 
 			debugTrace.push({ step: 4, message: 'Success!', result });
 			return {
@@ -108,86 +128,32 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 		}
 	}
 
-	// If no parameters provided, return Table of Contents
-	if (!term && !path && !rcLink) {
-		const toc = generateTableOfContents(language, organization);
-		return createTranslationHelpsResponse([toc], 'Table of Contents', language, organization, 'tw');
-	}
+	// No-path case is already handled above with 404 + TOC
 
 	// Initialize fetcher with request headers
 	const fetcher = new UnifiedResourceFetcher(tracer);
 	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
 
-	// Determine what we're looking for using our parser
-	let wordKey: string;
-	let targetPath: string | undefined;
-	let searchCategory: string | undefined;
-
-	// Priority: rcLink > path > term (if it's an RC link) > term
-	if (rcLink || isRCLink(term)) {
-		const linkToParse = rcLink || term;
-
-		// Parse to get term and category
-		const parsed = parseRCLink(linkToParse, language);
-		if (!parsed.isValid) {
-			throw new Error(
-				`Invalid RC link format: ${linkToParse}. Expected format: rc://en/tw/dict/bible/kt/love`
-			);
-		}
-
-		wordKey = parsed.term;
-		searchCategory = parsed.category;
-		// DON'T set targetPath - let smart search find the file
-		// The smart search is more reliable than exact path matching
-	} else if (path) {
-		const extracted = extractTerm(path, language);
-		wordKey = extracted.term;
-		targetPath = extracted.path;
-		searchCategory = extracted.category;
-	} else if (term) {
-		const extracted = extractTerm(term, language);
-		wordKey = extracted.term;
-		searchCategory = extracted.category;
-	} else {
-		throw new Error('Either term, path, or rcLink parameter is required');
-	}
+	// Parse path to extract term and category
+	// Path format: "bible/kt/love" or "bible/names/abraham"
+	const pathParts = path.split('/');
+	const wordKey = pathParts[pathParts.length - 1]; // Last segment is the term
+	const searchCategory = pathParts.length >= 2 ? pathParts[pathParts.length - 2] : undefined;
 
 	if (!wordKey) {
-		throw new Error('Could not determine term to look up');
+		throw new Error('Could not determine term from path');
 	}
 
 	try {
 		// Use the existing fetchTranslationWord method from UnifiedResourceFetcher
-		let result: TWArticleResult;
-
-		try {
-			result = await fetcher.fetchTranslationWord(wordKey, language, organization, targetPath);
-		} catch (error) {
-			// TEMPORARY DEBUG - capture error details
-			const errorWithDebug = error as any;
-			if (errorWithDebug.debug) {
-				console.log('[DEBUG] Error has debug info:', errorWithDebug.debug);
-			}
-
-			// If we have a specific path and it failed, try without the path (search by term)
-			if (targetPath) {
-				try {
-					result = await fetcher.fetchTranslationWord(wordKey, language, organization);
-				} catch (fallbackError) {
-					// Also check fallback error for debug info
-					const fallbackWithDebug = fallbackError as any;
-					if (fallbackWithDebug.debug) {
-						console.log('[DEBUG] Fallback error has debug info:', fallbackWithDebug.debug);
-					}
-					throw fallbackError;
-				}
-			} else {
-				throw error;
-			}
-		}
+		// Pass the path directly (without .md) as the identifier
+		const result = await fetcher.fetchTranslationWord(wordKey, language, organization, path, topic);
 
 		if (!result || !result.content) {
-			throw new Error(`Translation word not found: ${wordKey}`);
+			const toc = generateTableOfContents(language, organization);
+			const error = new Error(`Translation word not found: ${wordKey}. See available terms in the table of contents.`);
+			(error as any).toc = toc;
+			throw error;
 		}
 
 		// Parse markdown content for better structure
@@ -219,6 +185,7 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 		// Extract category from path or use search category
 		const categoryMatch = result.path?.match(/bible\/(kt|names|other)\//);
 		const categoryKey = categoryMatch ? categoryMatch[1] : searchCategory || 'other';
+
 		const categoryNames: Record<string, string> = {
 			kt: 'Key Terms',
 			names: 'Names',
@@ -228,20 +195,16 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 		// Return single article directly (not wrapped in items array)
 		// This makes it consistent with translation-academy endpoint
 		const article = {
-			term: wordKey,
 			title: termTitle,
-			category: categoryKey,
-			categoryName: categoryNames[categoryKey] || 'Other',
+			path: `bible/${categoryKey}/${wordKey}`, // Clean path without .md extension
 			definition,
 			content: mdContent,
-			path: result.path,
-			rcLink: `rc://${language}/tw/dict/bible/${categoryKey}/${wordKey}`,
 			reference: params.reference || null, // Include if provided
-			language,
-			organization,
 			metadata: {
-				source: 'TW',
 				resourceType: 'tw',
+				subject: result.subject || 'Translation Words', // ✅ FROM DCS CATALOG
+				language,
+				organization,
 				license: 'CC BY-SA 4.0'
 			}
 		};
@@ -252,10 +215,40 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 		const trace = fetcher.getTrace();
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		const debugInfo = (error as any)?.debug;
+		let tocInfo = (error as any)?.toc;
+
+		// Preserve structured error data for automatic retry
+		const languageVariants = (error as any)?.languageVariants;
+		const requestedLanguage = (error as any)?.requestedLanguage;
+		const requestedTerm = (error as any)?.requestedTerm;
+
+		// If this is a "not found" error and no TOC was already attached, add one
+		if (!tocInfo && (errorMessage.toLowerCase().includes('not found') || errorMessage.toLowerCase().includes('no path provided'))) {
+			tocInfo = generateTableOfContents(language, organization);
+		}
+
 		const enhancedError = new Error(`${errorMessage} (Trace: ${JSON.stringify(trace)})`);
 		if (debugInfo) {
 			(enhancedError as any).debug = debugInfo;
 		}
+		if (tocInfo) {
+			(enhancedError as any).toc = tocInfo;
+		}
+		
+		// Re-attach structured data for automatic retry (CRITICAL!)
+		// Always preserve languageVariants if present (for retry)
+		if (languageVariants && languageVariants.length > 0) {
+			(enhancedError as any).languageVariants = languageVariants;
+		}
+		// Always preserve requestedLanguage if present (for error reporting)
+		if (requestedLanguage) {
+			(enhancedError as any).requestedLanguage = requestedLanguage;
+		}
+		// Always preserve requestedTerm if present (for error reporting)
+		if (requestedTerm) {
+			(enhancedError as any).requestedTerm = requestedTerm;
+		}
+		
 		throw enhancedError;
 	}
 }
@@ -264,46 +257,28 @@ export const GET = createSimpleEndpoint({
 	name: 'fetch-translation-word-v2',
 
 	params: [
-		{
-			name: 'term',
-			validate: (value) => {
-				if (!value) return true;
-				return value.length > 0;
-			}
-		},
-		{
-			name: 'path',
-			validate: (value) => {
-				if (!value) return true;
-				return value.endsWith('.md');
-			}
-		},
-		{
-			name: 'rcLink',
-			validate: (value) => {
-				if (!value) return true;
-				return isRCLink(value);
-			}
-		},
+		COMMON_PARAMS.path, // ONLY identifier parameter - clean paths without .md
 		COMMON_PARAMS.language,
-		COMMON_PARAMS.organization
+		COMMON_PARAMS.organization,
+		COMMON_PARAMS.category, // Filter by category (kt, names, other)
+		COMMON_PARAMS.topic, // Topic filter for tc-ready resources
+		COMMON_PARAMS.format
 	],
 
 	fetch: getTranslationWord,
 
 	onError: createStandardErrorHandler({
-		'Either term, path, or rcLink parameter is required': {
+		'No path provided': {
 			status: 400,
-			message:
-				'Please provide either a term (e.g., "faith"), path (e.g., "bible/kt/faith.md"), or RC link (e.g., "rc://en/tw/dict/bible/kt/faith")'
+			message: 'No path provided. Please specify a translation word path (e.g., "bible/kt/love"). Check the table of contents in the response details for available terms.'
 		},
 		'Translation word not found': {
 			status: 404,
-			message: 'The requested translation word was not found in the source repository.'
+			message: 'The requested translation word was not found. Check the table of contents in the response details for available terms.'
 		},
-		'Invalid RC link format': {
+		'no longer supported': {
 			status: 400,
-			message: 'Invalid RC link format. Expected: rc://[language]/tw/dict/bible/[category]/[term]'
+			message: 'Deprecated parameter used. Please use the "path" parameter instead.'
 		},
 		'No translation words catalog found': {
 			status: 404,

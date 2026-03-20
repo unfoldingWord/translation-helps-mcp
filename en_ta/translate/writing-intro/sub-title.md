@@ -1,0 +1,1 @@
+What are the different types of writing and the issues involved?

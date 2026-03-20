@@ -36,6 +36,13 @@ const osStub = {
 export default osStub;
 export const os = osStub;
 
+// Export individual os functions (for `import { homedir } from 'os'`)
+export const homedir = osStub.homedir;
+export const tmpdir = osStub.tmpdir;
+export const platform = osStub.platform;
+export const type = osStub.type;
+export const arch = osStub.arch;
+
 // Stub for 'fs' module
 const fsStub = {
 	readFileSync: () => '',
@@ -88,6 +95,16 @@ const fsStub = {
 	}
 };
 export const fs = fsStub;
+
+// Export individual fs functions (for `import { readFileSync } from 'fs'`)
+export const readFileSync = fsStub.readFileSync;
+export const writeFileSync = fsStub.writeFileSync;
+export const existsSync = fsStub.existsSync;
+export const mkdirSync = fsStub.mkdirSync;
+export const readdirSync = fsStub.readdirSync;
+export const statSync = fsStub.statSync;
+export const unlinkSync = fsStub.unlinkSync;
+export const rmSync = fsStub.rmSync;
 
 // Stub for 'path' module
 const pathStub = {
