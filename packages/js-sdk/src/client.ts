@@ -20,7 +20,11 @@ import type {
   ListResourcesForLanguageOptions,
 } from "./types.js";
 import { ContextManager } from "./ContextManager.js";
-import { StateInjectionInterceptor, type InterceptorOptions, type ToolContextConfig } from "./StateInjectionInterceptor.js";
+import {
+  StateInjectionInterceptor,
+  type InterceptorOptions,
+  type ToolContextConfig,
+} from "./StateInjectionInterceptor.js";
 import { DEFAULT_TOOL_CONTEXT_CONFIG } from "./defaultToolConfig.js";
 import {
   languageCodeValidator,
@@ -49,7 +53,7 @@ export class TranslationHelpsClient {
   private toolsCache: MCPTool[] | null = null;
   private promptsCache: MCPPrompt[] | null = null;
   private initialized = false;
-  
+
   // State Injection Interceptor
   private contextManager: ContextManager;
   private interceptor: StateInjectionInterceptor | null = null;
@@ -63,25 +67,31 @@ export class TranslationHelpsClient {
       "Content-Type": "application/json",
       ...options.headers,
     };
-    
+
     // Initialize Context Manager
     this.contextManager = new ContextManager();
-    
+
     // Register validation rules
-    this.contextManager.addValidationRule('language', languageCodeValidator);
-    this.contextManager.addValidationRule('organization', organizationValidator);
-    this.contextManager.addValidationRule('stage', stageValidator);
-    this.contextManager.addValidationRule('reference', referenceValidator);
-    this.contextManager.addValidationRule('format', formatValidator);
-    this.contextManager.addValidationRule('includeAlignment', booleanValidator);
-    this.contextManager.addValidationRule('includeContext', booleanValidator);
-    this.contextManager.addValidationRule('includeIntro', booleanValidator);
-    
+    this.contextManager.addValidationRule("language", languageCodeValidator);
+    this.contextManager.addValidationRule(
+      "organization",
+      organizationValidator,
+    );
+    this.contextManager.addValidationRule("stage", stageValidator);
+    this.contextManager.addValidationRule("reference", referenceValidator);
+    this.contextManager.addValidationRule("format", formatValidator);
+    this.contextManager.addValidationRule("includeAlignment", booleanValidator);
+    this.contextManager.addValidationRule("includeContext", booleanValidator);
+    this.contextManager.addValidationRule("includeIntro", booleanValidator);
+
     // Initialize interceptor if enabled
     if (options.enableInterceptor) {
-      this.enableStateInjection(options.toolContextConfig, options.interceptorOptions);
+      this.enableStateInjection(
+        options.toolContextConfig,
+        options.interceptorOptions,
+      );
     }
-    
+
     // Pre-populate context if provided
     if (options.initialContext) {
       this.contextManager.setMany(options.initialContext);
@@ -151,43 +161,62 @@ export class TranslationHelpsClient {
 
       // Handle MCP error responses (JSON-RPC 2.0 format)
       if (data.error) {
-        console.log('[SDK] 🚨 MCP Error Response:', data.error);
-        console.log('[SDK] 🔍 Has data.error.data?', !!data.error.data);
-        console.log('[SDK] 🔍 data.error.data:', data.error.data);
-        
+        console.log("[SDK] 🚨 MCP Error Response:", data.error);
+        console.log("[SDK] 🔍 Has data.error.data?", !!data.error.data);
+        console.log("[SDK] 🔍 data.error.data:", data.error.data);
+
         const error: any = new Error(data.error.message || "MCP server error");
-        
+
         // Preserve error.data for AI agents (contains validBookCodes, languageVariants, etc.)
         if (data.error.data) {
-          console.log('[SDK] ✅ Preserving error.data with', Object.keys(data.error.data));
+          console.log(
+            "[SDK] ✅ Preserving error.data with",
+            Object.keys(data.error.data),
+          );
           error.details = data.error.data;
-          
+
           // Attach validBookCodes directly for easy access
           if (data.error.data.validBookCodes) {
-            console.log('[SDK] ✅ Attaching validBookCodes:', data.error.data.validBookCodes.length, 'codes');
+            console.log(
+              "[SDK] ✅ Attaching validBookCodes:",
+              data.error.data.validBookCodes.length,
+              "codes",
+            );
             error.validBookCodes = data.error.data.validBookCodes;
             error.invalidCode = data.error.data.invalidCode;
           }
-          
+
           // Attach languageVariants directly for easy access
           if (data.error.data.languageVariants) {
-            console.log('[SDK] ✅ Attaching languageVariants:', data.error.data.languageVariants);
+            console.log(
+              "[SDK] ✅ Attaching languageVariants:",
+              data.error.data.languageVariants,
+            );
             error.languageVariants = data.error.data.languageVariants;
             error.requestedLanguage = data.error.data.requestedLanguage;
           }
-          
+
           // Attach availableBooks directly for easy access
           if (data.error.data.availableBooks) {
-            console.log('[SDK] ✅ Attaching availableBooks:', data.error.data.availableBooks.length, 'books');
+            console.log(
+              "[SDK] ✅ Attaching availableBooks:",
+              data.error.data.availableBooks.length,
+              "books",
+            );
             error.availableBooks = data.error.data.availableBooks;
             error.requestedBook = data.error.data.requestedBook;
             error.language = data.error.data.language;
           }
         } else {
-          console.warn('[SDK] ⚠️ No data.error.data found in response');
+          console.warn("[SDK] ⚠️ No data.error.data found in response");
         }
-        
-        console.log('[SDK] 🎯 Throwing error with details:', !!error.details, 'validBookCodes:', !!error.validBookCodes);
+
+        console.log(
+          "[SDK] 🎯 Throwing error with details:",
+          !!error.details,
+          "validBookCodes:",
+          !!error.validBookCodes,
+        );
         throw error;
       }
 
@@ -205,7 +234,7 @@ export class TranslationHelpsClient {
         };
 
         // Extract all headers
-        response.headers.forEach((value, key) => {
+        response.headers.forEach((value: string, key: string) => {
           metadata.headers[key] = value;
         });
 
@@ -337,15 +366,15 @@ export class TranslationHelpsClient {
     arguments_: Record<string, any>,
   ): Promise<MCPResponse> {
     await this.ensureInitialized();
-    
+
     // Apply state injection interceptor if enabled
     let finalArguments = arguments_;
     let interceptionMetadata: any = null;
-    
+
     if (this.interceptorEnabled && this.interceptor) {
       const result = this.interceptor.intercept(name, arguments_);
       finalArguments = result.arguments;
-      
+
       // Store metadata for debugging/logging
       if (result.modified) {
         interceptionMetadata = {
@@ -354,21 +383,21 @@ export class TranslationHelpsClient {
           originalArgs: arguments_,
           finalArgs: finalArguments,
         };
-        
+
         console.log(
           `[SDK] 🔄 State Injection Applied: tool=${name}, ` +
-          `injected=[${Object.keys(result.injected).join(', ')}], ` +
-          `synced=[${Object.keys(result.synced).join(', ')}]`
+            `injected=[${Object.keys(result.injected).join(", ")}], ` +
+            `synced=[${Object.keys(result.synced).join(", ")}]`,
         );
       }
     }
-    
+
     // Call the MCP server with potentially modified arguments
     const response = await this.sendRequest("tools/call", {
       name,
       arguments: finalArguments,
     });
-    
+
     // Attach interception metadata if metrics are enabled
     if (this.enableMetrics && interceptionMetadata) {
       if (!response.metadata) {
@@ -376,7 +405,7 @@ export class TranslationHelpsClient {
       }
       response.metadata.stateInjection = interceptionMetadata;
     }
-    
+
     return response;
   }
 
@@ -411,7 +440,7 @@ export class TranslationHelpsClient {
     if (options.organization !== undefined) {
       params.organization = options.organization;
     }
-    
+
     // Add optional parameters if provided
     if (options.resource !== undefined) {
       params.resource = options.resource;
@@ -442,12 +471,12 @@ export class TranslationHelpsClient {
       includeIntro: options.includeIntro !== false,
       includeContext: options.includeContext !== false,
     };
-    
+
     // Only include organization if explicitly provided
     if (options.organization !== undefined) {
       params.organization = options.organization;
     }
-    
+
     const response = await this.callTool("fetch_translation_notes", params);
 
     if (response.content && response.content[0]?.text) {
@@ -467,12 +496,12 @@ export class TranslationHelpsClient {
       reference: options.reference,
       language: options.language || "en",
     };
-    
+
     // Only include organization if explicitly provided
     if (options.organization !== undefined) {
       params.organization = options.organization;
     }
-    
+
     const response = await this.callTool("fetch_translation_questions", params);
 
     if (response.content && response.content[0]?.text) {
@@ -494,12 +523,12 @@ export class TranslationHelpsClient {
       language: options.language || "en",
       category: options.category,
     };
-    
+
     // Only include organization if explicitly provided
     if (options.organization !== undefined) {
       params.organization = options.organization;
     }
-    
+
     const response = await this.callTool("fetch_translation_word", params);
 
     if (response.content && response.content[0]?.text) {
@@ -519,13 +548,16 @@ export class TranslationHelpsClient {
       reference: options.reference,
       language: options.language || "en",
     };
-    
+
     // Only include organization if explicitly provided
     if (options.organization !== undefined) {
       params.organization = options.organization;
     }
-    
-    const response = await this.callTool("fetch_translation_word_links", params);
+
+    const response = await this.callTool(
+      "fetch_translation_word_links",
+      params,
+    );
 
     if (response.content && response.content[0]?.text) {
       return JSON.parse(response.content[0].text);
@@ -550,12 +582,12 @@ export class TranslationHelpsClient {
       language: options.language || "en",
       format: options.format || "json",
     };
-    
+
     // Only include organization if explicitly provided
     if (options.organization !== undefined) {
       params.organization = options.organization;
     }
-    
+
     const response = await this.callTool("fetch_translation_academy", params);
 
     if (response.content && response.content[0]?.text) {
