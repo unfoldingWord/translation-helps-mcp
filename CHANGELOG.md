@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file. See [standa
 
 ## [Unreleased]
 
+## [7.4.1] - 2026-03-20
+
+### Fixed
+
+- **Cloudflare / Pages ZIP fetcher** — Auto mode no longer picks the filesystem `LocalZipFetcher` when `nodejs_compat` makes Node look available; if the R2 bucket binding is initialized, ZIP/TN/TQ paths use R2 (fixes production errors like `getTSVData is not a function` and Spanish TN 404s on deployed MCP).
+- **Translation notes** — Safer TSV/empty-result handling, verse vs context filtering, and Spanish/org discovery guidance (omit `organization` for non-English TN where appropriate).
+- **Lint / pre-commit** — Resolved ESLint issues in shared endpoint and config files; removed stray accidental file from repo.
+
+### Changed
+
+- **Docs** — Debugging guide: Cloudflare Pages log tail (deployment id for non-interactive use).
+
 ## [7.4.0] - 2026-03-16
 
 ### Added
