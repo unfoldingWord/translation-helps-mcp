@@ -1,0 +1,1 @@
+What is hendiadys and how can I translate phrases that have it?

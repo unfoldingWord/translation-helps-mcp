@@ -8,6 +8,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
+	optimizeDeps: {
+		exclude: ['@translation-helps/mcp-client']
+	},
 	resolve: {
 		alias: {
 			// Stub Node.js modules for Cloudflare Workers

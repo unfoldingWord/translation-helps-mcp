@@ -1,0 +1,1 @@
+When might a translator use readings that are not in the Masoretic Text? 

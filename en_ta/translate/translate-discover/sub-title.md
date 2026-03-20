@@ -1,0 +1,1 @@
+How do I discover the meaning of the text?

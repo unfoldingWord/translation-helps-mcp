@@ -1,0 +1,1 @@
+Why does the ULT have missing or added verses, and should I translate them?

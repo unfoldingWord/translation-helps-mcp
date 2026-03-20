@@ -1,0 +1,1 @@
+Why should I use the links in the translationNotes?

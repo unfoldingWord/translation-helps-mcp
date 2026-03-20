@@ -43,8 +43,38 @@ from .prompts import (
     detect_request_type,
     RequestType,
 )
+# Interceptor components
+from .context_manager import ContextManager
+from .state_injection_interceptor import (
+    StateInjectionInterceptor,
+    InterceptorOptions,
+    InterceptionResult
+)
+from .default_tool_config import (
+    DEFAULT_TOOL_CONTEXT_CONFIG,
+    PERSISTENT_CONTEXT_KEYS,
+    VOLATILE_CONTEXT_KEYS,
+    create_tool_config,
+    bulk_add_context_requirements
+)
+from .validators import (
+    LANGUAGE_CODE_VALIDATOR,
+    ORGANIZATION_VALIDATOR,
+    RESOURCE_TYPE_VALIDATOR,
+    REFERENCE_VALIDATOR,
+    BOOK_CODE_VALIDATOR,
+    CHAPTER_VALIDATOR,
+    VERSE_VALIDATOR,
+    FORMAT_VALIDATOR,
+    BOOLEAN_VALIDATOR,
+    STAGE_VALIDATOR,
+    create_string_length_validator,
+    create_number_range_validator,
+    create_enum_validator,
+    create_composite_validator
+)
 
-__version__ = "1.5.0"
+__version__ = "1.6.0"  # Bumped for State Injection Interceptor feature
 __all__ = [
     "TranslationHelpsClient",
     "ClientOptions",
@@ -70,5 +100,30 @@ __all__ = [
     "get_system_prompt",
     "detect_request_type",
     "RequestType",
+    # Interceptor
+    "ContextManager",
+    "StateInjectionInterceptor",
+    "InterceptorOptions",
+    "InterceptionResult",
+    "DEFAULT_TOOL_CONTEXT_CONFIG",
+    "PERSISTENT_CONTEXT_KEYS",
+    "VOLATILE_CONTEXT_KEYS",
+    "create_tool_config",
+    "bulk_add_context_requirements",
+    # Validators
+    "LANGUAGE_CODE_VALIDATOR",
+    "ORGANIZATION_VALIDATOR",
+    "RESOURCE_TYPE_VALIDATOR",
+    "REFERENCE_VALIDATOR",
+    "BOOK_CODE_VALIDATOR",
+    "CHAPTER_VALIDATOR",
+    "VERSE_VALIDATOR",
+    "FORMAT_VALIDATOR",
+    "BOOLEAN_VALIDATOR",
+    "STAGE_VALIDATOR",
+    "create_string_length_validator",
+    "create_number_range_validator",
+    "create_enum_validator",
+    "create_composite_validator",
 ]
 

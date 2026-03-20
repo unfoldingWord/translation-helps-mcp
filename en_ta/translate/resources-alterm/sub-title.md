@@ -1,0 +1,1 @@
+Why do some translationNotes have numbered translation suggestions?

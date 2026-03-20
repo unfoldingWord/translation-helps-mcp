@@ -41,6 +41,7 @@ export interface WordLinksResult {
     cached: boolean;
     timestamp: string;
     linksFound: number;
+    subject?: string; // From DCS catalog (e.g., "TSV Translation Words Links")
   };
 }
 
@@ -84,20 +85,59 @@ export async function fetchWordLinks(
     process.env.CACHE_PATH,
     tracer,
   );
-  const rows = (await zipFetcherProvider.getTSVData(
-    {
-      book: reference.book,
-      chapter: reference.chapter!,
-      verse: reference.verse,
-    },
-    language,
-    organization,
-    "twl",
-  )) as any[];
+  
+  let tsvResult;
+  try {
+    tsvResult = await zipFetcherProvider.getTSVData(
+      {
+        book: reference.book,
+        chapter: reference.chapter!,
+        verse: reference.verse,
+        endVerse: reference.endVerse,  // Include endVerse for verse ranges
+      },
+      language,
+      organization,
+      "twl",
+    );
+  } catch (error: any) {
+    // Try to find language variants to help the user
+    const { findLanguageVariants } = await import('./resource-detector.js');
+    const baseLanguage = language.split('-')[0];
+    // For translation word links, search the correct subject
+    const languageVariants = await findLanguageVariants(baseLanguage, organization === 'unfoldingWord' ? undefined : organization, 'tc-ready', ['Translation Word Links']);
+    
+    // Create structured error with recovery data
+    const enhancedError: any = new Error(
+      languageVariants.length > 0
+        ? `No translation word links found for language '${language}'.\n\nAvailable language variants: ${languageVariants.join(', ')}\n\nPlease try one of these language codes instead.`
+        : `No translation word links available for language '${language}'.`
+    );
+    
+    // Attach structured data for automatic retry
+    if (languageVariants.length > 0) {
+      enhancedError.languageVariants = languageVariants;
+      enhancedError.requestedLanguage = language;
+      logger.info('Throwing language variant error for translation word links', {
+        language,
+        variants: languageVariants
+      });
+    } else {
+      enhancedError.requestedLanguage = language;
+      logger.info('Throwing language not supported error for translation word links', {
+        language
+      });
+    }
+    
+    throw enhancedError;
+  }
+  
+  const rows = tsvResult.data as any[];
+  const resourceSubject = tsvResult.subject; // ✅ FROM DCS CATALOG
+  const resourceVersion = tsvResult.version; // ✅ FROM DCS CATALOG
 
   // Map rows into expected pass-through structure (preserve fields)
   const wordLinks = (rows || []).map((row) => ({ ...row }));
-  logger.info(`Parsed word links from ZIP`, { count: wordLinks.length });
+  logger.info(`Parsed word links from ZIP`, { count: wordLinks.length, subject: resourceSubject, version: resourceVersion });
 
   // Return the raw TSV structure without transformation
   const result = {
@@ -107,13 +147,14 @@ export async function fetchWordLinks(
       organization,
       language,
       url: `https://git.door43.org/${organization}/${language}_twl`,
-      version: "master",
+      version: resourceVersion || "master", // ✅ FROM DCS CATALOG
     },
     metadata: {
       responseTime: Date.now() - startTime,
       cached: false,
       timestamp: new Date().toISOString(),
       linksFound: wordLinks.length,
+      subject: resourceSubject, // ✅ FROM DCS CATALOG
     },
   };
 

@@ -1,0 +1,1 @@
+What are generic noun phrases and how can I translate them?

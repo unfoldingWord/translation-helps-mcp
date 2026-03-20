@@ -1,0 +1,1 @@
+How do languages arrange the parts of a sentence?

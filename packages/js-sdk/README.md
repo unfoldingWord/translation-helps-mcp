@@ -127,7 +127,25 @@ const notes = await client.fetchTranslationNotes({
   includeIntro: true,
   includeContext: true,
 });
+
+// Response shape:
+// {
+//   reference: "John 3:16",
+//   verseNotes: [...],      // Notes specific to the verse
+//   contextNotes: [...],    // Book/chapter introductions
+//   counts: {
+//     verseNotesCount: 3,
+//     contextNotesCount: 2
+//   },
+//   metadata: {...}
+// }
 ```
+
+**Response Structure:**
+- `verseNotes`: Array of notes specific to the requested verse reference
+- `contextNotes`: Array of book/chapter introductions (each has `contextType: "book" | "chapter"`)
+- `counts`: Separate counts for verse-specific and contextual notes
+- `metadata`: Resource information and citations
 
 ##### `fetchTranslationQuestions(options): Promise<any>`
 

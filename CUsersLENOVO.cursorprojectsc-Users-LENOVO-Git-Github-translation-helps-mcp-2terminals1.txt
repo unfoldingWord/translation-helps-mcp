@@ -1,0 +1,1225 @@
+
+> translation-helps-mcp@7.3.0 dev
+> cd ui && npm run dev
+
+
+> tc-helps-ui@7.3.0 dev
+> vite dev
+
+
+  VITE v7.3.1  ready in 63397 ms
+
+  ➜  Local:   http://localhost:8174/
+  ➜  Network: http://10.14.0.2:8174/
+  ➜  Network: http://172.16.0.92:8174/
+[INFO] 🚀 CloudflareKVCache initialized with KV namespace 
+[DEBUG] KV cache initialized for endpoint {"endpoint":"fetch-scripture-v2"}
+[DEBUG] R2 env initialized {"endpoint":"fetch-scripture-v2","hasBucket":true,"hasCaches":true}
+[INFO] fetch-scripture-v2: Fetching data {"params":{"reference":"JHN 3:16","language":"es","resource":"all","format":"json"}}
+[INFO] 🔍 Dynamic discovery mode: fetching all tc-ready resources from catalog for es 
+[DEBUG] getScripture called {"reference":{"book":"John","chapter":3,"verse":16,"originalText":"JHN 3:16","isValid":true},"language":"es","organization":"all"}
+[INFO] ❌ KV MISS for https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready in 108ms 
+[INFO] ❌ Cache MISS for https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready 
+[INFO] Fetching catalog: https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready 
+[DEBUG] Client headers for passthrough {"original":3,"forwarded":2,"userAgent":"curl/8.8.0"}
+[WARN] Empty or invalid catalog response for https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready, not caching. Skipping KV cache for empty catalog result {"key":"https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready"}
+[WARN] Got 0 resources from cache, retrying with force refresh 
+[DEBUG] getScripture called {"reference":{"book":"John","chapter":3,"verse":16,"originalText":"JHN 3:16","isValid":true},"language":"es","organization":"all"}
+[INFO] 🚫 Force refresh requested - bypassing catalog cache 
+[INFO] Fetching catalog: https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready 
+[DEBUG] Client headers for passthrough {"original":4,"forwarded":2,"userAgent":"curl/8.8.0"}
+[WARN] Empty or invalid catalog response for https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready, not caching. Skipping KV cache for empty catalog result {"key":"https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready"}
+[INFO] Found 0 Bible resources 
+[DEBUG] Catalog resources {"resources":[]}
+[DEBUG] [getBookCode] Input: {"book":"John","type":"string"}
+[DEBUG] [getBookCode] Result: {"input":"John","normalized":"john","foundInMap":true,"result":"JHN"}
+[PARALLEL FETCH] Starting parallel fetch for 0 resources
+[PARALLEL FETCH] Completed 0 fetches in parallel
+[INFO] No resources found for language=es, searching for variants of base=es 
+[INFO] Memory cache initialized {"version":"7.3.0"}
+[INFO] Finding language variants {"baseLanguage":"es","organization":"all","topic":"tc-ready"}
+[DEBUG] Searching catalog for language variants {"subject":"Bible","catalogUrl":"https://git.door43.org/api/v1/catalog/search?topic=tc-ready&subject=Bible&metadataType=rc"}
+[DEBUG] Searching catalog for language variants {"subject":"Aligned Bible","catalogUrl":"https://git.door43.org/api/v1/catalog/search?topic=tc-ready&subject=Aligned+Bible&metadataType=rc"}
+[DEBUG] Found 32 total resources, filtering for base language {"baseLanguage":"es","subjects":["Bible","Aligned Bible"],"sampleNames":["en_t4t","ar_avd","ar_arst","ar_nav","bn_glt"]}
+[DEBUG] Filtered to 2 matching resources {"matchingNames":["es-419_glt","es-419_gst"]}
+[INFO] Found language variants {"baseLanguage":"es","count":1,"variants":["es-419"]}
+[INFO] Found 1 language variants for base=es: [ 'es-419' ]
+[INFO] Fetching catalog to find available books: https://git.door43.org/api/v1/catalog/search?lang=es&subject=Bible,Aligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready&stage=prod&type=text 
+[INFO] Found 0 catalog resources for es 
+[INFO] Extracted 0 available books from catalog 
+[INFO] Throwing language variant error { requestedLanguage: 'es', availableVariants: [ 'es-419' ] }
+[ERROR] fetch-scripture-v2: Error {"error":{"languageVariants":["es-419"],"requestedLanguage":"es"}}
+[simpleEndpoint] Error object keys: [ 'languageVariants', 'requestedLanguage' ]
+[simpleEndpoint] Has languageVariants? true
+[simpleEndpoint] languageVariants value: [ 'es-419' ]
+[INFO] [simpleEndpoint] 🔄 Auto-retry triggered: es → es-419 
+[simpleEndpoint] 🔄 Retrying with language variant: es-419
+[INFO] 🔍 Dynamic discovery mode: fetching all tc-ready resources from catalog for es-419 
+[DEBUG] getScripture called {"reference":{"book":"John","chapter":3,"verse":16,"originalText":"JHN 3:16","isValid":true},"language":"es-419","organization":"all"}
+[INFO] ☁️ KV cache HIT for https://git.door43.org/api/v1/catalog/search?lang=es-419&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready in 25ms 
+[CACHE TRACE] ✅ Catalog cache HIT: {
+  source: 'kv',
+  duration: 25,
+  key: 'https://git.door43.org/api/v1/catalog/search?lang=es-419&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready',
+  dataLength: 2
+}
+[CACHE TRACE] Added to tracer with cached=true, source=kv
+[INFO] Found 2 Bible resources 
+[DEBUG] Catalog resources {"resources":["es-419_glt","es-419_gst"]}
+[DEBUG] [getBookCode] Input: {"book":"John","type":"string"}
+[DEBUG] [getBookCode] Result: {"input":"John","normalized":"john","foundInMap":true,"result":"JHN"}
+[DEBUG] No ingredient found for John in es-419_glt 
+[DEBUG] No ingredient found for John in es-419_gst 
+[DEBUG] Client headers for passthrough {"original":3,"forwarded":2,"userAgent":"curl/8.8.0"}
+[DEBUG] Client headers for passthrough {"original":3,"forwarded":2,"userAgent":"curl/8.8.0"}
+[PARALLEL FETCH] Starting parallel fetch for 0 resources
+[PARALLEL FETCH] Completed 0 fetches in parallel
+[INFO] No resources found for language=es-419, searching for variants of base=es 
+[INFO] Finding language variants {"baseLanguage":"es","organization":"all","topic":"tc-ready"}
+[DEBUG] Searching catalog for language variants {"subject":"Bible","catalogUrl":"https://git.door43.org/api/v1/catalog/search?topic=tc-ready&subject=Bible&metadataType=rc"}
+[DEBUG] Searching catalog for language variants {"subject":"Aligned Bible","catalogUrl":"https://git.door43.org/api/v1/catalog/search?topic=tc-ready&subject=Aligned+Bible&metadataType=rc"}
+[DEBUG] Found 32 total resources, filtering for base language {"baseLanguage":"es","subjects":["Bible","Aligned Bible"],"sampleNames":["en_t4t","ar_avd","ar_arst","ar_nav","bn_glt"]}
+[DEBUG] Filtered to 2 matching resources {"matchingNames":["es-419_glt","es-419_gst"]}
+[INFO] Found language variants {"baseLanguage":"es","count":1,"variants":["es-419"]}
+[INFO] Found 1 language variants for base=es: [ 'es-419' ]
+[INFO] Fetching catalog to find available books: https://git.door43.org/api/v1/catalog/search?lang=es-419&subject=Bible,Aligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready&stage=prod&type=text 
+[INFO] Found 2 catalog resources for es-419 
+[INFO] Extracted 4 available books from catalog 
+[INFO] Throwing book not available error { requestedBook: 'John', language: 'es-419', availableBooksCount: 4 }
+[INFO] [simpleEndpoint] ✅ Retry found 4 available books - returning useful data 
+[simpleEndpoint] ✅ Retry provided availableBooks, replacing original error
+[simpleEndpoint] ⚠️ No languageVariants found on error object
+[simpleEndpoint] ✅ Added availableBooks to errorDetails: 4 books
+[DEBUG] KV cache initialized for endpoint {"endpoint":"fetch-scripture-v2"}
+[DEBUG] R2 env initialized {"endpoint":"fetch-scripture-v2","hasBucket":true,"hasCaches":true}
+[INFO] fetch-scripture-v2: Fetching data {"params":{"reference":"JHN 3:16","language":"es","resource":"all","format":"json"}}
+[INFO] 🔍 Dynamic discovery mode: fetching all tc-ready resources from catalog for es 
+[DEBUG] getScripture called {"reference":{"book":"John","chapter":3,"verse":16,"originalText":"JHN 3:16","isValid":true},"language":"es","organization":"all"}
+[INFO] ❌ KV MISS for https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready in 40ms 
+[INFO] ❌ Cache MISS for https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready 
+[INFO] Fetching catalog: https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready 
+[DEBUG] Client headers for passthrough {"original":3,"forwarded":2,"userAgent":"curl/8.8.0"}
+[WARN] Empty or invalid catalog response for https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready, not caching. Skipping KV cache for empty catalog result {"key":"https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready"}
+[WARN] Got 0 resources from cache, retrying with force refresh 
+[DEBUG] getScripture called {"reference":{"book":"John","chapter":3,"verse":16,"originalText":"JHN 3:16","isValid":true},"language":"es","organization":"all"}
+[INFO] 🚫 Force refresh requested - bypassing catalog cache 
+[INFO] Fetching catalog: https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready 
+[DEBUG] Client headers for passthrough {"original":4,"forwarded":2,"userAgent":"curl/8.8.0"}
+[WARN] Empty or invalid catalog response for https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready, not caching. Skipping KV cache for empty catalog result {"key":"https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready"}
+[INFO] Found 0 Bible resources 
+[DEBUG] Catalog resources {"resources":[]}
+[DEBUG] [getBookCode] Input: {"book":"John","type":"string"}
+[DEBUG] [getBookCode] Result: {"input":"John","normalized":"john","foundInMap":true,"result":"JHN"}
+[PARALLEL FETCH] Starting parallel fetch for 0 resources
+[PARALLEL FETCH] Completed 0 fetches in parallel
+[INFO] No resources found for language=es, searching for variants of base=es 
+[INFO] Finding language variants {"baseLanguage":"es","organization":"all","topic":"tc-ready"}
+[DEBUG] Searching catalog for language variants {"subject":"Bible","catalogUrl":"https://git.door43.org/api/v1/catalog/search?topic=tc-ready&subject=Bible&metadataType=rc"}
+[DEBUG] Searching catalog for language variants {"subject":"Aligned Bible","catalogUrl":"https://git.door43.org/api/v1/catalog/search?topic=tc-ready&subject=Aligned+Bible&metadataType=rc"}
+[DEBUG] Found 32 total resources, filtering for base language {"baseLanguage":"es","subjects":["Bible","Aligned Bible"],"sampleNames":["en_t4t","ar_avd","ar_arst","ar_nav","bn_glt"]}
+[DEBUG] Filtered to 2 matching resources {"matchingNames":["es-419_glt","es-419_gst"]}
+[INFO] Found language variants {"baseLanguage":"es","count":1,"variants":["es-419"]}
+[INFO] Found 1 language variants for base=es: [ 'es-419' ]
+[INFO] Fetching catalog to find available books: https://git.door43.org/api/v1/catalog/search?lang=es&subject=Bible,Aligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready&stage=prod&type=text 
+[INFO] Found 0 catalog resources for es 
+[INFO] Extracted 0 available books from catalog 
+[INFO] Throwing language variant error { requestedLanguage: 'es', availableVariants: [ 'es-419' ] }
+[ERROR] fetch-scripture-v2: Error {"error":{"languageVariants":["es-419"],"requestedLanguage":"es"}}
+[simpleEndpoint] Error object keys: [ 'languageVariants', 'requestedLanguage' ]
+[simpleEndpoint] Has languageVariants? true
+[simpleEndpoint] languageVariants value: [ 'es-419' ]
+[INFO] [simpleEndpoint] 🔄 Auto-retry triggered: es → es-419 
+[simpleEndpoint] 🔄 Retrying with language variant: es-419
+[INFO] 🔍 Dynamic discovery mode: fetching all tc-ready resources from catalog for es-419 
+[DEBUG] getScripture called {"reference":{"book":"John","chapter":3,"verse":16,"originalText":"JHN 3:16","isValid":true},"language":"es-419","organization":"all"}
+[INFO] 💾 Memory cache HIT for https://git.door43.org/api/v1/catalog/search?lang=es-419&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready 
+[CACHE TRACE] ✅ Catalog cache HIT: {
+  source: 'memory',
+  duration: 1,
+  key: 'https://git.door43.org/api/v1/catalog/search?lang=es-419&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready',
+  dataLength: 2
+}
+[CACHE TRACE] Added to tracer with cached=true, source=memory
+[INFO] Found 2 Bible resources 
+[DEBUG] Catalog resources {"resources":["es-419_glt","es-419_gst"]}
+[DEBUG] [getBookCode] Input: {"book":"John","type":"string"}
+[DEBUG] [getBookCode] Result: {"input":"John","normalized":"john","foundInMap":true,"result":"JHN"}
+[DEBUG] No ingredient found for John in es-419_glt 
+[DEBUG] No ingredient found for John in es-419_gst 
+[DEBUG] Client headers for passthrough {"original":3,"forwarded":2,"userAgent":"curl/8.8.0"}
+[DEBUG] Client headers for passthrough {"original":3,"forwarded":2,"userAgent":"curl/8.8.0"}
+[PARALLEL FETCH] Starting parallel fetch for 0 resources
+[PARALLEL FETCH] Completed 0 fetches in parallel
+[INFO] No resources found for language=es-419, searching for variants of base=es 
+[INFO] Finding language variants {"baseLanguage":"es","organization":"all","topic":"tc-ready"}
+[DEBUG] Searching catalog for language variants {"subject":"Bible","catalogUrl":"https://git.door43.org/api/v1/catalog/search?topic=tc-ready&subject=Bible&metadataType=rc"}
+[DEBUG] Searching catalog for language variants {"subject":"Aligned Bible","catalogUrl":"https://git.door43.org/api/v1/catalog/search?topic=tc-ready&subject=Aligned+Bible&metadataType=rc"}
+[DEBUG] Found 32 total resources, filtering for base language {"baseLanguage":"es","subjects":["Bible","Aligned Bible"],"sampleNames":["en_t4t","ar_avd","ar_arst","ar_nav","bn_glt"]}
+[DEBUG] Filtered to 2 matching resources {"matchingNames":["es-419_glt","es-419_gst"]}
+[INFO] Found language variants {"baseLanguage":"es","count":1,"variants":["es-419"]}
+[INFO] Found 1 language variants for base=es: [ 'es-419' ]
+[INFO] Fetching catalog to find available books: https://git.door43.org/api/v1/catalog/search?lang=es-419&subject=Bible,Aligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready&stage=prod&type=text 
+[INFO] Found 2 catalog resources for es-419 
+[INFO] Extracted 4 available books from catalog 
+[INFO] Throwing book not available error { requestedBook: 'John', language: 'es-419', availableBooksCount: 4 }
+[INFO] [simpleEndpoint] ✅ Retry found 4 available books - returning useful data 
+[simpleEndpoint] ✅ Retry provided availableBooks, replacing original error
+[simpleEndpoint] ⚠️ No languageVariants found on error object
+[simpleEndpoint] ✅ Added availableBooks to errorDetails: 4 books
+11:33:30 AM [vite] (client) hmr update /src/app.css
+11:33:30 AM [vite] (ssr) page reload src/lib/simpleEndpoint.ts
+[DEBUG] KV cache initialized for endpoint {"endpoint":"fetch-scripture-v2"}
+[DEBUG] R2 env initialized {"endpoint":"fetch-scripture-v2","hasBucket":true,"hasCaches":true}
+[INFO] fetch-scripture-v2: Fetching data {"params":{"reference":"JHN 3:16","language":"es","resource":"all","format":"json"}}
+[INFO] 🔍 Dynamic discovery mode: fetching all tc-ready resources from catalog for es 
+[DEBUG] getScripture called {"reference":{"book":"John","chapter":3,"verse":16,"originalText":"JHN 3:16","isValid":true},"language":"es","organization":"all"}
+[INFO] ❌ KV MISS for https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready in 44ms 
+[INFO] ❌ Cache MISS for https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready 
+[INFO] Fetching catalog: https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready 
+[DEBUG] Client headers for passthrough {"original":3,"forwarded":2,"userAgent":"curl/8.8.0"}
+[WARN] Empty or invalid catalog response for https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready, not caching. Skipping KV cache for empty catalog result {"key":"https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready"}
+[WARN] Got 0 resources from cache, retrying with force refresh 
+[DEBUG] getScripture called {"reference":{"book":"John","chapter":3,"verse":16,"originalText":"JHN 3:16","isValid":true},"language":"es","organization":"all"}
+[INFO] 🚫 Force refresh requested - bypassing catalog cache 
+[INFO] Fetching catalog: https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready 
+[DEBUG] Client headers for passthrough {"original":4,"forwarded":2,"userAgent":"curl/8.8.0"}
+[WARN] Empty or invalid catalog response for https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready, not caching. Skipping KV cache for empty catalog result {"key":"https://git.door43.org/api/v1/catalog/search?lang=es&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready"}
+[INFO] Found 0 Bible resources 
+[DEBUG] Catalog resources {"resources":[]}
+[DEBUG] [getBookCode] Input: {"book":"John","type":"string"}
+[DEBUG] [getBookCode] Result: {"input":"John","normalized":"john","foundInMap":true,"result":"JHN"}
+[PARALLEL FETCH] Starting parallel fetch for 0 resources
+[PARALLEL FETCH] Completed 0 fetches in parallel
+[INFO] No resources found for language=es, searching for variants of base=es 
+[INFO] Finding language variants {"baseLanguage":"es","organization":"all","topic":"tc-ready"}
+[DEBUG] Searching catalog for language variants {"subject":"Bible","catalogUrl":"https://git.door43.org/api/v1/catalog/search?topic=tc-ready&subject=Bible&metadataType=rc"}
+[DEBUG] Searching catalog for language variants {"subject":"Aligned Bible","catalogUrl":"https://git.door43.org/api/v1/catalog/search?topic=tc-ready&subject=Aligned+Bible&metadataType=rc"}
+[DEBUG] Found 32 total resources, filtering for base language {"baseLanguage":"es","subjects":["Bible","Aligned Bible"],"sampleNames":["en_t4t","ar_avd","ar_arst","ar_nav","bn_glt"]}
+[DEBUG] Filtered to 2 matching resources {"matchingNames":["es-419_glt","es-419_gst"]}
+[INFO] Found language variants {"baseLanguage":"es","count":1,"variants":["es-419"]}
+[INFO] Found 1 language variants for base=es: [ 'es-419' ]
+[INFO] Fetching catalog to find available books: https://git.door43.org/api/v1/catalog/search?lang=es&subject=Bible,Aligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready&stage=prod&type=text 
+[INFO] Found 0 catalog resources for es 
+[INFO] Extracted 0 available books from catalog 
+[INFO] Throwing language variant error { requestedLanguage: 'es', availableVariants: [ 'es-419' ] }
+[ERROR] fetch-scripture-v2: Error {"error":{"languageVariants":["es-419"],"requestedLanguage":"es"}}
+[simpleEndpoint] Error object keys: [ 'languageVariants', 'requestedLanguage' ]
+[simpleEndpoint] Has languageVariants? true
+[simpleEndpoint] languageVariants value: [ 'es-419' ]
+[INFO] [simpleEndpoint] 🔄 Auto-retry triggered: es → es-419 
+[simpleEndpoint] 🔄 Retrying with language variant: es-419
+[INFO] 🔍 Dynamic discovery mode: fetching all tc-ready resources from catalog for es-419 
+[DEBUG] getScripture called {"reference":{"book":"John","chapter":3,"verse":16,"originalText":"JHN 3:16","isValid":true},"language":"es-419","organization":"all"}
+[INFO] 💾 Memory cache HIT for https://git.door43.org/api/v1/catalog/search?lang=es-419&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready 
+[CACHE TRACE] ✅ Catalog cache HIT: {
+  source: 'memory',
+  duration: 1,
+  key: 'https://git.door43.org/api/v1/catalog/search?lang=es-419&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready',
+  dataLength: 2
+}
+[CACHE TRACE] Added to tracer with cached=true, source=memory
+[INFO] Found 2 Bible resources 
+[DEBUG] Catalog resources {"resources":["es-419_glt","es-419_gst"]}
+[DEBUG] [getBookCode] Input: {"book":"John","type":"string"}
+[DEBUG] [getBookCode] Result: {"input":"John","normalized":"john","foundInMap":true,"result":"JHN"}
+[DEBUG] No ingredient found for John in es-419_glt 
+[DEBUG] No ingredient found for John in es-419_gst 
+[DEBUG] Client headers for passthrough {"original":3,"forwarded":2,"userAgent":"curl/8.8.0"}
+[DEBUG] Client headers for passthrough {"original":3,"forwarded":2,"userAgent":"curl/8.8.0"}
+[PARALLEL FETCH] Starting parallel fetch for 0 resources
+[PARALLEL FETCH] Completed 0 fetches in parallel
+[INFO] No resources found for language=es-419, searching for variants of base=es 
+[INFO] Finding language variants {"baseLanguage":"es","organization":"all","topic":"tc-ready"}
+[DEBUG] Searching catalog for language variants {"subject":"Bible","catalogUrl":"https://git.door43.org/api/v1/catalog/search?topic=tc-ready&subject=Bible&metadataType=rc"}
+[DEBUG] Searching catalog for language variants {"subject":"Aligned Bible","catalogUrl":"https://git.door43.org/api/v1/catalog/search?topic=tc-ready&subject=Aligned+Bible&metadataType=rc"}
+[DEBUG] Found 32 total resources, filtering for base language {"baseLanguage":"es","subjects":["Bible","Aligned Bible"],"sampleNames":["en_t4t","ar_avd","ar_arst","ar_nav","bn_glt"]}
+[DEBUG] Filtered to 2 matching resources {"matchingNames":["es-419_glt","es-419_gst"]}
+[INFO] Found language variants {"baseLanguage":"es","count":1,"variants":["es-419"]}
+[INFO] Found 1 language variants for base=es: [ 'es-419' ]
+[INFO] Fetching catalog to find available books: https://git.door43.org/api/v1/catalog/search?lang=es-419&subject=Bible,Aligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready&stage=prod&type=text 
+[INFO] Found 2 catalog resources for es-419 
+[INFO] Extracted 4 available books from catalog 
+[INFO] Throwing book not available error { requestedBook: 'John', language: 'es-419', availableBooksCount: 4 }
+[INFO] [simpleEndpoint] ✅ Retry found 4 available books - returning useful data 
+[simpleEndpoint] ✅ Retry provided availableBooks, replacing original error
+[simpleEndpoint] ⚠️ No languageVariants found on error object
+[simpleEndpoint] ✅ Added availableBooks to errorDetails: 4 books
+11:35:00 AM [vite] (client) hmr update /src/app.css
+11:35:00 AM [vite] (ssr) page reload src/lib/simpleEndpoint.ts
+11:38:44 AM [vite] (client) hmr update /src/app.css
+11:39:01 AM [vite] (client) hmr update /src/app.css
+11:39:01 AM [vite] (ssr) page reload src/lib/commonErrorHandlers.ts
+[INFO] Chat stream request {
+  message: 'Show me John 3:16 in portuguese.',
+  historyLength: 1,
+  language: 'en',
+  organization: 'unfoldingWord'
+}
+[DEBUG] DCS API Client initialized {"baseUrl":"https://git.door43.org","timeout":30000,"maxRetries":3}
+[INFO] Discovered MCP resources via SDK { endpoints: 9, prompts: 5 }
+[INFO] Discovered resources for chat { endpoints: 9, prompts: 5 }
+[INFO] Explicit language request detected { requested: 'pt', current: 'en' }
+[INFO] Executing MCP tool via SDK {
+  tool: 'fetch_scripture',
+  params: { reference: 'JHN 3:16', language: 'pt', format: 'json' }
+}
+[StateInjectionInterceptor] Intercepting tool: fetch_scripture {
+  requiredKeys: [ 'language', 'stage' ],
+  providedArgs: [ 'reference', 'language', 'format' ]
+}
+[StateInjectionInterceptor] Synced context: language = pt
+[StateInjectionInterceptor] Injected context: stage = prod
+[SDK] 🔄 State Injection Applied: tool=fetch_scripture, injected=[stage], synced=[language]
+[MCP ENDPOINT] Tool call: fetch_scripture Args: {"reference":"JHN 3:16","language":"pt","format":"json","stage":"prod"}
+[MCP ENDPOINT] Using UnifiedMCPHandler for: fetch_scripture
+[UNIFIED HANDLER] Received parameters for fetch_scripture: {
+  "reference": "JHN 3:16",
+  "language": "pt",
+  "format": "json",
+  "stage": "prod"
+}
+[UNIFIED HANDLER] Final parameters (with defaults) for fetch_scripture: {
+  "reference": "JHN 3:16",
+  "language": "pt",
+  "format": "json",
+  "stage": "prod"
+}
+[DEBUG] KV cache initialized for endpoint {"endpoint":"fetch-scripture-v2"}
+[DEBUG] R2 env initialized {"endpoint":"fetch-scripture-v2","hasBucket":true,"hasCaches":true}
+[INFO] fetch-scripture-v2: Fetching data {"params":{"reference":"JHN 3:16","language":"pt","resource":"all","format":"json"}}
+[INFO] 🔍 Dynamic discovery mode: fetching all tc-ready resources from catalog for pt 
+[DEBUG] getScripture called {"reference":{"book":"John","chapter":3,"verse":16,"originalText":"JHN 3:16","isValid":true},"language":"pt","organization":"all"}
+[INFO] ❌ KV MISS for https://git.door43.org/api/v1/catalog/search?lang=pt&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready in 34ms 
+[INFO] ❌ Cache MISS for https://git.door43.org/api/v1/catalog/search?lang=pt&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready 
+[INFO] Fetching catalog: https://git.door43.org/api/v1/catalog/search?lang=pt&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready 
+[DEBUG] Client headers for passthrough {"original":2,"forwarded":2}
+[WARN] Empty or invalid catalog response for https://git.door43.org/api/v1/catalog/search?lang=pt&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready, not caching. Skipping KV cache for empty catalog result {"key":"https://git.door43.org/api/v1/catalog/search?lang=pt&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready"}
+[WARN] Got 0 resources from cache, retrying with force refresh 
+[DEBUG] getScripture called {"reference":{"book":"John","chapter":3,"verse":16,"originalText":"JHN 3:16","isValid":true},"language":"pt","organization":"all"}
+[INFO] 🚫 Force refresh requested - bypassing catalog cache 
+[INFO] Fetching catalog: https://git.door43.org/api/v1/catalog/search?lang=pt&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready 
+[DEBUG] Client headers for passthrough {"original":3,"forwarded":2}
+[WARN] Empty or invalid catalog response for https://git.door43.org/api/v1/catalog/search?lang=pt&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready, not caching. Skipping KV cache for empty catalog result {"key":"https://git.door43.org/api/v1/catalog/search?lang=pt&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready"}
+[INFO] Found 0 Bible resources 
+[DEBUG] Catalog resources {"resources":[]}
+[DEBUG] [getBookCode] Input: {"book":"John","type":"string"}
+[DEBUG] [getBookCode] Result: {"input":"John","normalized":"john","foundInMap":true,"result":"JHN"}
+[PARALLEL FETCH] Starting parallel fetch for 0 resources
+[PARALLEL FETCH] Completed 0 fetches in parallel
+[INFO] No resources found for language=pt, searching for variants of base=pt 
+[INFO] Finding language variants {"baseLanguage":"pt","organization":"all","topic":"tc-ready"}
+[DEBUG] Searching catalog for language variants {"subject":"Bible","catalogUrl":"https://git.door43.org/api/v1/catalog/search?topic=tc-ready&subject=Bible&metadataType=rc"}
+[DEBUG] Searching catalog for language variants {"subject":"Aligned Bible","catalogUrl":"https://git.door43.org/api/v1/catalog/search?topic=tc-ready&subject=Aligned+Bible&metadataType=rc"}
+[DEBUG] Found 32 total resources, filtering for base language {"baseLanguage":"pt","subjects":["Bible","Aligned Bible"],"sampleNames":["en_t4t","ar_avd","ar_arst","ar_nav","bn_glt"]}
+[DEBUG] Filtered to 0 matching resources {"matchingNames":[]}
+[INFO] No matching resources for base language {"baseLanguage":"pt"}
+[INFO] Found 0 language variants for base=pt: []
+[INFO] Fetching catalog to find available books: https://git.door43.org/api/v1/catalog/search?lang=pt&subject=Bible,Aligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready&stage=prod&type=text 
+[INFO] Found 0 catalog resources for pt 
+[INFO] Extracted 0 available books from catalog 
+[INFO] Throwing generic book not found error {
+  requestedBook: 'JHN',
+  parsedBook: 'John',
+  language: 'pt',
+  validCodesCount: 66
+}
+[ERROR] fetch-scripture-v2: Error {"error":{"validBookCodes":[{"code":"GEN","name":"Genesis"},{"code":"EXO","name":"Exodus"},{"code":"LEV","name":"Leviticus"},{"code":"NUM","name":"Numbers"},{"code":"DEU","name":"Deuteronomy"},{"code":"JOS","name":"Joshua"},{"code":"JDG","name":"Judges"},{"code":"RUT","name":"Ruth"},{"code":"1SA","name":"1 Samuel"},{"code":"2SA","name":"2 Samuel"},{"code":"1KI","name":"1 Kings"},{"code":"2KI","name":"2 Kings"},{"code":"1CH","name":"1 Chronicles"},{"code":"2CH","name":"2 Chronicles"},{"code":"EZR","name":"Ezra"},{"code":"NEH","name":"Nehemiah"},{"code":"EST","name":"Esther"},{"code":"JOB","name":"Job"},{"code":"PSA","name":"Psalms"},{"code":"PRO","name":"Proverbs"},{"code":"ECC","name":"Ecclesiastes"},{"code":"SNG","name":"Song of Solomon"},{"code":"ISA","name":"Isaiah"},{"code":"JER","name":"Jeremiah"},{"code":"LAM","name":"Lamentations"},{"code":"EZK","name":"Ezekiel"},{"code":"DAN","name":"Daniel"},{"code":"HOS","name":"Hosea"},{"code":"JOL","name":"Joel"},{"code":"AMO","name":"Amos"},{"code":"OBA","name":"Obadiah"},{"code":"JON","name":"Jonah"},{"code":"MIC","name":"Micah"},{"code":"NAM","name":"Nahum"},{"code":"HAB","name":"Habakkuk"},{"code":"ZEP","name":"Zephaniah"},{"code":"HAG","name":"Haggai"},{"code":"ZEC","name":"Zechariah"},{"code":"MAL","name":"Malachi"},{"code":"MAT","name":"Matthew"},{"code":"MRK","name":"Mark"},{"code":"LUK","name":"Luke"},{"code":"JHN","name":"John"},{"code":"ACT","name":"Acts"},{"code":"ROM","name":"Romans"},{"code":"1CO","name":"1 Corinthians"},{"code":"2CO","name":"2 Corinthians"},{"code":"GAL","name":"Galatians"},{"code":"EPH","name":"Ephesians"},{"code":"PHP","name":"Philippians"},{"code":"COL","name":"Colossians"},{"code":"1TH","name":"1 Thessalonians"},{"code":"2TH","name":"2 Thessalonians"},{"code":"1TI","name":"1 Timothy"},{"code":"2TI","name":"2 Timothy"},{"code":"TIT","name":"Titus"},{"code":"PHM","name":"Philemon"},{"code":"HEB","name":"Hebrews"},{"code":"JAS","name":"James"},{"code":"1PE","name":"1 Peter"},{"code":"2PE","name":"2 Peter"},{"code":"1JN","name":"1 John"},{"code":"2JN","name":"2 John"},{"code":"3JN","name":"3 John"},{"code":"JUD","name":"Jude"},{"code":"REV","name":"Revelation"}],"invalidCode":"JHN","parsedBook":"John"}}
+[simpleEndpoint] Error object keys: [ 'validBookCodes', 'invalidCode', 'parsedBook' ]
+[simpleEndpoint] Has languageVariants? false
+[simpleEndpoint] languageVariants value: undefined
+[simpleEndpoint] ✅ Added validBookCodes to errorDetails
+[simpleEndpoint] ⚠️ No languageVariants found on error object
+[UNIFIED HANDLER] Attached 66 valid book codes to error
+[MCP ENDPOINT] Tool error for fetch_scripture: Error: Tool endpoint failed: 400
+    at UnifiedMCPHandler.handleToolCall (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/lib/mcp/UnifiedMCPHandler.ts:55:21)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/routes/api/mcp/+server.ts:91:26)
+    at async render_endpoint (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/endpoint.js:56:20)
+    at async resolve (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:472:23)
+    at async fn (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:337:16)
+    at async internal_respond (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:319:22)
+    at async file:///C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/exports/vite/dev/index.js:562:22 {
+  status: 400,
+  details: {
+    endpoint: 'fetch-scripture-v2',
+    path: '/api/fetch-scripture',
+    params: {
+      reference: 'JHN 3:16',
+      language: 'pt',
+      resource: 'all',
+      format: 'json'
+    },
+    timestamp: '2026-03-14T16:00:06.937Z',
+    validBookCodes: [
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object]
+    ],
+    invalidCode: 'JHN',
+    stack: [
+      "Error: No scripture found for reference 'JHN 3:16' in language 'pt'. No resources matched the requested book. Please use standard 3-letter book codes (e.g., GEN for Genesis, JHN for John, MAT for Matthew).",
+      '    at UnifiedResourceFetcher.fetchScripture (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/lib/unifiedResourceFetcher.ts:195:21)',
+      '    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)',
+      '    at async Object.fetchScripture [as fetch] (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/routes/api/fetch-scripture/+server.ts:30:19)',
+      '    at async eval (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/lib/simpleEndpoint.ts:148:18)'
+    ]
+  },
+  validBookCodes: [
+    { code: 'GEN', name: 'Genesis' },
+    { code: 'EXO', name: 'Exodus' },
+    { code: 'LEV', name: 'Leviticus' },
+    { code: 'NUM', name: 'Numbers' },
+    { code: 'DEU', name: 'Deuteronomy' },
+    { code: 'JOS', name: 'Joshua' },
+    { code: 'JDG', name: 'Judges' },
+    { code: 'RUT', name: 'Ruth' },
+    { code: '1SA', name: '1 Samuel' },
+    { code: '2SA', name: '2 Samuel' },
+    { code: '1KI', name: '1 Kings' },
+    { code: '2KI', name: '2 Kings' },
+    { code: '1CH', name: '1 Chronicles' },
+    { code: '2CH', name: '2 Chronicles' },
+    { code: 'EZR', name: 'Ezra' },
+    { code: 'NEH', name: 'Nehemiah' },
+    { code: 'EST', name: 'Esther' },
+    { code: 'JOB', name: 'Job' },
+    { code: 'PSA', name: 'Psalms' },
+    { code: 'PRO', name: 'Proverbs' },
+    { code: 'ECC', name: 'Ecclesiastes' },
+    { code: 'SNG', name: 'Song of Solomon' },
+    { code: 'ISA', name: 'Isaiah' },
+    { code: 'JER', name: 'Jeremiah' },
+    { code: 'LAM', name: 'Lamentations' },
+    { code: 'EZK', name: 'Ezekiel' },
+    { code: 'DAN', name: 'Daniel' },
+    { code: 'HOS', name: 'Hosea' },
+    { code: 'JOL', name: 'Joel' },
+    { code: 'AMO', name: 'Amos' },
+    { code: 'OBA', name: 'Obadiah' },
+    { code: 'JON', name: 'Jonah' },
+    { code: 'MIC', name: 'Micah' },
+    { code: 'NAM', name: 'Nahum' },
+    { code: 'HAB', name: 'Habakkuk' },
+    { code: 'ZEP', name: 'Zephaniah' },
+    { code: 'HAG', name: 'Haggai' },
+    { code: 'ZEC', name: 'Zechariah' },
+    { code: 'MAL', name: 'Malachi' },
+    { code: 'MAT', name: 'Matthew' },
+    { code: 'MRK', name: 'Mark' },
+    { code: 'LUK', name: 'Luke' },
+    { code: 'JHN', name: 'John' },
+    { code: 'ACT', name: 'Acts' },
+    { code: 'ROM', name: 'Romans' },
+    { code: '1CO', name: '1 Corinthians' },
+    { code: '2CO', name: '2 Corinthians' },
+    { code: 'GAL', name: 'Galatians' },
+    { code: 'EPH', name: 'Ephesians' },
+    { code: 'PHP', name: 'Philippians' },
+    { code: 'COL', name: 'Colossians' },
+    { code: '1TH', name: '1 Thessalonians' },
+    { code: '2TH', name: '2 Thessalonians' },
+    { code: '1TI', name: '1 Timothy' },
+    { code: '2TI', name: '2 Timothy' },
+    { code: 'TIT', name: 'Titus' },
+    { code: 'PHM', name: 'Philemon' },
+    { code: 'HEB', name: 'Hebrews' },
+    { code: 'JAS', name: 'James' },
+    { code: '1PE', name: '1 Peter' },
+    { code: '2PE', name: '2 Peter' },
+    { code: '1JN', name: '1 John' },
+    { code: '2JN', name: '2 John' },
+    { code: '3JN', name: '3 John' },
+    { code: 'JUD', name: 'Jude' },
+    { code: 'REV', name: 'Revelation' }
+  ],
+  invalidCode: 'JHN'
+}
+[MCP ENDPOINT] Including 66 valid book codes in error response
+[SDK] 🚨 MCP Error Response: {
+  code: -32000,
+  message: 'Tool endpoint failed: 400',
+  data: {
+    validBookCodes: [
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object]
+    ],
+    invalidCode: 'JHN'
+  }
+}
+[SDK] 🔍 Has data.error.data? true
+[SDK] 🔍 data.error.data: {
+  validBookCodes: [
+    { code: 'GEN', name: 'Genesis' },
+    { code: 'EXO', name: 'Exodus' },
+    { code: 'LEV', name: 'Leviticus' },
+    { code: 'NUM', name: 'Numbers' },
+    { code: 'DEU', name: 'Deuteronomy' },
+    { code: 'JOS', name: 'Joshua' },
+    { code: 'JDG', name: 'Judges' },
+    { code: 'RUT', name: 'Ruth' },
+    { code: '1SA', name: '1 Samuel' },
+    { code: '2SA', name: '2 Samuel' },
+    { code: '1KI', name: '1 Kings' },
+    { code: '2KI', name: '2 Kings' },
+    { code: '1CH', name: '1 Chronicles' },
+    { code: '2CH', name: '2 Chronicles' },
+    { code: 'EZR', name: 'Ezra' },
+    { code: 'NEH', name: 'Nehemiah' },
+    { code: 'EST', name: 'Esther' },
+    { code: 'JOB', name: 'Job' },
+    { code: 'PSA', name: 'Psalms' },
+    { code: 'PRO', name: 'Proverbs' },
+    { code: 'ECC', name: 'Ecclesiastes' },
+    { code: 'SNG', name: 'Song of Solomon' },
+    { code: 'ISA', name: 'Isaiah' },
+    { code: 'JER', name: 'Jeremiah' },
+    { code: 'LAM', name: 'Lamentations' },
+    { code: 'EZK', name: 'Ezekiel' },
+    { code: 'DAN', name: 'Daniel' },
+    { code: 'HOS', name: 'Hosea' },
+    { code: 'JOL', name: 'Joel' },
+    { code: 'AMO', name: 'Amos' },
+    { code: 'OBA', name: 'Obadiah' },
+    { code: 'JON', name: 'Jonah' },
+    { code: 'MIC', name: 'Micah' },
+    { code: 'NAM', name: 'Nahum' },
+    { code: 'HAB', name: 'Habakkuk' },
+    { code: 'ZEP', name: 'Zephaniah' },
+    { code: 'HAG', name: 'Haggai' },
+    { code: 'ZEC', name: 'Zechariah' },
+    { code: 'MAL', name: 'Malachi' },
+    { code: 'MAT', name: 'Matthew' },
+    { code: 'MRK', name: 'Mark' },
+    { code: 'LUK', name: 'Luke' },
+    { code: 'JHN', name: 'John' },
+    { code: 'ACT', name: 'Acts' },
+    { code: 'ROM', name: 'Romans' },
+    { code: '1CO', name: '1 Corinthians' },
+    { code: '2CO', name: '2 Corinthians' },
+    { code: 'GAL', name: 'Galatians' },
+    { code: 'EPH', name: 'Ephesians' },
+    { code: 'PHP', name: 'Philippians' },
+    { code: 'COL', name: 'Colossians' },
+    { code: '1TH', name: '1 Thessalonians' },
+    { code: '2TH', name: '2 Thessalonians' },
+    { code: '1TI', name: '1 Timothy' },
+    { code: '2TI', name: '2 Timothy' },
+    { code: 'TIT', name: 'Titus' },
+    { code: 'PHM', name: 'Philemon' },
+    { code: 'HEB', name: 'Hebrews' },
+    { code: 'JAS', name: 'James' },
+    { code: '1PE', name: '1 Peter' },
+    { code: '2PE', name: '2 Peter' },
+    { code: '1JN', name: '1 John' },
+    { code: '2JN', name: '2 John' },
+    { code: '3JN', name: '3 John' },
+    { code: 'JUD', name: 'Jude' },
+    { code: 'REV', name: 'Revelation' }
+  ],
+  invalidCode: 'JHN'
+}
+[SDK] ✅ Preserving error.data with [ 'validBookCodes', 'invalidCode' ]
+[SDK] ✅ Attaching validBookCodes: 66 codes
+[SDK] 🎯 Throwing error with details: true validBookCodes: true
+[ERROR] MCP tool call failed via SDK {
+  tool: 'fetch_scripture',
+  error: Error: Tool endpoint failed: 400
+      at TranslationHelpsClient.sendRequest (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/packages/js-sdk/dist/client.js:110:31)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async TranslationHelpsClient.callTool (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/packages/js-sdk/dist/client.js:286:26)
+      at async callTool (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/lib/mcp/client.ts:74:10)
+      at async executeMCPCalls (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/routes/api/chat-stream/+server.ts:982:26)
+      at async POST (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/routes/api/chat-stream/+server.ts:1879:32)
+      at async render_endpoint (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/endpoint.js:56:20)
+      at async resolve (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:472:23)
+      at async fn (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:337:16)
+      at async internal_respond (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:319:22) {
+    details: { validBookCodes: [Array], invalidCode: 'JHN' },
+    validBookCodes: [
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object]
+    ],
+    invalidCode: 'JHN'
+  }
+}
+[CHAT] ✅ Error has details: [ 'validBookCodes', 'invalidCode' ]
+[CHAT] ✅ Found validBookCodes: 66
+[CHAT] 🔍 Final errorDetails for retry check: {
+  hasLanguageVariants: false,
+  hasValidBookCodes: true,
+  errorDetails: {
+    validBookCodes: [
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object]
+    ],
+    invalidCode: 'JHN'
+  }
+}
+[CHAT] 🔄 Retry check: {
+  hasLanguageVariants: false,
+  hasValidBookCodes: true,
+  languageVariants: undefined,
+  validBookCodes: [
+    { code: 'GEN', name: 'Genesis' },
+    { code: 'EXO', name: 'Exodus' },
+    { code: 'LEV', name: 'Leviticus' },
+    { code: 'NUM', name: 'Numbers' },
+    { code: 'DEU', name: 'Deuteronomy' },
+    { code: 'JOS', name: 'Joshua' },
+    { code: 'JDG', name: 'Judges' },
+    { code: 'RUT', name: 'Ruth' },
+    { code: '1SA', name: '1 Samuel' },
+    { code: '2SA', name: '2 Samuel' },
+    { code: '1KI', name: '1 Kings' },
+    { code: '2KI', name: '2 Kings' },
+    { code: '1CH', name: '1 Chronicles' },
+    { code: '2CH', name: '2 Chronicles' },
+    { code: 'EZR', name: 'Ezra' },
+    { code: 'NEH', name: 'Nehemiah' },
+    { code: 'EST', name: 'Esther' },
+    { code: 'JOB', name: 'Job' },
+    { code: 'PSA', name: 'Psalms' },
+    { code: 'PRO', name: 'Proverbs' },
+    { code: 'ECC', name: 'Ecclesiastes' },
+    { code: 'SNG', name: 'Song of Solomon' },
+    { code: 'ISA', name: 'Isaiah' },
+    { code: 'JER', name: 'Jeremiah' },
+    { code: 'LAM', name: 'Lamentations' },
+    { code: 'EZK', name: 'Ezekiel' },
+    { code: 'DAN', name: 'Daniel' },
+    { code: 'HOS', name: 'Hosea' },
+    { code: 'JOL', name: 'Joel' },
+    { code: 'AMO', name: 'Amos' },
+    { code: 'OBA', name: 'Obadiah' },
+    { code: 'JON', name: 'Jonah' },
+    { code: 'MIC', name: 'Micah' },
+    { code: 'NAM', name: 'Nahum' },
+    { code: 'HAB', name: 'Habakkuk' },
+    { code: 'ZEP', name: 'Zephaniah' },
+    { code: 'HAG', name: 'Haggai' },
+    { code: 'ZEC', name: 'Zechariah' },
+    { code: 'MAL', name: 'Malachi' },
+    { code: 'MAT', name: 'Matthew' },
+    { code: 'MRK', name: 'Mark' },
+    { code: 'LUK', name: 'Luke' },
+    { code: 'JHN', name: 'John' },
+    { code: 'ACT', name: 'Acts' },
+    { code: 'ROM', name: 'Romans' },
+    { code: '1CO', name: '1 Corinthians' },
+    { code: '2CO', name: '2 Corinthians' },
+    { code: 'GAL', name: 'Galatians' },
+    { code: 'EPH', name: 'Ephesians' },
+    { code: 'PHP', name: 'Philippians' },
+    { code: 'COL', name: 'Colossians' },
+    { code: '1TH', name: '1 Thessalonians' },
+    { code: '2TH', name: '2 Thessalonians' },
+    { code: '1TI', name: '1 Timothy' },
+    { code: '2TI', name: '2 Timothy' },
+    { code: 'TIT', name: 'Titus' },
+    { code: 'PHM', name: 'Philemon' },
+    { code: 'HEB', name: 'Hebrews' },
+    { code: 'JAS', name: 'James' },
+    { code: '1PE', name: '1 Peter' },
+    { code: '2PE', name: '2 Peter' },
+    { code: '1JN', name: '1 John' },
+    { code: '2JN', name: '2 John' },
+    { code: '3JN', name: '3 John' },
+    { code: 'JUD', name: 'Jude' },
+    { code: 'REV', name: 'Revelation' }
+  ]
+}
+[CHAT] ✅ RETRY TRIGGERED - Recovery data found
+[INFO] Error has recovery data - attempting automatic retry {
+  tool: 'fetch_scripture',
+  hasLanguageVariants: false,
+  hasValidBookCodes: true,
+  errorDetails: {
+    validBookCodes: [
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object]
+    ],
+    invalidCode: 'JHN'
+  }
+}
+[INFO] Book code error detected, but auto-retry not implemented for this case 
+[INFO] Chat stream request {
+  message: 'Can you find it in spanish?',
+  historyLength: 3,
+  language: 'en',
+  organization: 'unfoldingWord'
+}
+[INFO] Discovered MCP resources via SDK { endpoints: 9, prompts: 5 }
+[INFO] Discovered resources for chat { endpoints: 9, prompts: 5 }
+[INFO] Explicit language request detected { requested: 'es-419', current: 'en' }
+[INFO] Executing MCP tool via SDK {
+  tool: 'fetch_scripture',
+  params: { reference: 'JHN 3:16', language: 'pt', format: 'json' }
+}
+[StateInjectionInterceptor] Intercepting tool: fetch_scripture {
+  requiredKeys: [ 'language', 'stage' ],
+  providedArgs: [ 'reference', 'language', 'format' ]
+}
+[StateInjectionInterceptor] Synced context: language = pt
+[StateInjectionInterceptor] Injected context: stage = prod
+[SDK] 🔄 State Injection Applied: tool=fetch_scripture, injected=[stage], synced=[language]
+[MCP ENDPOINT] Tool call: fetch_scripture Args: {"reference":"JHN 3:16","language":"pt","format":"json","stage":"prod"}
+[MCP ENDPOINT] Using UnifiedMCPHandler for: fetch_scripture
+[UNIFIED HANDLER] Received parameters for fetch_scripture: {
+  "reference": "JHN 3:16",
+  "language": "pt",
+  "format": "json",
+  "stage": "prod"
+}
+[UNIFIED HANDLER] Final parameters (with defaults) for fetch_scripture: {
+  "reference": "JHN 3:16",
+  "language": "pt",
+  "format": "json",
+  "stage": "prod"
+}
+[DEBUG] KV cache initialized for endpoint {"endpoint":"fetch-scripture-v2"}
+[DEBUG] R2 env initialized {"endpoint":"fetch-scripture-v2","hasBucket":true,"hasCaches":true}
+[INFO] fetch-scripture-v2: Fetching data {"params":{"reference":"JHN 3:16","language":"pt","resource":"all","format":"json"}}
+[INFO] 🔍 Dynamic discovery mode: fetching all tc-ready resources from catalog for pt 
+[DEBUG] getScripture called {"reference":{"book":"John","chapter":3,"verse":16,"originalText":"JHN 3:16","isValid":true},"language":"pt","organization":"all"}
+[INFO] ❌ KV MISS for https://git.door43.org/api/v1/catalog/search?lang=pt&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready in 14ms 
+[INFO] ❌ Cache MISS for https://git.door43.org/api/v1/catalog/search?lang=pt&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready 
+[INFO] Fetching catalog: https://git.door43.org/api/v1/catalog/search?lang=pt&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready 
+[DEBUG] Client headers for passthrough {"original":2,"forwarded":2}
+[WARN] Empty or invalid catalog response for https://git.door43.org/api/v1/catalog/search?lang=pt&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready, not caching. Skipping KV cache for empty catalog result {"key":"https://git.door43.org/api/v1/catalog/search?lang=pt&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready"}
+[WARN] Got 0 resources from cache, retrying with force refresh 
+[DEBUG] getScripture called {"reference":{"book":"John","chapter":3,"verse":16,"originalText":"JHN 3:16","isValid":true},"language":"pt","organization":"all"}
+[INFO] 🚫 Force refresh requested - bypassing catalog cache 
+[INFO] Fetching catalog: https://git.door43.org/api/v1/catalog/search?lang=pt&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready 
+[DEBUG] Client headers for passthrough {"original":3,"forwarded":2}
+[WARN] Empty or invalid catalog response for https://git.door43.org/api/v1/catalog/search?lang=pt&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready, not caching. Skipping KV cache for empty catalog result {"key":"https://git.door43.org/api/v1/catalog/search?lang=pt&type=text&stage=prod&subject=Bible%2CAligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready"}
+[INFO] Found 0 Bible resources 
+[DEBUG] Catalog resources {"resources":[]}
+[DEBUG] [getBookCode] Input: {"book":"John","type":"string"}
+[DEBUG] [getBookCode] Result: {"input":"John","normalized":"john","foundInMap":true,"result":"JHN"}
+[PARALLEL FETCH] Starting parallel fetch for 0 resources
+[PARALLEL FETCH] Completed 0 fetches in parallel
+[INFO] No resources found for language=pt, searching for variants of base=pt 
+[INFO] Finding language variants {"baseLanguage":"pt","organization":"all","topic":"tc-ready"}
+[DEBUG] Searching catalog for language variants {"subject":"Bible","catalogUrl":"https://git.door43.org/api/v1/catalog/search?topic=tc-ready&subject=Bible&metadataType=rc"}
+[DEBUG] Searching catalog for language variants {"subject":"Aligned Bible","catalogUrl":"https://git.door43.org/api/v1/catalog/search?topic=tc-ready&subject=Aligned+Bible&metadataType=rc"}
+[DEBUG] Found 32 total resources, filtering for base language {"baseLanguage":"pt","subjects":["Bible","Aligned Bible"],"sampleNames":["en_t4t","ar_avd","ar_arst","ar_nav","bn_glt"]}
+[DEBUG] Filtered to 0 matching resources {"matchingNames":[]}
+[INFO] No matching resources for base language {"baseLanguage":"pt"}
+[INFO] Found 0 language variants for base=pt: []
+[INFO] Fetching catalog to find available books: https://git.door43.org/api/v1/catalog/search?lang=pt&subject=Bible,Aligned+Bible&metadataType=rc&includeMetadata=true&topic=tc-ready&stage=prod&type=text 
+[INFO] Found 0 catalog resources for pt 
+[INFO] Extracted 0 available books from catalog 
+[INFO] Throwing generic book not found error {
+  requestedBook: 'JHN',
+  parsedBook: 'John',
+  language: 'pt',
+  validCodesCount: 66
+}
+[ERROR] fetch-scripture-v2: Error {"error":{"validBookCodes":[{"code":"GEN","name":"Genesis"},{"code":"EXO","name":"Exodus"},{"code":"LEV","name":"Leviticus"},{"code":"NUM","name":"Numbers"},{"code":"DEU","name":"Deuteronomy"},{"code":"JOS","name":"Joshua"},{"code":"JDG","name":"Judges"},{"code":"RUT","name":"Ruth"},{"code":"1SA","name":"1 Samuel"},{"code":"2SA","name":"2 Samuel"},{"code":"1KI","name":"1 Kings"},{"code":"2KI","name":"2 Kings"},{"code":"1CH","name":"1 Chronicles"},{"code":"2CH","name":"2 Chronicles"},{"code":"EZR","name":"Ezra"},{"code":"NEH","name":"Nehemiah"},{"code":"EST","name":"Esther"},{"code":"JOB","name":"Job"},{"code":"PSA","name":"Psalms"},{"code":"PRO","name":"Proverbs"},{"code":"ECC","name":"Ecclesiastes"},{"code":"SNG","name":"Song of Solomon"},{"code":"ISA","name":"Isaiah"},{"code":"JER","name":"Jeremiah"},{"code":"LAM","name":"Lamentations"},{"code":"EZK","name":"Ezekiel"},{"code":"DAN","name":"Daniel"},{"code":"HOS","name":"Hosea"},{"code":"JOL","name":"Joel"},{"code":"AMO","name":"Amos"},{"code":"OBA","name":"Obadiah"},{"code":"JON","name":"Jonah"},{"code":"MIC","name":"Micah"},{"code":"NAM","name":"Nahum"},{"code":"HAB","name":"Habakkuk"},{"code":"ZEP","name":"Zephaniah"},{"code":"HAG","name":"Haggai"},{"code":"ZEC","name":"Zechariah"},{"code":"MAL","name":"Malachi"},{"code":"MAT","name":"Matthew"},{"code":"MRK","name":"Mark"},{"code":"LUK","name":"Luke"},{"code":"JHN","name":"John"},{"code":"ACT","name":"Acts"},{"code":"ROM","name":"Romans"},{"code":"1CO","name":"1 Corinthians"},{"code":"2CO","name":"2 Corinthians"},{"code":"GAL","name":"Galatians"},{"code":"EPH","name":"Ephesians"},{"code":"PHP","name":"Philippians"},{"code":"COL","name":"Colossians"},{"code":"1TH","name":"1 Thessalonians"},{"code":"2TH","name":"2 Thessalonians"},{"code":"1TI","name":"1 Timothy"},{"code":"2TI","name":"2 Timothy"},{"code":"TIT","name":"Titus"},{"code":"PHM","name":"Philemon"},{"code":"HEB","name":"Hebrews"},{"code":"JAS","name":"James"},{"code":"1PE","name":"1 Peter"},{"code":"2PE","name":"2 Peter"},{"code":"1JN","name":"1 John"},{"code":"2JN","name":"2 John"},{"code":"3JN","name":"3 John"},{"code":"JUD","name":"Jude"},{"code":"REV","name":"Revelation"}],"invalidCode":"JHN","parsedBook":"John"}}
+[simpleEndpoint] Error object keys: [ 'validBookCodes', 'invalidCode', 'parsedBook' ]
+[simpleEndpoint] Has languageVariants? false
+[simpleEndpoint] languageVariants value: undefined
+[simpleEndpoint] ✅ Added validBookCodes to errorDetails
+[simpleEndpoint] ⚠️ No languageVariants found on error object
+[UNIFIED HANDLER] Attached 66 valid book codes to error
+[MCP ENDPOINT] Tool error for fetch_scripture: Error: Tool endpoint failed: 400
+    at UnifiedMCPHandler.handleToolCall (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/lib/mcp/UnifiedMCPHandler.ts:55:21)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/routes/api/mcp/+server.ts:91:26)
+    at async render_endpoint (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/endpoint.js:56:20)
+    at async resolve (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:472:23)
+    at async fn (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:337:16)
+    at async internal_respond (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:319:22)
+    at async file:///C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/exports/vite/dev/index.js:562:22 {
+  status: 400,
+  details: {
+    endpoint: 'fetch-scripture-v2',
+    path: '/api/fetch-scripture',
+    params: {
+      reference: 'JHN 3:16',
+      language: 'pt',
+      resource: 'all',
+      format: 'json'
+    },
+    timestamp: '2026-03-14T16:00:32.801Z',
+    validBookCodes: [
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object]
+    ],
+    invalidCode: 'JHN',
+    stack: [
+      "Error: No scripture found for reference 'JHN 3:16' in language 'pt'. No resources matched the requested book. Please use standard 3-letter book codes (e.g., GEN for Genesis, JHN for John, MAT for Matthew).",
+      '    at UnifiedResourceFetcher.fetchScripture (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/lib/unifiedResourceFetcher.ts:195:21)',
+      '    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)',
+      '    at async Object.fetchScripture [as fetch] (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/routes/api/fetch-scripture/+server.ts:30:19)',
+      '    at async eval (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/lib/simpleEndpoint.ts:148:18)'
+    ]
+  },
+  validBookCodes: [
+    { code: 'GEN', name: 'Genesis' },
+    { code: 'EXO', name: 'Exodus' },
+    { code: 'LEV', name: 'Leviticus' },
+    { code: 'NUM', name: 'Numbers' },
+    { code: 'DEU', name: 'Deuteronomy' },
+    { code: 'JOS', name: 'Joshua' },
+    { code: 'JDG', name: 'Judges' },
+    { code: 'RUT', name: 'Ruth' },
+    { code: '1SA', name: '1 Samuel' },
+    { code: '2SA', name: '2 Samuel' },
+    { code: '1KI', name: '1 Kings' },
+    { code: '2KI', name: '2 Kings' },
+    { code: '1CH', name: '1 Chronicles' },
+    { code: '2CH', name: '2 Chronicles' },
+    { code: 'EZR', name: 'Ezra' },
+    { code: 'NEH', name: 'Nehemiah' },
+    { code: 'EST', name: 'Esther' },
+    { code: 'JOB', name: 'Job' },
+    { code: 'PSA', name: 'Psalms' },
+    { code: 'PRO', name: 'Proverbs' },
+    { code: 'ECC', name: 'Ecclesiastes' },
+    { code: 'SNG', name: 'Song of Solomon' },
+    { code: 'ISA', name: 'Isaiah' },
+    { code: 'JER', name: 'Jeremiah' },
+    { code: 'LAM', name: 'Lamentations' },
+    { code: 'EZK', name: 'Ezekiel' },
+    { code: 'DAN', name: 'Daniel' },
+    { code: 'HOS', name: 'Hosea' },
+    { code: 'JOL', name: 'Joel' },
+    { code: 'AMO', name: 'Amos' },
+    { code: 'OBA', name: 'Obadiah' },
+    { code: 'JON', name: 'Jonah' },
+    { code: 'MIC', name: 'Micah' },
+    { code: 'NAM', name: 'Nahum' },
+    { code: 'HAB', name: 'Habakkuk' },
+    { code: 'ZEP', name: 'Zephaniah' },
+    { code: 'HAG', name: 'Haggai' },
+    { code: 'ZEC', name: 'Zechariah' },
+    { code: 'MAL', name: 'Malachi' },
+    { code: 'MAT', name: 'Matthew' },
+    { code: 'MRK', name: 'Mark' },
+    { code: 'LUK', name: 'Luke' },
+    { code: 'JHN', name: 'John' },
+    { code: 'ACT', name: 'Acts' },
+    { code: 'ROM', name: 'Romans' },
+    { code: '1CO', name: '1 Corinthians' },
+    { code: '2CO', name: '2 Corinthians' },
+    { code: 'GAL', name: 'Galatians' },
+    { code: 'EPH', name: 'Ephesians' },
+    { code: 'PHP', name: 'Philippians' },
+    { code: 'COL', name: 'Colossians' },
+    { code: '1TH', name: '1 Thessalonians' },
+    { code: '2TH', name: '2 Thessalonians' },
+    { code: '1TI', name: '1 Timothy' },
+    { code: '2TI', name: '2 Timothy' },
+    { code: 'TIT', name: 'Titus' },
+    { code: 'PHM', name: 'Philemon' },
+    { code: 'HEB', name: 'Hebrews' },
+    { code: 'JAS', name: 'James' },
+    { code: '1PE', name: '1 Peter' },
+    { code: '2PE', name: '2 Peter' },
+    { code: '1JN', name: '1 John' },
+    { code: '2JN', name: '2 John' },
+    { code: '3JN', name: '3 John' },
+    { code: 'JUD', name: 'Jude' },
+    { code: 'REV', name: 'Revelation' }
+  ],
+  invalidCode: 'JHN'
+}
+[MCP ENDPOINT] Including 66 valid book codes in error response
+[SDK] 🚨 MCP Error Response: {
+  code: -32000,
+  message: 'Tool endpoint failed: 400',
+  data: {
+    validBookCodes: [
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object]
+    ],
+    invalidCode: 'JHN'
+  }
+}
+[SDK] 🔍 Has data.error.data? true
+[SDK] 🔍 data.error.data: {
+  validBookCodes: [
+    { code: 'GEN', name: 'Genesis' },
+    { code: 'EXO', name: 'Exodus' },
+    { code: 'LEV', name: 'Leviticus' },
+    { code: 'NUM', name: 'Numbers' },
+    { code: 'DEU', name: 'Deuteronomy' },
+    { code: 'JOS', name: 'Joshua' },
+    { code: 'JDG', name: 'Judges' },
+    { code: 'RUT', name: 'Ruth' },
+    { code: '1SA', name: '1 Samuel' },
+    { code: '2SA', name: '2 Samuel' },
+    { code: '1KI', name: '1 Kings' },
+    { code: '2KI', name: '2 Kings' },
+    { code: '1CH', name: '1 Chronicles' },
+    { code: '2CH', name: '2 Chronicles' },
+    { code: 'EZR', name: 'Ezra' },
+    { code: 'NEH', name: 'Nehemiah' },
+    { code: 'EST', name: 'Esther' },
+    { code: 'JOB', name: 'Job' },
+    { code: 'PSA', name: 'Psalms' },
+    { code: 'PRO', name: 'Proverbs' },
+    { code: 'ECC', name: 'Ecclesiastes' },
+    { code: 'SNG', name: 'Song of Solomon' },
+    { code: 'ISA', name: 'Isaiah' },
+    { code: 'JER', name: 'Jeremiah' },
+    { code: 'LAM', name: 'Lamentations' },
+    { code: 'EZK', name: 'Ezekiel' },
+    { code: 'DAN', name: 'Daniel' },
+    { code: 'HOS', name: 'Hosea' },
+    { code: 'JOL', name: 'Joel' },
+    { code: 'AMO', name: 'Amos' },
+    { code: 'OBA', name: 'Obadiah' },
+    { code: 'JON', name: 'Jonah' },
+    { code: 'MIC', name: 'Micah' },
+    { code: 'NAM', name: 'Nahum' },
+    { code: 'HAB', name: 'Habakkuk' },
+    { code: 'ZEP', name: 'Zephaniah' },
+    { code: 'HAG', name: 'Haggai' },
+    { code: 'ZEC', name: 'Zechariah' },
+    { code: 'MAL', name: 'Malachi' },
+    { code: 'MAT', name: 'Matthew' },
+    { code: 'MRK', name: 'Mark' },
+    { code: 'LUK', name: 'Luke' },
+    { code: 'JHN', name: 'John' },
+    { code: 'ACT', name: 'Acts' },
+    { code: 'ROM', name: 'Romans' },
+    { code: '1CO', name: '1 Corinthians' },
+    { code: '2CO', name: '2 Corinthians' },
+    { code: 'GAL', name: 'Galatians' },
+    { code: 'EPH', name: 'Ephesians' },
+    { code: 'PHP', name: 'Philippians' },
+    { code: 'COL', name: 'Colossians' },
+    { code: '1TH', name: '1 Thessalonians' },
+    { code: '2TH', name: '2 Thessalonians' },
+    { code: '1TI', name: '1 Timothy' },
+    { code: '2TI', name: '2 Timothy' },
+    { code: 'TIT', name: 'Titus' },
+    { code: 'PHM', name: 'Philemon' },
+    { code: 'HEB', name: 'Hebrews' },
+    { code: 'JAS', name: 'James' },
+    { code: '1PE', name: '1 Peter' },
+    { code: '2PE', name: '2 Peter' },
+    { code: '1JN', name: '1 John' },
+    { code: '2JN', name: '2 John' },
+    { code: '3JN', name: '3 John' },
+    { code: 'JUD', name: 'Jude' },
+    { code: 'REV', name: 'Revelation' }
+  ],
+  invalidCode: 'JHN'
+}
+[SDK] ✅ Preserving error.data with [ 'validBookCodes', 'invalidCode' ]
+[SDK] ✅ Attaching validBookCodes: 66 codes
+[SDK] 🎯 Throwing error with details: true validBookCodes: true
+[ERROR] MCP tool call failed via SDK {
+  tool: 'fetch_scripture',
+  error: Error: Tool endpoint failed: 400
+      at TranslationHelpsClient.sendRequest (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/packages/js-sdk/dist/client.js:110:31)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async TranslationHelpsClient.callTool (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/packages/js-sdk/dist/client.js:286:26)
+      at async callTool (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/lib/mcp/client.ts:74:10)
+      at async executeMCPCalls (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/routes/api/chat-stream/+server.ts:982:26)
+      at async POST (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/routes/api/chat-stream/+server.ts:1879:32)
+      at async render_endpoint (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/endpoint.js:56:20)
+      at async resolve (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:472:23)
+      at async fn (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:337:16)
+      at async internal_respond (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:319:22) {
+    details: { validBookCodes: [Array], invalidCode: 'JHN' },
+    validBookCodes: [
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object]
+    ],
+    invalidCode: 'JHN'
+  }
+}
+[CHAT] ✅ Error has details: [ 'validBookCodes', 'invalidCode' ]
+[CHAT] ✅ Found validBookCodes: 66
+[CHAT] 🔍 Final errorDetails for retry check: {
+  hasLanguageVariants: false,
+  hasValidBookCodes: true,
+  errorDetails: {
+    validBookCodes: [
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object]
+    ],
+    invalidCode: 'JHN'
+  }
+}
+[CHAT] 🔄 Retry check: {
+  hasLanguageVariants: false,
+  hasValidBookCodes: true,
+  languageVariants: undefined,
+  validBookCodes: [
+    { code: 'GEN', name: 'Genesis' },
+    { code: 'EXO', name: 'Exodus' },
+    { code: 'LEV', name: 'Leviticus' },
+    { code: 'NUM', name: 'Numbers' },
+    { code: 'DEU', name: 'Deuteronomy' },
+    { code: 'JOS', name: 'Joshua' },
+    { code: 'JDG', name: 'Judges' },
+    { code: 'RUT', name: 'Ruth' },
+    { code: '1SA', name: '1 Samuel' },
+    { code: '2SA', name: '2 Samuel' },
+    { code: '1KI', name: '1 Kings' },
+    { code: '2KI', name: '2 Kings' },
+    { code: '1CH', name: '1 Chronicles' },
+    { code: '2CH', name: '2 Chronicles' },
+    { code: 'EZR', name: 'Ezra' },
+    { code: 'NEH', name: 'Nehemiah' },
+    { code: 'EST', name: 'Esther' },
+    { code: 'JOB', name: 'Job' },
+    { code: 'PSA', name: 'Psalms' },
+    { code: 'PRO', name: 'Proverbs' },
+    { code: 'ECC', name: 'Ecclesiastes' },
+    { code: 'SNG', name: 'Song of Solomon' },
+    { code: 'ISA', name: 'Isaiah' },
+    { code: 'JER', name: 'Jeremiah' },
+    { code: 'LAM', name: 'Lamentations' },
+    { code: 'EZK', name: 'Ezekiel' },
+    { code: 'DAN', name: 'Daniel' },
+    { code: 'HOS', name: 'Hosea' },
+    { code: 'JOL', name: 'Joel' },
+    { code: 'AMO', name: 'Amos' },
+    { code: 'OBA', name: 'Obadiah' },
+    { code: 'JON', name: 'Jonah' },
+    { code: 'MIC', name: 'Micah' },
+    { code: 'NAM', name: 'Nahum' },
+    { code: 'HAB', name: 'Habakkuk' },
+    { code: 'ZEP', name: 'Zephaniah' },
+    { code: 'HAG', name: 'Haggai' },
+    { code: 'ZEC', name: 'Zechariah' },
+    { code: 'MAL', name: 'Malachi' },
+    { code: 'MAT', name: 'Matthew' },
+    { code: 'MRK', name: 'Mark' },
+    { code: 'LUK', name: 'Luke' },
+    { code: 'JHN', name: 'John' },
+    { code: 'ACT', name: 'Acts' },
+    { code: 'ROM', name: 'Romans' },
+    { code: '1CO', name: '1 Corinthians' },
+    { code: '2CO', name: '2 Corinthians' },
+    { code: 'GAL', name: 'Galatians' },
+    { code: 'EPH', name: 'Ephesians' },
+    { code: 'PHP', name: 'Philippians' },
+    { code: 'COL', name: 'Colossians' },
+    { code: '1TH', name: '1 Thessalonians' },
+    { code: '2TH', name: '2 Thessalonians' },
+    { code: '1TI', name: '1 Timothy' },
+    { code: '2TI', name: '2 Timothy' },
+    { code: 'TIT', name: 'Titus' },
+    { code: 'PHM', name: 'Philemon' },
+    { code: 'HEB', name: 'Hebrews' },
+    { code: 'JAS', name: 'James' },
+    { code: '1PE', name: '1 Peter' },
+    { code: '2PE', name: '2 Peter' },
+    { code: '1JN', name: '1 John' },
+    { code: '2JN', name: '2 John' },
+    { code: '3JN', name: '3 John' },
+    { code: 'JUD', name: 'Jude' },
+    { code: 'REV', name: 'Revelation' }
+  ]
+}
+[CHAT] ✅ RETRY TRIGGERED - Recovery data found
+[INFO] Error has recovery data - attempting automatic retry {
+  tool: 'fetch_scripture',
+  hasLanguageVariants: false,
+  hasValidBookCodes: true,
+  errorDetails: {
+    validBookCodes: [
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object], [Object], [Object], [Object], [Object],
+      [Object]
+    ],
+    invalidCode: 'JHN'
+  }
+}
+[INFO] Book code error detected, but auto-retry not implemented for this case 
+12:02:46 PM [vite] (client) hmr update /src/app.css
+12:02:46 PM [vite] (ssr) page reload src/lib/unifiedResourceFetcher.ts
+12:03:32 PM [vite] (client) hmr update /src/app.css
+12:03:32 PM [vite] (ssr) page reload src/routes/api/chat-stream/+server.ts
+[INFO] Chat stream request {
+  message: 'Show me John 3:16 in portuguese',
+  historyLength: 1,
+  language: 'en',
+  organization: 'unfoldingWord'
+}
+[INFO] Discovered MCP resources via SDK { endpoints: 9, prompts: 5 }
+[INFO] Discovered resources for chat { endpoints: 9, prompts: 5 }
+[INFO] Explicit language request detected { requested: 'pt', current: 'en' }
+[ERROR] Failed to execute MCP call {
+  endpoint: 'fetch-scripture',
+  error: ReferenceError: languageInfo is not defined
+      at executeMCPCalls (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/routes/api/chat-stream/+server.ts:971:14)
+      at POST (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/routes/api/chat-stream/+server.ts:1885:38)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async render_endpoint (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/endpoint.js:56:20)
+      at async resolve (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:472:23)
+      at async fn (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:337:16)
+      at async internal_respond (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:319:22)
+      at async file:///C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/exports/vite/dev/index.js:562:22
+}
+[INFO] Chat stream request {
+  message: 'Show me John 3:16 in portuguese',
+  historyLength: 1,
+  language: 'en',
+  organization: 'unfoldingWord'
+}
+[INFO] Discovered MCP resources via SDK { endpoints: 9, prompts: 5 }
+[INFO] Discovered resources for chat { endpoints: 9, prompts: 5 }
+[INFO] Explicit language request detected { requested: 'pt', current: 'en' }
+[ERROR] Failed to execute MCP call {
+  endpoint: 'fetch-scripture',
+  error: ReferenceError: languageInfo is not defined
+      at executeMCPCalls (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/routes/api/chat-stream/+server.ts:971:14)
+      at POST (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/routes/api/chat-stream/+server.ts:1885:38)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async render_endpoint (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/endpoint.js:56:20)
+      at async resolve (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:472:23)
+      at async fn (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:337:16)
+      at async internal_respond (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:319:22)
+      at async file:///C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/exports/vite/dev/index.js:562:22
+}
+[INFO] Chat stream request {
+  message: 'Show me John 3:16 in portuguese',
+  historyLength: 1,
+  language: 'en',
+  organization: 'unfoldingWord'
+}
+[INFO] Discovered MCP resources via SDK { endpoints: 9, prompts: 5 }
+[INFO] Discovered resources for chat { endpoints: 9, prompts: 5 }
+[INFO] Explicit language request detected { requested: 'pt', current: 'en' }
+[ERROR] Failed to execute MCP call {
+  endpoint: 'fetch-scripture',
+  error: ReferenceError: languageInfo is not defined
+      at executeMCPCalls (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/routes/api/chat-stream/+server.ts:971:14)
+      at POST (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/src/routes/api/chat-stream/+server.ts:1885:38)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async render_endpoint (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/endpoint.js:56:20)
+      at async resolve (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:472:23)
+      at async fn (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:337:16)
+      at async internal_respond (C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/runtime/server/respond.js:319:22)
+      at async file:///C:/Users/LENOVO/Git/Github/translation-helps-mcp-2/ui/node_modules/@sveltejs/kit/src/exports/vite/dev/index.js:562:22
+}
+1:52:14 PM [vite] (client) hmr update /src/app.css
+1:52:14 PM [vite] (ssr) page reload src/routes/api/chat-stream/+server.ts
+1:52:34 PM [vite] (client) hmr update /src/app.css
+1:52:34 PM [vite] (ssr) page reload src/routes/api/chat-stream/+server.ts

@@ -1,0 +1,1 @@
+Are any verses missing in the translation?

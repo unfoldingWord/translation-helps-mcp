@@ -1,0 +1,1 @@
+How can we check our translation as a team?

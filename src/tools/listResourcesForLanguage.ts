@@ -9,10 +9,11 @@ import { logger } from "../utils/logger.js";
 import { buildMetadata } from "../utils/metadata-builder.js";
 import { handleMCPError } from "../utils/mcp-error-handler.js";
 import { proxyFetch } from "../utils/httpClient.js";
-import { getKVCache } from "../functions/kv-cache.js";
+import { cache } from "../functions/cache.js";
 import { EdgeXRayTracer } from "../functions/edge-xray.js";
 import { OrganizationParam } from "../schemas/common-params.js";
 import { DEFAULT_DISCOVERY_SUBJECTS } from "../constants/subjects.js";
+import { findLanguageVariants } from "../functions/resource-detector.js";
 
 // Input schema
 export const ListResourcesForLanguageArgs = z.object({
@@ -117,8 +118,9 @@ export async function handleListResourcesForLanguage(
       topic: topic || "tc-ready",
     });
 
-    // Build cache key
-    const kvCache = getKVCache();
+    // Build cache key helper function
+    const cacheTtl = 3600; // 1 hour
+    
     // Use "default" in cache key when using default subjects, otherwise use the specific subjects
     // Sort subjects for consistent cache keys
     const subjectKey = subject
@@ -130,46 +132,43 @@ export async function handleListResourcesForLanguage(
             .join(",")
         : [...subject].sort().join(",")
       : `default-${DEFAULT_DISCOVERY_SUBJECTS.join(",")}`;
-    const cacheKey = `resources-for-lang:${language}:${JSON.stringify(organization)}:${stage}:${subjectKey}:${limit}:${topic || "tc-ready"}`;
-    const cacheTtl = 3600; // 1 hour
-
-    // Check cache
-    let cachedData: string | ArrayBuffer | null = null;
-    const cacheStart = Date.now();
-    try {
-      cachedData = (await kvCache.get(cacheKey)) as string | ArrayBuffer | null;
-    } catch (error) {
-      logger.debug("Cache get error (continuing with fresh fetch)", {
-        error: String(error),
-      });
-    }
-    const cacheDuration = Date.now() - cacheStart;
+    
+    const orgKey = organization === undefined ? "all" : Array.isArray(organization) ? organization.sort().join(",") : organization;
+    const buildCacheKey = (lang: string) => 
+      `resources-for-lang:${lang}:${orgKey}:${stage}:${subjectKey}:${limit}:${topic || "tc-ready"}`;
+    
+    const requestedCacheKey = buildCacheKey(language);
+    const languageMappingKey = `lang-variant-map:${language}`;
 
     let resources: ResourceItem[] = [];
+    let usedLanguage = language; // Track which language was actually used (for variant fallback)
+    
+    // STEP 1: Check if we have a cached language mapping (base language -> variant)
+    const cacheStart = Date.now();
+    const cachedVariant = await cache.get(languageMappingKey, "metadata");
+    if (cachedVariant) {
+      logger.info(`Found cached language variant mapping: ${language} -> ${cachedVariant}`);
+      usedLanguage = cachedVariant as string;
+    }
+    
+    // STEP 2: Check cache for resources using the actual language (could be variant)
+    const actualCacheKey = buildCacheKey(usedLanguage);
+    const cached = await cache.getWithCacheInfo(actualCacheKey, "metadata");
+    const cacheDuration = Date.now() - cacheStart;
 
     // Try to use cached data
-    if (cachedData) {
-      try {
-        const dataStr =
-          typeof cachedData === "string"
-            ? cachedData
-            : new TextDecoder().decode(cachedData);
-        resources = JSON.parse(dataStr);
-
-        logger.info(`✅ KV HIT for ${cacheKey} in ${cacheDuration}ms`);
-        tracer.addCacheHit("resources-for-language", cacheKey);
-      } catch (parseError) {
-        logger.warn("Failed to parse cached data", {
-          error: String(parseError),
-        });
-        cachedData = null;
-      }
+    let wasCacheHit = false;
+    if (cached.value) {
+      resources = cached.value as ResourceItem[];
+      logger.info(`✅ Cache HIT for ${actualCacheKey} in ${cacheDuration}ms`);
+      tracer.addCacheHit("resources-for-language", actualCacheKey);
+      wasCacheHit = true;
     } else {
-      logger.info(`❌ KV MISS for ${cacheKey} in ${cacheDuration}ms`);
+      logger.info(`❌ Cache MISS for ${actualCacheKey} in ${cacheDuration}ms`);
     }
 
     // Fetch fresh data if no cache hit
-    if (!cachedData || resources.length === 0) {
+    if (!cached.value) {
       // subjectsToSearch is already parsed above
 
       // Handle organizations
@@ -180,96 +179,152 @@ export async function handleListResourcesForLanguage(
             ? [organization]
             : organization;
 
-      // Search for each subject
-      for (const subjectToSearch of subjectsToSearch) {
-        for (const org of organizations) {
-          // Build search URL for this subject
-          const searchUrl = new URL(
-            "https://git.door43.org/api/v1/catalog/search",
-          );
-          searchUrl.searchParams.set("lang", language);
-          searchUrl.searchParams.set("stage", stage);
-          searchUrl.searchParams.set("limit", limit.toString());
-          searchUrl.searchParams.set("subject", subjectToSearch);
+      // Helper function to search for resources with a specific language code
+      async function searchForLanguage(langCode: string): Promise<number> {
+        let foundCount = 0;
 
-          if (org) {
-            searchUrl.searchParams.set("owner", org);
-          }
+        // Search for each subject
+        for (const subjectToSearch of subjectsToSearch) {
+          for (const org of organizations) {
+            // Build search URL for this subject
+            const searchUrl = new URL(
+              "https://git.door43.org/api/v1/catalog/search",
+            );
+            searchUrl.searchParams.set("lang", langCode);
+            searchUrl.searchParams.set("stage", stage);
+            searchUrl.searchParams.set("limit", limit.toString());
+            searchUrl.searchParams.set("subject", subjectToSearch);
 
-          // topic defaults to "tc-ready" per schema, so always set it
-          searchUrl.searchParams.set("topic", topic || "tc-ready");
-
-          try {
-            const fetchStart = Date.now();
-            const response = await proxyFetch(searchUrl.toString(), {
-              headers: { Accept: "application/json" },
-            });
-            const fetchDuration = Date.now() - fetchStart;
-
-            tracer.addApiCall({
-              url: searchUrl.toString(),
-              method: "GET",
-              duration: fetchDuration,
-              status: response.status,
-              cached: false,
-            });
-
-            if (!response.ok) {
-              throw new Error(
-                `Catalog search failed: ${response.status} ${response.statusText}`,
-              );
+            if (org) {
+              searchUrl.searchParams.set("owner", org);
             }
 
-            const data = await response.json();
-            const items = data.data || [];
+            // topic defaults to "tc-ready" per schema, so always set it
+            searchUrl.searchParams.set("topic", topic || "tc-ready");
 
-            for (const item of items) {
-              // Avoid duplicates
-              const isDuplicate = resources.some(
-                (r) =>
-                  r.name === item.name &&
-                  r.organization === (item.owner || org || "unknown"),
-              );
+            try {
+              const fetchStart = Date.now();
+              const response = await proxyFetch(searchUrl.toString(), {
+                headers: { Accept: "application/json" },
+              });
+              const fetchDuration = Date.now() - fetchStart;
 
-              if (!isDuplicate) {
-                resources.push({
-                  name: item.name || "",
-                  subject: item.subject || "Unknown",
-                  organization: item.owner || org || "unknown",
-                  version:
-                    item.release?.tag_name || item.default_branch || "master",
-                  url: item.html_url,
-                });
+              tracer.addApiCall({
+                url: searchUrl.toString(),
+                method: "GET",
+                duration: fetchDuration,
+                status: response.status,
+                cached: false,
+              });
+
+              if (!response.ok) {
+                throw new Error(
+                  `Catalog search failed: ${response.status} ${response.statusText}`,
+                );
               }
-            }
 
-            logger.info(`Found ${items.length} resources for ${language}`, {
-              organization: org || "all",
-              subject: subjectToSearch,
-            });
-          } catch (error) {
-            logger.error("Error searching catalog", {
-              error: error instanceof Error ? error.message : String(error),
-              language,
-              organization: org || "all",
-              subject: subjectToSearch,
-            });
-            // Continue with other subjects/organizations if multiple
+              const data = await response.json();
+              const items = data.data || [];
+              foundCount += items.length;
+
+              for (const item of items) {
+                // Avoid duplicates
+                const isDuplicate = resources.some(
+                  (r) =>
+                    r.name === item.name &&
+                    r.organization === (item.owner || org || "unknown"),
+                );
+
+                if (!isDuplicate) {
+                  resources.push({
+                    name: item.name || "",
+                    subject: item.subject || "Unknown",
+                    organization: item.owner || org || "unknown",
+                    version:
+                      item.release?.tag_name || item.default_branch || "master",
+                    url: item.html_url,
+                  });
+                }
+              }
+
+              logger.info(`Found ${items.length} resources for ${langCode}`, {
+                organization: org || "all",
+                subject: subjectToSearch,
+              });
+            } catch (error) {
+              logger.error("Error searching catalog", {
+                error: error instanceof Error ? error.message : String(error),
+                language: langCode,
+                organization: org || "all",
+                subject: subjectToSearch,
+              });
+              // Continue with other subjects/organizations if multiple
+            }
+          }
+        }
+
+        return foundCount;
+      }
+
+      // Try requested language first
+      usedLanguage = language; // Update the outer scope variable
+      let resourceCount = await searchForLanguage(language);
+
+      // If no resources found, try language variants
+      if (resourceCount === 0) {
+        logger.info(
+          `No resources found for ${language}, checking for variants...`,
+        );
+
+        // Find language variants (e.g., "es" -> ["es-419"])
+        const variants = await findLanguageVariants(
+          language,
+          typeof organization === "string" ? organization : undefined,
+          topic || "tc-ready",
+          subjectsToSearch,
+        );
+
+        if (variants.length > 0) {
+          logger.info(`Found ${variants.length} language variants`, {
+            baseLanguage: language,
+            variants,
+          });
+
+          // Try each variant until we find resources
+          for (const variant of variants) {
+            logger.info(`Trying language variant: ${variant}`);
+            resourceCount = await searchForLanguage(variant);
+
+            if (resourceCount > 0) {
+              usedLanguage = variant;
+              logger.info(
+                `Successfully found ${resourceCount} resources using variant ${variant}`,
+              );
+              break;
+            }
           }
         }
       }
 
-      // Cache the results
-      if (resources.length > 0) {
-        try {
-          await kvCache.set(cacheKey, JSON.stringify(resources), cacheTtl);
-          logger.info("Resources cached", {
-            key: cacheKey,
-            count: resources.length,
-          });
-        } catch (error) {
-          logger.warn("Failed to cache resources", { error: String(error) });
-        }
+      // Cache the results (including empty results - negative caching is valuable!)
+      const cacheKeyForResults = buildCacheKey(usedLanguage);
+      await cache.set(cacheKeyForResults, resources, "metadata");
+      
+      logger.info("Resources cached", {
+        key: cacheKeyForResults,
+        count: resources.length,
+        language: usedLanguage,
+        isEmpty: resources.length === 0,
+      });
+      
+      // If we used a variant (different from requested language), cache the mapping
+      if (usedLanguage !== language) {
+        await cache.set(languageMappingKey, usedLanguage, "metadata");
+        logger.info("Cached language variant mapping", {
+          from: language,
+          to: usedLanguage,
+          key: languageMappingKey,
+        });
       }
     }
 
@@ -284,25 +339,37 @@ export async function handleListResourcesForLanguage(
 
     const subjects = Object.keys(bySubject).sort();
 
+    // Build metadata first
+    const metadata = buildMetadata({
+      startTime,
+      data: resources,
+      serviceMetadata: {
+        cached: wasCacheHit,
+      },
+      additionalFields: {
+        endpoint: "list-resources-for-language",
+        requestedLanguage: language,
+        actualLanguage: usedLanguage || language,
+        languageFallbackUsed: usedLanguage !== language,
+        resourceCount: resources.length,
+        subjectCount: subjects.length,
+      },
+    });
+
     // Build response
     const responseData = {
       language,
+      ...(usedLanguage && usedLanguage !== language && {
+        actualLanguageUsed: usedLanguage,
+        note: `No resources found for '${language}'. Showing results for language variant '${usedLanguage}' instead.`,
+      }),
       organization: organization || "all",
       stage,
       totalResources: resources.length,
       subjects: subjects,
       subjectCount: subjects.length,
       resourcesBySubject: bySubject,
-      metadata: buildMetadata({
-        endpoint: "list-resources-for-language",
-        startTime,
-        tracer,
-        extraMetadata: {
-          language,
-          resourceCount: resources.length,
-          subjectCount: subjects.length,
-        },
-      }),
+      metadata,
     };
 
     return {

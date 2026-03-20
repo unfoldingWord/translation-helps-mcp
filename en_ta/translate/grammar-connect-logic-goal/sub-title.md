@@ -1,0 +1,1 @@
+How can I translate a goal (purpose) relationship?

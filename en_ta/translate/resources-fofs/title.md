@@ -1,0 +1,1 @@
+Notes that Identify Figures of Speech

@@ -1,0 +1,1 @@
+What are ways of translating exclamations?

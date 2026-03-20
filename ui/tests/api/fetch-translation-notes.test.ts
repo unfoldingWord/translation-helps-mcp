@@ -11,8 +11,18 @@ describe('/api/fetch-translation-notes', () => {
 			});
 
 			expect(response.status).toBe(200);
-			expect(response.data.items).toBeDefined();
-			expect(Array.isArray(response.data.items)).toBe(true);
+			
+			// Check new shape: separate verseNotes and contextNotes arrays
+			expect(response.data.verseNotes).toBeDefined();
+			expect(Array.isArray(response.data.verseNotes)).toBe(true);
+			expect(response.data.contextNotes).toBeDefined();
+			expect(Array.isArray(response.data.contextNotes)).toBe(true);
+			
+			// Verify contextNotes have contextType field
+			if (response.data.contextNotes.length > 0) {
+				expect(response.data.contextNotes[0].contextType).toBeDefined();
+				expect(['book', 'chapter']).toContain(response.data.contextNotes[0].contextType);
+			}
 		});
 
 		it('should return 404 when no notes found', async () => {
@@ -34,7 +44,8 @@ describe('/api/fetch-translation-notes', () => {
 			});
 
 			expect(response.status).toBe(200);
-			expect(response.data.items).toBeDefined();
+			expect(response.data.verseNotes).toBeDefined();
+			expect(response.data.contextNotes).toBeDefined();
 		});
 
 		it('should accept single organization', async () => {
@@ -97,7 +108,8 @@ describe('/api/fetch-translation-notes', () => {
 			expect(response.status).toBe(200);
 			expect(response.headers['content-type']).toContain('application/json');
 			expect(typeof response.data).toBe('object');
-			expect(response.data.items).toBeDefined();
+			expect(response.data.verseNotes).toBeDefined();
+			expect(response.data.contextNotes).toBeDefined();
 		});
 
 		it('should return markdown format when requested', async () => {
@@ -138,6 +150,75 @@ describe('/api/fetch-translation-notes', () => {
 
 			expect(response.status).toBe(400);
 			expect(response.data.error).toBeDefined();
+		});
+	});
+
+	describe('Response Shape', () => {
+		it('should return separate verseNotes and contextNotes arrays', async () => {
+			const response = await makeRequest('/api/fetch-translation-notes', {
+				reference: 'Titus 3:15',
+				language: 'en',
+				organization: 'unfoldingWord'
+			});
+
+			expect(response.status).toBe(200);
+			
+			// Should have both arrays
+			expect(response.data.verseNotes).toBeDefined();
+			expect(Array.isArray(response.data.verseNotes)).toBe(true);
+			expect(response.data.contextNotes).toBeDefined();
+			expect(Array.isArray(response.data.contextNotes)).toBe(true);
+			
+			// Should NOT have old 'items' field
+			expect(response.data.items).toBeUndefined();
+			
+			// Counts should match array lengths
+			expect(response.data.counts).toBeDefined();
+			expect(response.data.counts.verseNotesCount).toBe(response.data.verseNotes.length);
+			expect(response.data.counts.contextNotesCount).toBe(response.data.contextNotes.length);
+		});
+
+		it('should include contextType field in contextual notes', async () => {
+			const response = await makeRequest('/api/fetch-translation-notes', {
+				reference: 'Titus 3:15',
+				language: 'en',
+				organization: 'unfoldingWord'
+			});
+
+			expect(response.status).toBe(200);
+			
+			if (response.data.contextNotes.length > 0) {
+				const contextNote = response.data.contextNotes[0];
+				expect(contextNote.contextType).toBeDefined();
+				expect(['book', 'chapter']).toContain(contextNote.contextType);
+				
+				// Book intro should be front:intro
+				if (contextNote.contextType === 'book') {
+					expect(contextNote.Reference).toBe('front:intro');
+				}
+				
+				// Chapter intro should be {chapter}:intro
+				if (contextNote.contextType === 'chapter') {
+					expect(contextNote.Reference).toMatch(/^\d+:intro$/);
+				}
+			}
+		});
+
+		it('should not include contextType in verse-specific notes', async () => {
+			const response = await makeRequest('/api/fetch-translation-notes', {
+				reference: 'Titus 3:15',
+				language: 'en',
+				organization: 'unfoldingWord'
+			});
+
+			expect(response.status).toBe(200);
+			
+			if (response.data.verseNotes.length > 0) {
+				const verseNote = response.data.verseNotes[0];
+				expect(verseNote.contextType).toBeUndefined();
+				// Verse notes should have actual verse references
+				expect(verseNote.Reference).toMatch(/^\d+:\d+$/);
+			}
 		});
 	});
 

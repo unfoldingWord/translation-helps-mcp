@@ -14,21 +14,19 @@ import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
 
 /**
  * Parse resource parameter
- * Supports both standard types (ult, ust, t4t, ueb) and gateway equivalents (glt, gst)
+ * Returns null for 'all' to trigger dynamic catalog discovery
+ * Returns specific resource list when comma-separated values provided
  */
-function parseResources(resourceParam: string | undefined): string[] {
-	// Include gateway equivalents: glt (equivalent to ult), gst (equivalent to ust)
-	const availableResources = ['ult', 'ust', 't4t', 'ueb', 'glt', 'gst'];
-
+function parseResources(resourceParam: string | undefined): string[] | null {
+	// When 'all' or undefined, return null to trigger dynamic discovery from catalog
+	// This allows the tc-ready topic filter to determine available resources
 	if (!resourceParam || resourceParam === 'all') {
-		return availableResources;
+		return null;
 	}
 
-	// Handle comma-separated resources
-	return resourceParam
-		.split(',')
-		.map((r) => r.trim())
-		.filter((r) => availableResources.includes(r));
+	// Handle comma-separated resources - no validation needed
+	// Let the catalog determine if these resources exist
+	return resourceParam.split(',').map((r) => r.trim()).filter(Boolean);
 }
 
 /**
@@ -97,14 +95,9 @@ export const GET = createSimpleEndpoint({
 		COMMON_PARAMS.organization,
 		{
 			name: 'resource',
-			default: 'all',
-			validate: (value) => {
-				if (!value) return true;
-				if (value === 'all') return true;
-				const resources = value.split(',').map((r) => r.trim());
-				// Include gateway equivalents: glt (equivalent to ult), gst (equivalent to ust)
-				return resources.every((r) => ['ult', 'ust', 't4t', 'ueb', 'glt', 'gst'].includes(r));
-			}
+			default: 'all'
+			// No validation - let the catalog determine which resources exist
+			// This makes the system fully dynamic based on tc-ready topic filter
 		}
 	],
 

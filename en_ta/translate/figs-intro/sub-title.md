@@ -1,0 +1,1 @@
+What are some figures of speech?

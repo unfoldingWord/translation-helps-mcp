@@ -1,4 +1,10 @@
 <script lang="ts">
+	import type { PageData } from './$types';
+	import { groupToolsByCategory } from '$lib/types/tools-metadata';
+	
+	// Receive dynamic data from server
+	export let data: PageData;
+	
 	interface Endpoint {
 		name: string;
 		path: string;
@@ -8,510 +14,35 @@
 			type: string;
 			required: boolean;
 			description: string;
+			default?: any;
+			example?: string;
+			options?: readonly string[];
 		}>;
 		category: string;
+		examples?: Array<{
+			title: string;
+			description?: string;
+			parameters: Record<string, any>;
+		}>;
 	}
 
-	// Define all current MCP tools as REST API endpoints
-	const endpoints: Endpoint[] = [
-		// Scripture Endpoints
-		{
-			name: 'Fetch Scripture',
-			path: '/api/fetch-scripture',
-			description: 'Fetch Bible scripture text for multiple translations (ULT, UST, T4T, UEB)',
-			category: 'Scripture',
-			parameters: [
-				{
-					name: 'reference',
-					type: 'string',
-					required: true,
-					description: 'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")'
-				},
-				{
-					name: 'language',
-					type: 'string',
-					required: false,
-					description: 'Language code (default: "en")'
-				},
-				{
-					name: 'organization',
-					type: 'string',
-					required: false,
-					description: 'Organization (default: "unfoldingWord")'
-				},
-				{
-					name: 'resource',
-					type: 'string',
-					required: false,
-					description:
-						'Resource type(s) - single (ult, ust, t4t, ueb), comma-separated (ult,ust), or "all" (default)'
-				},
-				{
-					name: 'format',
-					type: 'string',
-					required: false,
-					description: 'Output format: json, text, usfm, md, markdown (default: "json")'
-				},
-				{
-					name: 'includeAlignment',
-					type: 'boolean',
-					required: false,
-					description: 'Include word alignment data (USFM format only, default: false)'
-				},
-				{
-					name: 'includeVerseNumbers',
-					type: 'boolean',
-					required: false,
-					description: 'Include verse numbers in text (default: true)'
-				}
-			]
-		},
-		// Translation Helps
-		{
-			name: 'Translation Notes',
-			path: '/api/fetch-translation-notes',
-			description:
-				'Fetch translation notes for a specific Bible reference - verse-by-verse explanations',
-			category: 'Translation Helps',
-			parameters: [
-				{
-					name: 'reference',
-					type: 'string',
-					required: true,
-					description: 'Bible reference (e.g., "John 3:16", "Genesis 1:1-3")'
-				},
-				{
-					name: 'language',
-					type: 'string',
-					required: false,
-					description: 'Language code (default: "en")'
-				},
-				{
-					name: 'organization',
-					type: 'string',
-					required: false,
-					description: 'Organization (default: "unfoldingWord")'
-				},
-				{
-					name: 'includeIntro',
-					type: 'boolean',
-					required: false,
-					description: 'Include book/chapter introduction notes (default: true)'
-				},
-				{
-					name: 'includeContext',
-					type: 'boolean',
-					required: false,
-					description: 'Include contextual notes from related passages (default: true)'
-				},
-				{
-					name: 'format',
-					type: 'string',
-					required: false,
-					description: 'Output format: json, text, md, markdown (default: "json")'
-				}
-			]
-		},
-		{
-			name: 'Translation Questions',
-			path: '/api/fetch-translation-questions',
-			description:
-				'Fetch translation questions for a specific Bible reference - comprehension verification',
-			category: 'Translation Helps',
-			parameters: [
-				{
-					name: 'reference',
-					type: 'string',
-					required: true,
-					description: 'Bible reference (e.g., "John 3:16", "Matthew 5")'
-				},
-				{
-					name: 'language',
-					type: 'string',
-					required: false,
-					description: 'Language code (default: "en")'
-				},
-				{
-					name: 'organization',
-					type: 'string',
-					required: false,
-					description: 'Organization (default: "unfoldingWord")'
-				},
-				{
-					name: 'format',
-					type: 'string',
-					required: false,
-					description: 'Output format: json, text, md, markdown (default: "json")'
-				}
-			]
-		},
-		{
-			name: 'Translation Word Links',
-			path: '/api/fetch-translation-word-links',
-			description:
-				'Fetch translation word links (TWL) for a specific Bible reference - maps verse words to dictionary entries',
-			category: 'Translation Helps',
-			parameters: [
-				{
-					name: 'reference',
-					type: 'string',
-					required: true,
-					description: 'Bible reference (e.g., "John 3:16")'
-				},
-				{
-					name: 'language',
-					type: 'string',
-					required: false,
-					description: 'Language code (default: "en")'
-				},
-				{
-					name: 'organization',
-					type: 'string',
-					required: false,
-					description: 'Organization (default: "unfoldingWord")'
-				},
-				{
-					name: 'format',
-					type: 'string',
-					required: false,
-					description: 'Output format: json, text, md, markdown (default: "json")'
-				}
-			]
-		},
-		{
-			name: 'Translation Word',
-			path: '/api/fetch-translation-word',
-			description:
-				'Fetch translation word articles for biblical terms - can search by term, path, rcLink, or reference',
-			category: 'Translation Helps',
-			parameters: [
-				{
-					name: 'term',
-					type: 'string',
-					required: false,
-					description: 'Translation word term (e.g., "love", "grace", "paul", "god", "faith")'
-				},
-				{
-					name: 'path',
-					type: 'string',
-					required: false,
-					description: 'Explicit path to resource file (e.g., "bible/kt/love.md")'
-				},
-				{
-					name: 'rcLink',
-					type: 'string',
-					required: false,
-					description: 'RC link to resource (e.g., "rc://*/tw/dict/bible/kt/love")'
-				},
-				{
-					name: 'reference',
-					type: 'string',
-					required: false,
-					description: 'Bible reference (e.g., "John 3:16") - returns all words for that verse'
-				},
-				{
-					name: 'language',
-					type: 'string',
-					required: false,
-					description: 'Language code (default: "en")'
-				},
-				{
-					name: 'organization',
-					type: 'string',
-					required: false,
-					description: 'Organization (default: "unfoldingWord")'
-				},
-				{
-					name: 'category',
-					type: 'string',
-					required: false,
-					description: 'Filter by category: kt (key terms), names, other (only with reference)'
-				}
-			]
-		},
-		{
-			name: 'Translation Academy',
-			path: '/api/fetch-translation-academy',
-			description: 'Fetch translation academy (tA) modules and training content',
-			category: 'Translation Helps',
-			parameters: [
-				{
-					name: 'moduleId',
-					type: 'string',
-					required: false,
-					description:
-						'Academy module ID (e.g., "figs-metaphor"). Searches: translate, process, checking, intro'
-				},
-				{
-					name: 'path',
-					type: 'string',
-					required: false,
-					description: 'Explicit path to resource file'
-				},
-				{
-					name: 'rcLink',
-					type: 'string',
-					required: false,
-					description: 'RC link to resource'
-				},
-				{
-					name: 'language',
-					type: 'string',
-					required: false,
-					description: 'Language code (default: "en")'
-				},
-				{
-					name: 'organization',
-					type: 'string',
-					required: false,
-					description: 'Organization (default: "unfoldingWord")'
-				},
-				{
-					name: 'format',
-					type: 'string',
-					required: false,
-					description: 'Output format: json, text, md, markdown (default: "json")'
-				}
-			]
-		},
-		// Discovery Endpoints
-		{
-			name: 'List Languages',
-			path: '/api/list-languages',
-			description:
-				'List all available languages with codes, names, and display names - filter by organization',
-			category: 'Discovery',
-			parameters: [
-				{
-					name: 'organization',
-					type: 'string',
-					required: false,
-					description: 'Filter by organization (e.g., "unfoldingWord")'
-				},
-				{
-					name: 'stage',
-					type: 'string',
-					required: false,
-					description: 'Resource stage (default: "prod")'
-				}
-			]
-		},
-		{
-			name: 'List Subjects',
-			path: '/api/list-subjects',
-			description:
-				'List all available resource subjects/types (Bible, Translation Words, etc.) - filter by language/org',
-			category: 'Discovery',
-			parameters: [
-				{
-					name: 'language',
-					type: 'string',
-					required: false,
-					description: 'Filter by language code (e.g., "en", "es-419")'
-				},
-				{
-					name: 'organization',
-					type: 'string',
-					required: false,
-					description: 'Filter by organization'
-				},
-				{
-					name: 'stage',
-					type: 'string',
-					required: false,
-					description: 'Resource stage (default: "prod")'
-				}
-			]
-		},
-		{
-			name: 'List Resources for Language ⭐',
-			path: '/api/list-resources-for-language',
-			description:
-				'RECOMMENDED: Fast single API call (~1-2s) listing all resources for a specific language',
-			category: 'Discovery',
-			parameters: [
-				{
-					name: 'language',
-					type: 'string',
-					required: true,
-					description: 'Language code (e.g., "en", "es", "fr", "es-419") - REQUIRED'
-				},
-				{
-					name: 'organization',
-					type: 'string',
-					required: false,
-					description: 'Filter by organization(s) - can be single or multiple'
-				},
-				{
-					name: 'stage',
-					type: 'string',
-					required: false,
-					description: 'Resource stage (default: "prod")'
-				},
-				{
-					name: 'subject',
-					type: 'string',
-					required: false,
-					description: 'Filter by subject (e.g., "Bible", "Translation Words")'
-				},
-				{
-					name: 'limit',
-					type: 'number',
-					required: false,
-					description: 'Max resources to return (1-10000)'
-				},
-				{
-					name: 'topic',
-					type: 'string',
-					required: false,
-					description: 'Filter by topic tag (default: "tc-ready")'
-				}
-			]
-		},
-		// Intelligent Workflows (Prompts)
-		{
-			name: 'Translation Helps for Passage ⭐',
-			path: '/api/execute-prompt',
-			description:
-				'COMPREHENSIVE: Get everything for a passage - scripture, questions, word definitions (with titles), notes, and academy articles (chains 6-10 tool calls)',
-			category: 'Intelligent Workflows',
-			parameters: [
-				{
-					name: 'promptName',
-					type: 'string',
-					required: true,
-					description: 'Use: "translation-helps-for-passage"'
-				},
-				{
-					name: 'reference',
-					type: 'string',
-					required: true,
-					description: 'Bible reference (e.g., "John 3:16", "Genesis 1:1-3")'
-				},
-				{
-					name: 'language',
-					type: 'string',
-					required: false,
-					description: 'Language code (default: "en")'
-				}
-			]
-		},
-		{
-			name: 'Get Translation Words for Passage',
-			path: '/api/execute-prompt',
-			description:
-				'Get all word definitions for a passage with human-readable titles (not technical IDs)',
-			category: 'Intelligent Workflows',
-			parameters: [
-				{
-					name: 'promptName',
-					type: 'string',
-					required: true,
-					description: 'Use: "get-translation-words-for-passage"'
-				},
-				{
-					name: 'reference',
-					type: 'string',
-					required: true,
-					description: 'Bible reference (e.g., "John 3:16")'
-				},
-				{
-					name: 'language',
-					type: 'string',
-					required: false,
-					description: 'Language code (default: "en")'
-				}
-			]
-		},
-		{
-			name: 'Get Translation Academy for Passage',
-			path: '/api/execute-prompt',
-			description: 'Get Translation Academy training articles referenced in notes for a passage',
-			category: 'Intelligent Workflows',
-			parameters: [
-				{
-					name: 'promptName',
-					type: 'string',
-					required: true,
-					description: 'Use: "get-translation-academy-for-passage"'
-				},
-				{
-					name: 'reference',
-					type: 'string',
-					required: true,
-					description: 'Bible reference (e.g., "John 3:16")'
-				},
-				{
-					name: 'language',
-					type: 'string',
-					required: false,
-					description: 'Language code (default: "en")'
-				}
-			]
-		},
-		{
-			name: 'Discover Resources for Language',
-			path: '/api/execute-prompt',
-			description: 'Discover what translation resources are available for a specific language',
-			category: 'Intelligent Workflows',
-			parameters: [
-				{
-					name: 'promptName',
-					type: 'string',
-					required: true,
-					description: 'Use: "discover-resources-for-language"'
-				},
-				{
-					name: 'language',
-					type: 'string',
-					required: false,
-					description:
-						'Language code (e.g., "en", "es-419"). If not provided, shows all available languages'
-				},
-				{
-					name: 'organization',
-					type: 'string',
-					required: false,
-					description: 'Organization (default: "unfoldingWord")'
-				}
-			]
-		},
-		{
-			name: 'Discover Languages for Subject',
-			path: '/api/execute-prompt',
-			description: 'Discover which languages have a specific resource type available',
-			category: 'Intelligent Workflows',
-			parameters: [
-				{
-					name: 'promptName',
-					type: 'string',
-					required: true,
-					description: 'Use: "discover-languages-for-subject"'
-				},
-				{
-					name: 'subject',
-					type: 'string',
-					required: false,
-					description:
-						'Resource type (e.g., "Translation Words", "Translation Notes"). If not provided, shows all subjects'
-				},
-				{
-					name: 'organization',
-					type: 'string',
-					required: false,
-					description: 'Organization (default: "unfoldingWord")'
-				}
-			]
-		},
-		// Utility Endpoints
-		{
-			name: 'Health Check',
-			path: '/api/health',
-			description: 'System health check - returns version, deployment info, and cache status',
-			category: 'Utility',
-			parameters: []
-		}
-	];
+	// 🚀 DYNAMIC: Transform server data into UI format
+	$: endpoints = data.endpoints.map(tool => ({
+		name: tool.name,
+		path: `/api/${tool.endpoint}`,
+		description: tool.description,
+		category: tool.category,
+		parameters: tool.parameters.map(p => ({
+			name: p.name,
+			type: p.type,
+			required: p.required,
+			description: p.description,
+			default: p.default,
+			example: p.example,
+			options: p.options
+		})),
+		examples: tool.examples
+	}));
 
 	// Group endpoints by category
 	$: groupedEndpoints = endpoints.reduce(
@@ -818,24 +349,27 @@
 					{/if}
 				</div>
 			{:else}
-				<div class="api-welcome">
-					<h2>Welcome to the API Explorer!</h2>
-					<p>Select an endpoint from the sidebar to get started.</p>
-					<div class="api-stats">
-						<div class="api-stat">
-							<span class="api-stat-number">{endpoints.length}</span>
-							<span class="api-stat-label">Endpoints</span>
-						</div>
-						<div class="api-stat">
-							<span class="api-stat-number">{Object.keys(groupedEndpoints).length}</span>
-							<span class="api-stat-label">Categories</span>
-						</div>
-						<div class="api-stat">
-							<span class="api-stat-number">100%</span>
-							<span class="api-stat-label">Real Data</span>
-						</div>
+			<div class="api-welcome">
+				<h2>Welcome to the API Explorer! 🚀</h2>
+				<p>Select an endpoint from the sidebar to get started.</p>
+				<p class="metadata-info" style="font-size: 0.9em; color: #666; margin-top: 0.5rem;">
+					Dynamically generated from unified services • v{data.version} • {new Date(data.generatedAt).toLocaleString()}
+				</p>
+				<div class="api-stats">
+					<div class="api-stat">
+						<span class="api-stat-number">{endpoints.length}</span>
+						<span class="api-stat-label">Endpoints</span>
+					</div>
+					<div class="api-stat">
+						<span class="api-stat-number">{Object.keys(groupedEndpoints).length}</span>
+						<span class="api-stat-label">Categories</span>
+					</div>
+					<div class="api-stat">
+						<span class="api-stat-number">🔄</span>
+						<span class="api-stat-label">Dynamic Metadata</span>
 					</div>
 				</div>
+			</div>
 			{/if}
 		</main>
 	</div>

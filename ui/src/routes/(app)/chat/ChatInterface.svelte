@@ -60,6 +60,7 @@
 		llmResponse?: string; // LLM's final response for comparison
 		isError?: boolean; // Whether this is an error or successful response
 		requestId?: string; // ID of the request this log belongs to
+		fullPrompt?: any; // Full prompt sent to LLM for debugging
 	}> = [];
 
 	// Track which MCP calls have already been logged to prevent duplicates
@@ -286,6 +287,7 @@ Just ask naturally in any language - I'll detect your language and fetch the exa
 			duration?: number;
 			response?: any; // Full MCP server response
 			error?: string; // Error message if failed
+			fullPrompt?: any; // Full prompt sent to LLM for debugging
 		}
 	) {
 		// Get the last user message for context
@@ -411,7 +413,9 @@ Just ask naturally in any language - I'll detect your language and fetch the exa
 										? parseInt(call.duration.replace('ms', ''))
 										: call.duration,
 								response: call.response, // Full MCP server response
-								error: call.error // Error message if failed
+								error: call.error, // Error message if failed
+								fullPrompt: data.xrayData?.fullPrompt, // Full prompt sent to LLM
+								contextState: data.xrayData?.contextState // Context state variables for debugging
 							});
 						}
 					}
@@ -542,17 +546,19 @@ Just ask naturally in any language - I'll detect your language and fetch the exa
 									call.endpoint?.includes('prompt') || call.name?.includes('prompt')
 										? 'mcp-prompt'
 										: 'mcp-tool';
-								logMCPCall(toolType, {
-									endpoint: call.endpoint || call.name,
-									params: call.params,
-									status: call.status,
-									duration:
-										typeof call.duration === 'string'
-											? parseInt(call.duration.replace('ms', ''))
-											: call.duration,
-									response: call.response, // Full MCP server response
-									error: call.error // Error message if failed
-								});
+							logMCPCall(toolType, {
+								endpoint: call.endpoint || call.name,
+								params: call.params,
+								status: call.status,
+								duration:
+									typeof call.duration === 'string'
+										? parseInt(call.duration.replace('ms', ''))
+										: call.duration,
+								response: call.response, // Full MCP server response
+								error: call.error, // Error message if failed
+								fullPrompt: json.fullPrompt, // Full prompt sent to LLM
+								contextState: json.contextState // Context state variables for debugging
+							});
 							}
 						}
 

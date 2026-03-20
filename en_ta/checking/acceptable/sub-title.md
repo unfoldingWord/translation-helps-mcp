@@ -1,0 +1,1 @@
+Did the translation team use an acceptable style?

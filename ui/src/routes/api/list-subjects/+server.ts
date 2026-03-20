@@ -13,13 +13,14 @@ import { handleListSubjects } from '$lib/../../../src/tools/listSubjects.js';
  * Fetch subjects from catalog
  */
 async function fetchSubjects(params: Record<string, any>, request: Request): Promise<any> {
-	const { language, organization, stage } = params;
+	const { language, organization, stage, topic } = params;
 
 	// Call the tool handler
 	const result = await handleListSubjects({
 		language,
 		organization,
-		stage: stage || 'prod'
+		stage: stage || 'prod',
+		topic: topic || 'tc-ready'
 	});
 
 	// Extract the JSON text from MCP response format
@@ -52,6 +53,12 @@ export const GET = createSimpleEndpoint({
 			type: 'string',
 			default: 'prod',
 			validate: (value: string) => ['prod', 'preprod', 'draft'].includes(value)
+		},
+		{
+			name: 'topic',
+			required: false,
+			type: 'string',
+			default: 'tc-ready'
 		}
 	],
 

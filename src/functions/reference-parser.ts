@@ -8,7 +8,7 @@ export interface Reference {
   bookName: string;
   chapter: number;
   verse?: number;
-  verseEnd?: number;
+  endVerse?: number;  // Changed from verseEnd to match ParsedReference interface
   citation: string;
   original: string;
 }
@@ -446,7 +446,7 @@ export function parseReference(input: string): Reference | null {
           book: bookInfo.code,
           bookName: bookInfo.name,
           chapter: startChapter,
-          verseEnd: endChapter, // Reuse verseEnd to store end chapter for ranges
+          endVerse: endChapter, // Reuse endVerse to store end chapter for ranges
           citation: `${bookInfo.name} ${startChapter}-${endChapter}`,
           original: cleanInput,
         };
@@ -477,15 +477,15 @@ export function parseReference(input: string): Reference | null {
   if (isNaN(chapter) || chapter < 1) return null;
 
   let verse: number | undefined;
-  let verseEnd: number | undefined;
+  let endVerse: number | undefined;
 
   if (verseStr) {
     verse = parseInt(verseStr);
     if (isNaN(verse) || verse < 1) return null;
 
     if (verseEndStr) {
-      verseEnd = parseInt(verseEndStr);
-      if (isNaN(verseEnd) || verseEnd < verse) return null;
+      endVerse = parseInt(verseEndStr);
+      if (isNaN(endVerse) || endVerse < verse) return null;
     }
   }
 
@@ -493,8 +493,8 @@ export function parseReference(input: string): Reference | null {
   let citation = `${bookInfo.name} ${chapter}`;
   if (verse) {
     citation += `:${verse}`;
-    if (verseEnd && verseEnd !== verse) {
-      citation += `-${verseEnd}`;
+    if (endVerse && endVerse !== verse) {
+      citation += `-${endVerse}`;
     }
   }
 
@@ -503,7 +503,7 @@ export function parseReference(input: string): Reference | null {
     bookName: bookInfo.name,
     chapter,
     verse,
-    verseEnd,
+    endVerse,
     citation,
     original: cleanInput,
   };

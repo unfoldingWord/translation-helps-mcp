@@ -99,7 +99,10 @@ export class CloudflareKVCache {
         if (value instanceof ArrayBuffer || value instanceof Uint8Array) {
           kvValue = value instanceof Uint8Array ? value.buffer : value;
         } else {
-          kvValue = JSON.stringify(value);
+          // CRITICAL FIX: Don't double-stringify strings
+          // If value is already a string, assume it's already JSON-stringified
+          // (callers like ZipResourceFetcher2 pass JSON.stringify(catalogData))
+          kvValue = value;
         }
 
         await this.kv.put(key, kvValue, {

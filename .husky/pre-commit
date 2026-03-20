@@ -24,16 +24,9 @@ node scripts/check-sdk-published.js
 echo "🔄 Syncing version files..."
 npm run sync-version >/dev/null 2>&1 || true
 
-# ALWAYS run prettier on everything to avoid formatting surprises later
-# This prevents the "dirty files after push" problem
-echo "🧹 Running prettier on entire repository..."
-npm run format >/dev/null 2>&1 || true
-
-# Check if prettier made any changes
-if ! git diff --quiet; then
-  echo "🔧 Prettier made formatting changes. Adding them to commit..."
-  git add -A
-fi
+# Staged files are already formatted by lint-staged above.
+# Avoid `npm run format` + `git add -A` here: it reformats the whole repo and
+# can accidentally stage unrelated changes.
 
 # Add version files if they changed
 if git diff --quiet src/version.ts ui/src/lib/version.ts ui/src/routes/api/health/+server.ts 2>/dev/null; then

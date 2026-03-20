@@ -1,0 +1,42 @@
+==========================================
+Testing All REST API Endpoints
+==========================================
+
+[0;34mTesting: list_languages[0m
+[0;32m✅ PASS[0m
+
+[0;34mTesting: list_subjects[0m
+[0;32m✅ PASS[0m
+
+[0;34mTesting: list_resources_for_language[0m
+[0;31m❌ FAIL[0m
+Expected pattern: "resources":
+Response: {"language":"en","organization":"all","stage":"prod","totalResources":9,"subjects":["Aligned Bible","Bible","TSV Translation Notes","TSV Translation Questions","TSV Translation Words Links","Translati...
+
+[0;34mTesting: fetch_scripture[0m
+[0;32m✅ PASS[0m
+
+[0;34mTesting: fetch_translation_notes[0m
+[0;32m✅ PASS[0m
+
+[0;34mTesting: fetch_translation_questions[0m
+[0;32m✅ PASS[0m
+
+[0;34mTesting: fetch_translation_word_links[0m
+[0;31m❌ FAIL[0m
+Expected pattern: "links":
+Response: {"reference":"John 3:16","items":[{"id":"twl1","reference":"3:16","occurrence":1,"quote":"","strongsId":"","externalReference":{"target":"tw","path":"bible/kt/love","category":"kt"}},{"id":"twl2","ref...
+
+[0;34mTesting: fetch_translation_word[0m
+[0;31m❌ FAIL[0m
+Expected pattern: "content":
+Response: {"error":"Deprecated parameter used. Please use the \"path\" parameter instead.","details":{"endpoint":"fetch-translation-word-v2","path":"/api/fetch-translation-word","params":{"language":"en","forma...
+
+[0;34mTesting: fetch_translation_academy[0m
+[0;32m✅ PASS[0m
+
+==========================================
+REST API Test Summary
+==========================================
+[0;32mPassed: 6 / 9[0m
+[0;31mFailed: 3 / 9[0m

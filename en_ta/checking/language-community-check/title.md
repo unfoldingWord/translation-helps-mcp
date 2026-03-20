@@ -1,0 +1,1 @@
+Checking the Translation for Clarity and Naturalness

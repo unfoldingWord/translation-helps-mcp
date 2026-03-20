@@ -1,0 +1,1 @@
+Why do some translationNotes not have any ULT text at the beginning?

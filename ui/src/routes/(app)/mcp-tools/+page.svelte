@@ -11,6 +11,11 @@
 		getPrompt,
 		executePrompt as executePromptViaSDK
 	} from '../../../lib/mcp/client.js';
+	import type { PageData } from './$types';
+	import { getDefaultTestParams } from '$lib/types/tools-metadata';
+	
+	// Receive dynamic data from server
+	export let data: PageData;
 
 	// Three main categories - Core tools, MCP Prompts, and Health status
 	type MainCategory = 'core' | 'prompts' | 'health';
@@ -75,228 +80,58 @@
 	let promptResults: any = null;
 	let showRawResponse = false;
 
-	// MCP Prompts definitions
-	const mcpPrompts = [
-		{
-			id: 'translation-helps-for-passage',
-			title: 'Complete Translation Help',
-			icon: '📖',
-			description:
-				'Get comprehensive help: scripture, notes, questions, word articles (with titles), and training resources',
-			parameters: [
-				{
-					name: 'reference',
-					type: 'text',
-					required: true,
-					placeholder: 'e.g., John 3:16',
-					description: 'Bible reference to get help for'
-				},
-				{
-					name: 'language',
-					type: 'text',
-					required: false,
-					default: 'en',
-					placeholder: 'Language code (default: en)',
-					description: 'Language for the resources'
-				},
-				{
-					name: 'organization',
-					type: 'text',
-					required: false,
-					default: 'unfoldingWord',
-					placeholder: 'Organization name (default: unfoldingWord)',
-					description: 'Organization/owner for the resources (e.g., unfoldingWord, es-419_gl)'
-				}
-			],
-			workflow: [
-				{ step: 1, tool: 'fetch_scripture', description: 'Fetch scripture text' },
-				{ step: 2, tool: 'fetch_translation_questions', description: 'Get translation questions' },
-				{ step: 3, tool: 'fetch_translation_word_links', description: 'Get word links' },
-				{
-					step: 4,
-					tool: 'fetch_translation_word',
-					description: 'Fetch word articles (multiple calls)',
-					multiple: true
-				},
-				{ step: 5, tool: 'fetch_translation_notes', description: 'Get translation notes' },
-				{
-					step: 6,
-					tool: 'fetch_translation_academy',
-					description: 'Get academy articles (multiple calls)',
-					multiple: true
-				}
-			]
-		},
-		{
-			id: 'get-translation-words-for-passage',
-			title: 'Dictionary Entries',
-			icon: '📚',
-			description:
-				'Get translation word definitions with human-readable titles (not technical IDs)',
-			parameters: [
-				{
-					name: 'reference',
-					type: 'text',
-					required: true,
-					placeholder: 'e.g., Romans 1:1',
-					description: 'Bible reference'
-				},
-				{ name: 'language', type: 'text', required: false, default: 'en', placeholder: 'en' },
-				{
-					name: 'organization',
-					type: 'text',
-					required: false,
-					default: 'unfoldingWord',
-					placeholder: 'Organization name (default: unfoldingWord)',
-					description: 'Organization/owner for the resources (e.g., unfoldingWord, es-419_gl)'
-				}
-			],
-			workflow: [
-				{ step: 1, tool: 'fetch_translation_word_links', description: 'Get word links' },
-				{
-					step: 2,
-					tool: 'fetch_translation_word',
-					description: 'Fetch word articles and extract titles',
-					multiple: true
-				}
-			]
-		},
-		{
-			id: 'get-translation-academy-for-passage',
-			title: 'Training Articles',
-			icon: '🎓',
-			description: 'Find Translation Academy articles referenced in translation notes',
-			parameters: [
-				{
-					name: 'reference',
-					type: 'text',
-					required: true,
-					placeholder: 'e.g., Matthew 5:13',
-					description: 'Bible reference'
-				},
-				{ name: 'language', type: 'text', required: false, default: 'en', placeholder: 'en' },
-				{
-					name: 'organization',
-					type: 'text',
-					required: false,
-					default: 'unfoldingWord',
-					placeholder: 'Organization name (default: unfoldingWord)',
-					description: 'Organization/owner for the resources (e.g., unfoldingWord, es-419_gl)'
-				}
-			],
-			workflow: [
-				{ step: 1, tool: 'fetch_translation_notes', description: 'Get translation notes' },
-				{
-					step: 2,
-					tool: 'fetch_translation_academy',
-					description: 'Fetch academy articles from supportReferences',
-					multiple: true
-				}
-			]
-		},
-		{
-			id: 'discover-resources-for-language',
-			title: 'Discover Resources by Language',
-			icon: '🌍',
-			description:
-				'Discover what translation resources are available for a specific language. Shows available languages (if not specified), available resource types for that language, and provides example tool calls.',
-			parameters: [
-				{
-					name: 'language',
-					type: 'text',
-					required: false,
-					placeholder: 'e.g., en, es-419 (optional - shows all if omitted)',
-					description: 'Language code. If not provided, will show all available languages first.'
-				},
-				{
-					name: 'organization',
-					type: 'text',
-					required: false,
-					placeholder: 'Organization name (optional - searches all if omitted)',
-					description:
-						'Organization/owner to filter by (e.g., unfoldingWord, es-419_gl). Omit to search all organizations.'
-				}
-			],
-			workflow: [
-				{
-					step: 1,
-					tool: 'list_languages',
-					description: 'List available languages (if language not specified)'
-				},
-				{
-					step: 2,
-					tool: 'list_subjects',
-					description: 'List available resource types (subjects) for the language'
-				},
-				{
-					step: 3,
-					tool: 'example_tool_calls',
-					description: 'Provide example tool calls using discovered language parameter'
-				}
-			]
-		},
-		{
-			id: 'discover-languages-for-subject',
-			title: 'Discover Languages by Resource Type',
-			icon: '🔍',
-			description:
-				'Discover which languages have a specific resource type (subject) available. Shows available subjects (if not specified), then lists languages that have that resource type, and provides example tool calls.',
-			parameters: [
-				{
-					name: 'subject',
-					type: 'text',
-					required: false,
-					placeholder: 'e.g., Translation Words, Translation Notes (optional)',
-					description:
-						'Resource subject/type. If not provided, will show all available subjects first.'
-				},
-				{
-					name: 'organization',
-					type: 'text',
-					required: false,
-					placeholder: 'Organization name (optional - searches all if omitted)',
-					description:
-						'Organization/owner to filter by (e.g., unfoldingWord, es-419_gl). Omit to search all organizations.'
-				}
-			],
-			workflow: [
-				{
-					step: 1,
-					tool: 'list_subjects',
-					description: 'List available subjects (if subject not specified)'
-				},
-				{
-					step: 2,
-					tool: 'list_languages',
-					description: 'Discover which languages have the selected subject available'
-				},
-				{
-					step: 3,
-					tool: 'example_tool_calls',
-					description: 'Provide example tool calls using discovered languages'
-				}
-			]
-		}
-	];
+	// 🚀 DYNAMIC: Transform server data into UI format
+	$: mcpPrompts = data.prompts.map(prompt => ({
+		id: prompt.name,
+		title: prompt.name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+		icon: prompt.name.includes('passage') ? '📖' : prompt.name.includes('words') ? '📚' : prompt.name.includes('discover') ? '🔍' : '🔧',
+		description: prompt.description,
+		parameters: prompt.arguments.map(arg => ({
+			name: arg.name,
+			type: 'text',
+			required: arg.required,
+			placeholder: arg.name === 'reference' ? 'e.g., John 3:16' : `${arg.name} (${arg.required ? 'required' : 'optional'})`,
+			description: arg.description,
+			default: arg.name === 'language' ? 'en' : arg.name === 'organization' ? 'unfoldingWord' : undefined
+		})),
+		// Keep workflow for UI display (can be enhanced with metadata later)
+		workflow: prompt.name === 'translation-helps-for-passage' ? [
+			{ step: 1, tool: 'fetch_scripture', description: 'Fetch scripture text' },
+			{ step: 2, tool: 'fetch_translation_questions', description: 'Get translation questions' },
+			{ step: 3, tool: 'fetch_translation_word_links', description: 'Get word links' },
+			{ step: 4, tool: 'fetch_translation_word', description: 'Fetch word articles (multiple calls)', multiple: true },
+			{ step: 5, tool: 'fetch_translation_notes', description: 'Get translation notes' },
+			{ step: 6, tool: 'fetch_translation_academy', description: 'Get academy articles (multiple calls)', multiple: true }
+		] : []
+	}));
 
 	// Load endpoints from configuration
 	onMount(async () => {
 		try {
-			console.log('🔧 Initializing MCP Tools with real endpoint configurations...');
+			console.log('🔧 Initializing MCP Tools with dynamic metadata from unified services...');
 
-			// Fetch endpoint configurations from API
-			const response = await fetch('/api/mcp-config');
-			const configData = await response.json();
+		// 🚀 DYNAMIC: Transform server data into UI format
+		coreEndpoints = data.tools.map(tool => ({
+			name: tool.mcpName,
+			title: tool.name,
+			description: tool.description,
+			path: tool.endpoint, // Add the endpoint path
+			parameters: tool.parameters.map(p => ({  // Changed from 'params' to 'parameters'
+				name: p.name,
+				type: p.type,
+				required: p.required,
+				description: p.description,
+				default: p.default,
+				example: p.example,
+				options: p.options
+			})),
+			category: tool.category,
+			examples: tool.examples
+		}));
 
-			if (!configData.success) {
-				throw new Error(configData.message || 'Failed to load endpoint configurations');
-			}
-
-			// Load core endpoints (category: 'core')
-			coreEndpoints = configData.data.core || [];
-			console.log(`✅ Loaded ${coreEndpoints.length} core endpoints`);
-
-			console.log('🎉 MCP Tools successfully connected to configuration system!');
+			console.log(`✅ Loaded ${coreEndpoints.length} core tools dynamically from unified services`);
+			console.log(`✅ Loaded ${data.prompts.length} MCP prompts dynamically`);
+			console.log('🎉 MCP Tools successfully connected to dynamic metadata system!');
 			isInitialized = true;
 
 			// Check URL for focused endpoint
@@ -316,7 +151,7 @@
 				}
 			}
 		} catch (error) {
-			console.error('❌ Failed to load endpoint configurations:', error);
+			console.error('❌ Failed to initialize MCP Tools:', error);
 			loadingError = error instanceof Error ? error.message : String(error);
 			isInitialized = true; // Still set to prevent infinite loading
 		}
@@ -499,28 +334,27 @@
 			}
 			// Verse Referenced Data
 			else if (
-				name === 'fetch-translation-notes' ||
-				name === 'fetch-translation-questions' ||
-				name === 'fetch-translation-word-links'
+				name === 'fetch_translation_notes' ||
+				name === 'fetch_translation_questions' ||
+				name === 'fetch_translation_word_links'
 			) {
 				groups.verseReferenced.push(endpoint);
 			}
 			// RC Linked Data
-			else if (name === 'fetch-translation-word' || name === 'fetch-translation-academy') {
+			else if (name === 'fetch_translation_word' || name === 'fetch_translation_academy') {
 				groups.rcLinked.push(endpoint);
 			}
 			// Discovery/Browsing Tools
 			else if (
-				name === 'list-languages' ||
 				name === 'list_languages' ||
-				name === 'list-subjects' ||
 				name === 'list_subjects' ||
-				name === 'list-resources-for-language' ||
 				name === 'list_resources_for_language'
 			) {
 				groups.discovery.push(endpoint);
-			} else if (name === 'search_translation_word_across_languages') {
-				// Tool removed - skip
+			} 
+			// Skip internal tools that shouldn't be shown
+			else if (name === 'list_tools' || name === 'test_mockup_tool') {
+				// Skip these - they're meta-tools not meant for end users
 			}
 			// Everything else goes to discovery
 			else {
@@ -531,17 +365,14 @@
 		// Custom sort order for each group
 		const sortOrder = {
 			verseReferenced: [
-				'fetch-translation-notes',
-				'fetch-translation-questions',
-				'fetch-translation-word-links'
+				'fetch_translation_notes',
+				'fetch_translation_questions',
+				'fetch_translation_word_links'
 			],
-			rcLinked: ['fetch-translation-word', 'fetch-translation-academy'],
+			rcLinked: ['fetch_translation_word', 'fetch_translation_academy'],
 			discovery: [
-				'list-languages',
 				'list_languages',
-				'list-subjects',
 				'list_subjects',
-				'list-resources-for-language',
 				'list_resources_for_language'
 			]
 		};
@@ -726,9 +557,12 @@
 	function selectEndpoint(endpoint: any | null) {
 		// Transform endpoint config to ApiTester format
 		selectedEndpoint = endpoint ? transformEndpointForTesting(endpoint) : null;
-		// Clear previous results when selecting new endpoint
+		// Clear previous results and request info when selecting new endpoint
 		apiResult = null;
 		isLoading = false;
+		if (selectedEndpoint) {
+			selectedEndpoint._lastRequest = null;
+		}
 
 		// Update URL to persist selection
 		const url = new URL(window.location.href);
@@ -741,34 +575,16 @@
 
 	// Transform endpoint config to format expected by ApiTester
 	function transformEndpointForTesting(endpoint: any) {
+		// 🚀 DYNAMIC: Data is already in correct format from unified services
+		// No transformation needed since we're using dynamic metadata
 		const transformed = {
-			...endpoint,
-			parameters: [],
-			example: null
+			...endpoint
 		};
 
-		// Convert params object to parameters array
-		if (endpoint.params) {
-			transformed.parameters = Object.entries(endpoint.params).map(
-				([name, config]: [string, any]) => ({
-					name,
-					type: config.type,
-					required: config.required || false,
-					description: config.description || '',
-					default: config.default,
-					options: config.options,
-					example: config.example,
-					min: config.min,
-					max: config.max,
-					pattern: config.pattern
-				})
-			);
-		}
-
-		// Use first example for default values
-		if (endpoint.examples && endpoint.examples.length > 0) {
+		// Use first example for default values if available
+		if (!transformed.example && endpoint.examples && endpoint.examples.length > 0) {
 			transformed.example = {
-				request: endpoint.examples[0].params || {},
+				request: endpoint.examples[0].params || endpoint.examples[0].parameters || {},
 				response:
 					endpoint.examples[0].expectedResponse || endpoint.examples[0].expectedContent || {}
 			};
@@ -886,7 +702,49 @@
 		try {
 			// Convert endpoint name to MCP tool name
 			const toolName = endpointToToolName(endpoint.name);
-			const serverUrl = '/api/mcp'; // Use local MCP server
+			const serverUrl = '/mcp'; // Use streamable HTTP MCP endpoint
+
+			// Build full request information for display
+			const mcpRequest = {
+				jsonrpc: '2.0',
+				method: 'tools/call',
+				params: {
+					name: toolName,
+					arguments: formData
+				},
+				id: 1
+			};
+
+			// Also build REST URL for reference
+			const params = new URLSearchParams();
+			Object.entries(formData).forEach(([key, value]) => {
+				if (value !== undefined && value !== null && value !== '') {
+					params.set(key, String(value));
+				}
+			});
+			const restUrl = `${endpoint.path || '/api/' + endpoint.name}?${params.toString()}`;
+
+			// Build the full MCP HTTP request for display
+			const mcpFullRequest = {
+				url: serverUrl, // Just the path like "/mcp"
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Accept': 'application/json' // or 'text/event-stream' for SSE streaming
+				},
+				body: mcpRequest
+			};
+
+			// Store request info for ApiTester to display
+			selectedEndpoint = {
+				...selectedEndpoint,
+				_lastRequest: {
+					mcp: mcpRequest,
+					mcpHttp: mcpFullRequest,
+					rest: restUrl,
+					timestamp: new Date().toISOString()
+				}
+			};
 
 			console.log(`🚀 Calling MCP tool: ${toolName}`, formData);
 
@@ -938,17 +796,53 @@
 			handleApiResponse(endpoint, responseWithDiagnostics);
 		} catch (error: any) {
 			console.error(`❌ MCP tool call failed for ${endpoint.name}:`, error);
+			
+			// DEBUG: Log full error object
+			console.log('🔍 FULL Error object:', error);
+			console.log('🔍 Error.message:', error.message);
+			console.log('🔍 Error.details:', error.details);
+			console.log('🔍 Error.validBookCodes:', error.validBookCodes);
+			console.log('🔍 Error keys:', Object.keys(error));
+			console.log('🔍 Error constructor:', error.constructor.name);
+			
+			// Try to get all enumerable properties
+			const allProps: any = {};
+			for (const key in error) {
+				allProps[key] = error[key];
+			}
+			console.log('🔍 All enumerable properties:', allProps);
 
-			// Create error response
+			// Create error response - try to extract ALL properties from error
+			const errorDetails: any = {
+				endpoint: endpoint.name,
+				toolName: endpointToToolName(endpoint.name),
+				timestamp: new Date().toISOString()
+			};
+			
+			// Extract ALL enumerable properties from the error object
+			for (const key in error) {
+				if (key !== 'message' && key !== 'stack' && key !== 'name') {
+					errorDetails[key] = error[key];
+					console.log(`📌 Copying error.${key} to details`);
+				}
+			}
+			
+			// Also check error.details specifically
+			if (error.details) {
+				console.log('📌 Found error.details:', Object.keys(error.details));
+				Object.assign(errorDetails, error.details);
+			}
+			
+			console.log('📌 Final errorDetails object:', errorDetails);
+			console.log('📌 Has validBookCodes?', !!errorDetails.validBookCodes);
+			
 			apiResult = {
 				error: error.message || 'MCP tool execution error',
-				details: {
-					endpoint: endpoint.name,
-					toolName: endpointToToolName(endpoint.name),
-					timestamp: new Date().toISOString()
-				},
+				details: errorDetails,
 				status: 0
 			};
+			
+			console.log('📌 Final apiResult:', apiResult);
 
 			// Create error trace data for visualization
 			const errorTrace = {
@@ -1228,10 +1122,13 @@
 <div class="mx-auto max-w-7xl px-4 py-8">
 	<!-- Header -->
 	<div class="mb-8">
-		<h1 class="mb-4 text-4xl font-bold text-white">TC Helps MCP Tools</h1>
-		<p class="text-lg text-gray-300">
-			Complete visibility into all translation helps endpoints with real-time performance metrics
-		</p>
+	<h1 class="mb-4 text-4xl font-bold text-white">TC Helps MCP Tools 🚀</h1>
+	<p class="text-lg text-gray-300">
+		Complete visibility into all translation helps endpoints with real-time performance metrics
+	</p>
+	<p class="text-sm text-gray-400 mt-2">
+		Dynamically generated from unified services • v{data.version} • {new Date(data.generatedAt).toLocaleString()}
+	</p>
 	</div>
 
 	<!-- Two Main Tabs -->

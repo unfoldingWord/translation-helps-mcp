@@ -1,0 +1,1 @@
+What translating decision should I make when I see a definition in the notes?

@@ -1,0 +1,1 @@
+What are some examples of images taken from farming that are used as images in the Bible?

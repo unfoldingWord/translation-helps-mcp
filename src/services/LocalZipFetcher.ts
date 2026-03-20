@@ -721,6 +721,7 @@ export class LocalZipFetcher {
     language: string,
     organization: string,
     resourceType: "tn" | "tq" | "twl",
+    topic: string = "tc-ready", // Default to tc-ready if not provided
   ): Promise<unknown[]> {
     try {
       // Map resource types to proper subject filters
@@ -740,15 +741,16 @@ export class LocalZipFetcher {
       params.set("type", "text");
       params.set("stage", "prod");
       params.set("subject", subject);
+      params.set("topic", topic); // ✅ Filter by topic (defaults to tc-ready)
       params.set("metadataType", "rc");
       params.set("includeMetadata", "true");
       const catalogUrl = `${baseCatalog}?${params.toString()}`;
 
-      // Check local catalog cache first
+      // Check local catalog cache first (include topic in cache key)
       const catalogCachePath = path.join(
         this.cacheDir,
         "catalog",
-        `${language}_${organization}_${subject.replace(/\s+/g, "_")}.json`,
+        `${language}_${organization}_${subject.replace(/\s+/g, "_")}_${topic}.json`,
       );
       let resources: any[] = [];
 

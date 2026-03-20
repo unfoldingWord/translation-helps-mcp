@@ -1,0 +1,1 @@
+How do I translate “brother” or “he” when it could refer to anyone, male or female?

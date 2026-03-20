@@ -56,10 +56,28 @@
 				...(configData.data.experimental || [])
 			];
 
-			// Use all endpoints (they're all v2 anyway)
-			const v2Endpoints = allEndpoints;
+		// Use all endpoints (they're all v2 anyway)
+		// Transform params object to parameters array for ApiTester component
+		const v2Endpoints = allEndpoints.map((endpoint) => {
+			if (endpoint.params && !endpoint.parameters) {
+				// Convert params object to parameters array
+				endpoint.parameters = Object.entries(endpoint.params).map(([name, config]: [string, any]) => ({
+					name,
+					type: config.type || 'string',
+					required: config.required || false,
+					description: config.description || '',
+					default: config.default,
+					options: config.options,
+					example: config.example,
+					min: config.min,
+					max: config.max,
+					pattern: config.pattern
+				}));
+			}
+			return endpoint;
+		});
 
-			// Categorize endpoints based on their names/paths
+		// Categorize endpoints based on their names/paths
 			endpointsByCategory = {
 				scripture: v2Endpoints.filter(
 					(e) =>

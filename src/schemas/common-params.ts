@@ -52,13 +52,14 @@ export const FormatParam = z
 /**
  * Common resource parameter
  * Scripture resource type (ult, ust, t4t, ueb, or all)
+ * When "all", fetches all tc-ready scripture resources for the language from all organizations
  */
 export const ResourceParam = z
   .string()
   .optional()
   .default("all")
   .describe(
-    "Scripture resource type(s) - single resource (ult, ust, t4t, ueb), comma-separated (ult,ust), or 'all' for all available",
+    "Scripture resource type(s) - single resource (ult, ust, t4t, ueb), comma-separated (ult,ust), or 'all' for all tc-ready resources from all organizations (default: 'all')",
   );
 
 /**

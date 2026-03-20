@@ -1,0 +1,1 @@
+How can I translate the values of weight in the Bible?

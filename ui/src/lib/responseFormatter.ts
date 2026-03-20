@@ -35,30 +35,35 @@ export function formatScriptureResponse(data: any, options: FormatterOptions): s
 			markdown += `# ${typeof data.citation === 'string' ? data.citation : data.citation.reference || 'Scripture'}\n\n`;
 		}
 
-		// Add metadata section
+		// Add metadata section - only show non-redundant info
+		// (organizations and resources are already shown per-verse)
 		if (includeMetadata && data.metadata) {
-			markdown += `## Metadata\n\n`;
-			markdown += `- **Language**: ${data.language || data.metadata.language}\n`;
-			markdown += `- **Organization**: ${data.organization || data.metadata.organization}\n`;
-			if (data.metadata.resources?.length) {
-				markdown += `- **Resources**: ${data.metadata.resources.join(', ')}\n`;
+			const hasNonRedundantMetadata = 
+				data.metadata.license || 
+				data.metadata.copyright || 
+				data.metadata.publisher || 
+				data.metadata.contributors?.length ||
+				data.metadata.checkingLevel;
+			
+			if (hasNonRedundantMetadata) {
+				markdown += `## Metadata\n\n`;
+				if (data.metadata.license) {
+					markdown += `- **License**: ${data.metadata.license}\n`;
+				}
+				if (data.metadata.copyright) {
+					markdown += `- **Copyright**: ${data.metadata.copyright}\n`;
+				}
+				if (data.metadata.publisher) {
+					markdown += `- **Publisher**: ${data.metadata.publisher}\n`;
+				}
+				if (data.metadata.contributors?.length) {
+					markdown += `- **Contributors**: ${data.metadata.contributors.join(', ')}\n`;
+				}
+				if (data.metadata.checkingLevel) {
+					markdown += `- **Checking Level**: ${data.metadata.checkingLevel}\n`;
+				}
+				markdown += '\n';
 			}
-			if (data.metadata.license) {
-				markdown += `- **License**: ${data.metadata.license}\n`;
-			}
-			if (data.metadata.copyright) {
-				markdown += `- **Copyright**: ${data.metadata.copyright}\n`;
-			}
-			if (data.metadata.publisher) {
-				markdown += `- **Publisher**: ${data.metadata.publisher}\n`;
-			}
-			if (data.metadata.contributors?.length) {
-				markdown += `- **Contributors**: ${data.metadata.contributors.join(', ')}\n`;
-			}
-			if (data.metadata.checkingLevel) {
-				markdown += `- **Checking Level**: ${data.metadata.checkingLevel}\n`;
-			}
-			markdown += '\n';
 		}
 
 		// Add scripture content
@@ -70,7 +75,12 @@ export function formatScriptureResponse(data: any, options: FormatterOptions): s
 			}
 			// Add translation attribution
 			if (verse.translation) {
-				markdown += `**${verse.translation}**\n\n`;
+				markdown += `**${verse.translation}**`;
+				// Add organization info if available (version already in translation name)
+				if (verse.citation?.organization) {
+					markdown += ` _(${verse.citation.organization})_`;
+				}
+				markdown += '\n\n';
 			}
 			markdown += `${verse.text}\n\n`;
 		}
@@ -95,16 +105,36 @@ export function formatScriptureResponse(data: any, options: FormatterOptions): s
 				text += `${verse.reference}: `;
 			}
 			if (verse.translation) {
-				text += `[${verse.translation}] `;
+				text += `[${verse.translation}`;
+				// Add organization info if available (version already in translation name)
+				if (verse.citation?.organization) {
+					text += ` - ${verse.citation.organization}`;
+				}
+				text += '] ';
 			}
 			text += `${verse.text}\n\n`;
 		}
 
-		// Add metadata footer
+		// Add metadata footer - only show non-redundant info
+		// (organizations are already shown per-verse inline)
 		if (includeMetadata && data.metadata) {
-			text += '\n---\n';
-			text += `Language: ${data.language || data.metadata.language}\n`;
-			text += `Organization: ${data.organization || data.metadata.organization}\n`;
+			const hasNonRedundantMetadata = 
+				data.metadata.license || 
+				data.metadata.copyright ||
+				data.metadata.publisher;
+			
+			if (hasNonRedundantMetadata) {
+				text += '\n---\n';
+				if (data.metadata.license) {
+					text += `License: ${data.metadata.license}\n`;
+				}
+				if (data.metadata.copyright) {
+					text += `Copyright: ${data.metadata.copyright}\n`;
+				}
+				if (data.metadata.publisher) {
+					text += `Publisher: ${data.metadata.publisher}\n`;
+				}
+			}
 		}
 
 		return text;

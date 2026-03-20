@@ -121,7 +121,7 @@ export function handleMCPError(context: ErrorContext): MCPErrorResponse {
             tool: toolName,
             timestamp: new Date().toISOString(),
             responseTime,
-            ...(Object.keys(args).length > 0 ? { args } : {}),
+            ...(args && Object.keys(args).length > 0 ? { args } : {}),
             ...additionalContext,
           },
           null,

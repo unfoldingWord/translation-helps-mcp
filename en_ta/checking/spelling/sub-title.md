@@ -1,0 +1,1 @@
+Are words in the translation spelled consistently?

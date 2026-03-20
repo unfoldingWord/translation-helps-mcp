@@ -1,0 +1,52 @@
+finding-answers:
+  recommended:
+    - process-manual
+  dependencies:
+    - ta-intro
+gl-strategy:
+  recommended:
+    - finding-answers
+  dependencies:
+    - uw-intro
+    - open-license
+open-license:
+  recommended:
+    - gl-strategy
+    - translate-source-licensing
+  dependencies:
+    - uw-intro
+    - statement-of-faith
+    - translation-guidelines
+statement-of-faith:
+  recommended:
+    - translation-guidelines
+    - open-license
+    - translate-source-licensing
+  dependencies:
+    - uw-intro
+ta-intro:
+  recommended:
+    - uw-intro
+  dependencies: []
+translate-why:
+  recommended:
+    - guidelines-intro
+    - translate-process
+  dependencies:
+    - uw-intro
+    - translate-manual
+    - translate-whatis
+translation-guidelines:
+  recommended:
+    - open-license
+    - translate-manual
+    - intro-checking
+  dependencies:
+    - uw-intro
+    - statement-of-faith
+uw-intro:
+  recommended:
+    - statement-of-faith
+    - gl-strategy
+  dependencies:
+    - ta-intro

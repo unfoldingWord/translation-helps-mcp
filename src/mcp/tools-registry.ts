@@ -37,81 +37,90 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
   return [
     {
       name: "fetch_scripture",
-      description: "Fetch Bible scripture text for a specific reference",
+      description:
+        "Fetch Bible text for specific verses, passages, or chapters. CRITICAL: Always use standard 3-letter book codes (e.g., GEN=Genesis, EXO=Exodus, JHN=John, 3JN=3 John, TIT=Titus). NEVER use full book names or names in other languages - convert them to 3-letter codes first. Examples: 'JHN 3:16', 'GEN 1:1-3', 'MAT 5', 'TIT 1:15'.",
       inputSchema: FetchScriptureArgs.omit({ reference: true }).extend({
         reference: z
           .string()
           .describe(
-            'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")',
+            'Bible reference using standard 3-letter book code (GEN, EXO, LEV, NUM, DEU, JOS, JDG, RUT, 1SA, 2SA, 1KI, 2KI, 1CH, 2CH, EZR, NEH, EST, JOB, PSA, PRO, ECC, SNG, ISA, JER, LAM, EZK, DAN, HOS, JOL, AMO, OBA, JON, MIC, NAM, HAB, ZEP, HAG, ZEC, MAL, MAT, MRK, LUK, JHN, ACT, ROM, 1CO, 2CO, GAL, EPH, PHP, COL, 1TH, 2TH, 1TI, 2TI, TIT, PHM, HEB, JAS, 1PE, 2PE, 1JN, 2JN, 3JN, JUD, REV). Examples: "JHN 3:16", "GEN 1:1-3", "TIT 1:15"',
           ),
       }),
     },
     {
       name: "fetch_translation_notes",
-      description: "Fetch translation notes for a specific Bible reference",
+      description:
+        "Fetch translator notes explaining difficult passages, cultural context, and translation recommendations. Returns verseNotes (verse-specific) and contextNotes (book/chapter background) separately. CRITICAL: Always use standard 3-letter book codes (TIT=Titus, JHN=John, etc.). NEVER use full book names or names in other languages.",
       inputSchema: FetchTranslationNotesArgs.omit({ reference: true }).extend({
         reference: z
           .string()
           .describe(
-            'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")',
+            'Bible reference using standard 3-letter book code. Examples: "JHN 3:16", "TIT 1:15", "GEN 1:1-3"',
           ),
       }),
     },
     {
       name: "fetch_translation_questions",
-      description: "Fetch translation questions for a specific Bible reference",
+      description:
+        "Fetch comprehension questions with answers to verify translation accuracy. CRITICAL: Always use standard 3-letter book codes (TIT=Titus, JHN=John, etc.). NEVER use full book names or names in other languages.",
       inputSchema: FetchTranslationQuestionsArgs.omit({
         reference: true,
       }).extend({
         reference: z
           .string()
           .describe(
-            'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")',
+            'Bible reference using standard 3-letter book code. Examples: "JHN 3:16", "TIT 1:15", "GEN 1:1-3"',
           ),
       }),
     },
     {
       name: "fetch_translation_word_links",
       description:
-        "Fetch translation word links (TWL) for a specific Bible reference",
+        "Fetch list of key biblical terms found in a passage (like 'grace', 'faith', 'covenant') with links to definitions. CRITICAL: Always use standard 3-letter book codes (TIT=Titus, JHN=John, etc.). NEVER use full book names or names in other languages.",
       inputSchema: FetchTranslationWordLinksArgs.omit({
         reference: true,
       }).extend({
         reference: z
           .string()
           .describe(
-            'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")',
+            'Bible reference using standard 3-letter book code. Examples: "JHN 3:16", "TIT 1:15", "GEN 1:1-3"',
           ),
       }),
     },
     {
       name: "fetch_translation_word",
       description:
-        "Fetch translation word articles for biblical terms. Can search by term name (e.g., 'grace', 'paul', 'god', 'faith'), path, rcLink, or Bible reference. Use term parameter for questions like 'Who is Paul?' or 'What is grace?'",
+        "Fetch dictionary entries for biblical terms by name (e.g., 'grace', 'paul', 'covenant'), path, or Bible reference.",
       inputSchema: GetTranslationWordArgs,
     },
     {
       name: "fetch_translation_academy",
       description:
-        "Fetch translation academy (tA) modules and training content",
+        "Fetch Translation Academy training articles teaching translation principles, methods, and techniques.",
       inputSchema: FetchTranslationAcademyArgs,
+    },
+    {
+      name: "list_tools",
+      description:
+        "List all available MCP tools with their schemas and descriptions. Use this to discover what translation helps tools are available.",
+      inputSchema: z.object({}).describe("No parameters required"),
     },
     {
       name: "list_languages",
       description:
-        "List all available languages from the Door43 catalog. Returns structured language data (codes, names, display names) that can be directly reused as language parameters in other tools. Optionally filter by organization.",
+        "List available Bible translation languages with codes and names. Optionally filter by organization.",
       inputSchema: ListLanguagesArgs,
     },
     {
       name: "list_subjects",
       description:
-        "List all available resource subjects (resource types) from the Door43 catalog. Returns structured subject data (names, descriptions, resource types) that can be used to discover what resource types are available. Optionally filter by language and/or organization.",
+        "List available resource types (Bibles, notes, questions, terms, training) to discover what translation helps exist.",
       inputSchema: ListSubjectsArgs,
     },
     {
       name: "list_resources_for_language",
       description:
-        "RECOMMENDED: List all available resources for a specific language. Fast single API call (~1-2 seconds). Given a language code (e.g., 'en', 'fr', 'es-419'), returns all resources available in that language organized by subject/resource type. Suggested workflow: 1) Use list_languages to discover available languages (~1s), 2) Use this tool to see what resources exist for a chosen language (~1-2s), 3) Use specific fetch tools to get the actual content.",
+        "List all translation resources for a specific language organized by type. Automatically falls back to language variants if base language has no resources (e.g., 'es' → 'es-419'). Recommended workflow: 1) list_languages to find codes, 2) this tool to see available resources, 3) fetch tools to get content.",
       inputSchema: ListResourcesForLanguageArgs,
     },
   ];
