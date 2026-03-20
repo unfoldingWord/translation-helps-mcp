@@ -42,6 +42,10 @@ ui/build/
 # Test output
 coverage/
 
+# SDK local test logs (generated; do not commit)
+packages/js-sdk/js-test-results.txt
+packages/python-sdk/python-test-results.txt
+
 # TypeScript
 *.tsbuildinfo
 
