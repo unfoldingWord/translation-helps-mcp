@@ -5,7 +5,7 @@
  * This script checks if local SDK packages have changes that haven't been
  * published to npm. It warns if:
  * 1. The local version is newer than the published version
- * 2. There are uncommitted changes in SDK packages
+ * 2. There are unstaged or untracked files in SDK packages (staged-only is OK)
  * 3. The package has been modified but not published
  */
 
@@ -44,14 +44,21 @@ function getPublishedVersion(packageName) {
   }
 }
 
-function hasUncommittedChanges(packagePath) {
+/** Staged SDK changes are fine during pre-commit; only block dirty working tree. */
+function hasUnstagedOrUntracked(packagePath) {
   try {
-    const result = execSync(`git status --porcelain ${packagePath}`, {
+    const unstaged = execSync(`git diff --name-only -- ${packagePath}`, {
       encoding: "utf-8",
       cwd: rootDir,
       stdio: "pipe",
-    });
-    return result.trim().length > 0;
+    }).trim();
+    if (unstaged.length > 0) return true;
+
+    const untracked = execSync(
+      `git ls-files --others --exclude-standard -- ${packagePath}`,
+      { encoding: "utf-8", cwd: rootDir, stdio: "pipe" },
+    ).trim();
+    return untracked.length > 0;
   } catch (_error) {
     return false;
   }
@@ -98,7 +105,7 @@ function main() {
   for (const pkg of SDK_PACKAGES) {
     const localVersion = getLocalVersion(pkg.path);
     const publishedVersion = getPublishedVersion(pkg.name);
-    const uncommitted = hasUncommittedChanges(pkg.path);
+    const dirtyTree = hasUnstagedOrUntracked(pkg.path);
     const unpushed = hasUnpushedCommits(pkg.path);
     const versionComparison = compareVersions(localVersion, publishedVersion);
 
@@ -110,8 +117,10 @@ function main() {
       hasWarnings = true;
     }
 
-    if (uncommitted) {
-      warnings.push(`⚠️  ${pkg.name}: Has uncommitted changes in ${pkg.path}`);
+    if (dirtyTree) {
+      warnings.push(
+        `⚠️  ${pkg.name}: Has unstaged or untracked files in ${pkg.path} (stage or clean before commit)`,
+      );
       hasWarnings = true;
     }
 
