@@ -4,8 +4,9 @@
 	"version": "7.4.0",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "node ../scripts/sync-version.js && vite build",
-		"build:cloudflare": "node ../scripts/sync-version.js && vite build",
+		"build:js-sdk": "npm --prefix ../packages/js-sdk install && npm --prefix ../packages/js-sdk run build",
+		"build": "npm run build:js-sdk && node ../scripts/sync-version.js && vite build",
+		"build:cloudflare": "npm run build:js-sdk && node ../scripts/sync-version.js && vite build",
 		"build:cloudflare-full": "cd .. && node scripts/generate-platform-functions.js && cd ui && npm run build:cloudflare",
 		"preview": "vite preview",
 		"prepare": "npx @sveltejs/kit sync || echo ''",

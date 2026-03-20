@@ -34,6 +34,7 @@
   "author": "unfoldingWord",
   "license": "MIT",
   "dependencies": {
+    "tc-helps-ui": "file:../../ui",
     "zod": "^3.22.4"
   },
   "devDependencies": {
