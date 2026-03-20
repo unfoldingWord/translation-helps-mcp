@@ -403,11 +403,15 @@ export class TranslationHelpsClient {
     const params: Record<string, any> = {
       reference: options.reference,
       language: options.language || "en",
-      organization: options.organization || "unfoldingWord",
       format: options.format || "text",
       includeVerseNumbers: options.includeVerseNumbers !== false,
     };
 
+    // Only include organization if explicitly provided (defaults to searching all orgs)
+    if (options.organization !== undefined) {
+      params.organization = options.organization;
+    }
+    
     // Add optional parameters if provided
     if (options.resource !== undefined) {
       params.resource = options.resource;
@@ -432,13 +436,19 @@ export class TranslationHelpsClient {
   async fetchTranslationNotes(
     options: FetchTranslationNotesOptions,
   ): Promise<any> {
-    const response = await this.callTool("fetch_translation_notes", {
+    const params: Record<string, any> = {
       reference: options.reference,
       language: options.language || "en",
-      organization: options.organization || "unfoldingWord",
       includeIntro: options.includeIntro !== false,
       includeContext: options.includeContext !== false,
-    });
+    };
+    
+    // Only include organization if explicitly provided
+    if (options.organization !== undefined) {
+      params.organization = options.organization;
+    }
+    
+    const response = await this.callTool("fetch_translation_notes", params);
 
     if (response.content && response.content[0]?.text) {
       return JSON.parse(response.content[0].text);
@@ -453,11 +463,17 @@ export class TranslationHelpsClient {
   async fetchTranslationQuestions(
     options: FetchTranslationQuestionsOptions,
   ): Promise<any> {
-    const response = await this.callTool("fetch_translation_questions", {
+    const params: Record<string, any> = {
       reference: options.reference,
       language: options.language || "en",
-      organization: options.organization || "unfoldingWord",
-    });
+    };
+    
+    // Only include organization if explicitly provided
+    if (options.organization !== undefined) {
+      params.organization = options.organization;
+    }
+    
+    const response = await this.callTool("fetch_translation_questions", params);
 
     if (response.content && response.content[0]?.text) {
       return JSON.parse(response.content[0].text);
@@ -472,13 +488,19 @@ export class TranslationHelpsClient {
   async fetchTranslationWord(
     options: FetchTranslationWordOptions,
   ): Promise<any> {
-    const response = await this.callTool("fetch_translation_word", {
+    const params: Record<string, any> = {
       reference: options.reference,
       term: options.term,
       language: options.language || "en",
-      organization: options.organization || "unfoldingWord",
       category: options.category,
-    });
+    };
+    
+    // Only include organization if explicitly provided
+    if (options.organization !== undefined) {
+      params.organization = options.organization;
+    }
+    
+    const response = await this.callTool("fetch_translation_word", params);
 
     if (response.content && response.content[0]?.text) {
       return JSON.parse(response.content[0].text);
@@ -493,11 +515,17 @@ export class TranslationHelpsClient {
   async fetchTranslationWordLinks(
     options: FetchTranslationWordLinksOptions,
   ): Promise<any> {
-    const response = await this.callTool("fetch_translation_word_links", {
+    const params: Record<string, any> = {
       reference: options.reference,
       language: options.language || "en",
-      organization: options.organization || "unfoldingWord",
-    });
+    };
+    
+    // Only include organization if explicitly provided
+    if (options.organization !== undefined) {
+      params.organization = options.organization;
+    }
+    
+    const response = await this.callTool("fetch_translation_word_links", params);
 
     if (response.content && response.content[0]?.text) {
       return JSON.parse(response.content[0].text);
@@ -514,15 +542,21 @@ export class TranslationHelpsClient {
   async fetchTranslationAcademy(
     options: FetchTranslationAcademyOptions,
   ): Promise<any> {
-    const response = await this.callTool("fetch_translation_academy", {
+    const params: Record<string, any> = {
       reference: options.reference,
       rcLink: options.rcLink,
       moduleId: options.moduleId,
       path: options.path,
       language: options.language || "en",
-      organization: options.organization || "unfoldingWord",
       format: options.format || "json",
-    });
+    };
+    
+    // Only include organization if explicitly provided
+    if (options.organization !== undefined) {
+      params.organization = options.organization;
+    }
+    
+    const response = await this.callTool("fetch_translation_academy", params);
 
     if (response.content && response.content[0]?.text) {
       const text = response.content[0].text;

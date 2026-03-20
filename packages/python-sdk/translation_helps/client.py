@@ -295,10 +295,13 @@ class TranslationHelpsClient:
         params: Dict[str, Any] = {
             "reference": options["reference"],
             "language": options.get("language", "en"),
-            "organization": options.get("organization", "unfoldingWord"),
             "format": options.get("format", "text"),
             "includeVerseNumbers": options.get("includeVerseNumbers", True),
         }
+        
+        # Only include organization if explicitly provided (defaults to searching all orgs)
+        if options.get("organization") is not None:
+            params["organization"] = options["organization"]
         
         # Add optional parameters if provided
         if options.get("resource") is not None:
@@ -318,13 +321,18 @@ class TranslationHelpsClient:
         self, options: FetchTranslationNotesOptions
     ) -> Dict[str, Any]:
         """Fetch translation notes."""
-        response = await self.call_tool("fetch_translation_notes", {
+        params: Dict[str, Any] = {
             "reference": options["reference"],
             "language": options.get("language", "en"),
-            "organization": options.get("organization", "unfoldingWord"),
             "includeIntro": options.get("includeIntro", True),
             "includeContext": options.get("includeContext", True),
-        })
+        }
+        
+        # Only include organization if explicitly provided
+        if options.get("organization") is not None:
+            params["organization"] = options["organization"]
+            
+        response = await self.call_tool("fetch_translation_notes", params)
 
         if response.get("content") and response["content"][0].get("text"):
             return json.loads(response["content"][0]["text"])
@@ -335,11 +343,16 @@ class TranslationHelpsClient:
         self, options: FetchTranslationQuestionsOptions
     ) -> Dict[str, Any]:
         """Fetch translation questions."""
-        response = await self.call_tool("fetch_translation_questions", {
+        params: Dict[str, Any] = {
             "reference": options["reference"],
             "language": options.get("language", "en"),
-            "organization": options.get("organization", "unfoldingWord"),
-        })
+        }
+        
+        # Only include organization if explicitly provided
+        if options.get("organization") is not None:
+            params["organization"] = options["organization"]
+            
+        response = await self.call_tool("fetch_translation_questions", params)
 
         if response.get("content") and response["content"][0].get("text"):
             return json.loads(response["content"][0]["text"])
@@ -350,13 +363,18 @@ class TranslationHelpsClient:
         self, options: FetchTranslationWordOptions
     ) -> Dict[str, Any]:
         """Fetch translation word (by term or reference)."""
-        response = await self.call_tool("fetch_translation_word", {
+        params: Dict[str, Any] = {
             "reference": options.get("reference"),
             "term": options.get("term"),
             "language": options.get("language", "en"),
-            "organization": options.get("organization", "unfoldingWord"),
             "category": options.get("category"),
-        })
+        }
+        
+        # Only include organization if explicitly provided
+        if options.get("organization") is not None:
+            params["organization"] = options["organization"]
+            
+        response = await self.call_tool("fetch_translation_word", params)
 
         if response.get("content") and response["content"][0].get("text"):
             return json.loads(response["content"][0]["text"])
@@ -367,11 +385,16 @@ class TranslationHelpsClient:
         self, options: FetchTranslationWordLinksOptions
     ) -> Dict[str, Any]:
         """Fetch translation word links."""
-        response = await self.call_tool("fetch_translation_word_links", {
+        params: Dict[str, Any] = {
             "reference": options["reference"],
             "language": options.get("language", "en"),
-            "organization": options.get("organization", "unfoldingWord"),
-        })
+        }
+        
+        # Only include organization if explicitly provided
+        if options.get("organization") is not None:
+            params["organization"] = options["organization"]
+            
+        response = await self.call_tool("fetch_translation_word_links", params)
 
         if response.get("content") and response["content"][0].get("text"):
             return json.loads(response["content"][0]["text"])
@@ -382,15 +405,20 @@ class TranslationHelpsClient:
         self, options: FetchTranslationAcademyOptions
     ) -> Any:
         """Fetch translation academy articles."""
-        response = await self.call_tool("fetch_translation_academy", {
+        params: Dict[str, Any] = {
             "reference": options.get("reference"),
             "rcLink": options.get("rcLink"),
             "moduleId": options.get("moduleId"),
             "path": options.get("path"),
             "language": options.get("language", "en"),
-            "organization": options.get("organization", "unfoldingWord"),
             "format": options.get("format", "json"),
-        })
+        }
+        
+        # Only include organization if explicitly provided
+        if options.get("organization") is not None:
+            params["organization"] = options["organization"]
+            
+        response = await self.call_tool("fetch_translation_academy", params)
 
         if response.get("content") and response["content"][0].get("text"):
             text = response["content"][0]["text"]
