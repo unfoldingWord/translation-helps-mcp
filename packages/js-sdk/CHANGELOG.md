@@ -5,6 +5,26 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.2] - 2026-03-20
+
+### Fixed
+
+- **CRITICAL: Organization parameter default behavior** - Removed implicit `"unfoldingWord"` default from all fetch methods
+  - `fetchScripture()`, `fetchTranslationNotes()`, `fetchTranslationQuestions()`, `fetchTranslationWord()`, `fetchTranslationWordLinks()`, `fetchTranslationAcademy()`
+  - Now correctly searches **all organizations** when `organization` parameter is omitted (as documented)
+  - Only includes `organization` in request if explicitly provided
+  - **Breaking Change**: Users who relied on implicit `unfoldingWord` default must now explicitly pass `organization: "unfoldingWord"`
+
+## [1.4.1] - 2026-03-20
+
+### Changed
+
+- **Enhanced LLM prompt system** - Improved translation notes formatting instructions
+  - Added mandatory format enforcement: `🚨 MANDATORY TRANSLATION NOTES FORMAT 🚨`
+  - Requires matching Greek quotes to scripture text for accurate note display
+  - Ensures all notes are shown individually with complete content
+  - Updated `list` mode contextual rules for comprehensive note display
+
 ## [1.3.0] - 2025-12-09
 
 ### Removed
