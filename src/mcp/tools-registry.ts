@@ -38,7 +38,7 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
     {
       name: "fetch_scripture",
       description:
-        "Fetch Bible text for specific verses, passages, or chapters. CRITICAL: Always use standard 3-letter book codes (e.g., GEN=Genesis, EXO=Exodus, JHN=John, 3JN=3 John, TIT=Titus). NEVER use full book names or names in other languages - convert them to 3-letter codes first. Examples: 'JHN 3:16', 'GEN 1:1-3', 'MAT 5', 'TIT 1:15'.",
+        "Fetch Bible text for specific verses, passages, or chapters. CRITICAL: Always use standard 3-letter book codes (e.g., GEN=Genesis, EXO=Exodus, JHN=John, 3JN=3 John, TIT=Titus). NEVER use full book names or names in other languages - convert them to 3-letter codes first. Examples: 'JHN 3:16', 'GEN 1:1-3', 'MAT 5', 'TIT 1:15'. Optional `organization`: English ULT/UST often use unfoldingWord; do **not** reuse that value by default for `fetch_translation_notes` / `fetch_translation_questions` / `fetch_translation_word_links` in other languages—omit organization there unless the user names a publisher.",
       inputSchema: FetchScriptureArgs.omit({ reference: true }).extend({
         reference: z
           .string()
@@ -50,7 +50,7 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
     {
       name: "fetch_translation_notes",
       description:
-        "Fetch translator notes explaining difficult passages, cultural context, and translation recommendations. Returns verseNotes (verse-specific) and contextNotes (book/chapter background) separately. CRITICAL: Always use standard 3-letter book codes (TIT=Titus, JHN=John, etc.). NEVER use full book names or names in other languages. For non-English languages, OMIT organization (search all Door43 orgs)—unfoldingWord does not publish translation notes for many languages; Spanish and others are usually under language-specific organizations.",
+        "Fetch translator notes explaining difficult passages, cultural context, and translation recommendations. Returns verseNotes (verse-specific) and contextNotes (book/chapter background) separately. CRITICAL: Always use standard 3-letter book codes (TIT=Titus, JHN=John, etc.). NEVER use full book names or names in other languages. **Omit `organization` unless the user asked for a specific Door43 owner** (search all orgs). Do **not** set organization to unfoldingWord by default—it does not publish TN for many languages (e.g. Spanish).",
       inputSchema: FetchTranslationNotesArgs.omit({ reference: true }).extend({
         reference: z
           .string()
@@ -62,7 +62,7 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
     {
       name: "fetch_translation_questions",
       description:
-        "Fetch comprehension questions with answers to verify translation accuracy. CRITICAL: Always use standard 3-letter book codes (TIT=Titus, JHN=John, etc.). NEVER use full book names or names in other languages.",
+        "Fetch comprehension questions with answers to verify translation accuracy. CRITICAL: Always use standard 3-letter book codes (TIT=Titus, JHN=John, etc.). NEVER use full book names or names in other languages. **Omit `organization` by default** (search all Door43 orgs); do not default to unfoldingWord—same rule as translation notes for non-English languages.",
       inputSchema: FetchTranslationQuestionsArgs.omit({
         reference: true,
       }).extend({
@@ -76,7 +76,7 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
     {
       name: "fetch_translation_word_links",
       description:
-        "Fetch list of key biblical terms found in a passage (like 'grace', 'faith', 'covenant') with links to definitions. CRITICAL: Always use standard 3-letter book codes (TIT=Titus, JHN=John, etc.). NEVER use full book names or names in other languages.",
+        "Fetch list of key biblical terms found in a passage (like 'grace', 'faith', 'covenant') with links to definitions. CRITICAL: Always use standard 3-letter book codes (TIT=Titus, JHN=John, etc.). NEVER use full book names or names in other languages. **Omit `organization` by default** so all orgs are searched; do not default to unfoldingWord.",
       inputSchema: FetchTranslationWordLinksArgs.omit({
         reference: true,
       }).extend({

@@ -19,7 +19,7 @@ ToolContextConfig = Dict[str, List[str]]
 # orgs are searched (unfoldingWord often has no TN/TQ for those languages).
 # Optionally use list_resources_for_language to pick a specific owner.
 DEFAULT_TOOL_CONTEXT_CONFIG: ToolContextConfig = {
-    # Scripture fetching tools - language and stage auto-injected
+    # Scripture / helps: language and stage auto-injected; organization is never injected
     'fetch_scripture': ['language', 'stage'],
     
     # Translation Notes tools

@@ -6,8 +6,10 @@ import { normalizeReference } from '../../../../../src/utils/book-codes.js';
 export const POST: RequestHandler = async ({ request, fetch: eventFetch }) => {
 	const startTime = Date.now();
 	const { promptName, parameters } = await request.json();
-	let { reference, language = 'en', organization = '' } = parameters; // Empty = search ALL organizations (default)
-	
+	let { reference } = parameters;
+	const language = parameters.language ?? 'en';
+	const organization = parameters.organization ?? ''; // Empty = search ALL organizations (default)
+
 	// Normalize reference to use 3-letter book codes
 	// Converts "Tito 3:11-15" → "TIT 3:11-15", "Jonah 1:1" → "JON 1:1", etc.
 	if (reference) {
@@ -109,7 +111,7 @@ export const POST: RequestHandler = async ({ request, fetch: eventFetch }) => {
 					organization,
 					trackedFetchCall,
 					tracer,
-					true  // condensed = true
+					true // condensed = true
 				);
 				break;
 
@@ -121,7 +123,7 @@ export const POST: RequestHandler = async ({ request, fetch: eventFetch }) => {
 					organization,
 					trackedFetchCall,
 					tracer,
-					false  // condensed = false (full content)
+					false // condensed = false (full content)
 				);
 				break;
 
@@ -263,7 +265,10 @@ export const POST: RequestHandler = async ({ request, fetch: eventFetch }) => {
 		// Preserve structured error data for auto-retry mechanism
 		if (errorDetails) {
 			errorResponse.details = errorDetails;
-			console.log('[execute-prompt] Preserving error details for auto-retry:', Object.keys(errorDetails));
+			console.log(
+				'[execute-prompt] Preserving error details for auto-retry:',
+				Object.keys(errorDetails)
+			);
 		}
 
 		// Determine appropriate status code
@@ -295,7 +300,7 @@ async function executeTranslationHelpsPrompt(
 	organization: string,
 	trackedFetchCall: (url: string) => Promise<Response>,
 	tracer: EdgeXRayTracer,
-	condensed: boolean = false  // NEW: If true, strip full content from words/notes/academy
+	condensed: boolean = false // NEW: If true, strip full content from words/notes/academy
 ) {
 	const results: any = {
 		scripture: null,
@@ -333,7 +338,7 @@ async function executeTranslationHelpsPrompt(
 					results.scripture = {
 						text: scripture.text,
 						translation: scripture.translation,
-						citation: scripture.citation  // ✅ PRESERVE CITATION
+						citation: scripture.citation // ✅ PRESERVE CITATION
 					};
 					console.log(`Extracted scripture with citation:`, scripture.citation);
 				}
@@ -353,7 +358,12 @@ async function executeTranslationHelpsPrompt(
 		} else {
 			// Check if error response has verse not found, language variants, invalid book code, OR is a language not supported error
 			const errorData = await scriptureRes.json().catch(() => ({}));
-			console.log('[execute-prompt] Scripture returned non-OK status:', scriptureRes.status, 'errorData:', JSON.stringify(errorData));
+			console.log(
+				'[execute-prompt] Scripture returned non-OK status:',
+				scriptureRes.status,
+				'errorData:',
+				JSON.stringify(errorData)
+			);
 			if (errorData.details?.verseNotFound) {
 				// Verse not found - capture for immediate error response
 				console.log('[execute-prompt] Scripture error - verse not found:', {
@@ -364,14 +374,23 @@ async function executeTranslationHelpsPrompt(
 				verseNotFoundError = errorData;
 			} else if (errorData.details?.validBookCodes && errorData.details?.invalidCode) {
 				// Invalid book code - capture for immediate error response
-				console.log('[execute-prompt] Scripture error - invalid book code:', errorData.details.invalidCode);
+				console.log(
+					'[execute-prompt] Scripture error - invalid book code:',
+					errorData.details.invalidCode
+				);
 				invalidBookCodeError = errorData;
 			} else if (errorData.details?.languageVariants) {
-				console.log('[execute-prompt] Scripture error has language variants:', errorData.details.languageVariants);
+				console.log(
+					'[execute-prompt] Scripture error has language variants:',
+					errorData.details.languageVariants
+				);
 				languageVariantError = errorData;
 			} else if (errorData.details?.requestedLanguage) {
 				// Language not supported (no variants available)
-				console.log('[execute-prompt] Scripture error - language not supported:', errorData.details.requestedLanguage);
+				console.log(
+					'[execute-prompt] Scripture error - language not supported:',
+					errorData.details.requestedLanguage
+				);
 				languageVariantError = errorData;
 			} else {
 				console.log('[execute-prompt] Scripture error has no recovery data - will return empty');
@@ -392,19 +411,25 @@ async function executeTranslationHelpsPrompt(
 			// Each item should have its own citation inline
 			results.questions = {
 				reference: questionsData.reference,
-				citation: questionsData.citation,  // ✅ Top-level citation for single-org requests
-				citations: questionsData.citations,  // ✅ Citations array for multi-org requests
-				items: questionsData.items,  // ✅ Items already have inline citations from core service
+				citation: questionsData.citation, // ✅ Top-level citation for single-org requests
+				citations: questionsData.citations, // ✅ Citations array for multi-org requests
+				items: questionsData.items, // ✅ Items already have inline citations from core service
 				count: questionsData.items?.length || questionsData.metadata?.totalCount || 0
 			};
 		} else {
 			// Check if error response has language variants OR is a language not supported error
 			const errorData = await questionsRes.json().catch(() => ({}));
 			if (errorData.details?.languageVariants && !languageVariantError) {
-				console.log('[execute-prompt] Questions error has language variants:', errorData.details.languageVariants);
+				console.log(
+					'[execute-prompt] Questions error has language variants:',
+					errorData.details.languageVariants
+				);
 				languageVariantError = errorData;
 			} else if (errorData.details?.requestedLanguage && !languageVariantError) {
-				console.log('[execute-prompt] Questions error - language not supported:', errorData.details.requestedLanguage);
+				console.log(
+					'[execute-prompt] Questions error - language not supported:',
+					errorData.details.requestedLanguage
+				);
 				languageVariantError = errorData;
 			}
 		}
@@ -426,10 +451,16 @@ async function executeTranslationHelpsPrompt(
 			// Check if error response has language variants OR is a language not supported error
 			const errorData = await linksRes.json().catch(() => ({}));
 			if (errorData.details?.languageVariants && !languageVariantError) {
-				console.log('[execute-prompt] Word links error has language variants:', errorData.details.languageVariants);
+				console.log(
+					'[execute-prompt] Word links error has language variants:',
+					errorData.details.languageVariants
+				);
 				languageVariantError = errorData;
 			} else if (errorData.details?.requestedLanguage && !languageVariantError) {
-				console.log('[execute-prompt] Word links error - language not supported:', errorData.details.requestedLanguage);
+				console.log(
+					'[execute-prompt] Word links error - language not supported:',
+					errorData.details.requestedLanguage
+				);
 				languageVariantError = errorData;
 			}
 		}
@@ -470,9 +501,7 @@ async function executeTranslationHelpsPrompt(
 
 				// Check if it's an error response
 				if (wordData.error) {
-					console.error(
-						`Word fetch with path returned error for "${term}"`
-					);
+					console.error(`Word fetch with path returned error for "${term}"`);
 
 					// Failed - add with term as title
 					const errorWordEntry: any = {
@@ -506,7 +535,7 @@ async function executeTranslationHelpsPrompt(
 				}
 
 				console.log(`Fetched word: "${term}" → title: "${title}"`);
-				
+
 				// For condensed mode, omit content field to reduce response size
 				const wordEntry: any = {
 					term: term,
@@ -514,12 +543,12 @@ async function executeTranslationHelpsPrompt(
 					category: category,
 					path: path
 				};
-				
+
 				// Only include full content if NOT condensed
 				if (!condensed) {
 					wordEntry.content = wordData.content || '';
 				}
-				
+
 				results.words.push(wordEntry);
 			} else {
 				// HTTP error - still add term
@@ -550,15 +579,9 @@ async function executeTranslationHelpsPrompt(
 		);
 		if (notesRes.ok) {
 			const notesData = await notesRes.json();
-			// Preserve full notes response including citations
-			// Each note item should have its own inline citation from core service
-			results.notes = {
-				reference: notesData.reference,
-				citation: notesData.citation,  // ✅ Top-level citation for single-org requests
-				citations: notesData.citations,  // ✅ Citations array for multi-org requests
-				items: notesData.items,  // ✅ Items already have inline citations from core service
-				count: notesData.counts?.totalCount || 0
-			};
+			// API returns verseNotes + contextNotes (not legacy `items`). Map into prompt shape
+			// and optionally condense full Note text to notePreview for translation-helps-report.
+			results.notes = shapeNotesForPrompt(notesData, condensed);
 		} else {
 			// Check for context-only error (no verse-specific notes)
 			const errorData = await notesRes.json().catch(() => ({}));
@@ -586,9 +609,7 @@ async function executeTranslationHelpsPrompt(
 
 				// Check if it's an error response
 				if (academyData.error) {
-					console.error(
-						`Academy fetch failed for path: ${path}`
-					);
+					console.error(`Academy fetch failed for path: ${path}`);
 
 					// Extract module ID from path
 					const moduleId = path.split('/').pop() || '';
@@ -625,7 +646,7 @@ async function executeTranslationHelpsPrompt(
 				}
 
 				console.log(`Fetched academy article: ${path} → title: "${title}"`);
-				
+
 				// For condensed mode, omit content field to reduce response size
 				const academyEntry: any = {
 					moduleId: moduleId,
@@ -633,12 +654,12 @@ async function executeTranslationHelpsPrompt(
 					path: academyData.path || path,
 					category: academyData.category || path.split('/')[0] || ''
 				};
-				
+
 				// Only include full content if NOT condensed
 				if (!condensed) {
 					academyEntry.content = academyData.content || '';
 				}
-				
+
 				results.academyArticles.push(academyEntry);
 			} else {
 				// HTTP error - still add with moduleId from path
@@ -674,27 +695,32 @@ async function executeTranslationHelpsPrompt(
 
 		// If we only have intro/context notes (no verse-specific data), throw the verse not found error
 		if (!hasVerseSpecificNotes && !hasVerseSpecificQuestions && !hasVerseSpecificWords) {
-			console.log('[execute-prompt] Only intro/context notes found, no verse-specific data - propagating verse not found error');
-			
+			console.log(
+				'[execute-prompt] Only intro/context notes found, no verse-specific data - propagating verse not found error'
+			);
+
 			// Build an explicit, LLM-friendly error message
 			const book = verseNotFoundError.details?.requestedBook || 'Unknown';
 			const chapter = verseNotFoundError.details?.chapter || '?';
 			const verse = verseNotFoundError.details?.verse || '?';
 			const language = verseNotFoundError.details?.language || 'unknown';
-			
-			const explicitMessage = `⚠️ VERSE DOES NOT EXIST: ${book} ${chapter}:${verse} is not a valid verse reference.\n\n` +
+
+			const explicitMessage =
+				`⚠️ VERSE DOES NOT EXIST: ${book} ${chapter}:${verse} is not a valid verse reference.\n\n` +
 				`This verse was not found in the ${language} resources. This may be because:\n` +
 				`- The verse number exceeds the chapter length\n` +
 				`- The chapter doesn't have this many verses\n` +
 				`- The reference is incorrect\n\n` +
 				`DO NOT fabricate or make up scripture text for this verse. The verse does not exist.`;
-			
+
 			const error: any = new Error(explicitMessage);
 			error.details = verseNotFoundError.details;
 			error.details.explicitError = 'VERSE_DOES_NOT_EXIST';
 			throw error;
 		} else {
-			console.log('[execute-prompt] Verse not found but we have verse-specific notes/questions/words - returning partial data');
+			console.log(
+				'[execute-prompt] Verse not found but we have verse-specific notes/questions/words - returning partial data'
+			);
 		}
 	}
 
@@ -710,14 +736,18 @@ async function executeTranslationHelpsPrompt(
 	// If some tools succeeded, return partial results instead
 	const hasAnyData =
 		results.scripture?.text ||
-		(results.questions?.items?.length > 0) ||
-		(results.words?.length > 0) ||
-		(results.notes?.verseNotes?.length > 0) ||  // ← NEW SHAPE: check verseNotes, not items
-		(results.academyArticles?.length > 0);
+		results.questions?.items?.length > 0 ||
+		results.words?.length > 0 ||
+		results.notes?.verseNotes?.length > 0 || // ← NEW SHAPE: check verseNotes, not items
+		results.academyArticles?.length > 0;
 
 	if (languageVariantError && !hasAnyData) {
-		console.log('[execute-prompt] Propagating language variant error for auto-retry (no data found)');
-		const error: any = new Error(languageVariantError.error || 'Resources not found for requested language');
+		console.log(
+			'[execute-prompt] Propagating language variant error for auto-retry (no data found)'
+		);
+		const error: any = new Error(
+			languageVariantError.error || 'Resources not found for requested language'
+		);
 		error.details = languageVariantError.details;
 		throw error;
 	} else if (languageVariantError && hasAnyData) {
@@ -732,8 +762,8 @@ async function executeWordsPrompt(
 	language: string,
 	organization: string,
 	trackedFetchCall: (url: string) => Promise<Response>,
-	tracer: EdgeXRayTracer
-)  {
+	_tracer: EdgeXRayTracer
+) {
 	console.log('[executeWordsPrompt] Reusing translation-helps logic for word links and articles');
 
 	const results: any = {
@@ -742,7 +772,7 @@ async function executeWordsPrompt(
 
 	// Track language variant errors to propagate for auto-retry
 	let languageVariantError: any = null;
-	
+
 	// Track invalid book code errors to provide helpful feedback
 	let invalidBookCodeError: any = null;
 
@@ -760,10 +790,16 @@ async function executeWordsPrompt(
 			// Check if error response has invalid book code or language variants
 			const errorData = await linksRes.json().catch(() => ({}));
 			if (errorData.details?.validBookCodes && errorData.details?.invalidCode) {
-				console.log('[execute-prompt] Word links error - invalid book code:', errorData.details.invalidCode);
+				console.log(
+					'[execute-prompt] Word links error - invalid book code:',
+					errorData.details.invalidCode
+				);
 				invalidBookCodeError = errorData;
 			} else if (errorData.details?.languageVariants) {
-				console.log('[execute-prompt] Word links error has language variants:', errorData.details.languageVariants);
+				console.log(
+					'[execute-prompt] Word links error has language variants:',
+					errorData.details.languageVariants
+				);
 				languageVariantError = errorData;
 			}
 		}
@@ -862,8 +898,12 @@ async function executeWordsPrompt(
 	const hasAnyData = results.words?.length > 0;
 
 	if (languageVariantError && !hasAnyData) {
-		console.log('[execute-prompt] Propagating language variant error for auto-retry (words prompt - no data found)');
-		const error: any = new Error(languageVariantError.error || 'Resources not found for requested language');
+		console.log(
+			'[execute-prompt] Propagating language variant error for auto-retry (words prompt - no data found)'
+		);
+		const error: any = new Error(
+			languageVariantError.error || 'Resources not found for requested language'
+		);
 		error.details = languageVariantError.details;
 		throw error;
 	} else if (languageVariantError && hasAnyData) {
@@ -878,7 +918,7 @@ async function executeAcademyPrompt(
 	language: string,
 	organization: string,
 	trackedFetchCall: (url: string) => Promise<Response>,
-	tracer: EdgeXRayTracer
+	_tracer: EdgeXRayTracer
 ) {
 	console.log(
 		'[executeAcademyPrompt] Reusing translation-helps logic for notes and academy articles'
@@ -890,7 +930,7 @@ async function executeAcademyPrompt(
 
 	// Track language variant errors to propagate for auto-retry
 	let languageVariantError: any = null;
-	
+
 	// Track invalid book code errors to provide helpful feedback
 	let invalidBookCodeError: any = null;
 
@@ -907,16 +947,30 @@ async function executeAcademyPrompt(
 		} else {
 			// Check if error response has invalid book code, language variants, OR is a language not supported error
 			const errorData = await notesRes.json().catch(() => ({}));
-			console.log('[execute-prompt] Notes returned non-OK status:', notesRes.status, 'errorData:', JSON.stringify(errorData));
+			console.log(
+				'[execute-prompt] Notes returned non-OK status:',
+				notesRes.status,
+				'errorData:',
+				JSON.stringify(errorData)
+			);
 			if (errorData.details?.validBookCodes && errorData.details?.invalidCode) {
-				console.log('[execute-prompt] Notes error - invalid book code:', errorData.details.invalidCode);
+				console.log(
+					'[execute-prompt] Notes error - invalid book code:',
+					errorData.details.invalidCode
+				);
 				invalidBookCodeError = errorData;
 			} else if (errorData.details?.languageVariants) {
-				console.log('[execute-prompt] Notes error has language variants:', errorData.details.languageVariants);
+				console.log(
+					'[execute-prompt] Notes error has language variants:',
+					errorData.details.languageVariants
+				);
 				languageVariantError = errorData;
 			} else if (errorData.details?.requestedLanguage) {
 				// Language not supported (no variants available)
-				console.log('[execute-prompt] Notes error - language not supported:', errorData.details.requestedLanguage);
+				console.log(
+					'[execute-prompt] Notes error - language not supported:',
+					errorData.details.requestedLanguage
+				);
 				languageVariantError = errorData;
 			} else if (errorData.details?.hasContextOnly) {
 				console.log('[execute-prompt] Notes error - context only (no verse-specific notes)');
@@ -1006,15 +1060,70 @@ async function executeAcademyPrompt(
 	const hasAnyData = results.academyArticles?.length > 0;
 
 	if (languageVariantError && !hasAnyData) {
-		console.log('[execute-prompt] Propagating language variant error for auto-retry (academy prompt - no data found)');
-		const error: any = new Error(languageVariantError.error || 'Resources not found for requested language');
+		console.log(
+			'[execute-prompt] Propagating language variant error for auto-retry (academy prompt - no data found)'
+		);
+		const error: any = new Error(
+			languageVariantError.error || 'Resources not found for requested language'
+		);
 		error.details = languageVariantError.details;
 		throw error;
 	} else if (languageVariantError && hasAnyData) {
-		console.log('[execute-prompt] Returning partial academy results despite language variant error');
+		console.log(
+			'[execute-prompt] Returning partial academy results despite language variant error'
+		);
 	}
 
 	return json(results);
+}
+
+/**
+ * Build the notes object for prompt responses. Mirrors /api/fetch-translation-notes (verseNotes + contextNotes).
+ * When condensed, omit full `Note` markdown and include a short `notePreview` instead.
+ */
+function shapeNotesForPrompt(notesData: any, condensed: boolean): any {
+	const base: any = {
+		reference: notesData.reference,
+		...(notesData.citation && { citation: notesData.citation }),
+		...(notesData.citations && { citations: notesData.citations }),
+		...(notesData.counts && { counts: notesData.counts }),
+		...(notesData.metadata && { metadata: notesData.metadata }),
+		...(notesData.organizations && { organizations: notesData.organizations })
+	};
+
+	if (!condensed) {
+		return {
+			...base,
+			verseNotes: notesData.verseNotes || [],
+			contextNotes: notesData.contextNotes || []
+		};
+	}
+
+	const NOTE_PREVIEW_MAX = 320;
+	const mapCondensed = (n: any) => {
+		const normalized = (n.Note || '').replace(/\s+/g, ' ').trim();
+		const preview =
+			normalized.length > NOTE_PREVIEW_MAX
+				? `${normalized.slice(0, NOTE_PREVIEW_MAX)}…`
+				: normalized;
+		return {
+			Reference: n.Reference,
+			ID: n.ID,
+			Quote: n.Quote,
+			Occurrence: n.Occurrence,
+			Occurrences: n.Occurrences,
+			...(n.contextType && { contextType: n.contextType }),
+			...(n.citation && { citation: n.citation }),
+			...(n.externalReference && { externalReference: n.externalReference }),
+			notePreview: preview
+		};
+	};
+
+	return {
+		...base,
+		verseNotes: (notesData.verseNotes || []).map(mapCondensed),
+		contextNotes: (notesData.contextNotes || []).map(mapCondensed)
+	};
 }
 
 function extractSupportReferences(notesData: any): string[] {
@@ -1025,8 +1134,11 @@ function extractSupportReferences(notesData: any): string[] {
 		return [];
 	}
 
-	// Check both notes and items arrays
-	const notes = notesData.notes || notesData.items || [];
+	const hasSplitShape =
+		Array.isArray(notesData.verseNotes) || Array.isArray(notesData.contextNotes);
+	const notes = hasSplitShape
+		? [...(notesData.verseNotes || []), ...(notesData.contextNotes || [])]
+		: notesData.notes || notesData.items || [];
 	console.log(`Checking ${notes.length} notes for external references`);
 
 	// Log first note structure to debug

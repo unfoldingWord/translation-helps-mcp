@@ -34,8 +34,19 @@ export const LANGUAGE_PARAM: UnifiedParameterDef<string> = {
   pattern: "^[a-z]{2,3}(-[A-Z]{2})?$",
 };
 
+/** Shared Zod shape for optional Door43 organization(s). */
+function organizationZodSchema() {
+  return z
+    .union([z.string(), z.array(z.string()), z.undefined()])
+    .optional()
+    .transform((value: unknown) => {
+      if (value === "" || value === null) return undefined;
+      return value;
+    });
+}
+
 /**
- * Organization parameter (can be single, array, or undefined for multi-org)
+ * Organization (discovery / list tools): filter by publisher(s), or omit for broad listing.
  */
 export const ORGANIZATION_PARAM: UnifiedParameterDef<
   string | string[] | undefined
@@ -44,21 +55,52 @@ export const ORGANIZATION_PARAM: UnifiedParameterDef<
   type: "string",
   required: false,
   description:
-    'Door43 organization(s) to search, or omit to search all organizations. For translation helps in many languages (e.g. Spanish), notes/questions often live under language-specific orgs—not unfoldingWord—so omit this parameter unless the user needs a specific owner. Examples: omit (all orgs), "unfoldingWord" (English-focused), "es-419_gl", or ["unfoldingWord","Door43-Catalog"].',
-  example: "(omit for all organizations)",
+    "Optional Door43 owner filter for discovery lists. Omit to search broadly. `unfoldingWord` is a common filter but not required.",
+  example: "(omit or filter)",
   transform: (value: any) => {
-    // Convert empty string to undefined for multi-org fetching
     if (value === "" || value === null) return undefined;
     return value;
   },
-  zodSchema: () =>
-    z
-      .union([z.string(), z.array(z.string()), z.undefined()])
-      .optional()
-      .transform((value) => {
-        if (value === "" || value === null) return undefined;
-        return value;
-      }),
+  zodSchema: () => organizationZodSchema(),
+};
+
+/**
+ * Organization for `fetch_scripture`: English ULT/UST often under unfoldingWord; omit to search all orgs.
+ * Do not assume the same value for translation notes/questions.
+ */
+export const ORGANIZATION_PARAM_SCRIPTURE: UnifiedParameterDef<
+  string | string[] | undefined
+> = {
+  name: "organization",
+  type: "string",
+  required: false,
+  description:
+    "Optional Door43 owner. For English scripture, `unfoldingWord` is typical for ULT/UST; omit to consider all orgs. Do **not** copy this value into `fetch_translation_notes` / `fetch_translation_questions` / `fetch_translation_word_links` for other languages—those tools usually need **omit** (all orgs) unless the user names a specific owner.",
+  example: "unfoldingWord",
+  transform: (value: any) => {
+    if (value === "" || value === null) return undefined;
+    return value;
+  },
+  zodSchema: () => organizationZodSchema(),
+};
+
+/**
+ * Organization for TN / TQ / TWL / TW / TA: strongly prefer omit unless user targets one repo owner.
+ */
+export const ORGANIZATION_PARAM_RESOURCE_HELPS: UnifiedParameterDef<
+  string | string[] | undefined
+> = {
+  name: "organization",
+  type: "string",
+  required: false,
+  description:
+    "**Default: omit this field** so every Door43 org is searched. Do **not** set `unfoldingWord` out of habit or because `fetch_scripture` used it—unfoldingWord often has no TN/TQ/TWL in Spanish and many other languages; those resources live under language teams (e.g. `es-419_gl`). Only pass `organization` when the user explicitly asks for a specific publisher or repo owner.",
+  example: "(omit — search all organizations)",
+  transform: (value: any) => {
+    if (value === "" || value === null) return undefined;
+    return value;
+  },
+  zodSchema: () => organizationZodSchema(),
 };
 
 /**
