@@ -1,13 +1,13 @@
 /**
  * Unified Parameter Definition System
- * 
+ *
  * This module provides a single source of truth for all API parameters used across:
  * - MCP tools (Zod schemas)
  * - REST API endpoints (TypeScript configs)
  * - UI documentation pages (auto-generated forms)
  */
 
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Base parameter definition that can be used to generate both Zod schemas and REST API configs
@@ -15,40 +15,40 @@ import { z } from 'zod';
 export interface UnifiedParameterDef<T = any> {
   /** Parameter name */
   name: string;
-  
+
   /** TypeScript type for REST API configs */
-  type: 'string' | 'number' | 'boolean' | 'array' | 'object';
-  
+  type: "string" | "number" | "boolean" | "array" | "object";
+
   /** Whether the parameter is required */
   required: boolean;
-  
+
   /** Human-readable description */
   description: string;
-  
+
   /** Default value (if any) */
   default?: T;
-  
+
   /** Example value */
   example?: T;
-  
+
   /** Allowed values (for enum-like parameters) */
   options?: readonly T[];
-  
+
   /** Minimum value (for numbers) */
   min?: number;
-  
+
   /** Maximum value (for numbers) */
   max?: number;
-  
+
   /** Regex pattern (for strings) */
   pattern?: string;
-  
+
   /** Transform function to apply to the value */
   transform?: (value: any) => T;
-  
+
   /** Validation function for complex validation */
   validate?: (value: T) => boolean | string;
-  
+
   /** Zod schema generator (optional, for complex types) */
   zodSchema?: () => z.ZodType<T>;
 }
@@ -66,16 +66,17 @@ export interface ParameterGroup {
  * Converts a unified parameter definition to a Zod schema
  */
 export function toZodSchema(param: UnifiedParameterDef): z.ZodType {
-  // If custom Zod schema provided, use it
+  // If custom Zod schema provided, use it — still attach description so MCP / JSON Schema
+  // exposes guidance (e.g. organization) to model clients.
   if (param.zodSchema) {
-    return param.zodSchema();
+    return param.zodSchema().describe(param.description);
   }
 
   let schema: z.ZodType;
 
   // Create base schema based on type
   switch (param.type) {
-    case 'string':
+    case "string":
       schema = z.string();
       if (param.options && param.options.length > 0) {
         // Create enum schema
@@ -86,8 +87,8 @@ export function toZodSchema(param: UnifiedParameterDef): z.ZodType {
         }
       }
       break;
-    
-    case 'number':
+
+    case "number":
       schema = z.number();
       if (param.min !== undefined) {
         schema = (schema as z.ZodNumber).min(param.min);
@@ -96,21 +97,21 @@ export function toZodSchema(param: UnifiedParameterDef): z.ZodType {
         schema = (schema as z.ZodNumber).max(param.max);
       }
       break;
-    
-    case 'boolean':
+
+    case "boolean":
       schema = z.boolean();
       break;
-    
-    case 'array':
+
+    case "array":
       // Default to string array, can be customized with zodSchema
       schema = z.array(z.string());
       break;
-    
-    case 'object':
+
+    case "object":
       // Default to any object, should be customized with zodSchema
       schema = z.record(z.any());
       break;
-    
+
     default:
       schema = z.any();
   }
@@ -123,7 +124,7 @@ export function toZodSchema(param: UnifiedParameterDef): z.ZodType {
   // Apply custom validation if provided
   if (param.validate) {
     schema = schema.refine(param.validate, {
-      message: `Invalid value for ${param.name}`
+      message: `Invalid value for ${param.name}`,
     });
   }
 
@@ -151,7 +152,8 @@ export function toEndpointConfig(param: UnifiedParameterDef) {
     description: param.description,
     ...(param.default !== undefined && { default: param.default }),
     ...(param.example !== undefined && { example: param.example }),
-    ...(param.options && param.options.length > 0 && { options: param.options }),
+    ...(param.options &&
+      param.options.length > 0 && { options: param.options }),
     ...(param.min !== undefined && { min: param.min }),
     ...(param.max !== undefined && { max: param.max }),
     ...(param.pattern && { pattern: param.pattern }),
@@ -165,7 +167,7 @@ export function toEndpointConfig(param: UnifiedParameterDef) {
 export function createParameterGroup(
   name: string,
   description: string,
-  parameters: UnifiedParameterDef[]
+  parameters: UnifiedParameterDef[],
 ): ParameterGroup {
   return { name, description, parameters };
 }
@@ -173,11 +175,13 @@ export function createParameterGroup(
 /**
  * Helper to merge multiple parameter groups
  */
-export function mergeParameterGroups(...groups: ParameterGroup[]): ParameterGroup {
+export function mergeParameterGroups(
+  ...groups: ParameterGroup[]
+): ParameterGroup {
   return {
-    name: groups.map(g => g.name).join(' + '),
-    description: groups.map(g => g.description).join('; '),
-    parameters: groups.flatMap(g => g.parameters)
+    name: groups.map((g) => g.name).join(" + "),
+    description: groups.map((g) => g.description).join("; "),
+    parameters: groups.flatMap((g) => g.parameters),
   };
 }
 
@@ -186,23 +190,25 @@ export function mergeParameterGroups(...groups: ParameterGroup[]): ParameterGrou
  */
 export function toZodObject(params: UnifiedParameterDef[]): z.ZodObject<any> {
   const shape: Record<string, z.ZodType> = {};
-  
+
   for (const param of params) {
     shape[param.name] = toZodSchema(param);
   }
-  
+
   return z.object(shape);
 }
 
 /**
  * Converts an array of parameter definitions to REST endpoint config
  */
-export function toEndpointParams(params: UnifiedParameterDef[]): Record<string, any> {
+export function toEndpointParams(
+  params: UnifiedParameterDef[],
+): Record<string, any> {
   const config: Record<string, any> = {};
-  
+
   for (const param of params) {
     config[param.name] = toEndpointConfig(param);
   }
-  
+
   return config;
 }

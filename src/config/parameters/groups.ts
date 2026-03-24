@@ -5,7 +5,11 @@
  */
 
 import { createParameterGroup } from "./types.js";
-import { COMMON_PARAMS } from "./common.js";
+import {
+  COMMON_PARAMS,
+  ORGANIZATION_PARAM_RESOURCE_HELPS,
+  ORGANIZATION_PARAM_SCRIPTURE,
+} from "./common.js";
 
 /**
  * Parameters for fetching scripture
@@ -16,7 +20,7 @@ export const SCRIPTURE_PARAMS = createParameterGroup(
   [
     COMMON_PARAMS.reference,
     COMMON_PARAMS.language,
-    COMMON_PARAMS.organization,
+    ORGANIZATION_PARAM_SCRIPTURE,
     COMMON_PARAMS.resource,
     COMMON_PARAMS.format,
     COMMON_PARAMS.includeAlignment,
@@ -30,11 +34,11 @@ export const SCRIPTURE_PARAMS = createParameterGroup(
  */
 export const TRANSLATION_NOTES_PARAMS = createParameterGroup(
   "Translation Notes Parameters",
-  "Parameters for fetching translation notes. Prefer omitting organization so every Door43 org is searched; unfoldingWord does not publish TN for many languages (e.g. Spanish).",
+  "Parameters for fetching translation notes. Omit `organization` unless the user needs one Door43 owner—search all orgs by default (required for many non-English languages).",
   [
     COMMON_PARAMS.reference,
     COMMON_PARAMS.language,
-    COMMON_PARAMS.organization,
+    ORGANIZATION_PARAM_RESOURCE_HELPS,
     COMMON_PARAMS.format,
     COMMON_PARAMS.includeContext,
     COMMON_PARAMS.includeIntro,
@@ -47,11 +51,11 @@ export const TRANSLATION_NOTES_PARAMS = createParameterGroup(
  */
 export const TRANSLATION_QUESTIONS_PARAMS = createParameterGroup(
   "Translation Questions Parameters",
-  "Parameters for fetching translation questions",
+  "Parameters for fetching translation questions. Omit `organization` by default (same as translation notes)—do not default to unfoldingWord.",
   [
     COMMON_PARAMS.reference,
     COMMON_PARAMS.language,
-    COMMON_PARAMS.organization,
+    ORGANIZATION_PARAM_RESOURCE_HELPS,
     COMMON_PARAMS.format,
     COMMON_PARAMS.topic,
   ],
@@ -62,11 +66,11 @@ export const TRANSLATION_QUESTIONS_PARAMS = createParameterGroup(
  */
 export const TRANSLATION_WORD_LINKS_PARAMS = createParameterGroup(
   "Translation Word Links Parameters",
-  "Parameters for fetching translation word links",
+  "Parameters for fetching translation word links. Omit `organization` by default so all orgs are searched.",
   [
     COMMON_PARAMS.reference,
     COMMON_PARAMS.language,
-    COMMON_PARAMS.organization,
+    ORGANIZATION_PARAM_RESOURCE_HELPS,
     COMMON_PARAMS.format,
     COMMON_PARAMS.topic,
   ],
@@ -84,7 +88,7 @@ export const TRANSLATION_WORD_PARAMS = createParameterGroup(
   [
     { ...COMMON_PARAMS.path, default: "bible/kt/love" }, // THE ONLY identifier parameter (from externalReference)
     COMMON_PARAMS.language,
-    COMMON_PARAMS.organization,
+    ORGANIZATION_PARAM_RESOURCE_HELPS,
     COMMON_PARAMS.category,
     COMMON_PARAMS.topic,
   ],
@@ -101,7 +105,7 @@ export const TRANSLATION_ACADEMY_PARAMS = createParameterGroup(
   [
     { ...COMMON_PARAMS.path, default: "translate/figs-metaphor" }, // THE ONLY identifier parameter (from externalReference)
     COMMON_PARAMS.language,
-    COMMON_PARAMS.organization,
+    ORGANIZATION_PARAM_RESOURCE_HELPS,
     COMMON_PARAMS.format,
     COMMON_PARAMS.topic,
   ],

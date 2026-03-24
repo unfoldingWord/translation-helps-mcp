@@ -198,7 +198,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     displayName: "Fetch Scripture",
     endpoint: "fetch-scripture",
     description:
-      "Fetch Bible scripture text for multiple translations (ULT, UST, T4T, UEB)",
+      "Fetch Bible scripture text for multiple translations (ULT, UST, T4T, UEB). Optional `organization` (English often uses unfoldingWord). Do not reuse that for translation notes/questions/word-links in other languages—omit there unless the user names an owner.",
     category: "Scripture",
     parameters: PARAMETER_GROUPS.scripture.parameters,
     requiredParams: ["reference"],
@@ -264,7 +264,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     displayName: "Fetch Translation Questions",
     endpoint: "fetch-translation-questions",
     description:
-      "Fetch translation questions for a specific Bible reference - comprehension verification",
+      "Fetch translation questions for a specific Bible reference (comprehension verification). Omit organization by default so all Door43 orgs are searched; do not default to unfoldingWord.",
     category: "Translation Helps",
     parameters: PARAMETER_GROUPS.translationQuestions.parameters,
     requiredParams: ["reference"],
@@ -275,6 +275,12 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
         parameters: { reference: "John 3:16", language: "en" },
         expectedResponse: "Translation questions for John 3:16",
       },
+      {
+        title: "Spanish questions (all organizations)",
+        parameters: { reference: "TIT 3:15", language: "es" },
+        expectedResponse:
+          "TQ from whichever org publishes them (omit organization)",
+      },
     ],
   },
 
@@ -283,7 +289,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     displayName: "Fetch Translation Word Links",
     endpoint: "fetch-translation-word-links",
     description:
-      "Fetch translation word links (TWL) for a specific Bible reference - maps verse words to dictionary entries",
+      "Fetch translation word links (TWL) for a specific Bible reference (verse words → dictionary entries). Omit organization by default; do not default to unfoldingWord.",
     category: "Translation Helps",
     parameters: PARAMETER_GROUPS.translationWordLinks.parameters,
     requiredParams: ["reference"],

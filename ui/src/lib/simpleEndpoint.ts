@@ -21,6 +21,19 @@ import { formatResponse, type ResponseFormat } from './responseFormatter.js';
 const variantMappingCache = new Map<string, { variant: string; timestamp: number }>();
 const VARIANT_MAPPING_TTL = 3600000; // 1 hour - variants rarely change
 
+/**
+ * Variant mapping (e.g. es → es-419) is safe for translation notes only when the
+ * caller did not pin a specific Door43 owner. Some catalogs list TN under `es`
+ * for a given org; forcing es-419 would 404 for those org-specific requests.
+ */
+function allowsTranslationNotesVariantCache(organization: unknown): boolean {
+	if (organization === undefined || organization === null) return true;
+	if (organization === '') return true;
+	if (organization === 'all') return true;
+	if (Array.isArray(organization) && organization.length === 0) return true;
+	return false;
+}
+
 // Simple parameter validation
 export interface ParamSchema {
 	name: string;
@@ -253,10 +266,14 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 			}
 
 			// 1.5. Check variant mapping cache (OPTIMIZATION)
-			// If we've previously discovered that 'es' maps to 'es-419', use it directly
-			// Skip for translation notes: uw Spanish TN is catalogued as `es`, not `es-419`;
-			// pre-mapping `es` → `es-419` breaks org-specific requests (404 / wrong language).
-			if (parsedParams.language && config.name !== 'translation-notes-v3') {
+			// If we've previously discovered that 'es' maps to 'es-419', use it directly.
+			// Translation notes: only apply when organization is not pinned (see allowsTranslationNotesVariantCache).
+			const canUseVariantMapping =
+				parsedParams.language &&
+				(config.name !== 'translation-notes-v3' ||
+					allowsTranslationNotesVariantCache(parsedParams.organization));
+
+			if (canUseVariantMapping) {
 				const variantMappingKey = `${parsedParams.language}:${parsedParams.organization || 'all'}:${config.name}`;
 				const cachedMapping = variantMappingCache.get(variantMappingKey);
 
@@ -459,8 +476,12 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 					logger.info(`[simpleEndpoint] ✅ Retry succeeded in ${retryResponseTime}ms`);
 					console.log(`[simpleEndpoint] ✅ Auto-retry succeeded with ${suggestedLanguage}`);
 
-					// 💾 CACHE VARIANT MAPPING (not for translation notes — see 1.5 above)
-					if (config.name !== 'translation-notes-v3') {
+					// 💾 CACHE VARIANT MAPPING (translation notes: only for broad org scope — see 1.5)
+					const canSaveVariantMapping =
+						config.name !== 'translation-notes-v3' ||
+						allowsTranslationNotesVariantCache(parsedParams.organization);
+
+					if (canSaveVariantMapping) {
 						const normalizedOrg = retryParams.organization || 'all';
 						const variantMappingKey = `${parsedParams.language}:${normalizedOrg}:${config.name}`;
 						variantMappingCache.set(variantMappingKey, {

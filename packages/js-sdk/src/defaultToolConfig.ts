@@ -17,7 +17,7 @@ import type { ToolContextConfig } from "./StateInjectionInterceptor";
  * only when the user wants a specific catalog owner.
  */
 export const DEFAULT_TOOL_CONTEXT_CONFIG: ToolContextConfig = {
-  // Scripture fetching tools - language and stage auto-injected, organization must be explicit first time
+  // Scripture / helps: language and stage auto-injected; organization is never injected (omit for TN/TQ unless user picks an owner)
   fetch_scripture: ["language", "stage"],
 
   // Translation Notes tools

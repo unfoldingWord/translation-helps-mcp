@@ -170,7 +170,7 @@ Follow these steps:
    - Show FULL scripture text with citation: [citation.resource version - ${reference}]
 
 2. **Get Translation Questions:**
-   - Use fetch_translation_questions with reference="${reference}" and language="${language}"
+   - Use fetch_translation_questions with reference="${reference}" and language="${language}" (omit organization unless the user named a specific Door43 owner—do not default to unfoldingWord)
    - Read questions.citation object
    - Show ALL questions (they're already short) with citation
 
@@ -256,13 +256,13 @@ Follow these steps to gather all relevant information:
    - This provides the actual Bible text to work with
 
 2. **Get Translation Questions:**
-   - Use fetch_translation_questions with reference="${reference}" and language="${language}"
+   - Use fetch_translation_questions with reference="${reference}" and language="${language}" (omit organization by default—same as translation notes; do not pass unfoldingWord unless the user asked for that owner)
    - Read questions.citation object from the response
    - Cite questions using: [citation.resource version - ${reference}] (e.g., [es-419_tq v38 - ${reference}])
    - These help check comprehension and guide translation decisions
 
 3. **Get Translation Word Links and Fetch Titles:**
-   - Use fetch_translation_word_links with reference="${reference}" and language="${language}"
+   - Use fetch_translation_word_links with reference="${reference}" and language="${language}" (omit organization by default)
    - This returns items with externalReference: [{externalReference: {target: "tw", path: "bible/kt/love", category: "kt"}}]
    - For EACH item that has externalReference.path, use fetch_translation_word tool with path=<externalReference.path> (e.g., path="bible/kt/love")
    - Extract the TITLE from each article (found in the first H1 heading or title field)
@@ -382,7 +382,7 @@ Follow these steps:
    - Show the user how to use the discovered language parameter in other tools
    - Examples:
      * fetch_scripture with language="${language || "en"}" and reference="John 3:16"
-     * fetch_translation_notes with language="${language || "en"}" and reference="John 3:16"
+     * fetch_translation_notes with language="${language || "en"}" and reference="John 3:16" — **omit organization** for non-English unless a specific owner is needed
      * fetch_translation_word with language="${language || "en"}" and term="love"
      * list_subjects with language="${language || "en"}" to see what's available
 

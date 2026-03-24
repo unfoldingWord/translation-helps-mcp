@@ -18,8 +18,9 @@ const TEST_CONFIG = {
   organization: "unfoldingWord",
   language: "en",
   reference: "John 3:16",
-  term: "grace",
-  moduleId: "figs-metaphor",
+  /** v7+ endpoints use path (term/moduleId are deprecated) */
+  wordPath: "bible/kt/grace",
+  academyPath: "translate/figs-metaphor",
   testLanguage: "es-419", // For discovery tests
   testSubject: "Translation Words", // For discovery tests
 };
@@ -211,7 +212,7 @@ async function checkServer() {
       method: "GET",
     });
     return response.ok;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }
@@ -224,7 +225,8 @@ async function runAllTests() {
   console.log(`  Organization: ${TEST_CONFIG.organization}`);
   console.log(`  Language: ${TEST_CONFIG.language}`);
   console.log(`  Reference: ${TEST_CONFIG.reference}`);
-  console.log(`  Term: ${TEST_CONFIG.term}`);
+  console.log(`  Word path: ${TEST_CONFIG.wordPath}`);
+  console.log(`  Academy path: ${TEST_CONFIG.academyPath}`);
   console.log(`\n  Note: Tools tested via REST API, prompts via MCP endpoint`);
 
   // Check if server is running
@@ -298,7 +300,7 @@ async function runAllTests() {
     await testToolRest(
       "fetch_translation_word",
       {
-        term: TEST_CONFIG.term,
+        path: TEST_CONFIG.wordPath,
         language: TEST_CONFIG.language,
         organization: TEST_CONFIG.organization,
       },
@@ -310,7 +312,7 @@ async function runAllTests() {
     await testToolRest(
       "fetch_translation_academy",
       {
-        moduleId: TEST_CONFIG.moduleId,
+        path: TEST_CONFIG.academyPath,
         language: TEST_CONFIG.language,
         organization: TEST_CONFIG.organization,
       },

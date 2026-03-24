@@ -1,7 +1,7 @@
 // tests/helpers/http.ts
 
-// Enforce Cloudflare Pages dev ports first
-const DEFAULT_PORTS = [8788, 8787, 8789];
+// Prefer SvelteKit dev server (ui/vite.config.ts server.port), then Cloudflare Pages dev ports, then preview
+const DEFAULT_PORTS = [8174, 8788, 8787, 8789, 8175];
 let resolvedBaseUrl: string | null = null;
 let apiReady = false;
 
@@ -80,8 +80,8 @@ export async function getBaseUrl(): Promise<string> {
     }
   }
 
-  // Fallback
-  resolvedBaseUrl = "http://localhost:8175";
+  // Fallback (matches default Vite dev port)
+  resolvedBaseUrl = "http://localhost:8174";
   return resolvedBaseUrl;
 }
 
@@ -94,7 +94,7 @@ export async function apiGet(
     await waitForReady(base);
     apiReady = true;
   }
-  if (!base || !/^https?:\/\//.test(base)) base = "http://localhost:8175";
+  if (!base || !/^https?:\/\//.test(base)) base = "http://localhost:8174";
   const url = new URL(`${base.replace(/\/$/, "")}/api/${endpoint}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined) url.searchParams.set(key, value);
@@ -102,7 +102,7 @@ export async function apiGet(
   // Force JSON unless explicitly set
   if (!url.searchParams.has("format")) url.searchParams.set("format", "json");
 
-  const res = await fetch(url.toString());
+  const res = await fetchWithTimeout(url.toString(), {}, 120_000);
   const text = await res.text();
   try {
     return JSON.parse(text);
@@ -120,7 +120,7 @@ export async function buildUrl(
   params?: Record<string, string | undefined>,
 ): Promise<string> {
   let base = await getBaseUrl();
-  if (!base || !/^https?:\/\//.test(base)) base = "http://localhost:8175";
+  if (!base || !/^https?:\/\//.test(base)) base = "http://localhost:8174";
   // Allow callers to pass full path or endpoint-only
   const isFullPath = path.startsWith("http://") || path.startsWith("https://");
   const normalizedBase = base.replace(/\/$/, "");

@@ -38,8 +38,8 @@ describe("Smoke Tests - Quick Health Check", () => {
       expect(response.scripture.length).toBeGreaterThan(0);
       expect(response.scripture[0].text).toBeDefined();
       expect(response.scripture[0].text.length).toBeGreaterThan(0);
-      expect(response.language).toBe("en");
-      expect(response.organization).toBe("unfoldingWord");
+      expect(response.metadata?.language).toBe("en");
+      expect(response.metadata?.organization).toBe("unfoldingWord");
     },
     TIMEOUT,
   );
@@ -58,8 +58,8 @@ describe("Smoke Tests - Quick Health Check", () => {
       expect(response.scripture.length).toBeGreaterThan(0);
       expect(response.scripture[0].text).toBeDefined();
       expect(response.scripture[0].text.length).toBeGreaterThan(0);
-      expect(response.language).toBe("en");
-      expect(response.organization).toBe("unfoldingWord");
+      expect(response.metadata?.language).toBe("en");
+      expect(response.metadata?.organization).toBe("unfoldingWord");
     },
     TIMEOUT,
   );
