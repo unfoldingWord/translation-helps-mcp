@@ -71,6 +71,11 @@ This guide helps AI agents efficiently navigate the `translation-helps-mcp` docu
    - Documentation structure and organization guide
    - Use for: Understanding documentation layout
 
+10. **[`.cursor/skills/README.md`](.cursor/skills/README.md)** - **Cursor project skills**
+
+- Shipped skills for this repo (e.g. **REST API** integration **without** MCP)
+- Use for: Agents and devs who want **`/api/*` HTTP** instead of **`/api/mcp`** — see [`translation-helps-rest-api/SKILL.md`](.cursor/skills/translation-helps-rest-api/SKILL.md)
+
 ---
 
 ## 🚨 **CRITICAL AGENT GUIDELINES**
@@ -86,16 +91,17 @@ This guide helps AI agents efficiently navigate the `translation-helps-mcp` docu
 
 **When users ask about:**
 
-| **Topic**                              | **Primary Reference**                          | **Key Sections**              |
-| -------------------------------------- | ---------------------------------------------- | ----------------------------- |
-| **Resource formats** (USFM, TSV, JSON) | `UW_TRANSLATION_RESOURCES_GUIDE.md`            | Technical Specifications      |
-| **Alignment systems**                  | `UW_TRANSLATION_RESOURCES_GUIDE.md`            | Alignment Syntax Structure    |
-| **API integration**                    | `UW_TRANSLATION_RESOURCES_GUIDE.md`            | Integration Patterns and APIs |
-| **Translation Notes/Words**            | `UW_TRANSLATION_RESOURCES_GUIDE.md`            | Supporting Resources          |
-| **Setup/Installation**                 | `IMPLEMENTATION_GUIDE.md`                      | Getting Started               |
-| **Performance issues**                 | `DEBUGGING_GUIDE.md` + `ARCHITECTURE_GUIDE.md` | Performance sections          |
-| **USFM processing**                    | `SCRIPTURE_USFM_GUIDE.md`                      | Technical Implementation      |
-| **Production deployment**              | `DEPLOYMENT_GUIDE.md`                          | Cloudflare Workers            |
+| **Topic**                                   | **Primary Reference**                                                                                                                  | **Key Sections**              |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| **Resource formats** (USFM, TSV, JSON)      | `UW_TRANSLATION_RESOURCES_GUIDE.md`                                                                                                    | Technical Specifications      |
+| **Alignment systems**                       | `UW_TRANSLATION_RESOURCES_GUIDE.md`                                                                                                    | Alignment Syntax Structure    |
+| **API integration**                         | `UW_TRANSLATION_RESOURCES_GUIDE.md`                                                                                                    | Integration Patterns and APIs |
+| **REST without MCP** (curl, fetch, scripts) | [`.cursor/skills/translation-helps-rest-api/SKILL.md`](.cursor/skills/translation-helps-rest-api/SKILL.md) + `IMPLEMENTATION_GUIDE.md` | Route map and conventions     |
+| **Translation Notes/Words**                 | `UW_TRANSLATION_RESOURCES_GUIDE.md`                                                                                                    | Supporting Resources          |
+| **Setup/Installation**                      | `IMPLEMENTATION_GUIDE.md`                                                                                                              | Getting Started               |
+| **Performance issues**                      | `DEBUGGING_GUIDE.md` + `ARCHITECTURE_GUIDE.md`                                                                                         | Performance sections          |
+| **USFM processing**                         | `SCRIPTURE_USFM_GUIDE.md`                                                                                                              | Technical Implementation      |
+| **Production deployment**                   | `DEPLOYMENT_GUIDE.md`                                                                                                                  | Cloudflare Workers            |
 
 ### **🔍 RESEARCH APPROACH**
 

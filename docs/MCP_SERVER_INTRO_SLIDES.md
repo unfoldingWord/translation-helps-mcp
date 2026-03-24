@@ -1,214 +1,125 @@
----
-marp: true
-theme: default
-paginate: true
-footer: Translation Helps MCP
-style: |
-  section { font-size: 28px; }
-  code { font-size: 0.85em; }
----
-
 # Translation Helps MCP
 
-**What it is, what it does, and how to connect an OpenAI model**
+**Door43 translation content for AI assistants — MCP and a full HTTP REST API**
 
 ---
 
-## What is MCP?
+## In one sentence
 
-**Model Context Protocol (MCP)** is a standard way for apps (IDEs, assistants, scripts) to give an LLM **structured tools**: list resources, fetch scripture, run lookups—instead of pasting huge text blobs into the chat.
-
-- The **server** exposes **tools** and **prompts** over a defined protocol.
-- The **client** (Cursor, Claude Desktop, or your own code) connects and lets the model **call** those tools when needed.
+We give **assistants** and **apps** reliable access to **scripture, notes, questions, terms, and training** from the Door43 world — **structured**, not copy-paste from the web. Same capabilities over **MCP** (`/api/mcp`) or **REST** (`/api/...`) — use whichever fits your stack.
 
 ---
 
-## What does _this_ MCP server do?
+## Why MCP? (short version)
 
-It connects AI assistants to **real Bible translation content** from **Door43 / DCS** (Door43 Content Service):
+**Parable:** You ask someone to **drive a nail** but give no **hammer** — lots of talk, no finish.
 
-| You get                        | Examples                                             |
-| ------------------------------ | ---------------------------------------------------- |
-| Scripture                      | Multiple translations for a passage                  |
-| Translation Notes              | Verse-level explanations (TSV-backed)                |
-| Translation Words              | Term articles (by **path**, e.g. `bible/kt/grace`)   |
-| Word links, Questions, Academy | Links in passage, comprehension Qs, training modules |
-| Discovery                      | Languages, subjects, resources per language          |
-
-**No mock data in production paths**—responses come from upstream catalogs and resources.
+**MCP** hands the assistant a **small rack of named tools** (fetch scripture, list languages, …) instead of open-ended access. **Translation Helps** is that rack for Bible translation content.
 
 ---
 
-## Tools and prompts (at a glance)
+## What you get
 
-**~9 tools** — e.g. `fetch_scripture`, `fetch_translation_notes`, `list_languages`, `list_resources_for_language`, plus word links, questions, translation word (**path**), translation academy (**path**).
+|                       |                       |
+| --------------------- | --------------------- |
+| **Scripture**         | Passages you choose   |
+| **Notes & questions** | Verse-level helps     |
+| **Key terms**         | Terms + articles      |
+| **Training**          | Academy articles      |
+| **Discovery**         | Languages & resources |
 
-**~5 prompts** — guided workflows (e.g. _translation helps for a passage_) so the model chains steps with sensible defaults.
-
-Use **prompts** when you want one high-level task; use **tools** when you want explicit parameters.
-
----
-
-## Two ways to use it
-
-### 1. REST API (simplest to try)
-
-`GET` or documented routes under the API base, e.g.:
-
-```text
-GET .../api/fetch-scripture?reference=John%203:16&language=en&format=json
-```
-
-Good for **curl**, scripts, and **fetch** from a web app.
-
-### 2. MCP over HTTP (for LLM tool calling)
-
-Post JSON-RPC-style requests to the **MCP endpoint** (same deployment: `/api/mcp` on the hosted site).
-
-Good when your app lists tools and executes `tools/call` after the model chooses a tool.
+Real published data — not mocks.
 
 ---
 
-## Production URLs (reference)
+## Door43 vs this server
 
-| Purpose     | Example                                         |
-| ----------- | ----------------------------------------------- |
-| Site + docs | `https://tc-helps.mcp.servant.bible/`           |
-| Health      | `https://tc-helps.mcp.servant.bible/api/health` |
-| REST        | `https://tc-helps.mcp.servant.bible/api/...`    |
-| MCP         | `https://tc-helps.mcp.servant.bible/api/mcp`    |
+**Door43 / DCS** = where **repos and files** live (source of truth).
 
-_(Exact paths follow your deployment; always check `/api/health` first.)_
+**Translation Helps** = **workflow layer** on top: one API shape for common tasks, discovery endpoints, JSON/MD/TSV as needed, plus validation and caching — so you **don’t** rewire catalog + ZIP + USFM/TSV **yourself** for every integration.
+
+**Raw DCS API?** Fine for deep work on repos. For “helps for this verse in this language,” you’d still **glue** many steps. We’re the **fast path** for that job.
 
 ---
 
-## Local development
+## Endpoint surface (why “small” matters)
 
-From the repo:
+|                     | **[DCS (Gitea) API](https://git.door43.org/api/swagger)** | **[TC Helps — MCP Tools](https://tc-helps.mcp.servant.bible/mcp-tools)** |
+| ------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------ |
+| **Role**            | Whole platform: repos, users, issues, releases, hooks, …  | **Translation helps** only: scripture, notes, words, discovery, …        |
+| **OpenAPI paths**   | **~312** (Swagger `paths`; version tracks Gitea/DCS)      | **11** MCP tools + **6** prompts (curated for this product)              |
+| **HTTP operations** | **~484** (GET/POST/PUT/… across those paths)              | **One** MCP HTTP entry + separate **REST** routes for the same fetches   |
 
-```bash
-cd ui && npm run dev
-```
+Same Door43 **content** underneath — different **scope**: encyclopedia vs **short menu** tuned for translators and AI.
 
-Default dev server (typical): **`http://localhost:8174`**
-
-- REST: `http://localhost:8174/api/<endpoint>`
-- MCP: `http://localhost:8174/api/mcp`
-
-Run **health** before tests: `GET /api/health`.
+_DCS counts from the published OpenAPI at [git.door43.org](https://git.door43.org/api/swagger) (~v1.25.x). TC Helps counts from the live tool + prompt registry._
 
 ---
 
-## Connecting OpenAI: the idea
+## REST or MCP?
 
-1. **Discover tools** — `POST` to MCP with `tools/list` (or use a fixed list from your build).
-2. **Map** each MCP tool to an OpenAI **function** / **tool** schema (`name`, `description`, `parameters`).
-3. **Chat** with `tools` enabled and `tool_choice: "auto"`.
-4. When the model returns `tool_calls`, **execute** them by `POST`ing `tools/call` to the same MCP URL with the JSON arguments.
-5. **Send tool results** back as `role: "tool"` messages and repeat until the model answers.
+|                | **REST** (`/api/...`) | **MCP** (`/api/mcp`) |
+| -------------- | --------------------- | -------------------- |
+| **Who drives** | You or your script    | The assistant        |
+| **Best for**   | Known steps, CI, curl | Chat, IDE, Inspector |
 
-Same pattern works for **Azure OpenAI** (change base URL and API version).
-
----
-
-## Minimal pattern (Node / fetch)
-
-Concept only—adapt URLs and auth for your environment:
-
-```javascript
-const MCP_URL = "https://tc-helps.mcp.servant.bible/api/mcp";
-
-async function mcpToolsList() {
-  const res = await fetch(MCP_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "tools/list",
-      params: {},
-    }),
-  });
-  return res.json();
-}
-
-async function mcpToolCall(name, args) {
-  const res = await fetch(MCP_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 2,
-      method: "tools/call",
-      params: { name, arguments: args },
-    }),
-  });
-  return res.json();
-}
-```
-
-Wire `mcpToolsList()` → OpenAI `tools: [...]`, then `mcpToolCall` inside your tool-execution loop.
+Same deployment — **same content** behind both.
 
 ---
 
-## OpenAI Chat Completions (sketch)
+## Where to try
 
-```javascript
-const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    model: "gpt-4o-mini",
-    messages: [{ role: "user", content: "Fetch John 3:16 in English." }],
-    tools: openAiToolsFromMcp, // built from tools/list
-    tool_choice: "auto",
-  }),
-});
-```
+|            |                                                                                                |
+| ---------- | ---------------------------------------------------------------------------------------------- |
+| **Site**   | `https://tc-helps.mcp.servant.bible/`                                                          |
+| **Health** | `.../api/health`                                                                               |
+| **REST**   | `.../api/fetch-scripture`, `.../api/list-languages`, etc. — **curl**, scripts, any HTTP client |
+| **MCP**    | `.../api/mcp`                                                                                  |
 
-Parse `tool_calls` from the assistant message, run `mcpToolCall`, append results, **call the API again** until there are no more tool calls.
+_Local: `cd ui && npm run dev` → often `http://localhost:8174` — same **`/api/*`** REST routes and MCP on one host._
 
 ---
 
-## Using Cursor (or similar) with this repo
+## Code & packages
 
-Add an MCP server entry that runs the **stdio** server from the project (see your `mcp.json` pattern):
+|                             |                                                                                                                                                                                    |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Repository**              | **[unfoldingWord/translation-helps-mcp](https://github.com/unfoldingWord/translation-helps-mcp)** — open source: SvelteKit UI, MCP + REST API, docs, tests, examples               |
+| **JavaScript / TypeScript** | **[`@translation-helps/mcp-client`](https://www.npmjs.com/package/@translation-helps/mcp-client)** (npm) — typed client for hosted or self-run servers; wraps tool calls over HTTP |
+| **Python**                  | **[`translation-helps-mcp-client`](https://pypi.org/project/translation-helps-mcp-client/)** (PyPI) — async client (`httpx`), optional adapters for OpenAI-style tool lists        |
 
-```json
-{
-  "mcpServers": {
-    "translation-helps": {
-      "command": "npx",
-      "args": ["tsx", "src/index.ts"],
-      "cwd": "/path/to/translation-helps-mcp-2"
-    }
-  }
-}
-```
-
-Then the editor’s AI can use the tools without writing HTTP glue—**remote HTTP** is for custom apps and hosted integrations.
+_Install:_ `npm install @translation-helps/mcp-client` · `pip install translation-helps-mcp-client` · more packages live under **`packages/`** and **`clients/`** in the repo.\_
 
 ---
 
-## Good defaults for the model
+## Live demo (3 minutes)
 
-- Prefer **organization** and **language** explicitly when comparing resources.
-- For **translation words** and **academy**, use **`path`** (e.g. `bible/kt/grace`, `translate/figs-metaphor`) from word-links or notes—not deprecated `term` / `moduleId` alone.
-- Use **`format=md`** on REST when you want markdown tuned for LLMs.
+1. **Inspector:** `npx @modelcontextprotocol/inspector` → connect to **`.../api/mcp`**
+2. **`list_languages`** — show real data
+3. **`fetch_scripture`** — `JHN 3:16`, `en` — add optional notes or words if time
 
 ---
 
-## Where to read more
+## Extras (if time)
 
-- Repo **README** — features, deployment, quick `curl` examples.
-- **HOW_TO_USE_PROMPTS.md** / **MCP_PROMPTS_GUIDE.md** — prompt workflows.
-- **docs/MCP_LLM_REFERENCE_IMPLEMENTATION.md** — deeper LLM + MCP loop.
+- **Prompts** — bundled workflows (e.g. passage report). See **`MCP_PROMPTS_GUIDE.md`**
+- **Repo example** — `examples/mcp-chat-demo` — chat + LLM + MCP
+
+---
+
+## Demo tips
+
+- Book codes: **`JHN`**, **`TIT`** — not full book names in parameters
+- Often **omit** `organization` unless you need one publisher
+
+---
+
+## Close
+
+**What to do next:** open the site, hit **`/api/health`**, try one **REST** `GET` (e.g. **`fetch-scripture`**) or run Inspector + MCP **`fetch_scripture`** once.
 
 ---
 
 # Thank you
 
-**Translation Helps MCP** — real translation resources for AI-assisted Bible translation workflows.
+**Translation Helps MCP** — trusted content, **MCP + REST**, simple tools.

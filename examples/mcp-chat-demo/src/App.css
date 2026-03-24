@@ -1,0 +1,171 @@
+.app {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 2rem;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.header h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.35rem;
+  font-weight: 650;
+}
+
+.subtitle {
+  margin: 0;
+  color: #8b98a5;
+  font-size: 0.92rem;
+}
+
+.subtitle code {
+  background: #1e2732;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+
+.panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  background: #1a2332;
+  border-radius: 10px;
+  border: 1px solid #2f3d4d;
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: #8b98a5;
+  flex: 1 1 14rem;
+}
+
+.input {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #38444d;
+  background: #0f1419;
+  color: #e7e9ea;
+}
+
+.btn {
+  font: inherit;
+  cursor: pointer;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  border: none;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background: #1d9bf0;
+  color: #fff;
+}
+
+.btn.secondary {
+  background: #38444d;
+  color: #e7e9ea;
+}
+
+.pill {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: #253041;
+  color: #c4cdd5;
+}
+
+.mcp-ready {
+  background: #163d1f;
+  color: #8fd99a;
+}
+
+.mcp-error {
+  background: #4a1c1c;
+  color: #f4a4a4;
+}
+
+.ai-ready {
+  background: #163d1f;
+  color: #8fd99a;
+}
+
+.ai-unavailable {
+  background: #3d3516;
+  color: #e6d08a;
+}
+
+.chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 12rem;
+}
+
+.hint {
+  color: #6e7b88;
+  font-size: 0.92rem;
+  margin: 0;
+}
+
+.msg {
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid #2f3d4d;
+}
+
+.msg.user {
+  background: #1c2733;
+}
+
+.msg.assistant {
+  background: #15202b;
+}
+
+.msg .role {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6e7b88;
+  margin-bottom: 0.35rem;
+}
+
+.msg .body {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.composer {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-end;
+}
+
+.textarea {
+  flex: 1;
+  font: inherit;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid #38444d;
+  background: #0f1419;
+  color: #e7e9ea;
+  resize: vertical;
+  min-height: 4rem;
+}
