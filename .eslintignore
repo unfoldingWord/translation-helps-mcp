@@ -15,6 +15,9 @@ coverage/
 # Archived tests (not maintained)
 tests/archive/
 
+# Standalone Vite demos (own ESLint via example package if needed)
+examples/
+
 # Generated files
 *.generated.js
 *.generated.ts

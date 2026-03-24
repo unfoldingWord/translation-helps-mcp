@@ -76,6 +76,7 @@ Historical documentation and deprecated guides kept for reference.
 1. **Understanding Resources** → [UW Translation Resources Guide](./UW_TRANSLATION_RESOURCES_GUIDE.md)
 2. **Implementation** → [Implementation Guide](./IMPLEMENTATION_GUIDE.md)
 3. **Deployment** → [Deployment Guide](./DEPLOYMENT_GUIDE.md)
+4. **REST over HTTP (no MCP)** → Cursor project skills: [`../.cursor/skills/README.md`](../.cursor/skills/README.md) (includes [`translation-helps-rest-api`](../.cursor/skills/translation-helps-rest-api/SKILL.md) — route map and smoke tests for `/api/*`)
 
 ### **For Users**
 
