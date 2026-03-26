@@ -168,7 +168,7 @@ if (fs.existsSync(jsTypesPath)) {
 
     console.log("fetch_scripture:");
     console.log(
-      `  MCP Server params: reference, language, organization, includeVerseNumbers, format, resource, includeAlignment`,
+      `  MCP Server params: reference, language, includeVerseNumbers, format, resource, includeAlignment`,
     );
     console.log(
       `  TypeScript SDK has 'resource': ${hasResource ? "✅" : "❌"}`,

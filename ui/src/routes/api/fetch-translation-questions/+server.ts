@@ -19,13 +19,12 @@ async function fetchTranslationQuestionsEndpoint(
 	params: Record<string, any>,
 	_request: Request
 ): Promise<any> {
-	const { reference, language, organization, topic } = params;
+	const { reference, language, topic } = params;
 
-	// Use the core service which now supports multi-organization fetching
 	const result = await fetchTranslationQuestions({
 		reference,
 		language: language || 'en',
-		organization, // Undefined by default = fetch from all organizations
+		organization: undefined,
 		topic: topic || 'tc-ready'
 	});
 
@@ -53,7 +52,7 @@ async function fetchTranslationQuestionsEndpoint(
 			resourceType: 'tq',
 			subject: result.metadata.subject || 'TSV Translation Questions', // ✅ Dynamic or fallback
 			language: language || 'en',
-			organization: organization || 'all',
+			organization: 'all',
 			license: 'CC BY-SA 4.0'
 		}
 	};
@@ -63,8 +62,7 @@ async function fetchTranslationQuestionsEndpoint(
 export const GET = createSimpleEndpoint({
 	name: 'translation-questions-v3',
 
-	// Use common parameter validators - organization now optional
-	params: [COMMON_PARAMS.reference, COMMON_PARAMS.language, COMMON_PARAMS.organization],
+	params: [COMMON_PARAMS.reference, COMMON_PARAMS.language],
 
 	fetch: fetchTranslationQuestionsEndpoint,
 

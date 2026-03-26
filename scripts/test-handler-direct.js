@@ -24,7 +24,6 @@ async function testHandler() {
       name: "Test 1: Empty subjects (should use defaults)",
       args: {
         subjects: "",
-        organization: "unfoldingWord",
         stage: "prod",
         limit: 10,
       },
@@ -33,7 +32,6 @@ async function testHandler() {
       name: "Test 2: Specific subjects",
       args: {
         subjects: "Translation Words,Translation Academy",
-        organization: "unfoldingWord",
         stage: "prod",
         limit: 20,
       },
@@ -42,7 +40,6 @@ async function testHandler() {
       name: "Test 3: Array of subjects",
       args: {
         subjects: ["Bible", "Translation Words"],
-        organization: "unfoldingWord",
         stage: "prod",
         limit: 15,
       },
@@ -91,7 +88,7 @@ async function testHandler() {
           } else {
             console.log("  Unknown data structure:", Object.keys(data));
           }
-        } catch (parseError) {
+        } catch (_parseError) {
           console.log("  (Not JSON, showing first 200 chars)");
           console.log("  " + result.content[0].text.substring(0, 200));
         }

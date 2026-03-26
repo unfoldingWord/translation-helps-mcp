@@ -92,7 +92,6 @@ export interface ClientOptions {
 export interface FetchScriptureOptions {
   reference: string;
   language?: string;
-  organization?: string;
   format?: "text" | "usfm";
   includeVerseNumbers?: boolean;
   /**
@@ -108,7 +107,6 @@ export interface FetchScriptureOptions {
 export interface FetchTranslationNotesOptions {
   reference: string;
   language?: string;
-  organization?: string;
   includeIntro?: boolean;
   includeContext?: boolean;
 }
@@ -116,21 +114,18 @@ export interface FetchTranslationNotesOptions {
 export interface FetchTranslationQuestionsOptions {
   reference: string;
   language?: string;
-  organization?: string;
 }
 
 export interface FetchTranslationWordOptions {
   reference?: string;
   term?: string;
   language?: string;
-  organization?: string;
   category?: "kt" | "names" | "other";
 }
 
 export interface FetchTranslationWordLinksOptions {
   reference: string;
   language?: string;
-  organization?: string;
 }
 
 export interface FetchTranslationAcademyOptions {
@@ -139,24 +134,20 @@ export interface FetchTranslationAcademyOptions {
   moduleId?: string;
   path?: string;
   language?: string;
-  organization?: string;
   format?: "json" | "markdown";
 }
 
 export interface ListLanguagesOptions {
-  organization?: string;
   stage?: string;
 }
 
 export interface ListSubjectsOptions {
   language?: string;
-  organization?: string;
   stage?: string;
 }
 
 export interface ListResourcesForLanguageOptions {
   language: string;
-  organization?: string;
   stage?: string;
   subject?: string;
   limit?: number;

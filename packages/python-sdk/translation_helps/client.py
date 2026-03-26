@@ -30,7 +30,6 @@ from .state_injection_interceptor import (
 from .default_tool_config import DEFAULT_TOOL_CONTEXT_CONFIG
 from .validators import (
     LANGUAGE_CODE_VALIDATOR,
-    ORGANIZATION_VALIDATOR,
     STAGE_VALIDATOR,
     REFERENCE_VALIDATOR,
     FORMAT_VALIDATOR,
@@ -88,7 +87,6 @@ class TranslationHelpsClient:
         
         # Register validation rules
         self._context_manager.add_validation_rule('language', LANGUAGE_CODE_VALIDATOR)
-        self._context_manager.add_validation_rule('organization', ORGANIZATION_VALIDATOR)
         self._context_manager.add_validation_rule('stage', STAGE_VALIDATOR)
         self._context_manager.add_validation_rule('reference', REFERENCE_VALIDATOR)
         self._context_manager.add_validation_rule('format', FORMAT_VALIDATOR)
@@ -298,11 +296,7 @@ class TranslationHelpsClient:
             "format": options.get("format", "text"),
             "includeVerseNumbers": options.get("includeVerseNumbers", True),
         }
-        
-        # Only include organization if explicitly provided (defaults to searching all orgs)
-        if options.get("organization") is not None:
-            params["organization"] = options["organization"]
-        
+
         # Add optional parameters if provided
         if options.get("resource") is not None:
             params["resource"] = options["resource"]
@@ -320,23 +314,14 @@ class TranslationHelpsClient:
     async def fetch_translation_notes(
         self, options: FetchTranslationNotesOptions
     ) -> Dict[str, Any]:
-        """Fetch translation notes.
-
-        Omit ``organization`` to search all Door43 organizations. For languages such as
-        Spanish, notes are usually not under unfoldingWord—passing only reference and
-        language is the right default.
-        """
+        """Fetch translation notes (all Door43 organizations are searched server-side)."""
         params: Dict[str, Any] = {
             "reference": options["reference"],
             "language": options.get("language", "en"),
             "includeIntro": options.get("includeIntro", True),
             "includeContext": options.get("includeContext", True),
         }
-        
-        # Only include organization if explicitly provided
-        if options.get("organization") is not None:
-            params["organization"] = options["organization"]
-            
+
         response = await self.call_tool("fetch_translation_notes", params)
 
         if response.get("content") and response["content"][0].get("text"):
@@ -352,11 +337,7 @@ class TranslationHelpsClient:
             "reference": options["reference"],
             "language": options.get("language", "en"),
         }
-        
-        # Only include organization if explicitly provided
-        if options.get("organization") is not None:
-            params["organization"] = options["organization"]
-            
+
         response = await self.call_tool("fetch_translation_questions", params)
 
         if response.get("content") and response["content"][0].get("text"):
@@ -374,11 +355,7 @@ class TranslationHelpsClient:
             "language": options.get("language", "en"),
             "category": options.get("category"),
         }
-        
-        # Only include organization if explicitly provided
-        if options.get("organization") is not None:
-            params["organization"] = options["organization"]
-            
+
         response = await self.call_tool("fetch_translation_word", params)
 
         if response.get("content") and response["content"][0].get("text"):
@@ -394,11 +371,7 @@ class TranslationHelpsClient:
             "reference": options["reference"],
             "language": options.get("language", "en"),
         }
-        
-        # Only include organization if explicitly provided
-        if options.get("organization") is not None:
-            params["organization"] = options["organization"]
-            
+
         response = await self.call_tool("fetch_translation_word_links", params)
 
         if response.get("content") and response["content"][0].get("text"):
@@ -418,11 +391,7 @@ class TranslationHelpsClient:
             "language": options.get("language", "en"),
             "format": options.get("format", "json"),
         }
-        
-        # Only include organization if explicitly provided
-        if options.get("organization") is not None:
-            params["organization"] = options["organization"]
-            
+
         response = await self.call_tool("fetch_translation_academy", params)
 
         if response.get("content") and response["content"][0].get("text"):
@@ -441,14 +410,13 @@ class TranslationHelpsClient:
         List available languages from Door43 catalog.
         
         Args:
-            options: Optional filtering options (organization, stage)
+            options: Optional filtering options (e.g. stage, topic)
             
         Returns:
             Dictionary with languages array and metadata
         """
         options = options or {}
         response = await self.call_tool("list_languages", {
-            "organization": options.get("organization"),
             "stage": options.get("stage", "prod"),
         })
 
@@ -464,7 +432,7 @@ class TranslationHelpsClient:
         List available resource subjects from Door43 catalog.
         
         Args:
-            options: Optional filtering options (language, organization, stage)
+            options: Optional filtering options (language, stage)
             
         Returns:
             Dictionary with subjects array and metadata
@@ -472,7 +440,6 @@ class TranslationHelpsClient:
         options = options or {}
         response = await self.call_tool("list_subjects", {
             "language": options.get("language"),
-            "organization": options.get("organization"),
             "stage": options.get("stage", "prod"),
         })
 
@@ -511,9 +478,7 @@ class TranslationHelpsClient:
             "language": options["language"],
             "stage": options.get("stage", "prod"),
         }
-        
-        if options.get("organization") is not None:
-            params["organization"] = options["organization"]
+
         if options.get("subject"):
             params["subject"] = options["subject"]
         if options.get("limit"):

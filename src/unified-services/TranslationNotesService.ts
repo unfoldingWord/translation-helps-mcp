@@ -1,18 +1,18 @@
 /**
  * Unified Translation Notes Service
- * 
+ *
  * Wraps the core translation-notes-service for use by both MCP and REST endpoints
  */
 
-import { BaseService } from './BaseService.js';
-import { PARAMETER_GROUPS } from '../config/parameters/index.js';
-import type { ServiceResponse, ServiceContext } from './types.js';
-import { 
-  fetchTranslationNotes, 
-  type TranslationNotesOptions, 
-  type TranslationNotesResult 
-} from '../functions/translation-notes-service.js';
-import { formatResponse } from '../utils/response-formatter.js';
+import { BaseService } from "./BaseService.js";
+import { PARAMETER_GROUPS } from "../config/parameters/index.js";
+import type { ServiceResponse, ServiceContext } from "./types.js";
+import {
+  fetchTranslationNotes,
+  type TranslationNotesOptions,
+  type TranslationNotesResult,
+} from "../functions/translation-notes-service.js";
+import { formatResponse } from "../utils/response-formatter.js";
 
 /**
  * Translation notes service parameters
@@ -20,8 +20,7 @@ import { formatResponse } from '../utils/response-formatter.js';
 export interface TranslationNotesParams {
   reference: string;
   language?: string;
-  organization?: string | string[];
-  format?: 'json' | 'text' | 'markdown' | 'md';
+  format?: "json" | "text" | "markdown" | "md";
   includeContext?: boolean;
   includeIntro?: boolean;
   topic?: string;
@@ -30,41 +29,44 @@ export interface TranslationNotesParams {
 /**
  * Unified Translation Notes Service
  */
-export class TranslationNotesService extends BaseService<TranslationNotesParams, TranslationNotesResult> {
-  name = 'fetchTranslationNotes';
-  description = 'Fetch translation notes for a specific Bible reference';
+export class TranslationNotesService extends BaseService<
+  TranslationNotesParams,
+  TranslationNotesResult
+> {
+  name = "fetchTranslationNotes";
+  description = "Fetch translation notes for a specific Bible reference";
   parameters = PARAMETER_GROUPS.translationNotes.parameters;
 
   async execute(
     params: TranslationNotesParams,
-    context?: ServiceContext
+    context?: ServiceContext,
   ): Promise<ServiceResponse<TranslationNotesResult>> {
     try {
       // Validate parameters
       const validation = this.validateParams(params);
       if (!validation.valid) {
         throw this.error(
-          'VALIDATION_ERROR',
-          'Invalid parameters',
+          "VALIDATION_ERROR",
+          "Invalid parameters",
           validation.errors,
-          400
+          400,
         );
       }
 
       // Transform params to match core service interface
       const options: TranslationNotesOptions = {
         reference: params.reference,
-        language: params.language || 'en',
-        organization: params.organization,
+        language: params.language || "en",
+        organization: undefined,
         includeContext: params.includeContext ?? true,
         includeIntro: params.includeIntro ?? true,
-        topic: params.topic || 'tc-ready',
+        topic: params.topic || "tc-ready",
       };
 
       // Execute with timing
       const { result, elapsed } = await this.withTiming(
         () => fetchTranslationNotes(options),
-        'fetchTranslationNotes'
+        "fetchTranslationNotes",
       );
 
       // Format response based on requested format
@@ -73,14 +75,18 @@ export class TranslationNotesService extends BaseService<TranslationNotesParams,
       return this.success(
         formattedData,
         {
-          count: (result.verseNotes?.length || 0) + (result.contextNotes?.length || 0),
+          count:
+            (result.verseNotes?.length || 0) +
+            (result.contextNotes?.length || 0),
           verseNotesCount: result.verseNotes?.length || 0,
           contextNotesCount: result.contextNotes?.length || 0,
-          resources: result.citations?.map(c => c.resource).filter(Boolean) || [],
-          organizations: result.citations?.map(c => c.organization).filter(Boolean) || [],
+          resources:
+            result.citations?.map((c) => c.resource).filter(Boolean) || [],
+          organizations:
+            result.citations?.map((c) => c.organization).filter(Boolean) || [],
           elapsed,
         },
-        params.format
+        params.format,
       );
     } catch (error: any) {
       throw this.handleError(error, context);
@@ -88,13 +94,15 @@ export class TranslationNotesService extends BaseService<TranslationNotesParams,
   }
 
   private formatResponse(result: TranslationNotesResult, format?: string): any {
-    if (!format || format === 'json') {
+    if (!format || format === "json") {
       return result;
     }
     return formatResponse(result, format as any);
   }
 }
 
-export function createTranslationNotesService(context?: ServiceContext): TranslationNotesService {
+export function createTranslationNotesService(
+  _context?: ServiceContext,
+): TranslationNotesService {
   return new TranslationNotesService();
 }

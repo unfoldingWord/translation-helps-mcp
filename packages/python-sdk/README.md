@@ -117,7 +117,6 @@ Fetch Bible scripture text.
 text = await client.fetch_scripture({
     "reference": "John 3:16",
     "language": "en",
-    "organization": "unfoldingWord",
     "format": "text",  # or "usfm"
     "includeVerseNumbers": True,
     "resource": "all",  # Optional: 'ult', 'ust', 't4t', 'ueb', 'all', or comma-separated (e.g., 'ult,ust')
@@ -127,7 +126,7 @@ text = await client.fetch_scripture({
 
 ##### `async fetch_translation_notes(options: FetchTranslationNotesOptions) -> Dict`
 
-Fetch translation notes for a passage. **Omit `organization`** unless you need a specific Door43 owner; many languages (e.g. Spanish) have TN under language teams, not unfoldingWord.
+Fetch translation notes for a passage. All Door43 organizations are searched automatically.
 
 ```python
 notes = await client.fetch_translation_notes({
@@ -137,7 +136,7 @@ notes = await client.fetch_translation_notes({
     "includeContext": True
 })
 
-# Spanish: search all orgs (do not pass organization)
+# Spanish example (still all-org discovery server-side)
 notes_es = await client.fetch_translation_notes({
     "reference": "TIT 3:15",
     "language": "es",
@@ -221,7 +220,6 @@ List all available languages from Door43 catalog (~1 second).
 
 ```python
 languages = await client.list_languages({
-    "organization": "unfoldingWord",  # or omit for all orgs
     "stage": "prod"
 })
 print(f"Found {len(languages['languages'])} languages")
@@ -234,7 +232,6 @@ List all available resource subjects/types from Door43 catalog.
 ```python
 subjects = await client.list_subjects({
     "language": "en",
-    "organization": "unfoldingWord",
     "stage": "prod"
 })
 print(f"Found {len(subjects['subjects'])} resource types")
@@ -248,13 +245,17 @@ List all resources for a specific language. Fast single API call (~1-2 seconds).
 # Discover what's available for Spanish (es-419)
 resources = await client.list_resources_for_language({
     "language": "es-419",
-    "organization": "",  # empty = all orgs (es-419_gl, unfoldingWord, BSA, etc.)
     # topic defaults to "tc-ready" if not provided
 })
 
 print(f"Found {resources['totalResources']} resources")
 print(f"Subjects: {', '.join(resources['subjects'])}")
-print(f"Organizations discovered: {len(set(r['organization'] for r in resources['resourcesBySubject'].values()))}")
+_orgs = {
+    row["organization"]
+    for subj in resources["resourcesBySubject"].values()
+    for row in subj
+}
+print(f"Organizations in results: {len(_orgs)}")
 ```
 
 **Recommended Discovery Workflow:**
@@ -272,7 +273,6 @@ resources = await client.list_resources_for_language({"language": "es-419"})
 scripture = await client.fetch_scripture({
     "reference": "John 3:16",
     "language": "es-419",
-    "organization": "es-419_gl"
 })
 ```
 

@@ -11,7 +11,6 @@ import { handleMCPError } from "../utils/mcp-error-handler.js";
 import { proxyFetch } from "../utils/httpClient.js";
 import { cache } from "../functions/cache.js";
 import { EdgeXRayTracer } from "../functions/edge-xray.js";
-import { OrganizationParam } from "../schemas/common-params.js";
 import { DEFAULT_DISCOVERY_SUBJECTS } from "../constants/subjects.js";
 import { findLanguageVariants } from "../functions/resource-detector.js";
 
@@ -21,9 +20,6 @@ export const ListResourcesForLanguageArgs = z.object({
     .string()
     .min(2)
     .describe('Language code (e.g., "en", "es", "fr", "es-419"). Required.'),
-  organization: OrganizationParam.describe(
-    "Organization(s) to filter by. Can be a single organization (string), multiple organizations (array), or omitted to search all organizations.",
-  ),
   stage: z
     .string()
     .default("prod")
@@ -83,7 +79,7 @@ export async function handleListResourcesForLanguage(
     // Validate and parse input
     const parsedArgs = ListResourcesForLanguageArgs.parse(args);
 
-    const { language, organization, stage, subject, topic } = parsedArgs;
+    const { language, stage, subject, topic } = parsedArgs;
     // Use high limit if not specified to get all available resources
     const limit = parsedArgs.limit || 5000;
 
@@ -106,7 +102,6 @@ export async function handleListResourcesForLanguage(
 
     logger.info("Listing resources for language", {
       language,
-      organization: organization || "all",
       stage,
       subject: subject
         ? typeof subject === "string"
@@ -118,9 +113,6 @@ export async function handleListResourcesForLanguage(
       topic: topic || "tc-ready",
     });
 
-    // Build cache key helper function
-    const cacheTtl = 3600; // 1 hour
-    
     // Use "default" in cache key when using default subjects, otherwise use the specific subjects
     // Sort subjects for consistent cache keys
     const subjectKey = subject
@@ -132,25 +124,26 @@ export async function handleListResourcesForLanguage(
             .join(",")
         : [...subject].sort().join(",")
       : `default-${DEFAULT_DISCOVERY_SUBJECTS.join(",")}`;
-    
-    const orgKey = organization === undefined ? "all" : Array.isArray(organization) ? organization.sort().join(",") : organization;
-    const buildCacheKey = (lang: string) => 
+
+    const orgKey = "all";
+    const buildCacheKey = (lang: string) =>
       `resources-for-lang:${lang}:${orgKey}:${stage}:${subjectKey}:${limit}:${topic || "tc-ready"}`;
-    
-    const requestedCacheKey = buildCacheKey(language);
+
     const languageMappingKey = `lang-variant-map:${language}`;
 
     let resources: ResourceItem[] = [];
     let usedLanguage = language; // Track which language was actually used (for variant fallback)
-    
+
     // STEP 1: Check if we have a cached language mapping (base language -> variant)
     const cacheStart = Date.now();
     const cachedVariant = await cache.get(languageMappingKey, "metadata");
     if (cachedVariant) {
-      logger.info(`Found cached language variant mapping: ${language} -> ${cachedVariant}`);
+      logger.info(
+        `Found cached language variant mapping: ${language} -> ${cachedVariant}`,
+      );
       usedLanguage = cachedVariant as string;
     }
-    
+
     // STEP 2: Check cache for resources using the actual language (could be variant)
     const actualCacheKey = buildCacheKey(usedLanguage);
     const cached = await cache.getWithCacheInfo(actualCacheKey, "metadata");
@@ -171,13 +164,7 @@ export async function handleListResourcesForLanguage(
     if (!cached.value) {
       // subjectsToSearch is already parsed above
 
-      // Handle organizations
-      const organizations =
-        organization === undefined
-          ? [undefined]
-          : typeof organization === "string"
-            ? [organization]
-            : organization;
+      const organizations: (string | undefined)[] = [undefined];
 
       // Helper function to search for resources with a specific language code
       async function searchForLanguage(langCode: string): Promise<number> {
@@ -279,7 +266,7 @@ export async function handleListResourcesForLanguage(
         // Find language variants (e.g., "es" -> ["es-419"])
         const variants = await findLanguageVariants(
           language,
-          typeof organization === "string" ? organization : undefined,
+          undefined,
           topic || "tc-ready",
           subjectsToSearch,
         );
@@ -309,14 +296,14 @@ export async function handleListResourcesForLanguage(
       // Cache the results (including empty results - negative caching is valuable!)
       const cacheKeyForResults = buildCacheKey(usedLanguage);
       await cache.set(cacheKeyForResults, resources, "metadata");
-      
+
       logger.info("Resources cached", {
         key: cacheKeyForResults,
         count: resources.length,
         language: usedLanguage,
         isEmpty: resources.length === 0,
       });
-      
+
       // If we used a variant (different from requested language), cache the mapping
       if (usedLanguage !== language) {
         await cache.set(languageMappingKey, usedLanguage, "metadata");
@@ -359,11 +346,12 @@ export async function handleListResourcesForLanguage(
     // Build response
     const responseData = {
       language,
-      ...(usedLanguage && usedLanguage !== language && {
-        actualLanguageUsed: usedLanguage,
-        note: `No resources found for '${language}'. Showing results for language variant '${usedLanguage}' instead.`,
-      }),
-      organization: organization || "all",
+      ...(usedLanguage &&
+        usedLanguage !== language && {
+          actualLanguageUsed: usedLanguage,
+          note: `No resources found for '${language}'. Showing results for language variant '${usedLanguage}' instead.`,
+        }),
+      organization: "all",
       stage,
       totalResources: resources.length,
       subjects: subjects,
@@ -382,15 +370,14 @@ export async function handleListResourcesForLanguage(
       isError: false,
     };
   } catch (error) {
-    return handleMCPError(error, {
-      tool: "list_resources_for_language",
-      timestamp: new Date().toISOString(),
-      responseTime: Date.now() - startTime,
+    return handleMCPError({
+      toolName: "list_resources_for_language",
       args: {
         language: args.language,
-        organization: args.organization,
         stage: args.stage,
       },
+      startTime,
+      originalError: error,
     });
   }
 }

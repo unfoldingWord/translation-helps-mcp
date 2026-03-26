@@ -12,14 +12,10 @@ from typing import Dict, List
 ToolContextConfig = Dict[str, List[str]]
 
 
-# Default context requirements for Translation Helps MCP tools
-# 
-# NOTE: 'organization' is intentionally NOT in the default context injection list.
-# For translation notes/questions in many languages, omit organization so all Door43
-# orgs are searched (unfoldingWord often has no TN/TQ for those languages).
-# Optionally use list_resources_for_language to pick a specific owner.
+# Default context requirements for Translation Helps MCP tools.
+# Catalog owner scope is all-org on the server; inject language and stage only.
 DEFAULT_TOOL_CONTEXT_CONFIG: ToolContextConfig = {
-    # Scripture / helps: language and stage auto-injected; organization is never injected
+    # Scripture / helps: language and stage auto-injected
     'fetch_scripture': ['language', 'stage'],
     
     # Translation Notes tools
@@ -46,7 +42,6 @@ DEFAULT_TOOL_CONTEXT_CONFIG: ToolContextConfig = {
 # Context keys that should be persisted across the session
 PERSISTENT_CONTEXT_KEYS = [
     'language',
-    'organization',
     'stage'
 ]
 

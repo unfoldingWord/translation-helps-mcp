@@ -28,7 +28,6 @@ import {
 import { DEFAULT_TOOL_CONTEXT_CONFIG } from "./defaultToolConfig.js";
 import {
   languageCodeValidator,
-  organizationValidator,
   stageValidator,
   referenceValidator,
   formatValidator,
@@ -73,10 +72,6 @@ export class TranslationHelpsClient {
 
     // Register validation rules
     this.contextManager.addValidationRule("language", languageCodeValidator);
-    this.contextManager.addValidationRule(
-      "organization",
-      organizationValidator,
-    );
     this.contextManager.addValidationRule("stage", stageValidator);
     this.contextManager.addValidationRule("reference", referenceValidator);
     this.contextManager.addValidationRule("format", formatValidator);
@@ -436,11 +431,6 @@ export class TranslationHelpsClient {
       includeVerseNumbers: options.includeVerseNumbers !== false,
     };
 
-    // Only include organization if explicitly provided (defaults to searching all orgs)
-    if (options.organization !== undefined) {
-      params.organization = options.organization;
-    }
-
     // Add optional parameters if provided
     if (options.resource !== undefined) {
       params.resource = options.resource;
@@ -460,9 +450,7 @@ export class TranslationHelpsClient {
   }
 
   /**
-   * Fetch translation notes.
-   * Omit `organization` to search all Door43 orgs; for languages like Spanish, TN is
-   * often not under unfoldingWord.
+   * Fetch translation notes (all Door43 organizations are searched automatically).
    */
   async fetchTranslationNotes(
     options: FetchTranslationNotesOptions,
@@ -473,11 +461,6 @@ export class TranslationHelpsClient {
       includeIntro: options.includeIntro !== false,
       includeContext: options.includeContext !== false,
     };
-
-    // Only include organization if explicitly provided
-    if (options.organization !== undefined) {
-      params.organization = options.organization;
-    }
 
     const response = await this.callTool("fetch_translation_notes", params);
 
@@ -498,11 +481,6 @@ export class TranslationHelpsClient {
       reference: options.reference,
       language: options.language || "en",
     };
-
-    // Only include organization if explicitly provided
-    if (options.organization !== undefined) {
-      params.organization = options.organization;
-    }
 
     const response = await this.callTool("fetch_translation_questions", params);
 
@@ -526,11 +504,6 @@ export class TranslationHelpsClient {
       category: options.category,
     };
 
-    // Only include organization if explicitly provided
-    if (options.organization !== undefined) {
-      params.organization = options.organization;
-    }
-
     const response = await this.callTool("fetch_translation_word", params);
 
     if (response.content && response.content[0]?.text) {
@@ -550,11 +523,6 @@ export class TranslationHelpsClient {
       reference: options.reference,
       language: options.language || "en",
     };
-
-    // Only include organization if explicitly provided
-    if (options.organization !== undefined) {
-      params.organization = options.organization;
-    }
 
     const response = await this.callTool(
       "fetch_translation_word_links",
@@ -585,11 +553,6 @@ export class TranslationHelpsClient {
       format: options.format || "json",
     };
 
-    // Only include organization if explicitly provided
-    if (options.organization !== undefined) {
-      params.organization = options.organization;
-    }
-
     const response = await this.callTool("fetch_translation_academy", params);
 
     if (response.content && response.content[0]?.text) {
@@ -608,7 +571,6 @@ export class TranslationHelpsClient {
    */
   async listLanguages(options: ListLanguagesOptions = {}): Promise<any> {
     const response = await this.callTool("list_languages", {
-      organization: options.organization,
       stage: options.stage || "prod",
     });
 
@@ -625,7 +587,6 @@ export class TranslationHelpsClient {
   async listSubjects(options: ListSubjectsOptions = {}): Promise<any> {
     const response = await this.callTool("list_subjects", {
       language: options.language,
-      organization: options.organization,
       stage: options.stage || "prod",
     });
 
@@ -652,8 +613,6 @@ export class TranslationHelpsClient {
       stage: options.stage || "prod",
     };
 
-    if (options.organization !== undefined)
-      params.organization = options.organization;
     if (options.subject) params.subject = options.subject;
     if (options.limit) params.limit = options.limit;
     // topic defaults to "tc-ready" on the server if not provided
