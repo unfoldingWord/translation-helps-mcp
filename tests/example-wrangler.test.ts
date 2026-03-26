@@ -1,16 +1,47 @@
 /**
- * Example Test Using Wrangler
- *
- * This shows how ALL tests should be written
- * Uses the standardized test configuration
+ * Wrangler / Cloudflare Pages dev tests (KV + R2 bindings).
+ * Skipped when nothing listens on TEST_BASE_URL (default http://localhost:8787).
  */
 
 import { describe, expect, it } from "vitest";
-import { makeTestRequest } from "./test-config";
+import { TEST_CONFIG } from "./test-config";
+
+async function wranglerUp(): Promise<boolean> {
+  try {
+    const res = await fetch(`${TEST_CONFIG.BASE_URL}/api/health`, {
+      signal: AbortSignal.timeout(2000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function wranglerGet(
+  path: string,
+  params: Record<string, string> = {},
+): Promise<{ status: number; data: any }> {
+  const url = new URL(`${TEST_CONFIG.BASE_URL}${path}`);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, v));
+  const response = await fetch(url.toString(), {
+    headers: { "X-Test-Request": "true", "User-Agent": "Test Suite" },
+  });
+  const contentType = response.headers.get("content-type");
+  const data = contentType?.includes("application/json")
+    ? await response.json()
+    : await response.text();
+  return { status: response.status, data };
+}
 
 describe("Example Wrangler Tests", () => {
   it("should connect to Wrangler dev server", async () => {
-    const { status, data } = await makeTestRequest("/api/health");
+    if (!(await wranglerUp())) {
+      console.warn(
+        `[skip] No Wrangler at ${TEST_CONFIG.BASE_URL} — start: cd ui && npx wrangler pages dev .svelte-kit/cloudflare --port 8787`,
+      );
+      return;
+    }
+    const { status, data } = await wranglerGet("/api/health");
 
     expect(status).toBe(200);
     expect(data.status).toBe("healthy");
@@ -18,24 +49,24 @@ describe("Example Wrangler Tests", () => {
   });
 
   it("should fetch scripture through Wrangler with KV/R2", async () => {
-    const { status, data } = await makeTestRequest("/api/fetch-scripture", {
-      reference: "John 3:16",
+    if (!(await wranglerUp())) return;
+    const { status, data } = await wranglerGet("/api/fetch-scripture", {
+      reference: "JHN 3:16",
       language: "en",
-      organization: "unfoldingWord",
     });
 
     expect(status).toBe(200);
     expect(data.scripture).toBeDefined();
     expect(Array.isArray(data.scripture)).toBe(true);
     expect(data.scripture.length).toBeGreaterThan(0);
-    // This actually tests KV/R2 because Wrangler provides real bindings!
   });
 
   it("should fetch translation word links", async () => {
-    const { status, data } = await makeTestRequest(
+    if (!(await wranglerUp())) return;
+    const { status, data } = await wranglerGet(
       "/api/fetch-translation-word-links",
       {
-        reference: "John 3:16",
+        reference: "JHN 3:16",
         language: "en",
         organization: "unfoldingWord",
       },
@@ -47,10 +78,10 @@ describe("Example Wrangler Tests", () => {
   });
 
   it("should return 404 for invalid reference", async () => {
-    const { status, data } = await makeTestRequest("/api/fetch-scripture", {
+    if (!(await wranglerUp())) return;
+    const { status, data } = await wranglerGet("/api/fetch-scripture", {
       reference: "NotABook 99:99",
       language: "en",
-      organization: "unfoldingWord",
     });
 
     expect(status).toBe(404);

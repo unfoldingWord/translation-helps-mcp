@@ -39,8 +39,6 @@ async function tool(name, args) {
 const fsArgs = {
 	reference: "JHN 3:16",
 	language: "en",
-	organization: "unfoldingWord",
-	stage: "prod",
 };
 
 const rows = [];

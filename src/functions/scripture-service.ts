@@ -15,6 +15,12 @@ import { CacheBypassOptions } from "./unified-cache.js";
 import { EdgeXRayTracer } from "./edge-xray.js";
 import { ZipFetcherFactory } from "../services/zip-fetcher-provider.js";
 import { getBookCodesForError } from "../utils/book-codes.js";
+import {
+  getPinnedOrganizationValue,
+  isPinnedSingleOrganization,
+  makeOrganizationFallbackInfo,
+  type OrganizationFallbackInfo,
+} from "../utils/organization-fallback.js";
 import * as os from "os";
 import * as path from "path";
 import {
@@ -91,6 +97,8 @@ export interface ScriptureResult {
     cacheKey?: string;
     cacheType?: string;
     hasAlignmentData?: boolean;
+    /** Present when a pinned org had no catalog matches and results came from all-org search */
+    organizationFallback?: OrganizationFallbackInfo;
   };
 }
 
@@ -137,13 +145,37 @@ export async function fetchScripture(
 
     // 🚀 OPTIMIZATION: Use unified resource discovery instead of separate catalog searches
     logger.debug(`Using unified resource discovery for scripture...`);
-    const availability = await discoverAvailableResources(
+    let availability = await discoverAvailableResources(
       referenceParam,
       language,
       organization,
       topic,
     );
-    const allResources = availability.scripture;
+    let allResources = availability.scripture;
+
+    let organizationFallback: OrganizationFallbackInfo | undefined;
+
+    if (allResources.length === 0 && isPinnedSingleOrganization(organization)) {
+      const pinned = getPinnedOrganizationValue(organization)!;
+      logger.warn(
+        `No scripture resources for pinned organization=${pinned}, retrying catalog discovery without owner filter`,
+      );
+      const retryAvailability = await discoverAvailableResources(
+        referenceParam,
+        language,
+        undefined,
+        topic,
+      );
+      if (retryAvailability.scripture.length > 0) {
+        availability = retryAvailability;
+        allResources = retryAvailability.scripture;
+        organizationFallback = makeOrganizationFallbackInfo(pinned);
+        logger.info(`Organization fallback succeeded`, {
+          requestedOrganization: pinned,
+          discoveredCount: allResources.length,
+        });
+      }
+    }
 
     if (allResources.length === 0) {
       logger.error(`No scripture resources found`, {
@@ -209,7 +241,9 @@ export async function fetchScripture(
     logger.info(`📦 Using ZIP fetcher provider: ${zipFetcher.name}`);
 
     // ⚡ PARALLEL FETCH: Process all resources simultaneously
-    logger.info(`[PARALLEL FETCH] Starting parallel fetch for ${resourcesToProcess.length} resources`);
+    logger.info(
+      `[PARALLEL FETCH] Starting parallel fetch for ${resourcesToProcess.length} resources`,
+    );
 
     const resourcePromises = resourcesToProcess.map(async (resource) => {
       logger.debug(`Processing resource`, {
@@ -417,10 +451,14 @@ export async function fetchScripture(
     });
 
     const scriptureResults = await Promise.all(resourcePromises);
-    logger.info(`[PARALLEL FETCH] Completed ${scriptureResults.length} fetches in parallel`);
+    logger.info(
+      `[PARALLEL FETCH] Completed ${scriptureResults.length} fetches in parallel`,
+    );
 
     // Filter out null results
-    const scriptures = scriptureResults.filter((s): s is NonNullable<typeof s> => s !== null);
+    const scriptures = scriptureResults.filter(
+      (s): s is NonNullable<typeof s> => s !== null,
+    );
 
     logger.info(
       `🏁 Parallel fetch complete. Processed ${scriptures.length} scriptures out of ${resourcesToProcess.length} resources`,
@@ -430,31 +468,36 @@ export async function fetchScripture(
       // Check if this was due to invalid book code
       const bookCode = reference?.book?.toUpperCase();
       const validCodes = getBookCodesForError();
-      
+
       const error: any = new Error(
         `No scripture found for reference '${referenceParam}'. ` +
-        `The book code '${bookCode}' was not found in any available resources. ` +
-        `Please use 3-letter book codes (e.g., GEN for Genesis, JHN for John, MAT for Matthew, 3JN for 3 John).`
+          `The book code '${bookCode}' was not found in any available resources. ` +
+          `Please use 3-letter book codes (e.g., GEN for Genesis, JHN for John, MAT for Matthew, 3JN for 3 John).`,
       );
-      
+
       // Attach valid book codes for AI agents
       error.validBookCodes = validCodes;
       error.invalidCode = bookCode;
-      
+
       throw error;
     }
+
+    const baseMetadata = {
+      responseTime: Date.now() - startTime,
+      cached: false,
+      timestamp: new Date().toISOString(),
+      includeVerseNumbers,
+      format,
+      translationsFound: scriptures.length,
+      ...(organizationFallback && { organizationFallback }),
+    };
 
     const result: ScriptureResult =
       specificTranslations && specificTranslations.length === 1
         ? {
             scripture: scriptures[0]!,
             metadata: {
-              responseTime: Date.now() - startTime,
-              cached: false,
-              timestamp: new Date().toISOString(),
-              includeVerseNumbers,
-              format,
-              translationsFound: scriptures.length,
+              ...baseMetadata,
               hasAlignmentData:
                 includeAlignment && scriptures[0]?.alignment !== undefined,
             },
@@ -462,12 +505,7 @@ export async function fetchScripture(
         : {
             scriptures,
             metadata: {
-              responseTime: Date.now() - startTime,
-              cached: false,
-              timestamp: new Date().toISOString(),
-              includeVerseNumbers,
-              format,
-              translationsFound: scriptures.length,
+              ...baseMetadata,
               hasAlignmentData:
                 includeAlignment &&
                 scriptures.some((s) => s.alignment !== undefined),

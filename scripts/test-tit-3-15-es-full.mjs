@@ -1,21 +1,17 @@
 #!/usr/bin/env node
 const ref = "TIT 3:15";
-// Recommended: omit organization so Spanish TN is found from whichever org publishes it.
-// unfoldingWord does not publish Spanish TN — uw rows are negative checks only.
+// API searches all Door43 organizations; no organization query param.
 const scenarios = [
-	["LOCAL+es (all orgs)", "http://127.0.0.1:8174", "es", null],
-	["LOCAL+es-419 (all orgs)", "http://127.0.0.1:8174", "es-419", null],
-	["LOCAL+uw only (expect fail)", "http://127.0.0.1:8174", "es", "unfoldingWord"],
-	["REMOTE+es (all orgs)", "https://tc-helps.mcp.servant.bible", "es", null],
-	["REMOTE+es-419 (all orgs)", "https://tc-helps.mcp.servant.bible", "es-419", null],
-	["REMOTE+uw only (expect fail)", "https://tc-helps.mcp.servant.bible", "es", "unfoldingWord"],
+	["LOCAL+es (all orgs)", "http://127.0.0.1:8174", "es"],
+	["LOCAL+es-419 (all orgs)", "http://127.0.0.1:8174", "es-419"],
+	["REMOTE+es (all orgs)", "https://tc-helps.mcp.servant.bible", "es"],
+	["REMOTE+es-419 (all orgs)", "https://tc-helps.mcp.servant.bible", "es-419"],
 ];
 
-async function one(label, base, lang, org) {
+async function one(label, base, lang) {
 	const u = new URL(`${base}/api/fetch-translation-notes`);
 	u.searchParams.set("reference", ref);
 	u.searchParams.set("language", lang);
-	if (org) u.searchParams.set("organization", org);
 	u.searchParams.set("format", "json");
 	const t0 = performance.now();
 	const r = await fetch(u);
@@ -31,11 +27,12 @@ async function one(label, base, lang, org) {
 			typeof j.error === "string"
 				? j.error
 				: j.error?.message?.slice(0, 200) ?? null,
-		preview: j.verseNotes?.[0]?.Note?.slice(0, 100)?.replace(/\n/g, " ") ?? null,
+		preview:
+			j.verseNotes?.[0]?.Note?.slice(0, 100)?.replace(/\n/g, " ") ?? null,
 	};
 }
 
 console.log("TIT 3:15 — Spanish translation notes\n");
-for (const [label, base, lang, org] of scenarios) {
-	console.log(JSON.stringify(await one(label, base, lang, org), null, 2));
+for (const [label, base, lang] of scenarios) {
+	console.log(JSON.stringify(await one(label, base, lang), null, 2));
 }

@@ -12,13 +12,10 @@ import { proxyFetch } from "../utils/httpClient.js";
 import { mapLanguageToCatalogCode } from "../utils/language-mapping.js";
 import { getKVCache } from "../functions/kv-cache.js";
 import { EdgeXRayTracer } from "../functions/edge-xray.js";
-import { OrganizationParam, TopicParam } from "../schemas/common-params.js";
+import { TopicParam } from "../schemas/common-params.js";
 
 // Input schema - using common parameters where applicable
 export const ListLanguagesArgs = z.object({
-  organization: OrganizationParam.describe(
-    "Filter languages by organization(s). Can be a single organization (string), multiple organizations (array), or omitted to return all languages from all organizations.",
-  ),
   stage: z
     .string()
     .optional()
@@ -54,26 +51,13 @@ export async function handleListLanguages(args: ListLanguagesArgs): Promise<{
 
   try {
     logger.info("Listing available languages", {
-      organization: args.organization,
       stage: args.stage,
     });
 
-    // Build catalog URL - handle multiple organizations
     const baseUrl = "https://git.door43.org/api/v1/catalog/list/languages";
     const url = new URL(baseUrl);
     url.searchParams.append("stage", args.stage || "prod");
     url.searchParams.append("topic", args.topic || "tc-ready");
-
-    // Handle organization: undefined = all orgs, string = single org, array = multiple orgs
-    if (args.organization) {
-      if (typeof args.organization === "string") {
-        url.searchParams.append("owner", args.organization);
-      } else if (Array.isArray(args.organization)) {
-        // For multiple orgs, we'll need to make parallel calls and merge
-        // For now, use the first org (will be enhanced later)
-        url.searchParams.append("owner", args.organization[0]);
-      }
-    }
 
     logger.debug("Fetching languages from catalog", { url: url.toString() });
 
@@ -222,19 +206,19 @@ export async function handleListLanguages(args: ListLanguagesArgs): Promise<{
       },
       additionalFields: {
         count: languages.length,
-        organization: args.organization || "all",
+        organization: "all",
       },
     });
 
     const result = {
       languages,
-      organization: args.organization || "all",
+      organization: "all",
       metadata,
     };
 
     logger.info("Languages listed successfully", {
       count: languages.length,
-      organization: args.organization || "all",
+      organization: "all",
       responseTime: metadata.responseTime,
     });
 
@@ -252,7 +236,6 @@ export async function handleListLanguages(args: ListLanguagesArgs): Promise<{
     return handleMCPError({
       toolName: "list_languages",
       args: {
-        organization: args.organization,
         stage: args.stage,
       },
       startTime,

@@ -8,16 +8,11 @@
 import type { ToolContextConfig } from "./StateInjectionInterceptor";
 
 /**
- * Default context requirements for Translation Helps MCP tools
- *
- * NOTE: 'organization' is intentionally NOT in the default context injection list.
- * For translation notes/questions in non-English languages, omit organization so all
- * Door43 orgs are searched (unfoldingWord often has no TN for those languages).
- * Optionally use list_resources_for_language to see owners, then pass organization
- * only when the user wants a specific catalog owner.
+ * Default context requirements for Translation Helps MCP tools.
+ * Owner/catalog scope is always all-org server-side; inject language and stage only.
  */
 export const DEFAULT_TOOL_CONTEXT_CONFIG: ToolContextConfig = {
-  // Scripture / helps: language and stage auto-injected; organization is never injected (omit for TN/TQ unless user picks an owner)
+  // Scripture / helps: language and stage auto-injected
   fetch_scripture: ["language", "stage"],
 
   // Translation Notes tools
@@ -43,7 +38,7 @@ export const DEFAULT_TOOL_CONTEXT_CONFIG: ToolContextConfig = {
 /**
  * Context keys that should be persisted across the session
  */
-export const PERSISTENT_CONTEXT_KEYS = ["language", "organization", "stage"];
+export const PERSISTENT_CONTEXT_KEYS = ["language", "stage"];
 
 /**
  * Context keys that should be reset between conversations

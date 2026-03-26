@@ -16,7 +16,9 @@ import { fetchTranslationNotes } from '$lib/../../../src/functions/translation-n
  *   rc://star/ta/man/translate/figs-metaphor => { target: 'ta', path: 'translate/figs-metaphor' }
  *   rc://star/tw/dict/bible/kt/love => { target: 'tw', path: 'bible/kt/love', category: 'kt' }
  */
-function parseRCLinkToExternalReference(rcLink: string): { target: string; path: string; category?: string } | null {
+function parseRCLinkToExternalReference(
+	rcLink: string
+): { target: string; path: string; category?: string } | null {
 	if (!rcLink || !rcLink.startsWith('rc://')) {
 		return null;
 	}
@@ -34,7 +36,7 @@ function parseRCLinkToExternalReference(rcLink: string): { target: string; path:
 	const twMatch = rcLink.match(/rc:\/\/\*\/tw\/dict\/(.+)/);
 	if (twMatch) {
 		const path = twMatch[1]; // e.g., "bible/kt/love"
-		
+
 		// Extract category from path
 		const categoryMatch = path.match(/bible\/([^/]+)\//);
 		const category = categoryMatch ? categoryMatch[1] : undefined;
@@ -52,14 +54,16 @@ function parseRCLinkToExternalReference(rcLink: string): { target: string; path:
 /**
  * Fetch translation notes for a reference
  */
-async function fetchTranslationNotesEndpoint(params: Record<string, any>, _request: Request): Promise<any> {
-	const { reference, language, organization, includeIntro, includeContext, topic } = params;
+async function fetchTranslationNotesEndpoint(
+	params: Record<string, any>,
+	_request: Request
+): Promise<any> {
+	const { reference, language, includeIntro, includeContext, topic } = params;
 
-	// Use the core service which now supports multi-organization fetching
 	const result = await fetchTranslationNotes({
 		reference,
 		language: language || 'en',
-		organization, // Undefined by default = fetch from all organizations
+		organization: undefined,
 		includeIntro: includeIntro !== false,
 		includeContext: includeContext !== false,
 		topic: topic || 'tc-ready'
@@ -73,7 +77,9 @@ async function fetchTranslationNotesEndpoint(params: Record<string, any>, _reque
 	if (verseNotesCount === 0 && contextNotesCount > 0) {
 		// Only intro/context notes available - verse doesn't exist or has no specific notes
 		// Context notes should NOT be returned in error responses
-		const error: any = new Error(`No verse-specific notes found for ${reference}. Only general context available.`);
+		const error: any = new Error(
+			`No verse-specific notes found for ${reference}. Only general context available.`
+		);
 		error.hasContextOnly = true;
 		error.contextNotesCount = contextNotesCount;
 		error.reference = reference;
@@ -91,13 +97,13 @@ async function fetchTranslationNotesEndpoint(params: Record<string, any>, _reque
 		...(result.citations && { citations: result.citations }), // Multi-organization response
 		...(result.citation && !result.citations && { citation: result.citation }), // Single organization response
 		...(result.metadata.organizations && { organizations: result.metadata.organizations }),
-		
+
 		// VERSE-SPECIFIC NOTES (for the exact reference requested)
 		verseNotes: result.verseNotes.map((note) => {
-			const externalRef = note.supportReference 
+			const externalRef = note.supportReference
 				? parseRCLinkToExternalReference(note.supportReference)
 				: null;
-			
+
 			return {
 				Reference: note.reference,
 				ID: note.id,
@@ -109,16 +115,16 @@ async function fetchTranslationNotesEndpoint(params: Record<string, any>, _reque
 				...(note.citation && { citation: note.citation })
 			};
 		}),
-		
+
 		// CONTEXTUAL NOTES (general book/chapter background)
 		contextNotes: result.contextNotes.map((note) => {
-			const externalRef = note.supportReference 
+			const externalRef = note.supportReference
 				? parseRCLinkToExternalReference(note.supportReference)
 				: null;
-			
+
 			// Determine context type from reference
 			const contextType = note.reference === 'front:intro' ? 'book' : 'chapter';
-			
+
 			return {
 				Reference: note.reference,
 				ID: note.id,
@@ -131,7 +137,7 @@ async function fetchTranslationNotesEndpoint(params: Record<string, any>, _reque
 				...(note.citation && { citation: note.citation })
 			};
 		}),
-		
+
 		counts: {
 			totalCount: result.metadata.sourceNotesCount,
 			verseNotesCount: result.metadata.verseNotesCount,
@@ -142,7 +148,7 @@ async function fetchTranslationNotesEndpoint(params: Record<string, any>, _reque
 			resourceType: 'tn',
 			subject: result.metadata.subject || 'TSV Translation Notes', // ✅ Dynamic or fallback
 			language: language || 'en',
-			organization: organization || 'all',
+			organization: 'all',
 			license: 'CC BY-SA 4.0'
 		}
 	};
@@ -152,8 +158,7 @@ async function fetchTranslationNotesEndpoint(params: Record<string, any>, _reque
 export const GET = createSimpleEndpoint({
 	name: 'translation-notes-v3',
 
-	// Parameter validators - organization now optional
-	params: [COMMON_PARAMS.reference, COMMON_PARAMS.language, COMMON_PARAMS.organization],
+	params: [COMMON_PARAMS.reference, COMMON_PARAMS.language],
 
 	// Enable format support
 	supportsFormats: true,
@@ -168,7 +173,8 @@ export const GET = createSimpleEndpoint({
 		},
 		'No verse-specific notes found': {
 			status: 404,
-			message: 'No verse-specific translation notes found. Only general book/chapter context is available.'
+			message:
+				'No verse-specific translation notes found. Only general book/chapter context is available.'
 		}
 	})
 });

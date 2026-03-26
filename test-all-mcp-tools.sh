@@ -3,13 +3,15 @@
 # Test All MCP Tools - Optimized Version
 # Tests all 9 translation-helps MCP tools with appropriate timeouts
 
-MCP_URL="http://localhost:8175/api/mcp"
+BASE_URL="${TEST_BASE_URL:-http://localhost:8174}"
+MCP_URL="${BASE_URL}/api/mcp"
 PASSED=0
 FAILED=0
 
 echo "=========================================="
 echo "Testing All MCP Tools"
 echo "=========================================="
+echo "MCP_URL=$MCP_URL"
 echo ""
 
 GREEN='\033[0;32m'
@@ -92,12 +94,12 @@ test_mcp_tool "list_resources_for_language" "list_resources_for_language" \
 
 # Fetch tools (slower)
 test_mcp_tool "fetch_scripture" "fetch_scripture" \
-    '{"reference": "JHN 3:16", "language": "en", "translation": "ult"}' \
+    '{"reference": "JHN 3:16", "language": "en", "resource": "ult"}' \
     '\\"text\\":' 60
 
 test_mcp_tool "fetch_translation_notes" "fetch_translation_notes" \
     '{"reference": "JHN 3:16", "language": "en"}' \
-    '\\"items\\":' 60
+    '\\"verseNotes\\":' 60
 
 test_mcp_tool "fetch_translation_questions" "fetch_translation_questions" \
     '{"reference": "JHN 1:1", "language": "en"}' \

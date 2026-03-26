@@ -1,52 +1,48 @@
-import { defineConfig } from 'vitest/config';
-import path from 'path';
+import { defineConfig } from "vitest/config";
+import path from "path";
 
 export default defineConfig({
   esbuild: {
-    target: 'esnext',
-    platform: 'node',
-    format: 'esm',
+    target: "esnext",
+    platform: "node",
+    format: "esm",
   },
   test: {
     // Environment
-    environment: 'node',
-    
+    environment: "node",
+
     // Timeouts
-    testTimeout: 30000,  // 30s for network calls
-    hookTimeout: 10000,   // 10s for setup/teardown
-    
+    testTimeout: 30000, // 30s for network calls
+    hookTimeout: 10000, // 10s for setup/teardown
+
     // Globals
     globals: true,
-    
+
     // Enable TypeScript
     typecheck: {
       enabled: false,
     },
-    
+
     // Pool options for better compatibility
-    pool: 'forks',
+    pool: "forks",
     poolOptions: {
       forks: {
         singleFork: false,
       },
     },
-    
+
     // Coverage
     coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html', 'lcov'],
-      include: [
-        'src/**/*.ts',
-        'ui/src/**/*.ts',
-        'packages/**/*.ts',
-      ],
+      provider: "v8",
+      reporter: ["text", "json", "html", "lcov"],
+      include: ["src/**/*.ts", "ui/src/**/*.ts", "packages/**/*.ts"],
       exclude: [
-        '**/*.test.ts',
-        '**/*.spec.ts',
-        '**/node_modules/**',
-        '**/dist/**',
-        '**/.svelte-kit/**',
-        '**/build/**',
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/.svelte-kit/**",
+        "**/build/**",
       ],
       all: true,
       clean: true,
@@ -56,32 +52,37 @@ export default defineConfig({
       branches: 60,
       statements: 60,
     },
-    
+
     // Reporters
-    reporters: ['verbose'],
-    
+    reporters: ["verbose"],
+
     // Test setup
     setupFiles: [],
-    
+
     // File patterns
-    include: ['tests/**/*.test.ts', 'tests/**/*.spec.ts'],
-    exclude: ['**/node_modules/**', '**/dist/**'],
-    
+    include: [
+      "tests/**/*.test.ts",
+      "tests/**/*.spec.ts",
+      "packages/**/*.test.ts",
+      "packages/**/*.spec.ts",
+    ],
+    exclude: ["**/node_modules/**", "**/dist/**"],
+
     // Parallelization
     threads: true,
     maxThreads: 4,
     minThreads: 1,
-    
+
     // Retry failed tests
     retry: 1,
   },
-  
+
   // Resolve
   resolve: {
     alias: {
-      '$lib': path.resolve(__dirname, './ui/src/lib'),
-      '$src': path.resolve(__dirname, './src'),
+      $lib: path.resolve(__dirname, "./ui/src/lib"),
+      $src: path.resolve(__dirname, "./src"),
     },
-    extensions: ['.ts', '.js', '.json'],
+    extensions: [".ts", ".js", ".json"],
   },
 });

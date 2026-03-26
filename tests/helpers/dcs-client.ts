@@ -1,11 +1,11 @@
 /**
  * DCS API Client for Testing
- * 
+ *
  * Calls the Door43 Content Service API directly to verify source of truth.
  * Used to compare our API responses against actual DCS catalog data.
  */
 
-const DCS_BASE_URL = 'https://git.door43.org';
+const DCS_BASE_URL = "https://git.door43.org";
 
 export interface DCSResource {
   name: string;
@@ -36,18 +36,19 @@ export async function searchDCSCatalog(params: {
   limit?: number;
 }): Promise<DCSCatalogResponse> {
   const url = new URL(`${DCS_BASE_URL}/api/v1/catalog/search`);
-  
+
   // Add parameters
-  if (params.language) url.searchParams.set('lang', params.language);
-  if (params.owner) url.searchParams.set('owner', params.owner);
-  if (params.subject) url.searchParams.set('subject', params.subject);
-  if (params.stage) url.searchParams.set('stage', params.stage || 'prod');
-  if (params.metadataType) url.searchParams.set('metadataType', params.metadataType);
-  if (params.topic) url.searchParams.set('topic', params.topic);
-  if (params.limit) url.searchParams.set('limit', params.limit.toString());
+  if (params.language) url.searchParams.set("lang", params.language);
+  if (params.owner) url.searchParams.set("owner", params.owner);
+  if (params.subject) url.searchParams.set("subject", params.subject);
+  if (params.stage) url.searchParams.set("stage", params.stage || "prod");
+  if (params.metadataType)
+    url.searchParams.set("metadataType", params.metadataType);
+  if (params.topic) url.searchParams.set("topic", params.topic);
+  if (params.limit) url.searchParams.set("limit", params.limit.toString());
 
   const response = await fetch(url.toString());
-  
+
   if (!response.ok) {
     throw new Error(`DCS API error: ${response.status} ${response.statusText}`);
   }
@@ -67,17 +68,17 @@ export async function dcsResourceExists(params: {
   const searchParams: any = {
     language: params.language,
     subject: params.subject,
-    stage: 'prod',
+    stage: "prod",
     limit: 100,
   };
 
   // Only add owner if explicitly specified (empty means search all)
-  if (params.organization && params.organization !== '') {
+  if (params.organization && params.organization !== "") {
     searchParams.owner = params.organization;
   }
 
   const result = await searchDCSCatalog(searchParams);
-  
+
   if (!result.ok || !result.data || result.data.length === 0) {
     return { exists: false };
   }
@@ -85,14 +86,14 @@ export async function dcsResourceExists(params: {
   // If resourceType specified, filter by it
   let filteredResources = result.data;
   if (params.resourceType) {
-    filteredResources = result.data.filter(r => 
-      r.name.includes(`_${params.resourceType}`)
+    filteredResources = result.data.filter((r) =>
+      r.name.includes(`_${params.resourceType}`),
     );
   }
 
   return {
     exists: filteredResources.length > 0,
-    resource: filteredResources[0]
+    resource: filteredResources[0],
   };
 }
 
@@ -103,12 +104,16 @@ export async function dcsAcademyExists(params: {
   path: string;
   language: string;
   organization?: string;
-}): Promise<{ exists: boolean; actualLanguage?: string; actualOrganization?: string }> {
+}): Promise<{
+  exists: boolean;
+  actualLanguage?: string;
+  actualOrganization?: string;
+}> {
   const result = await dcsResourceExists({
     language: params.language,
     organization: params.organization,
-    subject: 'Translation Academy',
-    resourceType: 'ta'
+    subject: "Translation Academy",
+    resourceType: "ta",
   });
 
   if (!result.exists || !result.resource) {
@@ -131,12 +136,16 @@ export async function dcsWordExists(params: {
   language: string;
   organization?: string;
   category?: string;
-}): Promise<{ exists: boolean; actualLanguage?: string; actualOrganization?: string }> {
+}): Promise<{
+  exists: boolean;
+  actualLanguage?: string;
+  actualOrganization?: string;
+}> {
   const result = await dcsResourceExists({
     language: params.language,
     organization: params.organization,
-    subject: 'Translation Words',
-    resourceType: 'tw'
+    subject: "Translation Words",
+    resourceType: "tw",
   });
 
   if (!result.exists || !result.resource) {
@@ -156,11 +165,15 @@ export async function dcsWordExists(params: {
 export async function dcsScriptureExists(params: {
   language: string;
   organization?: string;
-}): Promise<{ exists: boolean; actualLanguage?: string; actualOrganization?: string }> {
+}): Promise<{
+  exists: boolean;
+  actualLanguage?: string;
+  actualOrganization?: string;
+}> {
   const result = await dcsResourceExists({
     language: params.language,
     organization: params.organization,
-    subject: 'Bible',
+    subject: "Bible",
   });
 
   if (!result.exists || !result.resource) {
@@ -168,7 +181,7 @@ export async function dcsScriptureExists(params: {
     const alignedResult = await dcsResourceExists({
       language: params.language,
       organization: params.organization,
-      subject: 'Aligned Bible',
+      subject: "Aligned Bible",
     });
 
     if (!alignedResult.exists || !alignedResult.resource) {
@@ -193,9 +206,9 @@ export async function dcsScriptureExists(params: {
  * Get all available languages from DCS
  */
 export async function dcsGetLanguages(): Promise<string[]> {
-  const url = `${DCS_BASE_URL}/catalog/list/languages?stage=prod`;
+  const url = `${DCS_BASE_URL}/api/v1/catalog/list/languages?stage=prod&topic=tc-ready`;
   const response = await fetch(url);
-  
+
   if (!response.ok) {
     throw new Error(`DCS API error: ${response.status}`);
   }
@@ -216,13 +229,15 @@ export async function dcsGetLanguages(): Promise<string[]> {
 /**
  * Get language variants from DCS for a base language
  */
-export async function dcsGetLanguageVariants(baseLanguage: string): Promise<string[]> {
+export async function dcsGetLanguageVariants(
+  baseLanguage: string,
+): Promise<string[]> {
   const allLanguages = await dcsGetLanguages();
-  
+
   // Find all variants that start with the base language
   // e.g., for "es", find ["es", "es-419", "es-ES", etc.]
-  const variants = allLanguages.filter(lang => 
-    lang.toLowerCase().startsWith(baseLanguage.toLowerCase())
+  const variants = allLanguages.filter((lang) =>
+    lang.toLowerCase().startsWith(baseLanguage.toLowerCase()),
   );
 
   return variants;
@@ -236,13 +251,21 @@ export async function comparewithDCS(params: {
   language: string;
   organization?: string;
   subject: string;
+  /** Parsed JSON body from our API */
   ourResponse: any;
+  /** HTTP status from our API (default 200) */
+  httpStatus?: number;
 }): Promise<{
   matches: boolean;
   differences: string[];
-  dcsData: { exists: boolean; actualLanguage?: string; actualOrganization?: string };
+  dcsData: {
+    exists: boolean;
+    actualLanguage?: string;
+    actualOrganization?: string;
+  };
 }> {
   const differences: string[] = [];
+  const httpStatus = params.httpStatus ?? 200;
 
   // Check if resource exists in DCS
   const dcsResult = await dcsResourceExists({
@@ -252,7 +275,7 @@ export async function comparewithDCS(params: {
   });
 
   // Compare existence
-  const weFoundIt = !params.ourResponse.error && params.ourResponse.statusCode !== 404;
+  const weFoundIt = httpStatus === 200 && !params.ourResponse?.error;
   const dcsHasIt = dcsResult.exists;
 
   if (weFoundIt && !dcsHasIt) {
@@ -267,20 +290,26 @@ export async function comparewithDCS(params: {
   if (weFoundIt && dcsHasIt && dcsResult.resource) {
     // Check language
     if (params.ourResponse.metadata?.language) {
-      if (params.ourResponse.metadata.language !== dcsResult.resource.language) {
+      if (
+        params.ourResponse.metadata.language !== dcsResult.resource.language
+      ) {
         differences.push(
-          `Language mismatch: Ours="${params.ourResponse.metadata.language}", DCS="${dcsResult.resource.language}"`
+          `Language mismatch: Ours="${params.ourResponse.metadata.language}", DCS="${dcsResult.resource.language}"`,
         );
       }
     }
 
-    // Check organization
-    if (params.ourResponse.metadata?.organization) {
-      if (params.ourResponse.metadata.organization !== dcsResult.resource.owner) {
-        differences.push(
-          `Organization mismatch: Ours="${params.ourResponse.metadata.organization}", DCS="${dcsResult.resource.owner}"`
-        );
-      }
+    // Check organization (aggregate responses use "multiple" / "all")
+    const org = params.ourResponse.metadata?.organization;
+    if (
+      org &&
+      org !== "multiple" &&
+      org !== "all" &&
+      org !== dcsResult.resource.owner
+    ) {
+      differences.push(
+        `Organization mismatch: Ours="${org}", DCS="${dcsResult.resource.owner}"`,
+      );
     }
   }
 
@@ -291,6 +320,6 @@ export async function comparewithDCS(params: {
       exists: dcsResult.exists,
       actualLanguage: dcsResult.resource?.language,
       actualOrganization: dcsResult.resource?.owner,
-    }
+    },
   };
 }

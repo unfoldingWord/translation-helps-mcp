@@ -125,6 +125,8 @@ export const ToolFormatters = {
       return `# ${data.title}\n\n${data.content}`;
     }
     if (data.content) return data.content;
+    // Plain markdown body from fetch (UnifiedMCPHandler wraps non-JSON as { text, raw })
+    if (data?.raw && typeof data.raw === "string") return data.raw;
     return "No translation words found";
   },
 
@@ -147,6 +149,7 @@ export const ToolFormatters = {
     }
     if (data.content) return data.content;
     if (data.markdown) return data.markdown;
+    if (data?.raw && typeof data.raw === "string") return data.raw;
     return "No translation academy content found";
   },
 };
@@ -198,7 +201,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     displayName: "Fetch Scripture",
     endpoint: "fetch-scripture",
     description:
-      "Fetch Bible scripture text for multiple translations (ULT, UST, T4T, UEB). Optional `organization` (English often uses unfoldingWord). Do not reuse that for translation notes/questions/word-links in other languages—omit there unless the user names an owner.",
+      "Fetch Bible scripture text for multiple translations (ULT, UST, T4T, UEB). Searches all Door43 orgs for the given language.",
     category: "Scripture",
     parameters: PARAMETER_GROUPS.scripture.parameters,
     requiredParams: ["reference"],
@@ -230,7 +233,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     displayName: "Fetch Translation Notes",
     endpoint: "fetch-translation-notes",
     description:
-      "Fetch translation notes for a specific Bible reference (verse-by-verse). Omit organization to search all Door43 orgs—required for languages where unfoldingWord does not publish TN (e.g. Spanish).",
+      "Fetch translation notes for a specific Bible reference (verse-by-verse). All Door43 organizations are searched automatically.",
     category: "Translation Helps",
     parameters: PARAMETER_GROUPS.translationNotes.parameters,
     requiredParams: ["reference"],
@@ -253,8 +256,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
       {
         title: "Spanish notes (all organizations)",
         parameters: { reference: "TIT 3:15", language: "es" },
-        expectedResponse:
-          "Spanish TN from whichever org publishes them (not unfoldingWord)",
+        expectedResponse: "Spanish TN from whichever org publishes them",
       },
     ],
   },
@@ -264,7 +266,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     displayName: "Fetch Translation Questions",
     endpoint: "fetch-translation-questions",
     description:
-      "Fetch translation questions for a specific Bible reference (comprehension verification). Omit organization by default so all Door43 orgs are searched; do not default to unfoldingWord.",
+      "Fetch translation questions for a specific Bible reference (comprehension verification). All Door43 organizations are searched automatically.",
     category: "Translation Helps",
     parameters: PARAMETER_GROUPS.translationQuestions.parameters,
     requiredParams: ["reference"],
@@ -278,8 +280,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
       {
         title: "Spanish questions (all organizations)",
         parameters: { reference: "TIT 3:15", language: "es" },
-        expectedResponse:
-          "TQ from whichever org publishes them (omit organization)",
+        expectedResponse: "TQ from whichever org publishes them",
       },
     ],
   },
@@ -289,7 +290,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     displayName: "Fetch Translation Word Links",
     endpoint: "fetch-translation-word-links",
     description:
-      "Fetch translation word links (TWL) for a specific Bible reference (verse words → dictionary entries). Omit organization by default; do not default to unfoldingWord.",
+      "Fetch translation word links (TWL) for a specific Bible reference (verse words → dictionary entries). All Door43 organizations are searched automatically.",
     category: "Translation Helps",
     parameters: PARAMETER_GROUPS.translationWordLinks.parameters,
     requiredParams: ["reference"],
@@ -425,7 +426,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     displayName: "List Languages",
     endpoint: "list-languages",
     description:
-      "List all available languages with codes, names, and display names - filter by organization",
+      "List all available languages with codes, names, and display names (all Door43 organizations)",
     category: "Discovery",
     parameters: PARAMETER_GROUPS.listLanguages.parameters,
     requiredParams: [],
@@ -443,7 +444,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     examples: [
       {
         title: "All languages",
-        parameters: { organization: "unfoldingWord" },
+        parameters: {},
         expectedResponse: "List of available languages with codes and names",
       },
     ],
@@ -454,7 +455,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     displayName: "List Subjects",
     endpoint: "list-subjects",
     description:
-      "List all available resource subjects/types (Bible, Translation Words, etc.) - filter by language/org",
+      "List all available resource subjects/types (Bible, Translation Words, etc.) — filter by language; all Door43 orgs searched",
     category: "Discovery",
     parameters: PARAMETER_GROUPS.listSubjects.parameters,
     requiredParams: [],
@@ -472,7 +473,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     examples: [
       {
         title: "Subjects for English",
-        parameters: { language: "en", organization: "unfoldingWord" },
+        parameters: { language: "en" },
         expectedResponse: "List of resource subjects available in English",
       },
     ],
@@ -510,7 +511,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     examples: [
       {
         title: "All English resources",
-        parameters: { language: "en", organization: "unfoldingWord" },
+        parameters: { language: "en" },
         expectedResponse:
           "All resources available in English, organized by subject",
       },

@@ -56,6 +56,10 @@ describe("MCP Tools Schema Validation", () => {
       if (tool.inputSchema.properties) {
         const propCount = Object.keys(tool.inputSchema.properties).length;
         console.log(`  ✅ Has ${propCount} properties`);
+        if (propCount === 0 && tool.name === "list_tools") {
+          // Meta-tool: intentionally no parameters
+          continue;
+        }
         expect(propCount).toBeGreaterThan(0);
       } else {
         console.log(
@@ -116,6 +120,25 @@ describe("MCP Tools Schema Validation", () => {
           true,
         );
         console.log(`   Schema size: ${schemaStr.length} characters ✓\n`);
+      }
+    }
+  });
+
+  it("fetch_scripture schema must not include organization (all-org discovery only)", () => {
+    const tools = getMCPToolsList();
+    const tool = tools.find((t) => t.name === "fetch_scripture");
+    expect(tool?.inputSchema?.properties).toBeDefined();
+    expect(tool!.inputSchema.properties).not.toHaveProperty("organization");
+  });
+
+  it("no MCP tool schema should include organization (all-org discovery only)", () => {
+    const tools = getMCPToolsList();
+    for (const tool of tools) {
+      const props = tool.inputSchema?.properties as
+        | Record<string, unknown>
+        | undefined;
+      if (props) {
+        expect(props, tool.name).not.toHaveProperty("organization");
       }
     }
   });
