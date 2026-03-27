@@ -3,7 +3,7 @@
  *
  * Defines all translation help endpoints: Translation Notes (tN), Translation Academy (tA),
  * Translation Questions (tQ), Translation Word Links (tWL), and Translation Words (tW).
- * 
+ *
  * Uses unified parameter definitions for automatic consistency with MCP.
  */
 
@@ -15,48 +15,23 @@ import {
   TRANSLATION_WORDS_SHAPE,
   TRANSLATION_WORD_LINKS_SHAPE,
 } from "../ResponseShapes.js";
-import { toEndpointParams, PARAMETER_GROUPS } from "../parameters/index.js";
+import { PARAMETER_GROUPS, toEndpointParams } from "../parameters/index.js";
 
 /**
  * Common parameters for reference-based endpoints
  * Auto-generated from unified parameter definitions
  */
-const REFERENCE_PARAMS = toEndpointParams(PARAMETER_GROUPS.translationNotes.parameters);
+const REFERENCE_PARAMS = toEndpointParams(
+  PARAMETER_GROUPS.translationNotes.parameters,
+);
 
 /**
  * Common parameters for term-based endpoints
  * Auto-generated from unified parameter definitions
  */
-const TERM_PARAMS = toEndpointParams(PARAMETER_GROUPS.translationWord.parameters);
-
-/**
- * Legacy path parameter (keeping for backward compatibility)
- */
-const PATH_PARAM = {
-  path: {
-    type: "string" as const,
-    required: false,
-    description:
-      "Explicit path to the translation word markdown inside the repo (e.g., bible/kt/love.md)",
-    example: "bible/kt/love.md",
-    min: 5,
-    max: 200,
-  },
-  rcLink: {
-    type: "string" as const,
-    required: false,
-    description:
-      'RC link to the translation word (e.g., "rc://*/tw/dict/bible/kt/love")',
-    example: "rc://*/tw/dict/bible/kt/love",
-    pattern: "^rc://.*",
-    min: 10,
-    max: 200,
-  },
-  language: REFERENCE_PARAMS.language,
-  organization: REFERENCE_PARAMS.organization,
-  format: REFERENCE_PARAMS.format,
-  topic: REFERENCE_PARAMS.topic,
-};
+const TERM_PARAMS = toEndpointParams(
+  PARAMETER_GROUPS.translationWord.parameters,
+);
 
 /**
  * Fetch Translation Questions (tQ) - Questions for checking translation
@@ -85,7 +60,6 @@ export const FETCH_TRANSLATION_QUESTIONS_CONFIG: EndpointConfig = {
       params: {
         reference: "John 3:16",
         language: "en",
-        organization: "unfoldingWord",
       },
       expectedContent: {
         contains: [
@@ -107,7 +81,6 @@ export const FETCH_TRANSLATION_QUESTIONS_CONFIG: EndpointConfig = {
       params: {
         reference: "Genesis 1:1",
         language: "en",
-        organization: "unfoldingWord",
       },
       expectedContent: {
         contains: ["created", "beginning", "God"],
@@ -123,7 +96,6 @@ export const FETCH_TRANSLATION_QUESTIONS_CONFIG: EndpointConfig = {
       params: {
         reference: "Romans 8:28",
         language: "en",
-        organization: "unfoldingWord",
       },
       expectedContent: {
         contains: ["work together", "good", "called"],
@@ -138,7 +110,6 @@ export const FETCH_TRANSLATION_QUESTIONS_CONFIG: EndpointConfig = {
       params: {
         reference: "Matthew 5:3",
         language: "es",
-        organization: "unfoldingWord",
       },
       expectedContent: {
         contains: ["bienaventurados", "pobres"],
@@ -179,7 +150,6 @@ export const FETCH_TRANSLATION_WORD_CONFIG: EndpointConfig = {
       description: "Get a structured Table of Contents for all available terms",
       params: {
         language: "en",
-        organization: "unfoldingWord",
       },
       expectedContent: {
         contains: ["Key Terms", "Names", "Other Terms"],
@@ -198,7 +168,6 @@ export const FETCH_TRANSLATION_WORD_CONFIG: EndpointConfig = {
       params: {
         term: "love",
         language: "en",
-        organization: "unfoldingWord",
       },
       expectedContent: {
         contains: [
@@ -220,7 +189,6 @@ export const FETCH_TRANSLATION_WORD_CONFIG: EndpointConfig = {
       params: {
         path: "bible/kt/love.md",
         language: "en",
-        organization: "unfoldingWord",
       },
       expectedContent: {
         contains: ["Definition:", "love", "God"],
@@ -276,7 +244,6 @@ export const FETCH_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
       max: 200,
     },
     language: REFERENCE_PARAMS.language,
-    organization: REFERENCE_PARAMS.organization,
     format: {
       type: "string" as const,
       required: false,
@@ -302,7 +269,6 @@ export const FETCH_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
       description: "Get all modules in LLM-friendly markdown format",
       params: {
         language: "en",
-        organization: "unfoldingWord",
         // format: "markdown" is default
       },
       expectedContent: {
@@ -315,7 +281,6 @@ export const FETCH_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
       description: "Get all modules in structured JSON format",
       params: {
         language: "en",
-        organization: "unfoldingWord",
         format: "json",
       },
       expectedContent: {
@@ -332,7 +297,6 @@ export const FETCH_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
       description: "Get modules for translation category",
       params: {
         language: "en",
-        organization: "unfoldingWord",
         category: "translate",
       },
       expectedContent: {
@@ -347,7 +311,6 @@ export const FETCH_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
       description: "Get a specific module about metaphors",
       params: {
         language: "en",
-        organization: "unfoldingWord",
         moduleId: "figs-metaphor",
       },
       expectedContent: {
@@ -375,7 +338,6 @@ export const BROWSE_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
 
   params: {
     language: REFERENCE_PARAMS.language,
-    organization: REFERENCE_PARAMS.organization,
     category: {
       type: "string" as const,
       required: false,
@@ -409,7 +371,6 @@ export const BROWSE_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
       description: "Browse all categories in LLM-friendly markdown format",
       params: {
         language: "en",
-        organization: "unfoldingWord",
         // format: "markdown" is default
       },
       expectedContent: {
@@ -422,7 +383,6 @@ export const BROWSE_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
       description: "Browse all categories in structured JSON format",
       params: {
         language: "en",
-        organization: "unfoldingWord",
         format: "json",
       },
       expectedContent: {
@@ -439,7 +399,6 @@ export const BROWSE_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
       description: "Browse translation category in markdown",
       params: {
         language: "en",
-        organization: "unfoldingWord",
         category: "translate",
       },
       expectedContent: {
@@ -480,7 +439,6 @@ export const FETCH_TRANSLATION_WORD_LINKS_CONFIG: EndpointConfig = {
       params: {
         reference: "John 3:16",
         language: "en",
-        organization: "unfoldingWord",
       },
       expectedContent: {
         contains: [
@@ -501,7 +459,6 @@ export const FETCH_TRANSLATION_WORD_LINKS_CONFIG: EndpointConfig = {
       params: {
         reference: "Romans 8:28-30",
         language: "en",
-        organization: "unfoldingWord",
       },
       expectedContent: {
         contains: ["predestined", "called", "justified"],
@@ -543,7 +500,6 @@ export const FETCH_TRANSLATION_NOTES_CONFIG: EndpointConfig = {
       params: {
         reference: "John 3:16",
         language: "en",
-        organization: "unfoldingWord",
       },
       expectedContent: {
         contains: ["For", "γὰρ", "grammar-connect-logic-result"],
@@ -561,7 +517,6 @@ export const FETCH_TRANSLATION_NOTES_CONFIG: EndpointConfig = {
       params: {
         reference: "Ephesians 2:8-9",
         language: "en",
-        organization: "unfoldingWord",
       },
       expectedContent: {
         contains: ["grace", "faith", "works"],
@@ -578,7 +533,6 @@ export const FETCH_TRANSLATION_NOTES_CONFIG: EndpointConfig = {
       params: {
         reference: "Titus 1:14",
         language: "en",
-        organization: "unfoldingWord",
       },
       expectedContent: {
         contains: ["μύθοις Ἰουδαϊκοῖς", "Jewish myths"],
@@ -621,7 +575,6 @@ export const TW_ARTICLES_CONFIG: EndpointConfig = {
       params: {
         reference: "John 3:16",
         language: "en",
-        organization: "unfoldingWord",
       },
       expectedContent: {
         contains: ["love, beloved", "# God", "world, worldly"],
@@ -636,7 +589,6 @@ export const TW_ARTICLES_CONFIG: EndpointConfig = {
       params: {
         reference: "Titus 1:1",
         language: "en",
-        organization: "unfoldingWord",
       },
     },
   ],
