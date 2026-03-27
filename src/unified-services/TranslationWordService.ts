@@ -16,7 +16,6 @@ export interface TranslationWordParams {
   term?: string;
   reference?: string;
   language?: string;
-  organization?: string | string[];
   category?: string;
   path?: string;
   rcLink?: string;
@@ -66,7 +65,7 @@ export class TranslationWordService extends BaseService<
         path: params.path,
         rcLink: params.rcLink,
         language: params.language || "en",
-        organization: params.organization || "unfoldingWord",
+        organization: undefined,
         category: params.category,
         topic: params.topic || "tc-ready",
       };

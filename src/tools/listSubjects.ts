@@ -12,19 +12,12 @@ import { proxyFetch } from "../utils/httpClient.js";
 import { mapLanguageToCatalogCode } from "../utils/language-mapping.js";
 import { getKVCache } from "../functions/kv-cache.js";
 import { EdgeXRayTracer } from "../functions/edge-xray.js";
-import {
-  LanguageParam,
-  OrganizationParam,
-  TopicParam,
-} from "../schemas/common-params.js";
+import { LanguageParam, TopicParam } from "../schemas/common-params.js";
 
 // Input schema - using common parameters where applicable
 export const ListSubjectsArgs = z.object({
   language: LanguageParam.describe(
     'Filter subjects by language code (e.g., "en", "es-419"). If not provided, returns all subjects.',
-  ),
-  organization: OrganizationParam.describe(
-    "Filter subjects by organization(s). Can be a single organization (string), multiple organizations (array), or omitted to return all subjects from all organizations.",
   ),
   stage: z
     .string()
@@ -103,7 +96,6 @@ export async function handleListSubjects(args: ListSubjectsArgs): Promise<{
   try {
     logger.info("Listing available subjects", {
       language: args.language,
-      organization: args.organization,
       stage: args.stage,
     });
 
@@ -116,16 +108,6 @@ export async function handleListSubjects(args: ListSubjectsArgs): Promise<{
       // Map language to catalog code
       const catalogLanguage = mapLanguageToCatalogCode(args.language);
       url.searchParams.append("lang", catalogLanguage);
-    }
-    // Handle organization: undefined = all orgs, string = single org, array = multiple orgs
-    if (args.organization) {
-      if (typeof args.organization === "string") {
-        url.searchParams.append("owner", args.organization);
-      } else if (Array.isArray(args.organization)) {
-        // For multiple orgs, we'll need to make parallel calls and merge
-        // For now, use the first org (will be enhanced later)
-        url.searchParams.append("owner", args.organization[0]);
-      }
     }
 
     logger.debug("Fetching subjects from catalog", { url: url.toString() });
@@ -257,7 +239,8 @@ export async function handleListSubjects(args: ListSubjectsArgs): Promise<{
         const resourceType = mapSubjectToResourceType(subjectName);
         subjects.push({
           name: subjectName,
-          description: typeof subject === "object" ? subject.description : undefined,
+          description:
+            typeof subject === "object" ? subject.description : undefined,
           resourceType,
           count: typeof subject === "object" ? subject.count : undefined,
         });
@@ -279,7 +262,7 @@ export async function handleListSubjects(args: ListSubjectsArgs): Promise<{
         count: subjects.length,
         filters: {
           language: args.language || "all",
-          organization: args.organization || "all",
+          organization: "all",
         },
       },
     });
@@ -288,7 +271,7 @@ export async function handleListSubjects(args: ListSubjectsArgs): Promise<{
       subjects,
       filters: {
         language: args.language || "all",
-        organization: args.organization || "all",
+        organization: "all",
       },
       metadata,
     };
@@ -296,7 +279,7 @@ export async function handleListSubjects(args: ListSubjectsArgs): Promise<{
     logger.info("Subjects listed successfully", {
       count: subjects.length,
       language: args.language || "all",
-      organization: args.organization || "all",
+      organization: "all",
       responseTime: metadata.responseTime,
     });
 
@@ -315,7 +298,6 @@ export async function handleListSubjects(args: ListSubjectsArgs): Promise<{
       toolName: "list_subjects",
       args: {
         language: args.language,
-        organization: args.organization,
         stage: args.stage,
       },
       startTime,

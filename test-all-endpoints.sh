@@ -3,7 +3,7 @@
 # Test All REST Endpoints - Optimized Version
 # Tests all 9 translation-helps API endpoints with appropriate timeouts
 
-BASE_URL="http://localhost:8175"
+BASE_URL="${TEST_BASE_URL:-http://localhost:8174}"
 PASSED=0
 FAILED=0
 
@@ -54,12 +54,12 @@ test_endpoint "list_resources_for_language" \
 
 # Fetch endpoints (potentially slower due to ZIP downloads)
 test_endpoint "fetch_scripture" \
-    "$BASE_URL/api/fetch-scripture?reference=JHN%203:16&language=en&translation=ult" \
+    "$BASE_URL/api/fetch-scripture?reference=JHN%203:16&language=en" \
     '"text":' 60
 
 test_endpoint "fetch_translation_notes" \
     "$BASE_URL/api/fetch-translation-notes?reference=JHN%203:16&language=en" \
-    '"items":' 60
+    '"verseNotes":' 60
 
 test_endpoint "fetch_translation_questions" \
     "$BASE_URL/api/fetch-translation-questions?reference=JHN%201:1&language=en" \

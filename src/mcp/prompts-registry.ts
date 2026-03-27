@@ -103,11 +103,6 @@ export const MCP_PROMPTS: MCPPromptDefinition[] = [
           'Language code (e.g., "en", "es-419"). If not provided, will show all available languages first.',
         required: false,
       },
-      {
-        name: "organization",
-        description: 'Organization (default: "unfoldingWord")',
-        required: false,
-      },
     ],
   },
   {
@@ -119,11 +114,6 @@ export const MCP_PROMPTS: MCPPromptDefinition[] = [
         name: "subject",
         description:
           'Resource subject/type (e.g., "Translation Words", "Translation Notes"). If not provided, will show all available subjects first.',
-        required: false,
-      },
-      {
-        name: "organization",
-        description: 'Organization (default: "unfoldingWord")',
         required: false,
       },
     ],
@@ -139,7 +129,6 @@ export function getPromptTemplate(
 ): string {
   const language = (args?.language as string) || "en";
   const reference = (args?.reference as string) || "";
-  const organization = (args?.organization as string) || "unfoldingWord";
   const subject = (args?.subject as string) || "";
 
   switch (name) {
@@ -170,7 +159,7 @@ Follow these steps:
    - Show FULL scripture text with citation: [citation.resource version - ${reference}]
 
 2. **Get Translation Questions:**
-   - Use fetch_translation_questions with reference="${reference}" and language="${language}" (omit organization unless the user named a specific Door43 owner—do not default to unfoldingWord)
+   - Use fetch_translation_questions with reference="${reference}" and language="${language}"
    - Read questions.citation object
    - Show ALL questions (they're already short) with citation
 
@@ -183,7 +172,7 @@ Follow these steps:
    - Present as: "Key Terms: [Title 1], [Title 2], [Title 3]..."
 
 4. **Get Translation Notes (Condensed):**
-   - Use fetch_translation_notes with reference="${reference}" and language="${language}" (omit organization unless you need one owner—search all orgs for non-English TN)
+   - Use fetch_translation_notes with reference="${reference}" and language="${language}"
    - For EACH note, show ONLY:
      * The Quote field (Greek/Hebrew text)
      * Any externalReference.path that links to academy articles
@@ -256,13 +245,13 @@ Follow these steps to gather all relevant information:
    - This provides the actual Bible text to work with
 
 2. **Get Translation Questions:**
-   - Use fetch_translation_questions with reference="${reference}" and language="${language}" (omit organization by default—same as translation notes; do not pass unfoldingWord unless the user asked for that owner)
+   - Use fetch_translation_questions with reference="${reference}" and language="${language}"
    - Read questions.citation object from the response
    - Cite questions using: [citation.resource version - ${reference}] (e.g., [es-419_tq v38 - ${reference}])
    - These help check comprehension and guide translation decisions
 
 3. **Get Translation Word Links and Fetch Titles:**
-   - Use fetch_translation_word_links with reference="${reference}" and language="${language}" (omit organization by default)
+   - Use fetch_translation_word_links with reference="${reference}" and language="${language}"
    - This returns items with externalReference: [{externalReference: {target: "tw", path: "bible/kt/love", category: "kt"}}]
    - For EACH item that has externalReference.path, use fetch_translation_word tool with path=<externalReference.path> (e.g., path="bible/kt/love")
    - Extract the TITLE from each article (found in the first H1 heading or title field)
@@ -363,12 +352,12 @@ The goal is to show what translation concepts and training materials are relevan
 Follow these steps:
 
 1. **List Available Languages (if language not specified):**
-   - If no language was provided, first use list_languages tool with organization="${organization}"
+   - If no language was provided, first use list_languages tool
    - Show the user the available languages with their codes and names
    - Ask the user to select a language, or proceed with the most common one (usually "en")
 
 2. **List Available Subjects for the Language:**
-   - Use list_subjects tool with language="${language || "en"}" and organization="${organization}"
+   - Use list_subjects tool with language="${language || "en"}"
    - This shows what resource types (subjects) are available for this language
    - Common subjects include: "Translation Words", "TSV Translation Notes", "TSV Translation Questions", "Bible", "Aligned Bible", etc.
 
@@ -382,7 +371,7 @@ Follow these steps:
    - Show the user how to use the discovered language parameter in other tools
    - Examples:
      * fetch_scripture with language="${language || "en"}" and reference="John 3:16"
-     * fetch_translation_notes with language="${language || "en"}" and reference="John 3:16" — **omit organization** for non-English unless a specific owner is needed
+     * fetch_translation_notes with language="${language || "en"}" and reference="John 3:16"
      * fetch_translation_word with language="${language || "en"}" and term="love"
      * list_subjects with language="${language || "en"}" to see what's available
 
@@ -398,15 +387,15 @@ The goal is to help users discover what's available and show them how to use tha
 Follow these steps:
 
 1. **List Available Subjects (if subject not specified):**
-   - If no subject was provided, first use list_subjects tool with organization="${organization}"
+   - If no subject was provided, first use list_subjects tool
    - Show the user the available resource types (subjects)
    - Common subjects include: "Translation Words", "TSV Translation Notes", "TSV Translation Questions", "Bible", "Aligned Bible", "Translation Word Links", "Translation Academy"
    - Ask the user to select a subject, or proceed with a common one like "Translation Words"
 
 2. **Discover Languages with This Subject:**
    - For the selected subject "${subject || "[to be selected]"}":
-     * Use list_subjects with organization="${organization}" to get all subjects
-     * Then, for each language you want to check, use list_subjects with language=<language_code> and organization="${organization}"
+     * Use list_subjects to get all subjects
+     * Then, for each language you want to check, use list_subjects with language=<language_code>
      * OR use catalog search to find which languages have resources with this subject
    - Alternatively, you can use list_languages to get all languages, then check each one
    - The goal is to find which languages have the subject "${subject || "[selected subject]"}" available
@@ -423,8 +412,8 @@ Follow these steps:
      * fetch_translation_word with language="en" and term="love"
      * fetch_translation_word with language="es-419" and term="amor"
    - Examples for "Translation Notes" subject:
-     * fetch_translation_notes with language="en", reference="JHN 3:16", organization="unfoldingWord" (English TN under uw is common)
-     * fetch_translation_notes with language="es", reference="TIT 3:15" — omit organization so all orgs are searched (uw does not publish Spanish TN)
+     * fetch_translation_notes with language="en", reference="JHN 3:16"
+     * fetch_translation_notes with language="es", reference="TIT 3:15"
 
 5. **Guide Next Steps:**
    - Explain that the user can now use any of the discovered languages with tools that support that resource type

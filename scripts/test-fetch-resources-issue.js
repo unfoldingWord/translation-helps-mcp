@@ -97,7 +97,6 @@ async function testFetchResourcesIssue() {
         arguments: {
           reference: "John 3:16",
           language: "en",
-          organization: "unfoldingWord",
         },
       });
 
@@ -135,7 +134,6 @@ async function testFetchResourcesIssue() {
             arguments: {
               reference: "John 3:16",
               language: "en",
-              organization: "unfoldingWord",
             },
           });
 

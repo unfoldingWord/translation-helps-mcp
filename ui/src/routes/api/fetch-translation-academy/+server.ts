@@ -12,7 +12,6 @@ import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
-import { parseTranslationAcademyRCLink, isTranslationAcademyRCLink } from '$lib/rcLinkParser.js';
 
 /**
  * Fetch a specific translation academy module
@@ -23,7 +22,7 @@ async function fetchTranslationAcademy(
 	params: Record<string, any>,
 	request: Request
 ): Promise<any> {
-	const { path, language = 'en', organization, topic } = params;
+	const { path, language = 'en', topic } = params;
 
 	// Check for deprecated parameters in the raw URL
 	const url = new URL(request.url);
@@ -84,9 +83,11 @@ async function fetchTranslationAcademy(
 				byPath: '?path=translate/figs-metaphor'
 			},
 			language,
-			organization
+			organization: 'all'
 		};
-		const error = new Error('No path provided. Please specify a translation academy path (e.g., "translate/figs-metaphor").');
+		const error = new Error(
+			'No path provided. Please specify a translation academy path (e.g., "translate/figs-metaphor").'
+		);
 		(error as any).toc = toc;
 		throw error;
 	}
@@ -94,79 +95,85 @@ async function fetchTranslationAcademy(
 	try {
 		// Fetch the specific TA module using the path
 		// Path format: "translate/figs-metaphor" or "checking/accuracy-check"
-		const result = await fetcher.fetchTranslationAcademy(language, organization, undefined, path, topic);
+		const result = await fetcher.fetchTranslationAcademy(
+			language,
+			undefined,
+			undefined,
+			path,
+			topic
+		);
 
 		// Check if we got content
-	if (result.modules && result.modules.length > 0) {
-		// Got specific module
-		const module = result.modules[0];
+		if (result.modules && result.modules.length > 0) {
+			// Got specific module
+			const module = result.modules[0];
 
-		// Extract title from content
-		const content = module.markdown || '';
-		const titleMatch = content.match(/^#\s+(.+)$/m);
-		const title = titleMatch ? titleMatch[1].trim() : path.split('/').pop() || path;
+			// Extract title from content
+			const content = module.markdown || '';
+			const titleMatch = content.match(/^#\s+(.+)$/m);
+			const title = titleMatch ? titleMatch[1].trim() : path.split('/').pop() || path;
 
-		// Return article directly (consistent with translation-word endpoint)
-		return {
-			title,
-			path, // Clean path without extension (e.g., "translate/figs-metaphor")
-			content: module.markdown || '',
-			metadata: {
-				resourceType: 'ta',
-				subject: result.subject || 'Translation Academy', // ✅ FROM DCS CATALOG
-				language,
-				organization,
-				license: 'CC BY-SA 4.0'
-			}
-		};
-	} else {
-		// Module not found - return 404 with TOC
-		const toc = {
-			type: 'table-of-contents',
-			title: 'Translation Academy',
-			description: 'Translation training modules organized by category',
-			categories: [
-				{
-					id: 'translate',
-					name: 'Translation',
-					description: 'Translation principles and techniques',
-					exampleModules: ['figs-metaphor', 'figs-idiom', 'translate-names', 'translate-unknown'],
-					examplePath: 'translate/figs-metaphor'
-				},
-				{
-					id: 'checking',
-					name: 'Checking',
-					description: 'Quality assurance and verification',
-					exampleModules: ['accuracy-check', 'important-term-check'],
-					examplePath: 'checking/accuracy-check'
-				},
-				{
-					id: 'process',
-					name: 'Process',
-					description: 'Translation workflow and management',
-					exampleModules: ['setup-team', 'platforms'],
-					examplePath: 'process/setup-team'
-				},
-				{
-					id: 'intro',
-					name: 'Introduction',
-					description: 'Getting started with translation',
-					exampleModules: ['ta-intro', 'translation-guidelines'],
-					examplePath: 'intro/ta-intro'
+			// Return article directly (consistent with translation-word endpoint)
+			return {
+				title,
+				path, // Clean path without extension (e.g., "translate/figs-metaphor")
+				content: module.markdown || '',
+				metadata: {
+					resourceType: 'ta',
+					subject: result.subject || 'Translation Academy', // ✅ FROM DCS CATALOG
+					language,
+					organization: 'all',
+					license: 'CC BY-SA 4.0'
 				}
-			],
-			usage: {
-				byPath: '?path=translate/figs-metaphor'
-			},
-			language,
-			organization
-		};
-		const error = new Error(
-			`Translation Academy module not found: ${path}. See available modules in the table of contents.`
-		);
-		(error as any).toc = toc;
-		throw error;
-	}
+			};
+		} else {
+			// Module not found - return 404 with TOC
+			const toc = {
+				type: 'table-of-contents',
+				title: 'Translation Academy',
+				description: 'Translation training modules organized by category',
+				categories: [
+					{
+						id: 'translate',
+						name: 'Translation',
+						description: 'Translation principles and techniques',
+						exampleModules: ['figs-metaphor', 'figs-idiom', 'translate-names', 'translate-unknown'],
+						examplePath: 'translate/figs-metaphor'
+					},
+					{
+						id: 'checking',
+						name: 'Checking',
+						description: 'Quality assurance and verification',
+						exampleModules: ['accuracy-check', 'important-term-check'],
+						examplePath: 'checking/accuracy-check'
+					},
+					{
+						id: 'process',
+						name: 'Process',
+						description: 'Translation workflow and management',
+						exampleModules: ['setup-team', 'platforms'],
+						examplePath: 'process/setup-team'
+					},
+					{
+						id: 'intro',
+						name: 'Introduction',
+						description: 'Getting started with translation',
+						exampleModules: ['ta-intro', 'translation-guidelines'],
+						examplePath: 'intro/ta-intro'
+					}
+				],
+				usage: {
+					byPath: '?path=translate/figs-metaphor'
+				},
+				language,
+				organization: 'all'
+			};
+			const error = new Error(
+				`Translation Academy module not found: ${path}. See available modules in the table of contents.`
+			);
+			(error as any).toc = toc;
+			throw error;
+		}
 	} catch (error) {
 		// Add trace information and TOC to error context
 		const trace = fetcher.getTrace();
@@ -180,7 +187,11 @@ async function fetchTranslationAcademy(
 		const requestedModule = (error as any)?.requestedModule;
 
 		// If this is a "not found" error and no TOC was already attached, add one
-		if (!tocInfo && (errorMessage.toLowerCase().includes('not found') || errorMessage.toLowerCase().includes('no path provided'))) {
+		if (
+			!tocInfo &&
+			(errorMessage.toLowerCase().includes('not found') ||
+				errorMessage.toLowerCase().includes('no path provided'))
+		) {
 			tocInfo = {
 				type: 'table-of-contents',
 				title: 'Translation Academy',
@@ -219,7 +230,7 @@ async function fetchTranslationAcademy(
 					byPath: '?path=translate/figs-metaphor'
 				},
 				language,
-				organization
+				organization: 'all'
 			};
 		}
 
@@ -227,7 +238,7 @@ async function fetchTranslationAcademy(
 		if (tocInfo) {
 			(enhancedError as any).toc = tocInfo;
 		}
-		
+
 		// Re-attach structured data for automatic retry (CRITICAL!)
 		// Always preserve languageVariants if present (for retry)
 		if (languageVariants && languageVariants.length > 0) {
@@ -245,7 +256,7 @@ async function fetchTranslationAcademy(
 		if (requestedModule) {
 			(enhancedError as any).requestedModule = requestedModule;
 		}
-		
+
 		throw enhancedError;
 	}
 }
@@ -257,7 +268,6 @@ export const GET = createSimpleEndpoint({
 	params: [
 		COMMON_PARAMS.path, // ONLY identifier parameter - clean paths without extensions
 		COMMON_PARAMS.language,
-		COMMON_PARAMS.organization,
 		COMMON_PARAMS.topic, // Topic filter for tc-ready resources
 		COMMON_PARAMS.format
 	],
@@ -267,11 +277,13 @@ export const GET = createSimpleEndpoint({
 	onError: createStandardErrorHandler({
 		'No path provided': {
 			status: 400,
-			message: 'No path provided. Please specify a translation academy path (e.g., "translate/figs-metaphor"). Check the table of contents in the response details for available modules.'
+			message:
+				'No path provided. Please specify a translation academy path (e.g., "translate/figs-metaphor"). Check the table of contents in the response details for available modules.'
 		},
 		'Translation Academy module not found': {
 			status: 404,
-			message: 'The requested translation academy module was not found. Check the table of contents in the response details for available modules.'
+			message:
+				'The requested translation academy module was not found. Check the table of contents in the response details for available modules.'
 		},
 		'no longer supported': {
 			status: 400,

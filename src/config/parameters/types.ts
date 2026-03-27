@@ -67,7 +67,7 @@ export interface ParameterGroup {
  */
 export function toZodSchema(param: UnifiedParameterDef): z.ZodType {
   // If custom Zod schema provided, use it — still attach description so MCP / JSON Schema
-  // exposes guidance (e.g. organization) to model clients.
+  // exposes parameter guidance to model clients.
   if (param.zodSchema) {
     return param.zodSchema().describe(param.description);
   }

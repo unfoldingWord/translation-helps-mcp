@@ -33,7 +33,8 @@ const DEFAULT_PROTOCOL_VERSION = '2024-11-05';
 const corsHeaders: Record<string, string> = {
 	'Access-Control-Allow-Origin': '*',
 	'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-	'Access-Control-Allow-Headers': 'Content-Type, Authorization, mcp-protocol-version, MCP-Protocol-Version, MCP-Session-Id',
+	'Access-Control-Allow-Headers':
+		'Content-Type, Authorization, mcp-protocol-version, MCP-Protocol-Version, MCP-Session-Id',
 	'Access-Control-Expose-Headers': 'MCP-Session-Id',
 	'Access-Control-Max-Age': '86400'
 };
@@ -96,14 +97,12 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 					}
 				};
 				// Session ID per Streamable HTTP spec (stateless: we don't store sessions)
-				const sessionId = typeof crypto !== 'undefined' && crypto.randomUUID
-					? crypto.randomUUID()
-					: `sess-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+				const sessionId =
+					typeof crypto !== 'undefined' && crypto.randomUUID
+						? crypto.randomUUID()
+						: `sess-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 				const headers = { ...corsHeaders, 'MCP-Session-Id': sessionId };
-				return json(
-					{ jsonrpc: '2.0', result: initResult, id: id ?? 0 },
-					{ headers }
-				);
+				return json({ jsonrpc: '2.0', result: initResult, id: id ?? 0 }, { headers });
 			}
 
 			case 'tools/list': {
@@ -199,80 +198,100 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 							args: args
 						});
 					}
-					
+
 					// Build error response with helpful details for AI agents
 					const errorData: any = {
 						code: -32000,
 						message: error instanceof Error ? error.message : 'Tool execution failed'
 					};
-					
+
 					// Include structured recovery data for AI agents
 					const errorObj = error as any;
-					
+
 					// Check for validBookCodes (direct on error or in details)
 					if (errorObj?.validBookCodes) {
 						errorData.data = {
 							validBookCodes: errorObj.validBookCodes,
 							invalidCode: errorObj.invalidCode
 						};
-						console.log(`[MCP ENDPOINT] Including ${errorObj.validBookCodes.length} valid book codes in error response`);
+						console.log(
+							`[MCP ENDPOINT] Including ${errorObj.validBookCodes.length} valid book codes in error response`
+						);
 					} else if (errorObj?.details?.validBookCodes) {
 						errorData.data = {
 							validBookCodes: errorObj.details.validBookCodes,
 							invalidCode: errorObj.details.invalidCode
 						};
-						console.log(`[MCP ENDPOINT] Including ${errorObj.details.validBookCodes.length} valid book codes from error.details`);
+						console.log(
+							`[MCP ENDPOINT] Including ${errorObj.details.validBookCodes.length} valid book codes from error.details`
+						);
 					}
-					
+
 					// Check for languageVariants (direct on error or in details)
 					if (errorObj?.languageVariants) {
 						if (!errorData.data) errorData.data = {};
 						errorData.data.languageVariants = errorObj.languageVariants;
 						errorData.data.requestedLanguage = errorObj.requestedLanguage;
-						console.log(`[MCP ENDPOINT] ✅ Including ${errorObj.languageVariants.length} language variants in error response:`, errorObj.languageVariants);
+						console.log(
+							`[MCP ENDPOINT] ✅ Including ${errorObj.languageVariants.length} language variants in error response:`,
+							errorObj.languageVariants
+						);
 					} else if (errorObj?.details?.languageVariants) {
 						if (!errorData.data) errorData.data = {};
 						errorData.data.languageVariants = errorObj.details.languageVariants;
 						errorData.data.requestedLanguage = errorObj.details.requestedLanguage;
-						console.log(`[MCP ENDPOINT] ✅ Including ${errorObj.details.languageVariants.length} language variants from error.details:`, errorObj.details.languageVariants);
+						console.log(
+							`[MCP ENDPOINT] ✅ Including ${errorObj.details.languageVariants.length} language variants from error.details:`,
+							errorObj.details.languageVariants
+						);
 					}
-					
-				// Check for availableBooks (when book not found but language is valid)
-				if (errorObj?.availableBooks) {
-					if (!errorData.data) errorData.data = {};
-					errorData.data.availableBooks = errorObj.availableBooks;
-					errorData.data.requestedBook = errorObj.requestedBook;
-					errorData.data.language = errorObj.language;
-					console.log(`[MCP ENDPOINT] ✅ Including ${errorObj.availableBooks.length} available books in error response`);
-				} else if (errorObj?.details?.availableBooks) {
-					if (!errorData.data) errorData.data = {};
-					errorData.data.availableBooks = errorObj.details.availableBooks;
-					errorData.data.requestedBook = errorObj.details.requestedBook;
-					errorData.data.language = errorObj.details.language;
-					console.log(`[MCP ENDPOINT] ✅ Including ${errorObj.details.availableBooks.length} available books from error.details`);
-				}
-				
-				// Check for verseNotFound (when verse doesn't exist)
-				if (errorObj?.verseNotFound || errorObj?.details?.verseNotFound) {
-					if (!errorData.data) errorData.data = {};
-					errorData.data.verseNotFound = true;
-					errorData.data.requestedBook = errorObj.requestedBook || errorObj?.details?.requestedBook;
-					errorData.data.chapter = errorObj.chapter || errorObj?.details?.chapter;
-					errorData.data.verse = errorObj.verse || errorObj?.details?.verse;
-					errorData.data.language = errorObj.language || errorObj?.details?.language;
-					errorData.data.explicitError = 'VERSE_DOES_NOT_EXIST';
-					console.log(`[MCP ENDPOINT] ✅ Including verseNotFound details: ${errorData.data.requestedBook} ${errorData.data.chapter}:${errorData.data.verse}`);
-				}
-				
-				// Check for hasContextOnly (when only contextual notes available)
-				if (errorObj?.hasContextOnly || errorObj?.details?.hasContextOnly) {
-					if (!errorData.data) errorData.data = {};
-					errorData.data.hasContextOnly = true;
-					errorData.data.contextNotesCount = errorObj.contextNotesCount || errorObj?.details?.contextNotesCount;
-					console.log(`[MCP ENDPOINT] ✅ Including hasContextOnly flag with ${errorData.data.contextNotesCount} context notes`);
-				}
-				
-				// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
+
+					// Check for availableBooks (when book not found but language is valid)
+					if (errorObj?.availableBooks) {
+						if (!errorData.data) errorData.data = {};
+						errorData.data.availableBooks = errorObj.availableBooks;
+						errorData.data.requestedBook = errorObj.requestedBook;
+						errorData.data.language = errorObj.language;
+						console.log(
+							`[MCP ENDPOINT] ✅ Including ${errorObj.availableBooks.length} available books in error response`
+						);
+					} else if (errorObj?.details?.availableBooks) {
+						if (!errorData.data) errorData.data = {};
+						errorData.data.availableBooks = errorObj.details.availableBooks;
+						errorData.data.requestedBook = errorObj.details.requestedBook;
+						errorData.data.language = errorObj.details.language;
+						console.log(
+							`[MCP ENDPOINT] ✅ Including ${errorObj.details.availableBooks.length} available books from error.details`
+						);
+					}
+
+					// Check for verseNotFound (when verse doesn't exist)
+					if (errorObj?.verseNotFound || errorObj?.details?.verseNotFound) {
+						if (!errorData.data) errorData.data = {};
+						errorData.data.verseNotFound = true;
+						errorData.data.requestedBook =
+							errorObj.requestedBook || errorObj?.details?.requestedBook;
+						errorData.data.chapter = errorObj.chapter || errorObj?.details?.chapter;
+						errorData.data.verse = errorObj.verse || errorObj?.details?.verse;
+						errorData.data.language = errorObj.language || errorObj?.details?.language;
+						errorData.data.explicitError = 'VERSE_DOES_NOT_EXIST';
+						console.log(
+							`[MCP ENDPOINT] ✅ Including verseNotFound details: ${errorData.data.requestedBook} ${errorData.data.chapter}:${errorData.data.verse}`
+						);
+					}
+
+					// Check for hasContextOnly (when only contextual notes available)
+					if (errorObj?.hasContextOnly || errorObj?.details?.hasContextOnly) {
+						if (!errorData.data) errorData.data = {};
+						errorData.data.hasContextOnly = true;
+						errorData.data.contextNotesCount =
+							errorObj.contextNotesCount || errorObj?.details?.contextNotesCount;
+						console.log(
+							`[MCP ENDPOINT] ✅ Including hasContextOnly flag with ${errorData.data.contextNotesCount} context notes`
+						);
+					}
+
+					// Always return JSON-RPC 2.0 format for MCP Inspector compatibility
 					return json(
 						{
 							jsonrpc: '2.0',
@@ -590,6 +609,24 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 					);
 				}
 
+				for (const arg of prompt.arguments) {
+					if (!arg.required) continue;
+					const v = args[arg.name];
+					if (v === undefined || v === null || String(v).trim() === '') {
+						return json(
+							{
+								jsonrpc: '2.0',
+								error: {
+									code: ErrorCode.InvalidParams,
+									message: `Missing required prompt argument: ${arg.name}`
+								},
+								id: id ?? 0
+							},
+							{ status: 400, headers: corsHeaders }
+						);
+					}
+				}
+
 				// Get prompt template from registry
 				const templateText = getPromptTemplate(name, args);
 
@@ -649,7 +686,7 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 		// Determine appropriate HTTP status code based on MCP error code
 		let httpStatus = 500; // Default to Internal Server Error
 		const mcpErrorCode = error instanceof McpError ? error.code : -32603;
-		
+
 		// Map MCP error codes to HTTP status codes for better semantic correctness
 		switch (mcpErrorCode) {
 			case ErrorCode.MethodNotFound: // -32601
@@ -682,7 +719,7 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 };
 
 // GET: Streamable HTTP — return 200 + minimal SSE stream (or legacy ?method= JSON).
-export const GET: RequestHandler = async ({ request, url }) => {
+export const GET: RequestHandler = async ({ url }) => {
 	const method = url.searchParams.get('method');
 
 	// Legacy convenience: GET ?method=tools/list or ?method=prompts/list (return JSON)

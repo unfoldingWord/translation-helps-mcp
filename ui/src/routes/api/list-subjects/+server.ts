@@ -12,13 +12,12 @@ import { handleListSubjects } from '$lib/../../../src/tools/listSubjects.js';
 /**
  * Fetch subjects from catalog
  */
-async function fetchSubjects(params: Record<string, any>, request: Request): Promise<any> {
-	const { language, organization, stage, topic } = params;
+async function fetchSubjects(params: Record<string, any>, _request: Request): Promise<any> {
+	const { language, stage, topic } = params;
 
 	// Call the tool handler
 	const result = await handleListSubjects({
 		language,
-		organization,
 		stage: stage || 'prod',
 		topic: topic || 'tc-ready'
 	});
@@ -46,7 +45,6 @@ export const GET = createSimpleEndpoint({
 	// Parameters
 	params: [
 		COMMON_PARAMS.language,
-		COMMON_PARAMS.organization,
 		{
 			name: 'stage',
 			required: false,

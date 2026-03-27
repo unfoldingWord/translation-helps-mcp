@@ -17,7 +17,6 @@ async function hit(qs) {
 const cases = [
 	`reference=${encodeURIComponent(ref)}&language=es`,
 	`reference=${encodeURIComponent(ref)}&language=es-419`,
-	`reference=${encodeURIComponent(ref)}&language=es&organization=`,
 	`reference=${encodeURIComponent(ref)}&language=es_lat`,
 	`reference=${encodeURIComponent(ref)}&language=es-ES`,
 ];

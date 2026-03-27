@@ -20,38 +20,99 @@ export interface MCPResponse {
   isError?: boolean;
 }
 
+/** Strip leading slashes and optional `api/` so callers can pass `list-languages` or `/api/list-languages`. */
+function normalizeApiPath(endpoint: string): string {
+  let path = endpoint.trim().replace(/^\/+/, "");
+  if (path.startsWith("api/")) {
+    path = path.slice(4);
+  }
+  return path;
+}
+
 export class TestClient {
   private baseUrl: string;
 
-  constructor(baseUrl: string = 'http://localhost:8174') {
+  constructor(baseUrl: string = "http://localhost:8174") {
     this.baseUrl = baseUrl;
   }
 
   /**
-   * Call a REST API endpoint
+   * Call a REST API endpoint (throws if response is not OK)
    */
   async callREST(
     endpoint: string,
-    params: Record<string, any> = {}
+    params: Record<string, any> = {},
   ): Promise<any> {
-    const url = new URL(`${this.baseUrl}/api/${endpoint}`);
-    
+    const path = normalizeApiPath(endpoint);
+    const url = new URL(`${this.baseUrl}/api/${path}`);
+
     // Add query parameters
     Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
+      if (value !== undefined && value !== null && value !== "") {
         url.searchParams.set(key, String(value));
       }
     });
 
     const response = await fetch(url.toString());
-    
+
     if (!response.ok) {
       throw new Error(
-        `REST API error: ${response.status} ${response.statusText} - ${await response.text()}`
+        `REST API error: ${response.status} ${response.statusText} - ${await response.text()}`,
       );
     }
 
-    return await response.json();
+    const contentType = response.headers.get("content-type") || "";
+    const bodyText = await response.text();
+    if (contentType.includes("application/json")) {
+      try {
+        return JSON.parse(bodyText);
+      } catch {
+        return bodyText;
+      }
+    }
+    if (
+      contentType.includes("text/markdown") ||
+      contentType.includes("text/plain")
+    ) {
+      return bodyText;
+    }
+    try {
+      return JSON.parse(bodyText);
+    } catch {
+      return bodyText;
+    }
+  }
+
+  /**
+   * REST call that returns status + parsed body without throwing on 4xx/5xx.
+   * Use in tests that assert on HTTP status codes.
+   */
+  async callRESTRaw(
+    endpoint: string,
+    params: Record<string, any> = {},
+  ): Promise<{ status: number; data: any }> {
+    const path = normalizeApiPath(endpoint);
+    const url = new URL(`${this.baseUrl}/api/${path}`);
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        url.searchParams.set(key, String(value));
+      }
+    });
+
+    const response = await fetch(url.toString());
+    const contentType = response.headers.get("content-type") || "";
+    let data: any;
+    if (contentType.includes("application/json")) {
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+    } else {
+      data = await response.text();
+    }
+    return { status: response.status, data };
   }
 
   /**
@@ -59,17 +120,17 @@ export class TestClient {
    */
   async callMCPTool(tool: MCPToolCall): Promise<MCPResponse> {
     const response = await fetch(`${this.baseUrl}/api/mcp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        jsonrpc: '2.0',
+        jsonrpc: "2.0",
         id: 1,
-        method: 'tools/call',
+        method: "tools/call",
         params: {
           name: tool.name,
-          arguments: tool.arguments
-        }
-      })
+          arguments: tool.arguments,
+        },
+      }),
     });
 
     const data = await response.json();
@@ -86,17 +147,17 @@ export class TestClient {
    */
   async callMCPPrompt(prompt: MCPPromptCall): Promise<MCPResponse> {
     const response = await fetch(`${this.baseUrl}/api/mcp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        jsonrpc: '2.0',
+        jsonrpc: "2.0",
         id: 1,
-        method: 'prompts/get',
+        method: "prompts/get",
         params: {
           name: prompt.name,
-          arguments: prompt.arguments || {}
-        }
-      })
+          arguments: prompt.arguments || {},
+        },
+      }),
     });
 
     const data = await response.json();
@@ -105,7 +166,24 @@ export class TestClient {
       throw new Error(`MCP Prompt error: ${JSON.stringify(data.error)}`);
     }
 
-    return data.result as MCPResponse;
+    const result = data.result as MCPResponse & {
+      messages?: Array<{ content?: { type?: string; text?: string } | string }>;
+    };
+    // Bridge returns MCP-style `messages`; normalize to `content` for tests and extractMCPText
+    if (result?.messages?.length && !result.content) {
+      result.content = result.messages.map((m) => {
+        const inner = m.content;
+        const text =
+          typeof inner === "string"
+            ? inner
+            : inner && typeof inner === "object" && inner.text != null
+              ? String(inner.text)
+              : "";
+        return { type: "text", text };
+      });
+    }
+
+    return result as MCPResponse;
   }
 
   /**
@@ -113,13 +191,13 @@ export class TestClient {
    */
   async listMCPTools(): Promise<Array<{ name: string; description: string }>> {
     const response = await fetch(`${this.baseUrl}/api/mcp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        jsonrpc: '2.0',
+        jsonrpc: "2.0",
         id: 1,
-        method: 'tools/list'
-      })
+        method: "tools/list",
+      }),
     });
 
     const data = await response.json();
@@ -129,15 +207,17 @@ export class TestClient {
   /**
    * List available MCP prompts
    */
-  async listMCPPrompts(): Promise<Array<{ name: string; description: string }>> {
+  async listMCPPrompts(): Promise<
+    Array<{ name: string; description: string }>
+  > {
     const response = await fetch(`${this.baseUrl}/api/mcp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        jsonrpc: '2.0',
+        jsonrpc: "2.0",
         id: 1,
-        method: 'prompts/list'
-      })
+        method: "prompts/list",
+      }),
     });
 
     const data = await response.json();
@@ -161,12 +241,12 @@ export class TestClient {
    */
   async waitForServer(timeoutMs: number = 30000): Promise<void> {
     const startTime = Date.now();
-    
+
     while (Date.now() - startTime < timeoutMs) {
       if (await this.healthCheck()) {
         return;
       }
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
     throw new Error(`Server not ready after ${timeoutMs}ms`);
@@ -174,12 +254,40 @@ export class TestClient {
 }
 
 /**
- * Parse MCP text response to extract content
+ * Parse MCP tool or prompt result to plain text (supports `content` or `messages` shapes).
  */
-export function extractMCPText(response: MCPResponse): string {
-  return response.content
-    .map(c => c.text)
-    .join('\n');
+export function extractMCPText(
+  response:
+    | MCPResponse
+    | { messages?: Array<{ content?: { text?: string } | string }> },
+): string {
+  const r = response as MCPResponse & {
+    messages?: Array<{ content?: { text?: string } | string }>;
+  };
+  if (Array.isArray(r.content) && r.content.length > 0) {
+    return r.content
+      .map((c) => (c?.text != null ? String(c.text) : ""))
+      .join("\n");
+  }
+  if (Array.isArray(r.messages)) {
+    return r.messages
+      .map((m) => {
+        const c = m?.content;
+        if (typeof c === "string") return c;
+        if (
+          c &&
+          typeof c === "object" &&
+          "text" in c &&
+          (c as { text: string }).text != null
+        ) {
+          return String((c as { text: string }).text);
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+  return "";
 }
 
 /**
@@ -191,7 +299,7 @@ export function compareResponses(
   options: {
     ignoreFormatting?: boolean;
     ignoreOrder?: boolean;
-  } = {}
+  } = {},
 ): { equivalent: boolean; differences: string[] } {
   const differences: string[] = [];
 
@@ -200,51 +308,53 @@ export function compareResponses(
 
   // Basic checks
   if (!restResponse) {
-    differences.push('REST response is empty');
+    differences.push("REST response is empty");
   }
 
   if (!mcpText) {
-    differences.push('MCP response is empty');
+    differences.push("MCP response is empty");
   }
 
   // Type checking
   const restType = typeof restResponse;
-  const mcpIsObject = mcpText.startsWith('{') || mcpText.startsWith('[');
+  const mcpIsObject = mcpText.startsWith("{") || mcpText.startsWith("[");
 
-  if (restType === 'object' && !mcpIsObject) {
+  if (restType === "object" && !mcpIsObject) {
     // REST returned object, MCP returned formatted text (expected for some tools)
     // This is OK if MCP is using textExtractor
     return { equivalent: true, differences: [] };
   }
 
   // For objects, try to parse MCP text as JSON and compare
-  if (restType === 'object' && mcpIsObject) {
+  if (restType === "object" && mcpIsObject) {
     try {
       const mcpObject = JSON.parse(mcpText);
       const restKeys = Object.keys(restResponse);
       const mcpKeys = Object.keys(mcpObject);
 
       // Check for missing keys
-      restKeys.forEach(key => {
+      restKeys.forEach((key) => {
         if (!mcpKeys.includes(key)) {
           differences.push(`MCP missing key: ${key}`);
         }
       });
 
-      mcpKeys.forEach(key => {
+      mcpKeys.forEach((key) => {
         if (!restKeys.includes(key)) {
           differences.push(`REST missing key: ${key}`);
         }
       });
 
       // Check for value differences
-      restKeys.forEach(key => {
+      restKeys.forEach((key) => {
         if (mcpKeys.includes(key)) {
           const restValue = JSON.stringify(restResponse[key]);
           const mcpValue = JSON.stringify(mcpObject[key]);
-          
+
           if (restValue !== mcpValue && !options.ignoreFormatting) {
-            differences.push(`Value mismatch for '${key}': REST=${restValue.slice(0, 100)}, MCP=${mcpValue.slice(0, 100)}`);
+            differences.push(
+              `Value mismatch for '${key}': REST=${restValue.slice(0, 100)}, MCP=${mcpValue.slice(0, 100)}`,
+            );
           }
         }
       });
@@ -255,6 +365,6 @@ export function compareResponses(
 
   return {
     equivalent: differences.length === 0,
-    differences
+    differences,
   };
 }

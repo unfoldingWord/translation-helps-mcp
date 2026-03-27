@@ -12,14 +12,12 @@ import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
-import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
-import { UnifiedResourceFetcher, type TWArticleResult } from '$lib/unifiedResourceFetcher.js';
-import { parseRCLink, extractTerm, isRCLink } from '$lib/rcLinkParser.js';
+import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
 
 /**
  * Generate Table of Contents when no specific term is requested
  */
-function generateTableOfContents(language: string, organization: string) {
+function generateTableOfContents(language: string) {
 	return {
 		type: 'table-of-contents',
 		title: 'Translation Words',
@@ -53,12 +51,12 @@ function generateTableOfContents(language: string, organization: string) {
 			byPath: '?path=bible/kt/love.md'
 		},
 		language,
-		organization
+		organization: 'all'
 	};
 }
 
 async function getTranslationWord(params: Record<string, any>, request: Request): Promise<any> {
-	const { path, language = 'en', organization, topic } = params;
+	const { path, language = 'en', topic } = params;
 
 	// Check for deprecated parameters in the raw URL and provide helpful error
 	const url = new URL(request.url);
@@ -77,8 +75,10 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 
 	// If no path provided, return 404 with Table of Contents for discovery
 	if (!path) {
-		const toc = generateTableOfContents(language, organization);
-		const error = new Error('No path provided. Please specify a translation word path (e.g., "bible/kt/love").');
+		const toc = generateTableOfContents(language);
+		const error = new Error(
+			'No path provided. Please specify a translation word path (e.g., "bible/kt/love").'
+		);
 		(error as any).toc = toc;
 		throw error;
 	}
@@ -88,7 +88,7 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 		return {
 			debug: true,
 			message: 'Debug mode active - returning diagnostic info',
-			params: { path, language, organization, topic },
+			params: { path, language, topic },
 			timestamp: new Date().toISOString()
 		};
 	}
@@ -105,9 +105,15 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 			debugTrace.push({
 				step: 3,
 				message: 'Calling fetchTranslationWord',
-				params: { path: 'bible/kt/love', language, organization }
+				params: { path: 'bible/kt/love', language }
 			});
-			const result = await fetcher.fetchTranslationWord('love', language, organization, 'bible/kt/love.md', topic);
+			const result = await fetcher.fetchTranslationWord(
+				'love',
+				language,
+				undefined,
+				'bible/kt/love.md',
+				topic
+			);
 
 			debugTrace.push({ step: 4, message: 'Success!', result });
 			return {
@@ -147,11 +153,13 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 	try {
 		// Use the existing fetchTranslationWord method from UnifiedResourceFetcher
 		// Pass the path directly (without .md) as the identifier
-		const result = await fetcher.fetchTranslationWord(wordKey, language, organization, path, topic);
+		const result = await fetcher.fetchTranslationWord(wordKey, language, undefined, path, topic);
 
 		if (!result || !result.content) {
-			const toc = generateTableOfContents(language, organization);
-			const error = new Error(`Translation word not found: ${wordKey}. See available terms in the table of contents.`);
+			const toc = generateTableOfContents(language);
+			const error = new Error(
+				`Translation word not found: ${wordKey}. See available terms in the table of contents.`
+			);
 			(error as any).toc = toc;
 			throw error;
 		}
@@ -186,12 +194,6 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 		const categoryMatch = result.path?.match(/bible\/(kt|names|other)\//);
 		const categoryKey = categoryMatch ? categoryMatch[1] : searchCategory || 'other';
 
-		const categoryNames: Record<string, string> = {
-			kt: 'Key Terms',
-			names: 'Names',
-			other: 'Other'
-		};
-
 		// Return single article directly (not wrapped in items array)
 		// This makes it consistent with translation-academy endpoint
 		const article = {
@@ -204,7 +206,7 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 				resourceType: 'tw',
 				subject: result.subject || 'Translation Words', // ✅ FROM DCS CATALOG
 				language,
-				organization,
+				organization: 'all',
 				license: 'CC BY-SA 4.0'
 			}
 		};
@@ -223,8 +225,12 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 		const requestedTerm = (error as any)?.requestedTerm;
 
 		// If this is a "not found" error and no TOC was already attached, add one
-		if (!tocInfo && (errorMessage.toLowerCase().includes('not found') || errorMessage.toLowerCase().includes('no path provided'))) {
-			tocInfo = generateTableOfContents(language, organization);
+		if (
+			!tocInfo &&
+			(errorMessage.toLowerCase().includes('not found') ||
+				errorMessage.toLowerCase().includes('no path provided'))
+		) {
+			tocInfo = generateTableOfContents(language);
 		}
 
 		const enhancedError = new Error(`${errorMessage} (Trace: ${JSON.stringify(trace)})`);
@@ -234,7 +240,7 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 		if (tocInfo) {
 			(enhancedError as any).toc = tocInfo;
 		}
-		
+
 		// Re-attach structured data for automatic retry (CRITICAL!)
 		// Always preserve languageVariants if present (for retry)
 		if (languageVariants && languageVariants.length > 0) {
@@ -248,7 +254,7 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 		if (requestedTerm) {
 			(enhancedError as any).requestedTerm = requestedTerm;
 		}
-		
+
 		throw enhancedError;
 	}
 }
@@ -259,7 +265,6 @@ export const GET = createSimpleEndpoint({
 	params: [
 		COMMON_PARAMS.path, // ONLY identifier parameter - clean paths without .md
 		COMMON_PARAMS.language,
-		COMMON_PARAMS.organization,
 		COMMON_PARAMS.category, // Filter by category (kt, names, other)
 		COMMON_PARAMS.topic, // Topic filter for tc-ready resources
 		COMMON_PARAMS.format
@@ -270,11 +275,13 @@ export const GET = createSimpleEndpoint({
 	onError: createStandardErrorHandler({
 		'No path provided': {
 			status: 400,
-			message: 'No path provided. Please specify a translation word path (e.g., "bible/kt/love"). Check the table of contents in the response details for available terms.'
+			message:
+				'No path provided. Please specify a translation word path (e.g., "bible/kt/love"). Check the table of contents in the response details for available terms.'
 		},
 		'Translation word not found': {
 			status: 404,
-			message: 'The requested translation word was not found. Check the table of contents in the response details for available terms.'
+			message:
+				'The requested translation word was not found. Check the table of contents in the response details for available terms.'
 		},
 		'no longer supported': {
 			status: 400,

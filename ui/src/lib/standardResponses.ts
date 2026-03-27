@@ -37,6 +37,11 @@ export interface StandardMetadata {
 	filteredBy?: Record<string, any>;
 	/** Circuit breaker state if applicable */
 	circuitBreakerState?: string;
+	/** Pinned org had no catalog matches; body uses all-org discovery (see per-item citation.organization) */
+	organizationFallback?: {
+		requestedOrganization: string;
+		note: string;
+	};
 }
 
 /**
@@ -84,11 +89,7 @@ export function createScriptureResponse(
 	// Don't include organization at top level when fetching from multiple sources
 	// Each scripture has its own citation.organization field for accuracy
 	const organizations = Array.from(
-		new Set(
-			scripture
-				.map((s) => s.citation?.organization || s.organization)
-				.filter(Boolean)
-		)
+		new Set(scripture.map((s) => s.citation?.organization || s.organization).filter(Boolean))
 	);
 	const organization =
 		organizations.length === 1
@@ -97,10 +98,6 @@ export function createScriptureResponse(
 				? 'multiple'
 				: undefined;
 	const reference = additionalMetadata?.reference || scripture[0]?.reference || '';
-
-	// Extract real metadata from first scripture with metadata
-	const firstWithMetadata = scripture.find((s) => s.metadata);
-	const realMetadata = firstWithMetadata?.metadata || {};
 
 	// Clean up scripture items - keep citation for per-resource metadata
 	const cleanScripture = scripture.map((s) => ({
@@ -141,6 +138,9 @@ export function createScriptureResponse(
 			resources: [...new Set(scripture.map((s) => s.resource || s.translation))].filter(Boolean),
 			...(organizations.length > 1 && {
 				organizations: organizations
+			}),
+			...(additionalMetadata?.organizationFallback && {
+				organizationFallback: additionalMetadata.organizationFallback
 			})
 		}
 	};

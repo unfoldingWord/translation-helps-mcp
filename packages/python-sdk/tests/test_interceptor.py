@@ -48,33 +48,31 @@ class TestContextManager:
     def test_clear_all_values(self):
         """Test clearing all values."""
         self.context_manager.set('language', 'en')
-        self.context_manager.set('organization', 'unfoldingWord')
+        self.context_manager.set('stage', 'prod')
         self.context_manager.clear()
         assert self.context_manager.has('language') is False
-        assert self.context_manager.has('organization') is False
+        assert self.context_manager.has('stage') is False
     
     def test_get_all_values(self):
         """Test getting all values."""
         self.context_manager.set('language', 'en')
-        self.context_manager.set('organization', 'unfoldingWord')
+        self.context_manager.set('stage', 'prod')
         all_values = self.context_manager.get_all()
         assert all_values == {
             'language': 'en',
-            'organization': 'unfoldingWord'
+            'stage': 'prod'
         }
     
     def test_set_many_values(self):
         """Test batch setting multiple values."""
         results = self.context_manager.set_many({
             'language': 'en',
-            'organization': 'unfoldingWord',
             'stage': 'prod'
         })
         assert results['language'] is True
-        assert results['organization'] is True
         assert results['stage'] is True
         assert self.context_manager.get('language') == 'en'
-        assert self.context_manager.get('organization') == 'unfoldingWord'
+        assert self.context_manager.get('stage') == 'prod'
     
     def test_validation_accepts_valid_values(self):
         """Test that validation accepts valid language codes."""
@@ -111,8 +109,8 @@ class TestStateInjectionInterceptor:
         self.interceptor = StateInjectionInterceptor(
             self.context_manager,
             {
-                'fetch_scripture': ['language', 'organization', 'stage'],
-                'fetch_translation_notes': ['language', 'organization'],
+                'fetch_scripture': ['language', 'stage'],
+                'fetch_translation_notes': ['language', 'stage'],
                 'list_languages': []
             },
             InterceptorOptions(debug=False)
@@ -121,7 +119,7 @@ class TestStateInjectionInterceptor:
     def test_inject_missing_parameters(self):
         """Test injecting missing parameters from context."""
         self.context_manager.set('language', 'en')
-        self.context_manager.set('organization', 'unfoldingWord')
+        self.context_manager.set('stage', 'prod')
         
         result = self.interceptor.intercept('fetch_scripture', {
             'reference': 'John 3:16'
@@ -131,11 +129,11 @@ class TestStateInjectionInterceptor:
         assert result.arguments == {
             'reference': 'John 3:16',
             'language': 'en',
-            'organization': 'unfoldingWord'
+            'stage': 'prod'
         }
         assert result.injected == {
             'language': 'en',
-            'organization': 'unfoldingWord'
+            'stage': 'prod'
         }
     
     def test_no_injection_when_parameters_provided(self):
@@ -172,36 +170,36 @@ class TestStateInjectionInterceptor:
     
     def test_sync_explicit_parameters_to_context(self):
         """Test syncing explicitly-provided parameters to context."""
-        result = self.interceptor.intercept('fetch_scripture', {
+        result = self.interceptor.intercept('fetch_translation_notes', {
             'reference': 'John 3:16',
             'language': 'es-419',
-            'organization': 'door43'
+            'stage': 'prod'
         })
         
         assert result.modified is True
         assert result.synced == {
             'language': 'es-419',
-            'organization': 'door43'
+            'stage': 'prod'
         }
         assert self.context_manager.get('language') == 'es-419'
-        assert self.context_manager.get('organization') == 'door43'
+        assert self.context_manager.get('stage') == 'prod'
     
     def test_sync_and_inject_in_same_call(self):
         """Test syncing and injecting in the same call."""
-        self.context_manager.set('organization', 'unfoldingWord')
+        self.context_manager.set('stage', 'prod')
         
         result = self.interceptor.intercept('fetch_scripture', {
             'reference': 'John 3:16',
             'language': 'en'  # New language to sync
-            # organization missing - will be injected
+            # stage missing - will be injected
         })
         
         assert result.synced == {'language': 'en'}
-        assert result.injected == {'organization': 'unfoldingWord'}
+        assert result.injected == {'stage': 'prod'}
         assert result.arguments == {
             'reference': 'John 3:16',
             'language': 'en',
-            'organization': 'unfoldingWord'
+            'stage': 'prod'
         }
     
     def test_validation_failure_during_sync(self):
@@ -312,14 +310,16 @@ class TestStateInjectionInterceptor:
     def test_handle_empty_arguments_object(self):
         """Test handling empty arguments object."""
         self.context_manager.set('language', 'en')
+        self.context_manager.set('stage', 'prod')
         
         result = self.interceptor.intercept('fetch_scripture', {})
         
-        assert result.injected == {'language': 'en'}
+        assert result.injected == {'language': 'en', 'stage': 'prod'}
     
     def test_does_not_modify_original_arguments(self):
         """Test that original arguments object is not modified."""
         self.context_manager.set('language', 'en')
+        self.context_manager.set('stage', 'prod')
         
         original_args = {'reference': 'John 3:16'}
         result = self.interceptor.intercept('fetch_scripture', original_args)

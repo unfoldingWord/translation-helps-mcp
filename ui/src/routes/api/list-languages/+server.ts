@@ -5,19 +5,16 @@
  */
 
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
-import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { handleListLanguages } from '$lib/../../../src/tools/listLanguages.js';
 
 /**
  * Fetch languages from catalog
  */
-async function fetchLanguages(params: Record<string, any>, request: Request): Promise<any> {
-	const { organization, stage } = params;
+async function fetchLanguages(params: Record<string, any>, _request: Request): Promise<any> {
+	const { stage } = params;
 
-	// Call the tool handler
 	const result = await handleListLanguages({
-		organization,
 		stage: stage || 'prod'
 	});
 
@@ -43,7 +40,6 @@ export const GET = createSimpleEndpoint({
 
 	// Parameters
 	params: [
-		COMMON_PARAMS.organization,
 		{
 			name: 'stage',
 			required: false,

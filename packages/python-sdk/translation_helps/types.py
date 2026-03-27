@@ -27,7 +27,6 @@ class ClientOptions(TypedDict, total=False):
 class FetchScriptureOptions(TypedDict, total=False):
     reference: str
     language: Optional[str]
-    organization: Optional[str]
     format: Optional[str]  # 'text' or 'usfm'
     includeVerseNumbers: Optional[bool]
     resource: Optional[str]  # 'ult', 'ust', 't4t', 'ueb', 'all', or comma-separated (e.g., 'ult,ust')
@@ -37,7 +36,6 @@ class FetchScriptureOptions(TypedDict, total=False):
 class FetchTranslationNotesOptions(TypedDict, total=False):
     reference: str
     language: Optional[str]
-    organization: Optional[str]
     includeIntro: Optional[bool]
     includeContext: Optional[bool]
 
@@ -45,21 +43,18 @@ class FetchTranslationNotesOptions(TypedDict, total=False):
 class FetchTranslationQuestionsOptions(TypedDict, total=False):
     reference: str
     language: Optional[str]
-    organization: Optional[str]
 
 
 class FetchTranslationWordOptions(TypedDict, total=False):
     reference: Optional[str]
     term: Optional[str]
     language: Optional[str]
-    organization: Optional[str]
     category: Optional[str]  # 'kt', 'names', or 'other'
 
 
 class FetchTranslationWordLinksOptions(TypedDict, total=False):
     reference: str
     language: Optional[str]
-    organization: Optional[str]
 
 
 class FetchTranslationAcademyOptions(TypedDict, total=False):
@@ -68,24 +63,20 @@ class FetchTranslationAcademyOptions(TypedDict, total=False):
     moduleId: Optional[str]
     path: Optional[str]
     language: Optional[str]
-    organization: Optional[str]
     format: Optional[str]  # 'json' or 'markdown'
 
 
 class ListLanguagesOptions(TypedDict, total=False):
-    organization: Optional[str]
     stage: Optional[str]
 
 
 class ListSubjectsOptions(TypedDict, total=False):
     language: Optional[str]
-    organization: Optional[str]
     stage: Optional[str]
 
 
 class ListResourcesForLanguageOptions(TypedDict, total=False):
     language: str  # Required
-    organization: Optional[str]
     stage: Optional[str]
     subject: Optional[str]
     limit: Optional[int]

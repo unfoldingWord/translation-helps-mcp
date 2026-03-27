@@ -14,15 +14,15 @@ async function testEndpoint() {
   const testCases = [
     {
       name: "Test 1: Basic request with defaults",
-      url: `${baseUrl}/api/list-resources-by-language?organization=unfoldingWord&stage=prod&limit=20`,
+      url: `${baseUrl}/api/list-resources-by-language?stage=prod&limit=20`,
     },
     {
       name: "Test 2: With specific subjects",
-      url: `${baseUrl}/api/list-resources-by-language?subjects=Translation Words,Bible&organization=unfoldingWord&stage=prod&limit=30`,
+      url: `${baseUrl}/api/list-resources-by-language?subjects=Translation Words,Bible&stage=prod&limit=30`,
     },
     {
       name: "Test 3: Format=json explicitly",
-      url: `${baseUrl}/api/list-resources-by-language?organization=unfoldingWord&stage=prod&limit=15&format=json`,
+      url: `${baseUrl}/api/list-resources-by-language?stage=prod&limit=15&format=json`,
     },
   ];
 
@@ -92,7 +92,7 @@ async function testEndpoint() {
             console.log(`   Keys: ${Object.keys(data).join(", ")}`);
             console.log(`   Data (first 500 chars): ${text.substring(0, 500)}`);
           }
-        } catch (parseError) {
+        } catch (_parseError) {
           console.log(`\n⚠️  Response is not JSON:`);
           console.log(`   ${text.substring(0, 500)}`);
         }

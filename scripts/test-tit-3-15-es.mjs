@@ -5,13 +5,10 @@ const bases = [
 ];
 const langs = ["es", "es-419"];
 const ref = "TIT 3:15";
-const org = "unfoldingWord";
-
 async function tryOne(base, lang) {
 	const u = new URL(`${base}/api/fetch-translation-notes`);
 	u.searchParams.set("reference", ref);
 	u.searchParams.set("language", lang);
-	u.searchParams.set("organization", org);
 	u.searchParams.set("format", "json");
 	const t0 = performance.now();
 	const r = await fetch(u);

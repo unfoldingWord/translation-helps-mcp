@@ -6,7 +6,6 @@
 const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:8174";
 
 const TEST_CONFIG = {
-  organization: "unfoldingWord",
   language: "en",
   reference: "John 3:16",
   term: "grace",
@@ -101,7 +100,6 @@ async function runTests() {
       {
         reference: TEST_CONFIG.reference,
         language: TEST_CONFIG.language,
-        organization: TEST_CONFIG.organization,
       },
       "/api/fetch-translation-notes",
       {
@@ -130,7 +128,6 @@ async function runTests() {
       {
         reference: TEST_CONFIG.reference,
         language: TEST_CONFIG.language,
-        organization: TEST_CONFIG.organization,
       },
       "/api/fetch-translation-questions",
       {
@@ -164,7 +161,6 @@ async function runTests() {
       {
         reference: TEST_CONFIG.reference,
         language: TEST_CONFIG.language,
-        organization: TEST_CONFIG.organization,
       },
       "/api/fetch-translation-word-links",
       {
@@ -234,7 +230,6 @@ async function runTests() {
       {
         moduleId: TEST_CONFIG.moduleId,
         language: TEST_CONFIG.language,
-        organization: TEST_CONFIG.organization,
       },
       "/api/fetch-translation-academy",
       {
@@ -263,21 +258,16 @@ async function runTests() {
 
   // 7. list_languages
   results.push(
-    await testTool(
-      "list_languages",
-      { organization: TEST_CONFIG.organization, stage: "prod" },
-      "/api/list-languages",
-      {
-        "Has languages array": (data) => ({
-          pass: Array.isArray(data.languages) && data.languages.length > 0,
-          message: `Found ${data.languages?.length || 0} languages`,
-        }),
-        "Languages have codes": (data) => ({
-          pass: data.languages?.some((l) => l.code || l.Code || l.languageCode),
-          message: "At least one language has a code",
-        }),
-      },
-    ),
+    await testTool("list_languages", { stage: "prod" }, "/api/list-languages", {
+      "Has languages array": (data) => ({
+        pass: Array.isArray(data.languages) && data.languages.length > 0,
+        message: `Found ${data.languages?.length || 0} languages`,
+      }),
+      "Languages have codes": (data) => ({
+        pass: data.languages?.some((l) => l.code || l.Code || l.languageCode),
+        message: "At least one language has a code",
+      }),
+    }),
   );
 
   // 8. list_subjects
@@ -286,7 +276,6 @@ async function runTests() {
       "list_subjects",
       {
         language: TEST_CONFIG.language,
-        organization: TEST_CONFIG.organization,
         stage: "prod",
       },
       "/api/list-subjects",
@@ -312,7 +301,6 @@ async function runTests() {
       "list_resources_for_language",
       {
         language: TEST_CONFIG.language,
-        organization: TEST_CONFIG.organization,
         stage: "prod",
         topic: "tc-ready",
       },

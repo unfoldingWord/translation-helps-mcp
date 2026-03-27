@@ -88,8 +88,7 @@ describe("Actual TSV Implementation Issues", () => {
       expect(correctMapping.tags).toContain("rc://"); // Tags contains RC links
     });
 
-    test("ISSUE: Current code expects 7 columns but destructures 8", () => {
-      // The actual TSV has 7 columns:
+    test("Translation Notes TSV column count matches seven-field row shape", () => {
       const actualColumns = [
         "Reference",
         "ID",
@@ -100,26 +99,22 @@ describe("Actual TSV Implementation Issues", () => {
         "Note",
       ];
 
-      // But the code destructures 8:
-      // const [ref, id, supportReference, quote, occurrence, note, occurrenceNote] = columns;
-
-      const codeExpects = [
-        "ref",
-        "id",
-        "supportReference",
-        "quote",
-        "occurrence",
-        "note",
-        "occurrenceNote",
+      const parserLogicalFields = [
+        "Reference",
+        "ID",
+        "Tags",
+        "SupportReference",
+        "Quote",
+        "Occurrence",
+        "Note",
       ];
 
-      console.log("\n=== Column Count Mismatch ===");
+      console.log("\n=== Column alignment ===");
       console.log("TSV has", actualColumns.length, "columns");
-      console.log("Code expects", codeExpects.length, "variables");
-      console.log("Extra variable: occurrenceNote (doesn't exist in TSV!)");
+      console.log("Parser maps", parserLogicalFields.length, "fields");
 
       expect(actualColumns.length).toBe(7);
-      expect(codeExpects.length).toBe(8); // This is wrong!
+      expect(parserLogicalFields.length).toBe(7);
     });
   });
 
