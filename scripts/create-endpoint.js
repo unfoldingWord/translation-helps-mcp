@@ -58,7 +58,6 @@ const templates = {
 const _parameterPresets = {
   reference: "COMMON_PARAMS.reference",
   language: "COMMON_PARAMS.language",
-  organization: "COMMON_PARAMS.organization",
   custom: "{ name: 'paramName', type: 'string', required: true }",
 };
 
@@ -103,8 +102,7 @@ async function main() {
   console.log(chalk.yellow("\nSelect parameters (comma-separated):"));
   console.log("  1. reference");
   console.log("  2. language");
-  console.log("  3. organization");
-  console.log("  4. custom");
+  console.log("  3. custom");
 
   const paramChoices = (await question(chalk.yellow("Enter numbers: ")))
     .split(",")
@@ -119,10 +117,7 @@ async function main() {
       case "2":
         parameters.push("language");
         break;
-      case "3":
-        parameters.push("organization");
-        break;
-      case "4": {
+      case "3": {
         const paramName = await question(
           chalk.yellow("Custom parameter name: "),
         );
@@ -313,8 +308,6 @@ describe('${name} endpoint', () => {
           const paramName = typeof p === "string" ? p : p.name;
           if (paramName === "reference") return "reference: 'John 3:16'";
           if (paramName === "language") return "language: 'en'";
-          if (paramName === "organization")
-            return "organization: 'unfoldingWord'";
           return `${paramName}: 'test-value'`;
         })
         .join(",\n      ")}
@@ -374,8 +367,6 @@ async function updateContractTests(name, description, parameters) {
             const paramName = typeof p === "string" ? p : p.name;
             if (paramName === "reference") return 'reference: "John 3:16"';
             if (paramName === "language") return 'language: "en"';
-            if (paramName === "organization")
-              return 'organization: "unfoldingWord"';
             return `${paramName}: "test"`;
           })
           .join(",\n        ")}

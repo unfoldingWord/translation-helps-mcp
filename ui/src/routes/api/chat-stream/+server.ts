@@ -19,7 +19,13 @@ import { edgeLogger as logger } from '$lib/edgeLogger.js';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
-import { callTool, listTools, listPrompts, getContextState, updateContext } from '$lib/mcp/client.js';
+import {
+	callTool,
+	listTools,
+	listPrompts,
+	getContextState,
+	updateContext
+} from '$lib/mcp/client.js';
 import { mapLanguageToCatalogCode } from '$lib/languageMapping.js';
 import { detectLanguageFromMessage, extractLanguageFromRequest } from '$lib/languageDetection.js';
 import {
@@ -33,7 +39,6 @@ interface ChatRequest {
 	chatHistory?: Array<{ role: string; content: string }>;
 	enableXRay?: boolean;
 	language?: string;
-	organization?: string;
 }
 
 // Prompts are now imported from the SDK
@@ -570,7 +575,7 @@ async function detectAndValidateLanguage(
 	message: string,
 	chatHistory: Array<{ role: string; content: string }> = [],
 	currentLanguage: string = 'en',
-	baseUrl: string
+	_baseUrl: string
 ): Promise<{
 	detectedLanguage: string | null;
 	needsValidation: boolean;
@@ -636,8 +641,7 @@ async function determineMCPCalls(
 	endpoints: any[],
 	prompts: any[],
 	chatHistory: Array<{ role: string; content: string }> = [],
-	language: string = 'en',
-	organization: string = '' // Empty = search ALL organizations (default)
+	_language: string = 'en'
 ): Promise<Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>> {
 	// Format endpoints for the LLM prompt
 	const endpointDescriptions = endpoints
@@ -730,12 +734,11 @@ If user asks for translation notes and scripture is NOT in conversation history:
     {"endpoint": "fetch_translation_notes", "params": {"reference": "TIT 3:1", "language": "es"}}
   ]
 
-**LANGUAGE & ORGANIZATION:**
+**LANGUAGE:**
 
 - Use 'language' parameter with base code (e.g., "es", "fr", "en")
-- DO NOT specify 'organization' parameter unless user explicitly requests specific organization
-- MCP tools fetch from ALL organizations when organization is omitted
-- Example: fetch_scripture(reference="JHN 3:16", language="es") with NO organization parameter
+- MCP tools search all Door43 organizations automatically (no owner filter parameter)
+- Example: fetch_scripture(reference="JHN 3:16", language="es")
 
 Only make tool calls when:
 1. The information was NOT previously fetched
@@ -788,8 +791,7 @@ Current user query: "${message}"
 
 **PARAMETER RULES:**
 - Use base language code (es, fr, en) NOT variants (es-419)
-- DO NOT specify organization parameter (tools fetch from all orgs when omitted)
-- Example: fetch_scripture(reference="JHN 3:16", language="es") with NO organization
+- Example: fetch_scripture(reference="JHN 3:16", language="es")
 
 **CRITICAL DECISION RULES:**
 
@@ -887,7 +889,6 @@ For ENDPOINTS:
     "params": {
       "reference": "John 3:16",
       "language": "en",
-      "organization": "unfoldingWord",
       "format": "md"
     }
   }
@@ -900,8 +901,7 @@ User: "What does 'love' mean?"
     "endpoint": "fetch-translation-word",
     "params": {
       "term": "love",
-      "language": "en",
-      "organization": "unfoldingWord"
+      "language": "en"
     }
   }
 ]
@@ -912,8 +912,7 @@ User: "Who is Paul?"
     "endpoint": "fetch-translation-word",
     "params": {
       "term": "paul",
-      "language": "en",
-      "organization": "unfoldingWord"
+      "language": "en"
     }
   }
 ]
@@ -1021,7 +1020,6 @@ async function executeMCPCalls(
 	calls: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>,
 	baseUrl: string,
 	language: string = 'en',
-	organization: string = '', // Empty = search ALL organizations (default)
 	languageInfo?: { detectedLanguage?: string; needsValidation?: boolean }
 ): Promise<{ data: any[]; apiCalls: any[]; resolvedLanguage?: string }> {
 	const data: any[] = [];
@@ -1060,8 +1058,6 @@ async function executeMCPCalls(
 					if (!promptParams.language) {
 						promptParams.language = language; // Use base code (es, fr, en)
 					}
-					// DO NOT inject organization - let prompt tools discover what's available
-
 					const fetchResponse = await fetch(executePromptUrl, {
 						method: 'POST',
 						headers: {
@@ -1073,15 +1069,15 @@ async function executeMCPCalls(
 						})
 					});
 
-				if (!fetchResponse.ok) {
-					const errorData = await fetchResponse.json().catch(() => ({ error: 'Unknown error' }));
-					const error: any = new Error(errorData.error || `HTTP ${fetchResponse.status}`);
-					// Attach full error details including verseNotFound, hasContextOnly, etc.
-					error.status = fetchResponse.status;
-					error.response = errorData;
-					error.details = errorData.details;
-					throw error;
-				}
+					if (!fetchResponse.ok) {
+						const errorData = await fetchResponse.json().catch(() => ({ error: 'Unknown error' }));
+						const error: any = new Error(errorData.error || `HTTP ${fetchResponse.status}`);
+						// Attach full error details including verseNotFound, hasContextOnly, etc.
+						error.status = fetchResponse.status;
+						error.response = errorData;
+						error.details = errorData.details;
+						throw error;
+					}
 
 					const responseData = await fetchResponse.json();
 					const duration = Date.now() - startTime;
@@ -1231,14 +1227,14 @@ async function executeMCPCalls(
 
 								// Retry succeeded!
 								retrySucceeded = true;
-								
+
 								// Track the resolved language from successful retry
 								if (retryParams.language && retryParams.language !== language) {
 									resolvedLanguage = retryParams.language;
-									logger.info('Prompt retry succeeded with language variant', { 
-										prompt: promptName, 
+									logger.info('Prompt retry succeeded with language variant', {
+										prompt: promptName,
 										originalLanguage: call.params.language,
-										resolvedLanguage: retryParams.language 
+										resolvedLanguage: retryParams.language
 									});
 								} else {
 									logger.info('Prompt retry succeeded', { prompt: promptName, retryParams });
@@ -1278,36 +1274,36 @@ async function executeMCPCalls(
 						}
 					}
 
-				// If retry didn't succeed, log the original error
-				if (!retrySucceeded) {
-					apiCalls.push({
-						endpoint: `execute-prompt (${promptName})`,
-						params: call.params,
-						duration: `${duration}ms`,
-						status: errorStatus || 500,
-						error: errorMessage,
-						response: errorResponse // Include full response for debugging
-					});
-					
-					// Add error to data array for LLM to see, especially for verse not found errors
-					// This ensures the LLM can provide a helpful response instead of failing silently
-					const errorItem = {
-						type: `prompt:${promptName}`,
-						params: call.params,
-						error: errorMessage,
-						errorDetails: errorResponse?.details || null,
-						status: errorStatus || 500
-					};
-					logger.info('[executeMCPCalls] Adding error to data array for LLM', {
-						errorItem,
-						hasDetails: !!errorResponse?.details,
-						verseNotFound: errorResponse?.details?.verseNotFound,
-						explicitError: errorResponse?.details?.explicitError
-					});
-					data.push(errorItem);
+					// If retry didn't succeed, log the original error
+					if (!retrySucceeded) {
+						apiCalls.push({
+							endpoint: `execute-prompt (${promptName})`,
+							params: call.params,
+							duration: `${duration}ms`,
+							status: errorStatus || 500,
+							error: errorMessage,
+							response: errorResponse // Include full response for debugging
+						});
+
+						// Add error to data array for LLM to see, especially for verse not found errors
+						// This ensures the LLM can provide a helpful response instead of failing silently
+						const errorItem = {
+							type: `prompt:${promptName}`,
+							params: call.params,
+							error: errorMessage,
+							errorDetails: errorResponse?.details || null,
+							status: errorStatus || 500
+						};
+						logger.info('[executeMCPCalls] Adding error to data array for LLM', {
+							errorItem,
+							hasDetails: !!errorResponse?.details,
+							verseNotFound: errorResponse?.details?.verseNotFound,
+							explicitError: errorResponse?.details?.explicitError
+						});
+						data.push(errorItem);
+					}
 				}
-			}
-			continue;
+				continue;
 			}
 
 			// Handle individual endpoint using SDK
@@ -1319,29 +1315,28 @@ async function executeMCPCalls(
 			// Convert endpoint name to tool name (kebab-case → snake_case)
 			const toolName = endpointToToolName(endpointName);
 
-		// Normalize params with sensible defaults to avoid LLM omissions
-		const normalizedParams: Record<string, any> = {
-			...call.params
-		};
-		
-		// Language parameter handling with detected language override
-		if (!normalizedParams.language) {
-			// No language provided - use detected or default
-			normalizedParams.language = languageInfo?.detectedLanguage || language;
-		} else if (languageInfo?.detectedLanguage && 
-			normalizedParams.language !== languageInfo.detectedLanguage &&
-			languageInfo.needsValidation) {
-			// LLM provided language doesn't match detected - override with detected
-			// This fixes cases where LLM reuses old language from previous request
-			logger.info('Overriding LLM language param with detected language', {
-				llmProvided: normalizedParams.language,
-				detected: languageInfo.detectedLanguage
-			});
-			normalizedParams.language = languageInfo.detectedLanguage;
-		}
-		
-		// DO NOT inject organization - let MCP tools fetch from all organizations when omitted
-		// Only use organization if LLM explicitly provides it
+			// Normalize params with sensible defaults to avoid LLM omissions
+			const normalizedParams: Record<string, any> = {
+				...call.params
+			};
+
+			// Language parameter handling with detected language override
+			if (!normalizedParams.language) {
+				// No language provided - use detected or default
+				normalizedParams.language = languageInfo?.detectedLanguage || language;
+			} else if (
+				languageInfo?.detectedLanguage &&
+				normalizedParams.language !== languageInfo.detectedLanguage &&
+				languageInfo.needsValidation
+			) {
+				// LLM provided language doesn't match detected - override with detected
+				// This fixes cases where LLM reuses old language from previous request
+				logger.info('Overriding LLM language param with detected language', {
+					llmProvided: normalizedParams.language,
+					detected: languageInfo.detectedLanguage
+				});
+				normalizedParams.language = languageInfo.detectedLanguage;
+			}
 
 			// Clean up invalid parameters for fetch_translation_word
 			if (toolName === 'fetch_translation_word') {
@@ -1412,7 +1407,7 @@ async function executeMCPCalls(
 						errorDetails = error.details;
 						console.log('[CHAT] ✅ Error has details:', Object.keys(errorDetails));
 					}
-					
+
 					// Extract direct attachments from SDK (validBookCodes, languageVariants)
 					if ('validBookCodes' in error) {
 						errorDetails.validBookCodes = (error as any).validBookCodes;
@@ -1424,13 +1419,13 @@ async function executeMCPCalls(
 						errorDetails.requestedLanguage = (error as any).requestedLanguage;
 						console.log('[CHAT] ✅ Found languageVariants:', errorDetails.languageVariants);
 					}
-					
+
 					console.log('[CHAT] 🔍 Final errorDetails for retry check:', {
 						hasLanguageVariants: !!errorDetails.languageVariants,
 						hasValidBookCodes: !!errorDetails.validBookCodes,
 						errorDetails
 					});
-					
+
 					// Check for common error response patterns
 					if ('response' in error && error.response) {
 						errorResponse = error.response;
@@ -1453,17 +1448,18 @@ async function executeMCPCalls(
 				// AUTOMATIC RETRY: Check if error has structured recovery data
 				// Check both errorDetails (from SDK) and errorResponse.details (from nested structure)
 				let retrySucceeded = false;
-				const hasLanguageVariants = 
-					errorDetails?.languageVariants?.length > 0 || 
+				const hasLanguageVariants =
+					errorDetails?.languageVariants?.length > 0 ||
 					errorResponse?.details?.languageVariants?.length > 0;
-				const hasValidBookCodes = 
-					errorDetails?.validBookCodes?.length > 0 || 
+				const hasValidBookCodes =
+					errorDetails?.validBookCodes?.length > 0 ||
 					errorResponse?.details?.validBookCodes?.length > 0;
 
 				console.log('[CHAT] 🔄 Retry check:', {
 					hasLanguageVariants,
 					hasValidBookCodes,
-					languageVariants: errorDetails?.languageVariants || errorResponse?.details?.languageVariants,
+					languageVariants:
+						errorDetails?.languageVariants || errorResponse?.details?.languageVariants,
 					validBookCodes: errorDetails?.validBookCodes || errorResponse?.details?.validBookCodes
 				});
 
@@ -1480,13 +1476,13 @@ async function executeMCPCalls(
 					const retryParams = { ...normalizedParams };
 
 					try {
-
 						if (hasLanguageVariants) {
 							// Get language variants from errorDetails or nested response
-							const variants = errorDetails?.languageVariants || errorResponse?.details?.languageVariants;
+							const variants =
+								errorDetails?.languageVariants || errorResponse?.details?.languageVariants;
 							const suggestedLanguage = variants[0];
 							retryParams.language = suggestedLanguage;
-							
+
 							logger.info('Retrying with suggested language variant', {
 								original: normalizedParams.language,
 								suggested: suggestedLanguage,
@@ -1520,21 +1516,21 @@ async function executeMCPCalls(
 								retryResult = retryResponse;
 							}
 
-						// Retry succeeded!
-						retrySucceeded = true;
-						console.log('[CHAT] ✅ RETRY SUCCEEDED with params:', retryParams);
-						
-						// Track the resolved language from successful retry
-						if (retryParams.language && retryParams.language !== language) {
-							resolvedLanguage = retryParams.language;
-							logger.info('Endpoint retry succeeded with language variant', { 
-								tool: toolName,
-								originalLanguage: normalizedParams.language,
-								resolvedLanguage: retryParams.language 
-							});
-						} else {
-							logger.info('Retry succeeded', { tool: toolName, retryParams });
-						}
+							// Retry succeeded!
+							retrySucceeded = true;
+							console.log('[CHAT] ✅ RETRY SUCCEEDED with params:', retryParams);
+
+							// Track the resolved language from successful retry
+							if (retryParams.language && retryParams.language !== language) {
+								resolvedLanguage = retryParams.language;
+								logger.info('Endpoint retry succeeded with language variant', {
+									tool: toolName,
+									originalLanguage: normalizedParams.language,
+									resolvedLanguage: retryParams.language
+								});
+							} else {
+								logger.info('Retry succeeded', { tool: toolName, retryParams });
+							}
 
 							// Add successful retry result to data
 							data.push({
@@ -1569,25 +1565,28 @@ async function executeMCPCalls(
 					} catch (retryError) {
 						// Check if retry "failed" but actually has useful recovery data (availableBooks)
 						const retryErrorObj = retryError as any;
-						const hasAvailableBooks = retryErrorObj?.availableBooks?.length > 0 ||
+						const hasAvailableBooks =
+							retryErrorObj?.availableBooks?.length > 0 ||
 							retryErrorObj?.details?.availableBooks?.length > 0;
-						
-					if (hasAvailableBooks) {
-						// This is actually a "successful" retry - we found the language variant
-						// and got useful information (available books)
-						console.log('[CHAT] ✅ Retry provided useful data (availableBooks)');
-						
-						// Track the resolved language from this retry
-						if (retryParams.language && retryParams.language !== language) {
-							resolvedLanguage = retryParams.language;
-						}
-						
-						logger.info('Retry provided useful recovery data', {
-							tool: toolName,
-							availableBooksCount: retryErrorObj?.availableBooks?.length || retryErrorObj?.details?.availableBooks?.length,
-							resolvedLanguage: resolvedLanguage
-						});
-							
+
+						if (hasAvailableBooks) {
+							// This is actually a "successful" retry - we found the language variant
+							// and got useful information (available books)
+							console.log('[CHAT] ✅ Retry provided useful data (availableBooks)');
+
+							// Track the resolved language from this retry
+							if (retryParams.language && retryParams.language !== language) {
+								resolvedLanguage = retryParams.language;
+							}
+
+							logger.info('Retry provided useful recovery data', {
+								tool: toolName,
+								availableBooksCount:
+									retryErrorObj?.availableBooks?.length ||
+									retryErrorObj?.details?.availableBooks?.length,
+								resolvedLanguage: resolvedLanguage
+							});
+
 							// Extract the retry error details
 							let retryErrorDetails: any = {};
 							if (retryErrorObj?.details) {
@@ -1598,7 +1597,7 @@ async function executeMCPCalls(
 								retryErrorDetails.requestedBook = retryErrorObj.requestedBook;
 								retryErrorDetails.language = retryErrorObj.language;
 							}
-							
+
 							// Log the retry as providing useful data (not a failure)
 							apiCalls.push({
 								endpoint: endpointName,
@@ -1611,19 +1610,20 @@ async function executeMCPCalls(
 									details: errorDetails
 								}
 							});
-							
+
 							apiCalls.push({
 								endpoint: endpointName,
 								params: retryParams,
 								duration: `${Date.now() - startTime}ms`,
 								status: 404, // Book not found, but language was found
-								error: retryErrorObj instanceof Error ? retryErrorObj.message : 'Book not available',
+								error:
+									retryErrorObj instanceof Error ? retryErrorObj.message : 'Book not available',
 								response: {
 									details: retryErrorDetails
 								},
 								isRetry: true
 							});
-							
+
 							// Mark as "succeeded" so we don't show the original error
 							retrySucceeded = true;
 						} else {
@@ -1636,38 +1636,38 @@ async function executeMCPCalls(
 					}
 				}
 
-			// If retry didn't succeed, log the original error with full details
-			if (!retrySucceeded) {
-				apiCalls.push({
-					endpoint: endpointName,
-					params: normalizedParams,
-					duration: `${duration}ms`,
-					status: errorStatus || 500,
-					error: errorMessage,
-					response: {
-						...errorResponse,
-						details: errorDetails // Ensure details (with languageVariants) are included
-					}
-				});
-				
-				// Add error to data array for LLM to see, especially for verse not found errors
-				// This ensures the LLM can provide a helpful response instead of failing silently
-				const errorItem = {
-					type: endpointName,
-					params: normalizedParams,
-					error: errorMessage,
-					errorDetails: errorDetails || null,
-					status: errorStatus || 500
-				};
-				logger.info('[executeMCPCalls] Adding tool error to data array for LLM', {
-					tool: toolName,
-					errorItem,
-					hasDetails: !!errorDetails,
-					verseNotFound: errorDetails?.verseNotFound,
-					explicitError: errorDetails?.explicitError
-				});
-				data.push(errorItem);
-			}
+				// If retry didn't succeed, log the original error with full details
+				if (!retrySucceeded) {
+					apiCalls.push({
+						endpoint: endpointName,
+						params: normalizedParams,
+						duration: `${duration}ms`,
+						status: errorStatus || 500,
+						error: errorMessage,
+						response: {
+							...errorResponse,
+							details: errorDetails // Ensure details (with languageVariants) are included
+						}
+					});
+
+					// Add error to data array for LLM to see, especially for verse not found errors
+					// This ensures the LLM can provide a helpful response instead of failing silently
+					const errorItem = {
+						type: endpointName,
+						params: normalizedParams,
+						error: errorMessage,
+						errorDetails: errorDetails || null,
+						status: errorStatus || 500
+					};
+					logger.info('[executeMCPCalls] Adding tool error to data array for LLM', {
+						tool: toolName,
+						errorItem,
+						hasDetails: !!errorDetails,
+						verseNotFound: errorDetails?.verseNotFound,
+						explicitError: errorDetails?.explicitError
+					});
+					data.push(errorItem);
+				}
 			}
 		} catch (error) {
 			logger.error('Failed to execute MCP call', {
@@ -1785,11 +1785,14 @@ function formatDataForContext(data: any[]): string {
 				// Fallback: include the result as-is
 				context += `Scripture for ${item.params.reference}:\n${JSON.stringify(item.result, null, 2)}\n\n`;
 			}
-		} else if (item.type === 'translation-notes' && (item.result.verseNotes || item.result.contextNotes)) {
+		} else if (
+			item.type === 'translation-notes' &&
+			(item.result.verseNotes || item.result.contextNotes)
+		) {
 			const metadata = item.result.metadata || {};
 			const source = metadata.source || 'TN';
 			const version = metadata.version || '';
-			
+
 			// VERSE-SPECIFIC NOTES (for the exact reference)
 			if (item.result.verseNotes && item.result.verseNotes.length > 0) {
 				context += `\n=== Translation Notes for ${item.params.reference} [${source} ${version}] ===\n`;
@@ -1802,12 +1805,13 @@ function formatDataForContext(data: any[]): string {
 					context += `- Quote (Greek): ${note.Quote || 'General'}\n  Note: ${note.Note}\n  [${source} ${version} - ${noteRef}]\n\n`;
 				}
 			}
-			
+
 			// CONTEXTUAL NOTES (background information)
 			if (item.result.contextNotes && item.result.contextNotes.length > 0) {
 				context += `\n=== Background Context [${source} ${version}] ===\n`;
 				for (const note of item.result.contextNotes) {
-					const contextLabel = note.contextType === 'book' ? 'Book Introduction' : 'Chapter Introduction';
+					const contextLabel =
+						note.contextType === 'book' ? 'Book Introduction' : 'Chapter Introduction';
 					context += `\n--- ${contextLabel} (${note.Reference}) ---\n`;
 					context += `${note.Note}\n`;
 				}
@@ -1892,7 +1896,7 @@ function formatDataForContext(data: any[]): string {
 			const isPrompt = item.type?.startsWith('prompt:');
 			const itemName = isPrompt ? item.type.replace('prompt:', '') : item.type;
 			const itemLabel = isPrompt ? 'Prompt' : 'Tool';
-			
+
 			logger.info(`[buildContext] Processing ${itemLabel.toLowerCase()} error for LLM`, {
 				type: item.type,
 				hasError: !!item.error,
@@ -1900,11 +1904,11 @@ function formatDataForContext(data: any[]): string {
 				verseNotFound: item.errorDetails?.verseNotFound,
 				explicitError: item.errorDetails?.explicitError
 			});
-			
+
 			context += `\n=== ${itemLabel} Error ===\n`;
 			context += `${itemLabel}: ${itemName}\n`;
 			context += `Error: ${item.error}\n`;
-			
+
 			if (item.errorDetails) {
 				// Include specific error details that help the LLM understand what went wrong
 				if (item.errorDetails.verseNotFound) {
@@ -1962,36 +1966,37 @@ function formatDataForContext(data: any[]): string {
 					context += `Scripture for ${item.params?.reference || 'passage'}:\n"${promptData.scripture.text}"\n\n`;
 				}
 
-			// Handle notes (new shape: verseNotes + contextNotes)
-			if (promptData.notes && (promptData.notes.verseNotes || promptData.notes.contextNotes)) {
-				const metadata = promptData.notes.metadata || {};
-				const source = metadata.source || 'TN';
-				const version = metadata.version || '';
-				
-				// VERSE-SPECIFIC NOTES (for the exact reference)
-				if (promptData.notes.verseNotes && promptData.notes.verseNotes.length > 0) {
-					context += `\n=== Translation Notes for ${item.params?.reference || 'passage'} [${source} ${version}] ===\n`;
-					context += `COUNT: ${promptData.notes.verseNotes.length} notes - you MUST show all ${promptData.notes.verseNotes.length} individually\n`;
-					context += `FORMAT: Quote the ACTUAL WORDS FROM THE SCRIPTURE TEXT (not Greek, not labels, not alternatives)\n`;
-					context += `The Quote field shows Greek/Hebrew - find where it appears TRANSLATED in the scripture text.\n`;
-					context += `Example: Quote="ἀρχαῖς" + scripture has "gobernantes" → show **«gobernantes»** (not ἀρχαῖς)\n\n`;
-					for (const note of promptData.notes.verseNotes) {
-						const noteRef = note.Reference || item.params?.reference || 'passage';
-						context += `- Quote (Greek): ${note.Quote || 'General'}\n  Note: ${note.Note}\n  [${source} ${version} - ${noteRef}]\n\n`;
+				// Handle notes (new shape: verseNotes + contextNotes)
+				if (promptData.notes && (promptData.notes.verseNotes || promptData.notes.contextNotes)) {
+					const metadata = promptData.notes.metadata || {};
+					const source = metadata.source || 'TN';
+					const version = metadata.version || '';
+
+					// VERSE-SPECIFIC NOTES (for the exact reference)
+					if (promptData.notes.verseNotes && promptData.notes.verseNotes.length > 0) {
+						context += `\n=== Translation Notes for ${item.params?.reference || 'passage'} [${source} ${version}] ===\n`;
+						context += `COUNT: ${promptData.notes.verseNotes.length} notes - you MUST show all ${promptData.notes.verseNotes.length} individually\n`;
+						context += `FORMAT: Quote the ACTUAL WORDS FROM THE SCRIPTURE TEXT (not Greek, not labels, not alternatives)\n`;
+						context += `The Quote field shows Greek/Hebrew - find where it appears TRANSLATED in the scripture text.\n`;
+						context += `Example: Quote="ἀρχαῖς" + scripture has "gobernantes" → show **«gobernantes»** (not ἀρχαῖς)\n\n`;
+						for (const note of promptData.notes.verseNotes) {
+							const noteRef = note.Reference || item.params?.reference || 'passage';
+							context += `- Quote (Greek): ${note.Quote || 'General'}\n  Note: ${note.Note}\n  [${source} ${version} - ${noteRef}]\n\n`;
+						}
 					}
-				}
-				
-				// CONTEXTUAL NOTES (background information)
-				if (promptData.notes.contextNotes && promptData.notes.contextNotes.length > 0) {
-					context += `\n=== Background Context [${source} ${version}] ===\n`;
-					for (const note of promptData.notes.contextNotes) {
-						const contextLabel = note.contextType === 'book' ? 'Book Introduction' : 'Chapter Introduction';
-						context += `\n--- ${contextLabel} (${note.Reference}) ---\n`;
-						context += `${note.Note}\n`;
+
+					// CONTEXTUAL NOTES (background information)
+					if (promptData.notes.contextNotes && promptData.notes.contextNotes.length > 0) {
+						context += `\n=== Background Context [${source} ${version}] ===\n`;
+						for (const note of promptData.notes.contextNotes) {
+							const contextLabel =
+								note.contextType === 'book' ? 'Book Introduction' : 'Chapter Introduction';
+							context += `\n--- ${contextLabel} (${note.Reference}) ---\n`;
+							context += `${note.Note}\n`;
+						}
 					}
+					context += '\n';
 				}
-				context += '\n';
-			}
 
 				// Handle questions
 				if (promptData.questions?.items && Array.isArray(promptData.questions.items)) {
@@ -2074,7 +2079,6 @@ async function callOpenAI(
 	apiKey: string,
 	endpointCalls?: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>,
 	catalogLanguage: string = 'en',
-	organization: string = '', // Empty = search ALL organizations (default)
 	languageInfo?: {
 		detectedLanguage: string | null;
 		needsValidation: boolean;
@@ -2239,7 +2243,6 @@ async function callOpenAIStream(
 	overallStartTime?: number,
 	endpointCalls?: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>,
 	catalogLanguage: string = 'en',
-	organization: string = '', // Empty = search ALL organizations (default)
 	languageInfo?: {
 		detectedLanguage: string | null;
 		needsValidation: boolean;
@@ -2260,19 +2263,19 @@ async function callOpenAIStream(
 					? getSystemPrompt(requestType, endpointCalls as EndpointCall[] | undefined, message)
 					: SYSTEM_PROMPT_LEGACY;
 
-			// Add minimal language context
-			let languageContext = `\n\n**LANGUAGE:** Use base code (es, fr, en). Default: ${catalogLanguage}`;
+				// Add minimal language context
+				let languageContext = `\n\n**LANGUAGE:** Use base code (es, fr, en). Default: ${catalogLanguage}`;
 
-			// Add language detection context if needed
-			if (languageInfo?.detectedLanguage && languageInfo.detectedLanguage !== catalogLanguage) {
-				languageContext += `\n**DETECTED:** ${languageInfo.detectedLanguage} - use this code`;
-			}
+				// Add language detection context if needed
+				if (languageInfo?.detectedLanguage && languageInfo.detectedLanguage !== catalogLanguage) {
+					languageContext += `\n**DETECTED:** ${languageInfo.detectedLanguage} - use this code`;
+				}
 
-			// Add book code guidance
-			languageContext += `\n\n**BIBLE REFERENCES:** ALWAYS use standard 3-letter book codes (GEN, EXO, JHN, TIT, etc.), NEVER full book names. When user says "John 3:16" or "Titus 1:15", convert to "JHN 3:16" or "TIT 1:15" before calling tools.`;
+				// Add book code guidance
+				languageContext += `\n\n**BIBLE REFERENCES:** ALWAYS use standard 3-letter book codes (GEN, EXO, JHN, TIT, etc.), NEVER full book names. When user says "John 3:16" or "Titus 1:15", convert to "JHN 3:16" or "TIT 1:15" before calling tools.`;
 
-			// Add proactive tool suggestions guidance
-			const proactiveSuggestions = `\n\n**PROACTIVE TOOL SUGGESTIONS:**
+				// Add proactive tool suggestions guidance
+				const proactiveSuggestions = `\n\n**PROACTIVE TOOL SUGGESTIONS:**
 After providing scripture, ALWAYS suggest relevant tools:
 "Would you like me to show you:
 - **Translation notes** (explains difficult phrases)
@@ -2282,7 +2285,7 @@ After providing scripture, ALWAYS suggest relevant tools:
 
 Don't end with "feel free to ask" - be specific about available tools!`;
 
-			systemPrompt = systemPrompt + languageContext + proactiveSuggestions;
+				systemPrompt = systemPrompt + languageContext + proactiveSuggestions;
 
 				const messages = [
 					{ role: 'system', content: systemPrompt },
@@ -2464,11 +2467,10 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 	try {
 		const {
 			message,
-		chatHistory = [],
-		enableXRay = false,
-		language = 'en',
-		organization = '' // Empty = search ALL organizations (default)
-	}: ChatRequest = await request.json();
+			chatHistory = [],
+			enableXRay = false,
+			language = 'en'
+		}: ChatRequest = await request.json();
 		const baseUrl = `${url.protocol}//${url.host}`;
 
 		// Use base language code as-is (e.g., "es", "fr", "en")
@@ -2477,8 +2479,7 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 		logger.info('Chat stream request', {
 			message,
 			historyLength: chatHistory.length,
-			language: catalogLanguage,
-			organization
+			language: catalogLanguage
 		});
 
 		// Check for API key - try multiple sources
@@ -2549,14 +2550,14 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 		let finalLanguage = catalogLanguage;
 		if (languageInfo.detectedLanguage && !languageInfo.needsValidation) {
 			finalLanguage = languageInfo.detectedLanguage;
-			
+
 			// ✨ Sync detected language into SDK's ContextManager
 			updateContext({
 				language: finalLanguage,
 				detectedLanguage: languageInfo.detectedLanguage,
 				languageSource: 'llm-detected'
 			});
-			
+
 			logger.info('Language detected and validated', {
 				detected: languageInfo.detectedLanguage,
 				previous: catalogLanguage
@@ -2580,9 +2581,7 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			endpoints,
 			prompts,
 			chatHistory,
-			finalLanguage,
-			organization,
-			baseUrl
+			finalLanguage
 		);
 		timings.llmDecision = Date.now() - llmDecisionStart;
 
@@ -2591,41 +2590,45 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			logger.info('LLM decided no MCP endpoints needed for this query', { message });
 		}
 
-	// Step 3: Execute the MCP calls
-	const mcpExecutionStart = Date.now();
-	const { data, apiCalls, resolvedLanguage } = await executeMCPCalls(
-		endpointCalls,
-		baseUrl,
-		finalLanguage,
-		organization,
-		languageInfo
-	);
-	timings.mcpExecution = Date.now() - mcpExecutionStart;
+		// Step 3: Execute the MCP calls
+		const mcpExecutionStart = Date.now();
+		const { data, apiCalls, resolvedLanguage } = await executeMCPCalls(
+			endpointCalls,
+			baseUrl,
+			finalLanguage,
+			languageInfo
+		);
+		timings.mcpExecution = Date.now() - mcpExecutionStart;
 
-	// Step 3.5: Extract language from actual tool calls and update state
-	// This ensures the context state reflects what the LLM actually used
-	// Priority: resolvedLanguage (from retry) > languageFromToolCalls > catalogLanguage
-	const languageFromToolCalls = endpointCalls.find(call => call.params?.language)?.params?.language;
-	const actualLanguageUsed = resolvedLanguage || languageFromToolCalls;
-	
-	if (actualLanguageUsed && actualLanguageUsed !== catalogLanguage) {
-		finalLanguage = actualLanguageUsed;
-		
-		// Sync to SDK's ContextManager
-		updateContext({
-			language: finalLanguage,
-			detectedLanguage: languageInfo?.detectedLanguage || finalLanguage,
-			languageSource: resolvedLanguage ? 'variant-retry' : (languageInfo?.detectedLanguage ? 'llm-detected' : 'tool-call-extracted'),
-			resolvedVariant: resolvedLanguage || undefined // Track if a variant was used
-		});
-		
-		logger.info('Language extracted and synced to SDK', {
-			actualLanguageUsed,
-			resolvedFromRetry: !!resolvedLanguage,
-			previous: catalogLanguage,
-			detectedLanguage: languageInfo?.detectedLanguage
-		});
-	}
+		// Step 3.5: Extract language from actual tool calls and update state
+		// This ensures the context state reflects what the LLM actually used
+		// Priority: resolvedLanguage (from retry) > languageFromToolCalls > catalogLanguage
+		const languageFromToolCalls = endpointCalls.find((call) => call.params?.language)?.params
+			?.language;
+		const actualLanguageUsed = resolvedLanguage || languageFromToolCalls;
+
+		if (actualLanguageUsed && actualLanguageUsed !== catalogLanguage) {
+			finalLanguage = actualLanguageUsed;
+
+			// Sync to SDK's ContextManager
+			updateContext({
+				language: finalLanguage,
+				detectedLanguage: languageInfo?.detectedLanguage || finalLanguage,
+				languageSource: resolvedLanguage
+					? 'variant-retry'
+					: languageInfo?.detectedLanguage
+						? 'llm-detected'
+						: 'tool-call-extracted',
+				resolvedVariant: resolvedLanguage || undefined // Track if a variant was used
+			});
+
+			logger.info('Language extracted and synced to SDK', {
+				actualLanguageUsed,
+				resolvedFromRetry: !!resolvedLanguage,
+				previous: catalogLanguage,
+				detectedLanguage: languageInfo?.detectedLanguage
+			});
+		}
 
 		// Step 4: Format data for OpenAI context, including any tool errors so the LLM can respond gracefully
 		const contextFormattingStart = Date.now();
@@ -2640,12 +2643,15 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			errorContext += 'Errors (do not expose internal URLs):\n';
 			for (const err of toolErrors) {
 				errorContext += `- endpoint: ${err.endpoint}, status: ${err.status || 'n/a'}, message: ${err.error || 'Unknown error'}, params: ${JSON.stringify(err.params)}\n`;
-				
+
 				// Include structured recovery data if available
 				if (err.response?.details?.availableBooks) {
 					const books = err.response.details.availableBooks;
 					errorContext += `  Book "${err.response.details.requestedBook}" not available in ${err.response.details.language}\n`;
-					errorContext += `  However, ${books.length} other books ARE available: ${books.slice(0, 10).map(b => b.name).join(', ')}${books.length > 10 ? '...' : ''}\n`;
+					errorContext += `  However, ${books.length} other books ARE available: ${books
+						.slice(0, 10)
+						.map((b) => b.name)
+						.join(', ')}${books.length > 10 ? '...' : ''}\n`;
 					errorContext += `  IMPORTANT: Ask the user if they would like to see one of these available books instead.\n`;
 				} else if (err.response?.details?.validBookCodes) {
 					errorContext += `  Available book codes: ${err.response.details.validBookCodes.slice(0, 10).join(', ')}${err.response.details.validBookCodes.length > 10 ? '...' : ''}\n`;
@@ -2672,7 +2678,7 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 		if (streamMode) {
 			// Build initial X-ray snapshot (always emit so client can show tools during streaming)
 			const totalDurationSoFar = Date.now() - startTime;
-			
+
 			// Build system prompt for streaming (same logic as callOpenAIStream)
 			const requestType = endpointCalls
 				? detectRequestType(endpointCalls as EndpointCall[], message)
@@ -2680,19 +2686,19 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			let systemPromptForDebug = USE_OPTIMIZED_PROMPT
 				? getSystemPrompt(requestType, endpointCalls as EndpointCall[] | undefined, message)
 				: SYSTEM_PROMPT_LEGACY;
-			
-		// Add minimal language context
-		let languageContextForDebug = `\n\n**LANGUAGE:** Use base code (es, fr, en). Default: ${finalLanguage}`;
 
-		if (languageInfo?.detectedLanguage && languageInfo.detectedLanguage !== finalLanguage) {
-			languageContextForDebug += `\n**DETECTED:** ${languageInfo.detectedLanguage} - use this code`;
-		}
+			// Add minimal language context
+			let languageContextForDebug = `\n\n**LANGUAGE:** Use base code (es, fr, en). Default: ${finalLanguage}`;
 
-		// Add book code guidance
-		languageContextForDebug += `\n\n**BIBLE REFERENCES:** ALWAYS use standard 3-letter book codes (GEN, EXO, JHN, TIT, etc.), NEVER full book names. When user says "John 3:16" or "Titus 1:15", convert to "JHN 3:16" or "TIT 1:15" before calling tools.`;
+			if (languageInfo?.detectedLanguage && languageInfo.detectedLanguage !== finalLanguage) {
+				languageContextForDebug += `\n**DETECTED:** ${languageInfo.detectedLanguage} - use this code`;
+			}
 
-		// Add proactive tool suggestions guidance
-		const proactiveSuggestionsForDebug = `\n\n**PROACTIVE TOOL SUGGESTIONS:**
+			// Add book code guidance
+			languageContextForDebug += `\n\n**BIBLE REFERENCES:** ALWAYS use standard 3-letter book codes (GEN, EXO, JHN, TIT, etc.), NEVER full book names. When user says "John 3:16" or "Titus 1:15", convert to "JHN 3:16" or "TIT 1:15" before calling tools.`;
+
+			// Add proactive tool suggestions guidance
+			const proactiveSuggestionsForDebug = `\n\n**PROACTIVE TOOL SUGGESTIONS:**
 After providing scripture, ALWAYS suggest relevant tools:
 "Would you like me to show you:
 - **Translation notes** (explains difficult phrases)
@@ -2702,8 +2708,9 @@ After providing scripture, ALWAYS suggest relevant tools:
 
 Don't end with "feel free to ask" - be specific about available tools!`;
 
-		systemPromptForDebug = systemPromptForDebug + languageContextForDebug + proactiveSuggestionsForDebug;
-			
+			systemPromptForDebug =
+				systemPromptForDebug + languageContextForDebug + proactiveSuggestionsForDebug;
+
 			// Build full prompt object for debugging
 			const fullPromptData = {
 				systemPrompt: systemPromptForDebug,
@@ -2711,9 +2718,17 @@ Don't end with "feel free to ask" - be specific about available tools!`;
 				contextSize: context.length,
 				chatHistory: chatHistory.slice(-6),
 				userMessage: message,
-				totalTokens: estimateTokens(systemPromptForDebug + context + message + chatHistory.slice(-6).map(m => m.content).join(''))
+				totalTokens: estimateTokens(
+					systemPromptForDebug +
+						context +
+						message +
+						chatHistory
+							.slice(-6)
+							.map((m) => m.content)
+							.join('')
+				)
 			};
-			
+
 			const xrayInit: any = {
 				queryType: 'ai-assisted',
 				apiCallsCount: apiCalls.length,
@@ -2752,7 +2767,8 @@ Don't end with "feel free to ask" - be specific about available tools!`;
 					finalLanguage,
 					detectedLanguage: languageInfo?.detectedLanguage,
 					needsValidation: languageInfo?.needsValidation,
-					languageOverrideApplied: languageInfo?.detectedLanguage && languageInfo.detectedLanguage !== catalogLanguage
+					languageOverrideApplied:
+						languageInfo?.detectedLanguage && languageInfo.detectedLanguage !== catalogLanguage
 				}
 			};
 
@@ -2771,7 +2787,6 @@ Don't end with "feel free to ask" - be specific about available tools!`;
 				startTime,
 				endpointCalls,
 				finalLanguage,
-				organization,
 				languageInfo
 			);
 			const totalDuration = Date.now() - startTime;
@@ -2793,7 +2808,6 @@ Don't end with "feel free to ask" - be specific about available tools!`;
 			apiKey,
 			endpointCalls,
 			finalLanguage,
-			organization,
 			languageInfo
 		);
 		timings.llmResponse = Date.now() - llmResponseStart;
@@ -2860,9 +2874,17 @@ Don't end with "feel free to ask" - be specific about available tools!`;
 				contextSize: context.length,
 				chatHistory: chatHistory.slice(-6),
 				userMessage: message,
-				totalTokens: estimateTokens(systemPrompt + context + message + chatHistory.slice(-6).map(m => m.content).join(''))
+				totalTokens: estimateTokens(
+					systemPrompt +
+						context +
+						message +
+						chatHistory
+							.slice(-6)
+							.map((m) => m.content)
+							.join('')
+				)
 			};
-			
+
 			result.xrayData = {
 				queryType: 'ai-assisted',
 				apiCallsCount: apiCalls.length,

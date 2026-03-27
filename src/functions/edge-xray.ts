@@ -74,6 +74,13 @@ export class EdgeXRayTracer {
     EdgeXRayTracer.lastTracer = this;
   }
 
+  /** Record a cache hit from the app metadata layer (not a tracked HTTP call). */
+  addCacheHit(_reason: string, _detail?: string): void {
+    this.trace.cacheStats.hits++;
+    this.trace.cacheStats.total++;
+    EdgeXRayTracer.lastTracer = this;
+  }
+
   getTrace(): EdgeXRayTrace {
     const now =
       typeof performance !== "undefined" && performance.now

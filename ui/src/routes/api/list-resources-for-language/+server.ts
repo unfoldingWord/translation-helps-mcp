@@ -5,7 +5,6 @@
  */
 
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
-import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { handleListResourcesForLanguage } from '$lib/../../../src/tools/listResourcesForLanguage.js';
 
@@ -14,9 +13,9 @@ import { handleListResourcesForLanguage } from '$lib/../../../src/tools/listReso
  */
 async function fetchResourcesForLanguage(
 	params: Record<string, any>,
-	request: Request
+	_request: Request
 ): Promise<any> {
-	const { language, organization, stage, subject, limit, topic } = params;
+	const { language, stage, subject, limit, topic } = params;
 
 	// Ensure limit is a number - if not provided, use undefined to get all resources
 	let finalLimit: number | undefined;
@@ -28,7 +27,6 @@ async function fetchResourcesForLanguage(
 	try {
 		const result = await handleListResourcesForLanguage({
 			language,
-			organization,
 			stage: stage || 'prod',
 			subject,
 			limit: finalLimit,
@@ -73,7 +71,6 @@ export const GET = createSimpleEndpoint({
 				return true;
 			}
 		},
-		COMMON_PARAMS.organization,
 		{
 			name: 'stage',
 			required: false,

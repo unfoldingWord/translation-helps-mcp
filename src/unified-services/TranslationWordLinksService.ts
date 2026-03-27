@@ -16,7 +16,6 @@ import { formatResponse } from "../utils/response-formatter.js";
 export interface TranslationWordLinksParams {
   reference: string;
   language?: string;
-  organization?: string | string[];
   format?: "json" | "text" | "markdown" | "md";
   topic?: string;
 }
@@ -52,7 +51,7 @@ export class TranslationWordLinksService extends BaseService<
       const options = {
         reference: params.reference,
         language: params.language || "en",
-        organization: params.organization,
+        organization: undefined,
         topic: params.topic || "tc-ready",
       };
 

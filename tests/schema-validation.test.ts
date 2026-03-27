@@ -13,22 +13,6 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { TestClient } from "./helpers/test-client";
 import { TEST_DATA } from "./helpers/test-data";
 
-/** JSON Schema for optional `organization` may be `type: string` or `anyOf` (string | string[] | …). */
-function organizationSchemaAllowsString(orgSchema: unknown): boolean {
-  if (!orgSchema || typeof orgSchema !== "object") return false;
-  const s = orgSchema as { type?: string; anyOf?: unknown[] };
-  if (s.type === "string") return true;
-  if (Array.isArray(s.anyOf)) {
-    return s.anyOf.some((branch: any) => {
-      if (branch?.type === "string") return true;
-      if (branch?.type === "array" && branch.items?.type === "string")
-        return true;
-      return false;
-    });
-  }
-  return false;
-}
-
 describe("Schema Validation Tests", () => {
   const client = new TestClient();
 
@@ -171,13 +155,14 @@ describe("Schema Validation Tests", () => {
       }
     });
 
-    it("should accept fetch_scripture with optional organization", async () => {
+    it("should accept fetch_scripture with optional resource", async () => {
       try {
         const response = await client.callMCPTool({
           name: "fetch_scripture",
           arguments: {
-            reference: TEST_DATA.references.singleVerse,
-            organization: TEST_DATA.organizations.unfoldingWord,
+            reference: TEST_DATA.references.singleVerseUsfm,
+            language: TEST_DATA.languages.english,
+            resource: "ult",
           },
         });
 
@@ -334,13 +319,9 @@ describe("Schema Validation Tests", () => {
         { reference: TEST_DATA.references.singleVerse },
         { reference: TEST_DATA.references.singleVerse, language: "en" },
         {
-          reference: TEST_DATA.references.singleVerse,
-          organization: "unfoldingWord",
-        },
-        {
-          reference: TEST_DATA.references.singleVerse,
+          reference: TEST_DATA.references.singleVerseUsfm,
           language: "en",
-          organization: "unfoldingWord",
+          resource: "ult",
         },
       ];
 
@@ -425,13 +406,10 @@ describe("Schema Validation Tests", () => {
         (t) => t.inputSchema?.properties?.organization !== undefined,
       );
 
-      toolsWithOrganization.forEach((tool) => {
-        const orgSchema = tool.inputSchema.properties.organization;
-        expect(
-          organizationSchemaAllowsString(orgSchema),
-          `${tool.name} organization should allow string (direct or via anyOf)`,
-        ).toBe(true);
-      });
+      expect(
+        toolsWithOrganization.map((t) => t.name),
+        "MCP tools must not expose an organization input parameter (all-org discovery only)",
+      ).toEqual([]);
     });
   });
 });

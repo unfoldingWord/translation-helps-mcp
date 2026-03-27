@@ -6,8 +6,7 @@
  *
  * Requirements:
  * - UI server must be running (npm run dev in ui/ directory)
- * - Uses unfoldingWord as organization
- * - Uses en as language where needed
+ * - Uses en as language where needed (tools search all Door43 orgs by default)
  */
 
 const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:8174";
@@ -15,7 +14,6 @@ const MCP_ENDPOINT = `${BASE_URL}/api/mcp`;
 
 // Test configuration
 const TEST_CONFIG = {
-  organization: "unfoldingWord",
   language: "en",
   reference: "John 3:16",
   /** v7+ endpoints use path (term/moduleId are deprecated) */
@@ -254,7 +252,6 @@ async function runAllTests() {
       {
         reference: TEST_CONFIG.reference,
         language: TEST_CONFIG.language,
-        organization: TEST_CONFIG.organization,
       },
       "Fetch Bible scripture text for a specific reference",
       "/api/fetch-scripture",
@@ -266,7 +263,6 @@ async function runAllTests() {
       {
         reference: TEST_CONFIG.reference,
         language: TEST_CONFIG.language,
-        organization: TEST_CONFIG.organization,
       },
       "Fetch translation notes for a specific Bible reference",
       "/api/fetch-translation-notes",
@@ -290,7 +286,6 @@ async function runAllTests() {
       {
         reference: TEST_CONFIG.reference,
         language: TEST_CONFIG.language,
-        organization: TEST_CONFIG.organization,
       },
       "Fetch translation word links (TWL) for a specific Bible reference",
       "/api/fetch-translation-word-links",
@@ -302,7 +297,6 @@ async function runAllTests() {
       {
         path: TEST_CONFIG.wordPath,
         language: TEST_CONFIG.language,
-        organization: TEST_CONFIG.organization,
       },
       "Fetch translation word articles for biblical terms",
       "/api/fetch-translation-word",
@@ -314,7 +308,6 @@ async function runAllTests() {
       {
         path: TEST_CONFIG.academyPath,
         language: TEST_CONFIG.language,
-        organization: TEST_CONFIG.organization,
       },
       "Fetch translation academy (tA) modules and training content",
       "/api/fetch-translation-academy",
@@ -324,7 +317,6 @@ async function runAllTests() {
     await testToolRest(
       "list_languages",
       {
-        organization: TEST_CONFIG.organization,
         stage: "prod",
       },
       "List all available languages from the Door43 catalog",
@@ -336,7 +328,6 @@ async function runAllTests() {
       "list_subjects",
       {
         language: TEST_CONFIG.language,
-        organization: TEST_CONFIG.organization,
         stage: "prod",
       },
       "List all available resource subjects (resource types)",
@@ -348,7 +339,6 @@ async function runAllTests() {
       "list_resources_for_language",
       {
         language: TEST_CONFIG.language,
-        organization: TEST_CONFIG.organization,
         stage: "prod",
         topic: "tc-ready",
       },
@@ -394,7 +384,6 @@ async function runAllTests() {
       "discover-resources-for-language",
       {
         language: TEST_CONFIG.testLanguage,
-        organization: TEST_CONFIG.organization,
       },
       "Discover what translation resources are available for a specific language",
     );
@@ -404,7 +393,6 @@ async function runAllTests() {
       "discover-languages-for-subject",
       {
         subject: TEST_CONFIG.testSubject,
-        organization: TEST_CONFIG.organization,
       },
       "Discover which languages have a specific resource type available",
     );

@@ -108,7 +108,6 @@ Fetch Bible scripture text.
 const text = await client.fetchScripture({
   reference: "John 3:16",
   language: "en",
-  organization: "unfoldingWord",
   format: "text", // or 'usfm'
   includeVerseNumbers: true,
   resource: "all", // Optional: 'ult', 'ust', 't4t', 'ueb', 'all', or comma-separated (e.g., 'ult,ust')
@@ -142,6 +141,7 @@ const notes = await client.fetchTranslationNotes({
 ```
 
 **Response Structure:**
+
 - `verseNotes`: Array of notes specific to the requested verse reference
 - `contextNotes`: Array of book/chapter introductions (each has `contextType: "book" | "chapter"`)
 - `counts`: Separate counts for verse-specific and contextual notes
@@ -205,7 +205,6 @@ List all available languages from Door43 catalog (~1 second).
 
 ```typescript
 const languages = await client.listLanguages({
-  organization: "unfoldingWord", // or omit for all orgs
   stage: "prod",
 });
 console.log(`Found ${languages.languages.length} languages`);
@@ -218,7 +217,6 @@ List all available resource subjects/types from Door43 catalog.
 ```typescript
 const subjects = await client.listSubjects({
   language: "en",
-  organization: "unfoldingWord",
   stage: "prod",
 });
 console.log(`Found ${subjects.subjects.length} resource types`);
@@ -232,7 +230,6 @@ List all resources for a specific language. Fast single API call (~1-2 seconds).
 // Discover what's available for Spanish (es-419)
 const resources = await client.listResourcesForLanguage({
   language: "es-419",
-  organization: "", // empty = all orgs
   // topic defaults to "tc-ready" if not provided
 });
 
@@ -389,7 +386,6 @@ List all available languages from Door43 catalog (~1 second).
 
 ```typescript
 const languages = await client.listLanguages({
-  organization: "unfoldingWord", // or omit for all orgs
   stage: "prod",
 });
 
@@ -403,7 +399,6 @@ List all available resource subjects/types from Door43 catalog.
 ```typescript
 const subjects = await client.listSubjects({
   language: "en",
-  organization: "unfoldingWord",
   stage: "prod",
 });
 
@@ -418,13 +413,10 @@ List all resources for a specific language. Fast single API call (~1-2 seconds).
 // Discover what's available for Spanish (es-419)
 const resources = await client.listResourcesForLanguage({
   language: "es-419",
-  organization: "", // empty = all orgs (includes es-419_gl, unfoldingWord, etc.)
   // topic defaults to "tc-ready" if not provided
 });
 
-console.log(
-  `Found ${resources.totalResources} resources from ${resources.metadata.organizations} orgs`,
-);
+console.log(`Found ${resources.totalResources} resources`);
 console.log(resources.subjects); // Array of subject names
 console.log(resources.resourcesBySubject); // Resources grouped by type
 ```
@@ -449,7 +441,6 @@ const spanishResources = await client.listResourcesForLanguage({
 const scripture = await client.fetchScripture({
   reference: "John 3:16",
   language: "es-419",
-  organization: "es-419_gl",
 });
 ```
 

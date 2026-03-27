@@ -11,7 +11,6 @@ import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
-import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
 import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
 
 /**
@@ -22,7 +21,7 @@ async function fetchTranslationWordLinks(
 	params: Record<string, any>,
 	request: Request
 ): Promise<any> {
-	const { reference, language, organization } = params;
+	const { reference, language } = params;
 
 	// Create tracer for this request
 	const tracer = new EdgeXRayTracer(`twl-${Date.now()}`, 'fetch-translation-word-links');
@@ -32,7 +31,7 @@ async function fetchTranslationWordLinks(
 	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
 
 	// Fetch real TWL data from TSV (now includes subject)
-	const tsvResult = await fetcher.fetchTranslationWordLinks(reference, language, organization);
+	const tsvResult = await fetcher.fetchTranslationWordLinks(reference, language, undefined);
 
 	// Transform TSV rows to expected format with externalReference
 	const links = tsvResult.data.map((row, index) => {
@@ -47,7 +46,7 @@ async function fetchTranslationWordLinks(
 			const pathMatch = rcLink.match(/rc:\/\/\*\/tw\/dict\/(.+)/);
 			if (pathMatch) {
 				const extractedPath = pathMatch[1]; // e.g., "bible/kt/love"
-				
+
 				// Extract category from path
 				const categoryMatch = extractedPath.match(/bible\/([^/]+)\//);
 				const category = categoryMatch ? categoryMatch[1] : undefined; // e.g., "kt", "names", "other"
@@ -81,7 +80,7 @@ async function fetchTranslationWordLinks(
 			resourceType: 'twl',
 			subject: tsvResult.subject || 'TSV Translation Words Links', // ✅ Dynamic or fallback
 			language: language || 'en',
-			organization: organization || 'unfoldingWord',
+			organization: 'all',
 			license: 'CC BY-SA 4.0'
 		},
 		_trace: fetcher.getTrace()
@@ -92,7 +91,7 @@ async function fetchTranslationWordLinks(
 export const GET = createSimpleEndpoint({
 	name: 'fetch-translation-word-links-v2',
 
-	params: [COMMON_PARAMS.reference, COMMON_PARAMS.language, COMMON_PARAMS.organization],
+	params: [COMMON_PARAMS.reference, COMMON_PARAMS.language],
 
 	fetch: fetchTranslationWordLinks,
 

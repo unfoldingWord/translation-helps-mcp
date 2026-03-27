@@ -2,7 +2,7 @@
 """
 Comprehensive SDK Test Suite
 Tests recent fixes:
-- Organization parameter (should search all orgs when omitted)
+- list_resources_for_language searches all orgs (no org filter param)
 - Topic parameter (should default to "tc-ready")
 - Prompt improvements for translation notes
 """
@@ -68,42 +68,6 @@ async def test_organization_parameter():
     finally:
         await client.close()
 
-async def test_organization_parameter_specific():
-    log_test('Organization Parameter - Single Org Filter')
-    
-    client = TranslationHelpsClient({"serverUrl": SERVER_URL})
-    await client.connect()
-    
-    try:
-        log('Testing list_resources_for_language WITH organization="unfoldingWord"...', Colors.BLUE)
-        result = await client.list_resources_for_language({
-            'language': 'en',
-            'organization': 'unfoldingWord',
-            'limit': 100
-        })
-        
-        org_counts = {}
-        for subject, resources in result.get('resourcesBySubject', {}).items():
-            for resource in resources:
-                org = resource.get('organization', 'unknown')
-                org_counts[org] = org_counts.get(org, 0) + 1
-        
-        log(f"[OK] Found resources from {len(org_counts)} organization(s):", Colors.GREEN)
-        for org, count in org_counts.items():
-            print(f"  - {org}: {count} resources")
-        
-        if len(org_counts) == 1 and org_counts.get('unfoldingWord'):
-            log('[OK] PASS: Single organization filter working correctly!', Colors.GREEN)
-        else:
-            log('[X] FAIL: Expected only "unfoldingWord" resources', Colors.RED)
-            raise Exception('Organization filter not working correctly')
-        
-    except Exception as error:
-        log(f'[X] FAIL: {str(error)}', Colors.RED)
-        raise
-    finally:
-        await client.close()
-
 async def test_topic_parameter():
     log_test('Topic Parameter - Default "tc-ready"')
     
@@ -155,7 +119,7 @@ async def test_fetch_scripture():
         
         if scripture and len(scripture) > 0:
             log(f'[OK] Successfully fetched scripture: "{scripture[:50]}..."', Colors.GREEN)
-            log('[OK] PASS: Scripture fetch working without organization!', Colors.GREEN)
+            log('[OK] PASS: Scripture fetch succeeded', Colors.GREEN)
         else:
             raise Exception('No scripture text returned')
         
@@ -166,13 +130,13 @@ async def test_fetch_scripture():
         await client.close()
 
 async def test_fetch_translation_notes():
-    log_test('Fetch Translation Notes - Organization Parameter')
+    log_test('Fetch Translation Notes')
     
     client = TranslationHelpsClient({"serverUrl": SERVER_URL})
     await client.connect()
     
     try:
-        log('Testing fetch_translation_notes WITHOUT organization...', Colors.BLUE)
+        log('Testing fetch_translation_notes...', Colors.BLUE)
         notes = await client.fetch_translation_notes({
             'reference': 'Titus 1:1',
             'language': 'en'
@@ -195,7 +159,7 @@ async def test_fetch_translation_notes():
                     print(f"  Quote: [Greek text - encoding issue]")
                     print(f"  Note: {first_note.get('Note', '')[:100].encode('ascii', 'replace').decode()}...")
             
-            log('[OK] PASS: Translation notes fetch working without organization!', Colors.GREEN)
+            log('[OK] PASS: Translation notes fetch succeeded', Colors.GREEN)
         else:
             raise Exception('No notes returned')
         
@@ -206,13 +170,13 @@ async def test_fetch_translation_notes():
         await client.close()
 
 async def test_fetch_translation_questions():
-    log_test('Fetch Translation Questions - Organization Parameter')
+    log_test('Fetch Translation Questions')
     
     client = TranslationHelpsClient({"serverUrl": SERVER_URL})
     await client.connect()
     
     try:
-        log('Testing fetch_translation_questions WITHOUT organization...', Colors.BLUE)
+        log('Testing fetch_translation_questions...', Colors.BLUE)
         questions = await client.fetch_translation_questions({
             'reference': 'Genesis 1:1',
             'language': 'en'
@@ -228,7 +192,7 @@ async def test_fetch_translation_questions():
             except (UnicodeEncodeError, IndexError):
                 print(f"  Q: [Question text - encoding/index issue]")
                 print(f"  A: [Answer text - encoding/index issue]")
-            log('[OK] PASS: Translation questions fetch working without organization!', Colors.GREEN)
+            log('[OK] PASS: Translation questions fetch succeeded', Colors.GREEN)
         else:
             raise Exception('No questions returned')
         
@@ -276,8 +240,7 @@ async def run_all_tests():
     print(f"\nServer URL: {SERVER_URL}\n")
     
     tests = [
-        {'name': 'Multi-Org Search (Default)', 'fn': test_organization_parameter},
-        {'name': 'Single Org Filter', 'fn': test_organization_parameter_specific},
+        {'name': 'Multi-Org Discovery', 'fn': test_multi_organization_discovery},
         {'name': 'Topic Default', 'fn': test_topic_parameter},
         {'name': 'Fetch Scripture', 'fn': test_fetch_scripture},
         {'name': 'Fetch Translation Notes', 'fn': test_fetch_translation_notes},

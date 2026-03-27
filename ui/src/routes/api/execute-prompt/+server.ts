@@ -8,7 +8,6 @@ export const POST: RequestHandler = async ({ request, fetch: eventFetch }) => {
 	const { promptName, parameters } = await request.json();
 	let { reference } = parameters;
 	const language = parameters.language ?? 'en';
-	const organization = parameters.organization ?? ''; // Empty = search ALL organizations (default)
 
 	// Normalize reference to use 3-letter book codes
 	// Converts "Tito 3:11-15" → "TIT 3:11-15", "Jonah 1:1" → "JON 1:1", etc.
@@ -97,7 +96,7 @@ export const POST: RequestHandler = async ({ request, fetch: eventFetch }) => {
 	};
 
 	console.log(
-		`[execute-prompt] Starting prompt execution: ${promptName} for ${reference} (${language}, ${organization})`
+		`[execute-prompt] Starting prompt execution: ${promptName} for ${reference} (${language})`
 	);
 
 	try {
@@ -108,7 +107,6 @@ export const POST: RequestHandler = async ({ request, fetch: eventFetch }) => {
 				result = await executeTranslationHelpsPrompt(
 					reference,
 					language,
-					organization,
 					trackedFetchCall,
 					tracer,
 					true // condensed = true
@@ -120,7 +118,6 @@ export const POST: RequestHandler = async ({ request, fetch: eventFetch }) => {
 				result = await executeTranslationHelpsPrompt(
 					reference,
 					language,
-					organization,
 					trackedFetchCall,
 					tracer,
 					false // condensed = false (full content)
@@ -129,24 +126,12 @@ export const POST: RequestHandler = async ({ request, fetch: eventFetch }) => {
 
 			case 'get-translation-words-for-passage':
 				console.log('[execute-prompt] Executing get-translation-words-for-passage');
-				result = await executeWordsPrompt(
-					reference,
-					language,
-					organization,
-					trackedFetchCall,
-					tracer
-				);
+				result = await executeWordsPrompt(reference, language, trackedFetchCall, tracer);
 				break;
 
 			case 'get-translation-academy-for-passage':
 				console.log('[execute-prompt] Executing get-translation-academy-for-passage');
-				result = await executeAcademyPrompt(
-					reference,
-					language,
-					organization,
-					trackedFetchCall,
-					tracer
-				);
+				result = await executeAcademyPrompt(reference, language, trackedFetchCall, tracer);
 				break;
 
 			default:
@@ -297,7 +282,6 @@ export const POST: RequestHandler = async ({ request, fetch: eventFetch }) => {
 async function executeTranslationHelpsPrompt(
 	reference: string,
 	language: string,
-	organization: string,
 	trackedFetchCall: (url: string) => Promise<Response>,
 	tracer: EdgeXRayTracer,
 	condensed: boolean = false // NEW: If true, strip full content from words/notes/academy
@@ -322,7 +306,7 @@ async function executeTranslationHelpsPrompt(
 	// Step 1: Fetch scripture
 	try {
 		const scriptureRes = await trackedFetchCall(
-			`/api/fetch-scripture?reference=${encodeURIComponent(reference)}&language=${language}&organization=${encodeURIComponent(organization)}`
+			`/api/fetch-scripture?reference=${encodeURIComponent(reference)}&language=${language}`
 		);
 		if (scriptureRes.ok) {
 			const scriptureData = await scriptureRes.json();
@@ -403,7 +387,7 @@ async function executeTranslationHelpsPrompt(
 	// Step 2: Fetch questions
 	try {
 		const questionsRes = await trackedFetchCall(
-			`/api/fetch-translation-questions?reference=${encodeURIComponent(reference)}&language=${language}&organization=${encodeURIComponent(organization)}`
+			`/api/fetch-translation-questions?reference=${encodeURIComponent(reference)}&language=${language}`
 		);
 		if (questionsRes.ok) {
 			const questionsData = await questionsRes.json();
@@ -441,7 +425,7 @@ async function executeTranslationHelpsPrompt(
 	let wordLinks: any[] = [];
 	try {
 		const linksRes = await trackedFetchCall(
-			`/api/fetch-translation-word-links?reference=${encodeURIComponent(reference)}&language=${language}&organization=${encodeURIComponent(organization)}`
+			`/api/fetch-translation-word-links?reference=${encodeURIComponent(reference)}&language=${language}`
 		);
 		if (linksRes.ok) {
 			const linksData = await linksRes.json();
@@ -493,7 +477,7 @@ async function executeTranslationHelpsPrompt(
 			});
 
 			// Use the path parameter from externalReference
-			const url = `/api/fetch-translation-word?path=${encodeURIComponent(path)}&language=${language}&organization=${encodeURIComponent(organization)}`;
+			const url = `/api/fetch-translation-word?path=${encodeURIComponent(path)}&language=${language}`;
 			console.log(`Fetching word article: ${url}`);
 			const wordRes = await trackedFetchCall(url);
 			if (wordRes.ok) {
@@ -575,7 +559,7 @@ async function executeTranslationHelpsPrompt(
 	// Step 5: Fetch notes
 	try {
 		const notesRes = await trackedFetchCall(
-			`/api/fetch-translation-notes?reference=${encodeURIComponent(reference)}&language=${language}&organization=${encodeURIComponent(organization)}`
+			`/api/fetch-translation-notes?reference=${encodeURIComponent(reference)}&language=${language}`
 		);
 		if (notesRes.ok) {
 			const notesData = await notesRes.json();
@@ -602,7 +586,7 @@ async function executeTranslationHelpsPrompt(
 		// Limit to first 5
 		try {
 			const academyRes = await trackedFetchCall(
-				`/api/fetch-translation-academy?path=${encodeURIComponent(path)}&language=${language}&organization=${encodeURIComponent(organization)}`
+				`/api/fetch-translation-academy?path=${encodeURIComponent(path)}&language=${language}`
 			);
 			if (academyRes.ok) {
 				const academyData = await academyRes.json();
@@ -760,7 +744,6 @@ async function executeTranslationHelpsPrompt(
 async function executeWordsPrompt(
 	reference: string,
 	language: string,
-	organization: string,
 	trackedFetchCall: (url: string) => Promise<Response>,
 	_tracer: EdgeXRayTracer
 ) {
@@ -780,7 +763,7 @@ async function executeWordsPrompt(
 	let wordLinks: any[] = [];
 	try {
 		const linksRes = await trackedFetchCall(
-			`/api/fetch-translation-word-links?reference=${encodeURIComponent(reference)}&language=${language}&organization=${encodeURIComponent(organization)}`
+			`/api/fetch-translation-word-links?reference=${encodeURIComponent(reference)}&language=${language}`
 		);
 		if (linksRes.ok) {
 			const linksData = await linksRes.json();
@@ -829,7 +812,7 @@ async function executeWordsPrompt(
 				quote: link.quote
 			});
 
-			const url = `/api/fetch-translation-word?path=${encodeURIComponent(path)}&language=${language}&organization=${encodeURIComponent(organization)}`;
+			const url = `/api/fetch-translation-word?path=${encodeURIComponent(path)}&language=${language}`;
 			console.log(`Fetching word article: ${url}`);
 			const wordRes = await trackedFetchCall(url);
 			if (wordRes.ok) {
@@ -916,7 +899,6 @@ async function executeWordsPrompt(
 async function executeAcademyPrompt(
 	reference: string,
 	language: string,
-	organization: string,
 	trackedFetchCall: (url: string) => Promise<Response>,
 	_tracer: EdgeXRayTracer
 ) {
@@ -940,7 +922,7 @@ async function executeAcademyPrompt(
 	// Step 1: Fetch notes (same as main prompt, but not included in results)
 	try {
 		const notesRes = await trackedFetchCall(
-			`/api/fetch-translation-notes?reference=${encodeURIComponent(reference)}&language=${language}&organization=${encodeURIComponent(organization)}`
+			`/api/fetch-translation-notes?reference=${encodeURIComponent(reference)}&language=${language}`
 		);
 		if (notesRes.ok) {
 			notesData = await notesRes.json();
@@ -990,7 +972,7 @@ async function executeAcademyPrompt(
 	for (const path of academyPaths.slice(0, 5)) {
 		try {
 			const academyRes = await trackedFetchCall(
-				`/api/fetch-translation-academy?path=${encodeURIComponent(path)}&language=${language}&organization=${encodeURIComponent(organization)}`
+				`/api/fetch-translation-academy?path=${encodeURIComponent(path)}&language=${language}`
 			);
 			if (academyRes.ok) {
 				const academyData = await academyRes.json();

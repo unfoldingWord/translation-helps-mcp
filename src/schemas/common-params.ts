@@ -28,18 +28,6 @@ export const LanguageParam = z
   .describe('Language code (default: "en")');
 
 /**
- * Common organization parameter
- * Organization(s) providing the translation resources
- * Can be a single organization (string), multiple organizations (array), or omitted to search all organizations
- */
-export const OrganizationParam = z
-  .union([z.string(), z.array(z.string()), z.undefined()])
-  .optional()
-  .describe(
-    'Organization(s) to search. Can be a single organization (string), multiple organizations (array), or omitted to search all organizations. Examples: "unfoldingWord", ["unfoldingWord", "es-419_gl"], or undefined for all.',
-  );
-
-/**
  * Common format parameter
  * Output format for responses
  */
@@ -165,7 +153,6 @@ export function createReferenceBasedSchema<T extends z.ZodRawShape>(
   return z.object({
     reference: ReferenceParam,
     language: LanguageParam,
-    organization: OrganizationParam,
     ...additionalFields,
   });
 }
@@ -181,7 +168,6 @@ export function createTermBasedSchema<T extends z.ZodRawShape>(
     path: PathParam,
     rcLink: RCLinkParam,
     language: LanguageParam,
-    organization: OrganizationParam,
     ...additionalFields,
   });
 }

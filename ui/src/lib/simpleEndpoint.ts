@@ -236,7 +236,7 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 					validate: (value) => {
 						const allowedFormats =
 							config.supportsFormats === true
-								? ['json', 'md', 'text']
+								? ['json', 'md', 'markdown', 'text', 'usfm']
 								: (config.supportsFormats as ResponseFormat[]);
 						return allowedFormats.includes(value);
 					}
@@ -305,7 +305,8 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 			}
 
 			// 4. Apply formatting if requested
-			const format = (parsedParams.format as ResponseFormat) || 'json';
+			let format = (parsedParams.format as ResponseFormat) || 'json';
+			if (format === 'markdown') format = 'md' as ResponseFormat;
 			let formattedData = data;
 			let contentType = 'application/json';
 

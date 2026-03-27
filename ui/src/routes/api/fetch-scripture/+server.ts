@@ -26,18 +26,20 @@ function parseResources(resourceParam: string | undefined): string[] | null {
 
 	// Handle comma-separated resources - no validation needed
 	// Let the catalog determine if these resources exist
-	return resourceParam.split(',').map((r) => r.trim()).filter(Boolean);
+	return resourceParam
+		.split(',')
+		.map((r) => r.trim())
+		.filter(Boolean);
 }
 
 /**
  * Fetch scripture for a reference
  */
 async function fetchScripture(params: Record<string, any>, request: Request): Promise<any> {
-	const { reference, language, organization, resource: resourceParam } = params;
+	const { reference, language, resource: resourceParam } = params;
 
-	// Handle organization as string, array, or undefined
-	// If array, we'll need to make parallel calls and merge results
-	const orgParam = organization;
+	// Organization filter removed from public API; discovery searches all orgs.
+	const organization = undefined;
 
 	// Create tracer for this request
 	const tracer = new EdgeXRayTracer(`scripture-${Date.now()}`, 'fetch-scripture');
@@ -67,12 +69,15 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 		results.map((s: any) => s.translation || 'Unknown')
 	);
 
+	const orgFallback = fetcher.getOrganizationFallback();
+
 	// Return in standard format with trace data
 	const response = {
 		...createScriptureResponse(results, {
 			reference,
 			requestedResources,
-			foundResources: results.map((s: any) => s.translation?.split(' ')[0]?.toLowerCase())
+			foundResources: results.map((s: any) => s.translation?.split(' ')[0]?.toLowerCase()),
+			...(orgFallback && { organizationFallback: orgFallback })
 		}),
 		_trace: fetcher.getTrace()
 	};
@@ -92,7 +97,6 @@ export const GET = createSimpleEndpoint({
 	params: [
 		COMMON_PARAMS.reference,
 		COMMON_PARAMS.language,
-		COMMON_PARAMS.organization,
 		{
 			name: 'resource',
 			default: 'all'
