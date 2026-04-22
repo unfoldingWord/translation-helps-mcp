@@ -4,9 +4,7 @@
  * Uses unified resource discovery to minimize DCS API calls
  */
 
-import { proxyFetch } from "../utils/httpClient.js";
 import { logger } from "../utils/logger.js";
-import { cache } from "./cache";
 import { parseReference } from "./reference-parser";
 import { getResourceForBook, getResourcesForBook } from "./resource-detector";
 import { ZipFetcherFactory } from "../services/zip-fetcher-provider.js";
@@ -63,97 +61,6 @@ export interface TranslationQuestionsResult {
 }
 
 /**
- * Parse TSV data into TranslationQuestion objects
- */
-function parseTQFromTSV(
-  tsvData: string,
-  reference: ParsedReference,
-): TranslationQuestion[] {
-  const lines = tsvData.split("\n").filter((line) => line.trim());
-  const questions: TranslationQuestion[] = [];
-  let questionId = 1;
-
-  // Log first few lines for debugging
-  if (lines.length > 0) {
-    logger.debug(`📋 First TSV line`, { line: lines[0] });
-    logger.debug(
-      `📋 Parsing questions for ${reference.book} ${reference.chapter}:${reference.verse || "*"}`,
-    );
-  }
-
-  for (const line of lines) {
-    const columns = line.split("\t");
-    if (columns.length < 7) continue; // Skip malformed lines
-
-    // TSV format: reference, id, tags, quote, occurrence, question, response
-    const [ref, id, tags, , , question, response] = columns;
-
-    // Parse the reference (e.g., "1:1" -> chapter 1, verse 1)
-    const refMatch = ref.match(/^(\d+):(\d+)$/);
-    if (!refMatch) continue;
-
-    const chapter = parseInt(refMatch[1]);
-    const verse = parseInt(refMatch[2]);
-
-    // Only include questions for the requested reference
-    if (chapter === reference.chapter) {
-      // Handle verse ranges and exact matches
-      if (reference.verse === undefined) {
-        // Include all verses in the chapter
-        questions.push({
-          id: id || `tq-${reference.book}-${chapter}-${verse}-${questionId++}`,
-          reference: `${reference.bookName} ${chapter}:${verse}`,
-          question: question.trim(),
-          response: response.trim(),
-          tags: tags ? tags.split(",").map((t) => t.trim()) : [],
-        });
-      } else {
-        // Check verse range or exact match
-        const endVerse = reference.endVerse || reference.verseEnd;
-        if (endVerse) {
-          // Check if verse is within range
-          if (verse >= reference.verse && verse <= endVerse) {
-            questions.push({
-              id:
-                id ||
-                `tq-${reference.book}-${chapter}-${verse}-${questionId++}`,
-              reference: `${reference.bookName} ${chapter}:${verse}`,
-              question: question.trim(),
-              response: response.trim(),
-              tags: tags ? tags.split(",").map((t) => t.trim()) : [],
-            });
-          }
-        } else {
-          // Exact verse match
-          if (verse === reference.verse) {
-            questions.push({
-              id:
-                id ||
-                `tq-${reference.book}-${chapter}-${verse}-${questionId++}`,
-              reference: `${reference.bookName} ${chapter}:${verse}`,
-              question: question.trim(),
-              response: response.trim(),
-              tags: tags ? tags.split(",").map((t) => t.trim()) : [],
-            });
-          }
-        }
-      }
-    }
-  }
-
-  return questions;
-}
-
-interface ParsedReference {
-  book: string;
-  bookName?: string;
-  chapter: number;
-  verse?: number;
-  endVerse?: number;
-  verseEnd?: number;
-}
-
-/**
  * Fetch translation questions from multiple resources (all organizations)
  */
 async function fetchTranslationQuestionsFromMultipleResources(
@@ -175,37 +82,47 @@ async function fetchTranslationQuestionsFromMultipleResources(
 
   if (!resources || resources.length === 0) {
     // Try to find language variants to help the user
-    const { findLanguageVariants } = await import('./resource-detector.js');
-    const baseLanguage = language.split('-')[0];
+    const { findLanguageVariants } = await import("./resource-detector.js");
+    const baseLanguage = language.split("-")[0];
     // For translation questions, search the correct subject
-    const languageVariants = await findLanguageVariants(baseLanguage, 'all', topic, ['TSV Translation Questions']);
-    
+    const languageVariants = await findLanguageVariants(
+      baseLanguage,
+      "all",
+      topic,
+      ["TSV Translation Questions"],
+    );
+
     // Create structured error with recovery data
     const error: any = new Error(
       languageVariants.length > 0
-        ? `No translation questions found for language '${language}'.\n\nAvailable language variants: ${languageVariants.join(', ')}\n\nPlease try one of these language codes instead.`
-        : `No translation questions available for language '${language}'.`
+        ? `No translation questions found for language '${language}'.\n\nAvailable language variants: ${languageVariants.join(", ")}\n\nPlease try one of these language codes instead.`
+        : `No translation questions available for language '${language}'.`,
     );
-    
+
     // Attach structured data for automatic retry
     if (languageVariants.length > 0) {
       error.languageVariants = languageVariants;
       error.requestedLanguage = language;
-      logger.info('Throwing language variant error for translation questions', {
+      logger.info("Throwing language variant error for translation questions", {
         language,
-        variants: languageVariants
+        variants: languageVariants,
       });
     } else {
       error.requestedLanguage = language;
-      logger.info('Throwing language not supported error for translation questions', {
-        language
-      });
+      logger.info(
+        "Throwing language not supported error for translation questions",
+        {
+          language,
+        },
+      );
     }
-    
+
     throw error;
   }
 
-  logger.info(`Found ${resources.length} question resources from multiple organizations`);
+  logger.info(
+    `Found ${resources.length} question resources from multiple organizations`,
+  );
 
   const allQuestions: TranslationQuestion[] = [];
   const citations: Array<{
@@ -245,8 +162,7 @@ async function fetchTranslationQuestionsFromMultipleResources(
         "translation-questions-service",
       );
       const zipFetcherProvider = ZipFetcherFactory.create(
-        (process.env.ZIP_FETCHER_PROVIDER as "r2" | "fs" | "auto") ||
-          "auto",
+        (process.env.ZIP_FETCHER_PROVIDER as "r2" | "fs" | "auto") || "auto",
         process.env.CACHE_PATH,
         tracer,
       );
@@ -256,18 +172,20 @@ async function fetchTranslationQuestionsFromMultipleResources(
           book: parsedRef.book,
           chapter: parsedRef.chapter!,
           verse: parsedRef.verse,
-          endVerse: parsedRef.endVerse,  // Include endVerse for verse ranges
+          endVerse: parsedRef.endVerse, // Include endVerse for verse ranges
         },
         language,
         resourceInfo.owner || "unfoldingWord",
         "tq",
       );
       const rows = tsvResult.data as Array<Record<string, string>>;
-      
+
       // Capture subject from first successful resource
       if (!resourceSubject && tsvResult.subject) {
         resourceSubject = tsvResult.subject;
-        logger.info(`[Multi-resource] Captured subject from catalog: ${resourceSubject}`);
+        logger.info(
+          `[Multi-resource] Captured subject from catalog: ${resourceSubject}`,
+        );
       }
 
       logger.info(`Fetched ${rows.length} TSV rows from ${resourceInfo.name}`);
@@ -278,7 +196,9 @@ async function fetchTranslationQuestionsFromMultipleResources(
         title: resourceInfo.title, // ✅ FROM DCS CATALOG
         organization: resourceInfo.owner || "unfoldingWord",
         language,
-        url: resourceInfo.url || `https://git.door43.org/${resourceInfo.owner}/${resourceInfo.name}`,
+        url:
+          resourceInfo.url ||
+          `https://git.door43.org/${resourceInfo.owner}/${resourceInfo.name}`,
         version: tsvResult.version || "master", // ✅ FROM DCS CATALOG
       };
       citations.push(resourceCitation);
@@ -346,7 +266,7 @@ export async function fetchTranslationQuestions(
     topic = "tc-ready",
   } = options;
 
-  const parsedRef = parseReference(reference);
+  const parsedRef = parseReference(reference, { language });
   if (!parsedRef) {
     throw new Error(`Invalid reference format: ${reference}`);
   }
@@ -384,36 +304,47 @@ export async function fetchTranslationQuestions(
 
   if (!resourceInfo) {
     // Try to find language variants to help the user
-    const { findLanguageVariants } = await import('./resource-detector.js');
-    const baseLanguage = language.split('-')[0];
+    const { findLanguageVariants } = await import("./resource-detector.js");
+    const baseLanguage = language.split("-")[0];
     // For translation questions, search the correct subject (search all orgs for variants)
-    const languageVariants = await findLanguageVariants(baseLanguage, organization === 'unfoldingWord' ? undefined : organization, topic, ['TSV Translation Questions']);
+    const languageVariants = await findLanguageVariants(
+      baseLanguage,
+      organization === "unfoldingWord" ? undefined : organization,
+      topic,
+      ["TSV Translation Questions"],
+    );
 
     // Filter out the current language to prevent infinite retry loops
-    const filteredVariants = languageVariants.filter(v => v !== language);
+    const filteredVariants = languageVariants.filter((v) => v !== language);
 
     // Create structured error with recovery data
     const error: any = new Error(
       filteredVariants.length > 0
-        ? `No translation questions found for language '${language}'.\n\nAvailable language variants: ${filteredVariants.join(', ')}\n\nPlease try one of these language codes instead.`
-        : `No translation questions available for language '${language}'.`
+        ? `No translation questions found for language '${language}'.\n\nAvailable language variants: ${filteredVariants.join(", ")}\n\nPlease try one of these language codes instead.`
+        : `No translation questions available for language '${language}'.`,
     );
 
     // Attach structured data for automatic retry
     if (filteredVariants.length > 0) {
       error.languageVariants = filteredVariants;
       error.requestedLanguage = language;
-      logger.info('Throwing language variant error for translation questions (single org)', {
-        language,
-        variants: filteredVariants,
-        organization
-      });
+      logger.info(
+        "Throwing language variant error for translation questions (single org)",
+        {
+          language,
+          variants: filteredVariants,
+          organization,
+        },
+      );
     } else {
       error.requestedLanguage = language;
-      logger.info('Throwing language not supported error for translation questions (single org)', {
-        language,
-        organization
-      });
+      logger.info(
+        "Throwing language not supported error for translation questions (single org)",
+        {
+          language,
+          organization,
+        },
+      );
     }
 
     throw error;
@@ -468,7 +399,7 @@ export async function fetchTranslationQuestions(
       book: parsedRef.book,
       chapter: parsedRef.chapter!,
       verse: parsedRef.verse,
-      endVerse: parsedRef.endVerse,  // Include endVerse for verse ranges
+      endVerse: parsedRef.endVerse, // Include endVerse for verse ranges
     },
     language,
     organization,
@@ -478,7 +409,11 @@ export async function fetchTranslationQuestions(
   const resourceSubject = tsvResult.subject; // ✅ FROM DCS CATALOG
   const resourceVersion = tsvResult.version; // ✅ FROM DCS CATALOG
 
-  logger.info(`Fetched TSV rows from ZIP`, { count: rows.length, subject: resourceSubject, version: resourceVersion });
+  logger.info(`Fetched TSV rows from ZIP`, {
+    count: rows.length,
+    subject: resourceSubject,
+    version: resourceVersion,
+  });
 
   // Convert rows to TranslationQuestion format
   // The rows are already filtered by reference, so we just need to map them

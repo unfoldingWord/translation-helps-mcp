@@ -8,7 +8,6 @@ import { EdgeXRayTracer } from "../functions/edge-xray";
 import { parseReference } from "../parsers/referenceParser";
 import { ZipFetcherFactory } from "../services/zip-fetcher-provider.js";
 import { logger } from "../utils/logger.js";
-import { cache } from "./cache";
 
 export interface TranslationWordLink {
   word: string;
@@ -65,7 +64,7 @@ export async function fetchWordLinks(
   });
 
   // Parse the reference
-  const reference = parseReference(referenceParam);
+  const reference = parseReference(referenceParam, { language });
   if (!reference) {
     throw new Error(`Invalid reference format: ${referenceParam}`);
   }
@@ -85,7 +84,7 @@ export async function fetchWordLinks(
     process.env.CACHE_PATH,
     tracer,
   );
-  
+
   let tsvResult;
   try {
     tsvResult = await zipFetcherProvider.getTSVData(
@@ -93,51 +92,66 @@ export async function fetchWordLinks(
         book: reference.book,
         chapter: reference.chapter!,
         verse: reference.verse,
-        endVerse: reference.endVerse,  // Include endVerse for verse ranges
+        endVerse: reference.endVerse, // Include endVerse for verse ranges
       },
       language,
       organization,
       "twl",
     );
-  } catch (error: any) {
+  } catch (_error: any) {
     // Try to find language variants to help the user
-    const { findLanguageVariants } = await import('./resource-detector.js');
-    const baseLanguage = language.split('-')[0];
+    const { findLanguageVariants } = await import("./resource-detector.js");
+    const baseLanguage = language.split("-")[0];
     // For translation word links, search the correct subject
-    const languageVariants = await findLanguageVariants(baseLanguage, organization === 'unfoldingWord' ? undefined : organization, 'tc-ready', ['Translation Word Links']);
-    
+    const languageVariants = await findLanguageVariants(
+      baseLanguage,
+      organization === "unfoldingWord" ? undefined : organization,
+      "tc-ready",
+      ["Translation Word Links"],
+    );
+
     // Create structured error with recovery data
     const enhancedError: any = new Error(
       languageVariants.length > 0
-        ? `No translation word links found for language '${language}'.\n\nAvailable language variants: ${languageVariants.join(', ')}\n\nPlease try one of these language codes instead.`
-        : `No translation word links available for language '${language}'.`
+        ? `No translation word links found for language '${language}'.\n\nAvailable language variants: ${languageVariants.join(", ")}\n\nPlease try one of these language codes instead.`
+        : `No translation word links available for language '${language}'.`,
     );
-    
+
     // Attach structured data for automatic retry
     if (languageVariants.length > 0) {
       enhancedError.languageVariants = languageVariants;
       enhancedError.requestedLanguage = language;
-      logger.info('Throwing language variant error for translation word links', {
-        language,
-        variants: languageVariants
-      });
+      logger.info(
+        "Throwing language variant error for translation word links",
+        {
+          language,
+          variants: languageVariants,
+        },
+      );
     } else {
       enhancedError.requestedLanguage = language;
-      logger.info('Throwing language not supported error for translation word links', {
-        language
-      });
+      logger.info(
+        "Throwing language not supported error for translation word links",
+        {
+          language,
+        },
+      );
     }
-    
+
     throw enhancedError;
   }
-  
+
   const rows = tsvResult.data as any[];
   const resourceSubject = tsvResult.subject; // ✅ FROM DCS CATALOG
   const resourceVersion = tsvResult.version; // ✅ FROM DCS CATALOG
 
   // Map rows into expected pass-through structure (preserve fields)
   const wordLinks = (rows || []).map((row) => ({ ...row }));
-  logger.info(`Parsed word links from ZIP`, { count: wordLinks.length, subject: resourceSubject, version: resourceVersion });
+  logger.info(`Parsed word links from ZIP`, {
+    count: wordLinks.length,
+    subject: resourceSubject,
+    version: resourceVersion,
+  });
 
   // Return the raw TSV structure without transformation
   const result = {

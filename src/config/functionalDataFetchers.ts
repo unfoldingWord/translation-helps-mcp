@@ -89,7 +89,9 @@ export const createZIPFetcher = (
       .replace(/\bJn\b/gi, "John")
       .replace(/\bMt\b/gi, "Matthew");
     const reference = params.reference
-      ? parseReference(normalizedRefStr)
+      ? parseReference(normalizedRefStr, {
+          language: params.language as string | undefined,
+        })
       : null;
     if (!reference) {
       const err = new Error(
