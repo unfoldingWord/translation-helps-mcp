@@ -266,7 +266,7 @@ export async function discoverAvailableResources(
   organization?: string,
   topic: string = "tc-ready",
 ): Promise<ResourceAvailability> {
-  const parsedRef = parseReference(reference);
+  const parsedRef = parseReference(reference, { language });
   if (!parsedRef) {
     throw new Error(`Invalid reference format: ${reference}`);
   }

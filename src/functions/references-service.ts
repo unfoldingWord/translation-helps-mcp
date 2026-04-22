@@ -10,6 +10,8 @@ import { parseReference } from "./reference-parser";
 export interface ExtractReferencesOptions {
   text: string;
   includeContext?: boolean;
+  /** BCP-47 tag for resolving localized book names in extracted strings */
+  language?: string;
 }
 
 export interface ExtractedReference {
@@ -45,7 +47,7 @@ export async function extractReferences(
   options: ExtractReferencesOptions,
 ): Promise<ExtractReferencesResult> {
   const startTime = Date.now();
-  const { text, includeContext = false } = options;
+  const { text, includeContext = false, language } = options;
 
   logger.info(`References service called`, {
     textLength: text.length,
@@ -67,10 +69,10 @@ export async function extractReferences(
     pattern.lastIndex = 0; // Reset regex
 
     while ((match = pattern.exec(text)) !== null) {
-      const [fullMatch, bookStr, chapterStr, verseStr, verseEndStr] = match;
+      const fullMatch = match[0];
 
       // Parse the reference to validate it
-      const parsedRef = parseReference(fullMatch);
+      const parsedRef = parseReference(fullMatch, { language });
       if (!parsedRef) continue;
 
       const extractedRef: ExtractedReference = {

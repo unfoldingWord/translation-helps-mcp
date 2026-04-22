@@ -10,7 +10,6 @@ import type { TranslationNotesResult } from "../functions/translation-notes-serv
 import type { TranslationQuestionsResult } from "../functions/translation-questions-service.js";
 import { normalizeReference } from "../parsers/referenceParser.js";
 import { parseReference } from "../functions/reference-parser.js";
-import { logger } from "./logger.js";
 
 /**
  * Transform scripture service result to HTTP endpoint format
@@ -40,7 +39,9 @@ export function transformScriptureResultToHTTP(
 
   // Normalize reference string for display
   // Parse and normalize the reference to ensure consistent formatting
-  const parsedRef = parseReference(reference);
+  const parsedRef = parseReference(reference, {
+    language: params.language,
+  });
   let referenceStr = reference;
 
   if (parsedRef) {

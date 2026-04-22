@@ -132,7 +132,7 @@ export async function fetchScripture(
     bypassCache: Boolean(bypassCache),
   });
 
-  const reference = parseReference(referenceParam);
+  const reference = parseReference(referenceParam, { language });
   if (!reference) {
     throw new Error(`Invalid reference format: ${referenceParam}`);
   }

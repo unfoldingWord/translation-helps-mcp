@@ -768,8 +768,11 @@ export class RouteGenerator {
     // If there's a reference parameter, parse it and add book/chapter to params
     const expandedParams = { ...params };
     if (params.reference && typeof params.reference === "string") {
-      const parsed = parseReference(params.reference);
-      if (parsed.isValid && parsed.book && parsed.chapter) {
+      const parsed = parseReference(params.reference, {
+        language:
+          typeof params.language === "string" ? params.language : undefined,
+      });
+      if (parsed && parsed.book && parsed.chapter) {
         // Convert book name to DCS code
         const bookCode =
           BOOK_CODE_MAP[parsed.book] || parsed.book.toUpperCase();

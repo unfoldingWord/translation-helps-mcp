@@ -3,12 +3,14 @@
  * Parses various Bible reference formats into structured data
  */
 
+import { getBookCodeFromName, getBookName } from "../utils/book-codes.js";
+
 export interface Reference {
   book: string;
   bookName: string;
   chapter: number;
   verse?: number;
-  endVerse?: number;  // Changed from verseEnd to match ParsedReference interface
+  endVerse?: number; // Changed from verseEnd to match ParsedReference interface
   citation: string;
   original: string;
 }
@@ -130,8 +132,8 @@ const BOOK_MAPPINGS: Record<string, { code: string; name: string }> = {
   ec: { code: "ECC", name: "Ecclesiastes" },
 
   // Song of Solomon
-  "songofsolomon": { code: "SNG", name: "Song of Solomon" },
-  "songofsongs": { code: "SNG", name: "Song of Solomon" },
+  songofsolomon: { code: "SNG", name: "Song of Solomon" },
+  songofsongs: { code: "SNG", name: "Song of Solomon" },
   song: { code: "SNG", name: "Song of Solomon" },
   sng: { code: "SNG", name: "Song of Solomon" },
   ss: { code: "SNG", name: "Song of Solomon" },
@@ -388,26 +390,48 @@ const BOOK_MAPPINGS: Record<string, { code: string; name: string }> = {
   romains: { code: "ROM", name: "Romans" },
 };
 
+/** Book title: optional "1/2/3 " prefix + word starting with a letter (incl. accents) + rest */
+const BOOK_HEAD = "(?:[1-3]\\s+)?[\\p{L}][\\p{L}0-9\\s\\.'’\\-]*";
+
+function resolveBookInfo(
+  bookStr: string,
+  language?: string,
+): { code: string; name: string } | null {
+  const t = bookStr.trim();
+  const normalized = t.toLowerCase().replace(/\s+/g, "").replace(/\./g, "");
+  const fromMap = BOOK_MAPPINGS[normalized];
+  if (fromMap) return fromMap;
+  const code =
+    getBookCodeFromName(t, language) ||
+    getBookCodeFromName(normalized, language);
+  if (!code) return null;
+  const enName = getBookName(code);
+  return { code, name: enName || code };
+}
+
+export type ParseReferenceOptions = { language?: string };
+
 /**
  * Parse a Bible reference string into structured data
+ * @param options.language BCP-47 language tag to resolve localized book titles (e.g. Génesis, Mateo)
  */
-export function parseReference(input: string): Reference | null {
+export function parseReference(
+  input: string,
+  options?: ParseReferenceOptions,
+): Reference | null {
   if (!input || typeof input !== "string") return null;
+  const language = options?.language;
 
   // Clean the input
   const cleanInput = input.trim();
 
-  // Try book-only pattern first (e.g., "Philemon", "Jude", "Obadiah")
-  const bookOnlyRegex = /^(\d?\s*\w+)$/i;
+  // Try book-only pattern first (e.g., "Philemon", "Jude", "Obadiah", "Génesis")
+  const bookOnlyRegex = new RegExp(`^(${BOOK_HEAD})$`, "iu");
   const bookOnlyMatch = cleanInput.match(bookOnlyRegex);
 
   if (bookOnlyMatch) {
     const [, bookStr] = bookOnlyMatch;
-    const normalizedBook = bookStr
-      .toLowerCase()
-      .replace(/\s+/g, "")
-      .replace(/\./g, "");
-    const bookInfo = BOOK_MAPPINGS[normalizedBook];
+    const bookInfo = resolveBookInfo(bookStr, language);
 
     if (bookInfo) {
       return {
@@ -420,17 +444,16 @@ export function parseReference(input: string): Reference | null {
     }
   }
 
-  // Try chapter range pattern (e.g., "Titus 1-2", "1 Timothy 1-3")
-  const chapterRangeRegex = /^(\d?\s*\w+)[\s\.]*(\d+)[-–—]\s*(\d+)$/i;
+  // Try chapter range pattern (e.g., "Titus 1-2", "1 Timothy 1-3", "Génesis 1-2")
+  const chapterRangeRegex = new RegExp(
+    `^(${BOOK_HEAD})[\\s\\.]*(\\d+)[-–—]\\s*(\\d+)$`,
+    "iu",
+  );
   const chapterRangeMatch = cleanInput.match(chapterRangeRegex);
 
   if (chapterRangeMatch) {
     const [, bookStr, startChapterStr, endChapterStr] = chapterRangeMatch;
-    const normalizedBook = bookStr
-      .toLowerCase()
-      .replace(/\s+/g, "")
-      .replace(/\./g, "");
-    const bookInfo = BOOK_MAPPINGS[normalizedBook];
+    const bookInfo = resolveBookInfo(bookStr, language);
 
     if (bookInfo) {
       const startChapter = parseInt(startChapterStr);
@@ -454,22 +477,18 @@ export function parseReference(input: string): Reference | null {
     }
   }
 
-  // Original regex for standard patterns
-  // Supports: "John 3:16", "Jn 3:16-18", "Genesis 1", "1 Corinthians 13:4-7"
-  const referenceRegex =
-    /^(\d?\s*\w+)[\s\.]*(\d+)(?:[:\.]\s*(\d+)(?:[-–—]\s*(\d+))?)?$/i;
+  // Standard: "John 3:16", "Génesis 1:1", "1 Corinthians 13:4-7", "Mateo 5:3"
+  const referenceRegex = new RegExp(
+    `^(${BOOK_HEAD})[\\s\\.]*(\\d+)(?:[:\\.\\s]*(\\d+)(?:[-–—]\\s*(\\d+))?)?$`,
+    "iu",
+  );
 
   const match = cleanInput.match(referenceRegex);
   if (!match) return null;
 
   const [, bookStr, chapterStr, verseStr, verseEndStr] = match;
 
-  // Normalize book name
-  const normalizedBook = bookStr
-    .toLowerCase()
-    .replace(/\s+/g, "")
-    .replace(/\./g, "");
-  const bookInfo = BOOK_MAPPINGS[normalizedBook];
+  const bookInfo = resolveBookInfo(bookStr, language);
 
   if (!bookInfo) return null;
 
@@ -512,19 +531,24 @@ export function parseReference(input: string): Reference | null {
 /**
  * Extract all Bible references from a text
  */
-export function extractReferences(text: string): Reference[] {
+export function extractReferences(
+  text: string,
+  options?: ParseReferenceOptions,
+): Reference[] {
   if (!text || typeof text !== "string") return [];
 
   const references: Reference[] = [];
 
-  // Simple regex to find potential references
-  const referencePattern =
-    /\b(\d?\s*\w+)\s+(\d+)(?:[:\.]\s*(\d+)(?:[-–—]\s*(\d+))?)?\b/gi;
+  // Unicode-friendly: book (incl. accents) + chapter + optional verse
+  const referencePattern = new RegExp(
+    `(${BOOK_HEAD})\\s+(\\d+)(?:[:\\.\\s]+(\\d+)(?:[-–—]\\s*(\\d+))?)?`,
+    "giu",
+  );
 
   let match;
   while ((match = referencePattern.exec(text)) !== null) {
     const potentialRef = match[0];
-    const parsed = parseReference(potentialRef);
+    const parsed = parseReference(potentialRef, options);
     if (parsed) {
       references.push(parsed);
     }
@@ -536,8 +560,11 @@ export function extractReferences(text: string): Reference[] {
 /**
  * Validate if a string could be a Bible reference
  */
-export function isValidReference(input: string): boolean {
-  return parseReference(input) !== null;
+export function isValidReference(
+  input: string,
+  options?: ParseReferenceOptions,
+): boolean {
+  return parseReference(input, options) !== null;
 }
 
 /**
