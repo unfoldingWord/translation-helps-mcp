@@ -8,7 +8,7 @@ import { z } from "zod";
 import type { UnifiedParameterDef } from "./types.js";
 
 /**
- * Reference parameter (e.g., "John 3:16", "Genesis 1:1-5")
+ * Reference parameter: always a full passage (book + chapter/verse or range), not a book code alone
  */
 export const REFERENCE_PARAM: UnifiedParameterDef<string> = {
   name: "reference",
@@ -16,7 +16,8 @@ export const REFERENCE_PARAM: UnifiedParameterDef<string> = {
   default: "John 3:16",
   required: true,
   description:
-    'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")',
+    "Full Bible passage: book plus chapter, verse, or range (e.g. JHN 3:16, John 3:16, GEN 1:1-3, MAT 5 for a whole chapter). " +
+    "Include the location — do not pass only a USFM book code. Localized book titles are accepted when they match the language parameter.",
   example: "John 3:16",
   pattern: "^[1-3]?\\s?[A-Za-z]+\\s+\\d+(:\\d+)?(-\\d+(:\\d+)?)?$",
 };
