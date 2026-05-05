@@ -34,6 +34,9 @@ jobs:
           sleep 8
           curl -f http://localhost:8788/about | grep -q "About"
           curl -f http://localhost:8788/api | grep -q "Translation Helps"
+          status=$(curl -s -o /dev/null -w "%{http_code}" -X GET \
+            -H "Accept: text/event-stream" http://localhost:8788/api/mcp)
+          [ "$status" = "405" ] || (echo "GET /api/mcp expected 405, got $status" && exit 1)
           pkill -f "wrangler"
 
   # Deploy to production on main branch
