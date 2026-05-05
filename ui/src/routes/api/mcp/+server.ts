@@ -718,7 +718,8 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 	}
 };
 
-// GET: Streamable HTTP — return 200 + minimal SSE stream (or legacy ?method= JSON).
+// GET: Streamable HTTP — bare GET is the optional SSE subscription channel; we don't support
+// server-initiated push (405). Legacy ?method=tools/list and ?method=prompts/list return JSON.
 export const GET: RequestHandler = async ({ url }) => {
 	const method = url.searchParams.get('method');
 
@@ -760,21 +761,15 @@ export const GET: RequestHandler = async ({ url }) => {
 		} as any);
 	}
 
-	// Streamable HTTP: Inspector expects GET to return 200 + SSE. We don't push server messages;
-	// return a minimal SSE stream so the client stays connected and doesn't treat GET as failed.
-	const stream = new ReadableStream({
-		start(controller) {
-			// Single comment event so the stream is valid; client can keep connection open
-			controller.enqueue(new TextEncoder().encode(': mcp\n\n'));
-		}
-	});
-	return new Response(stream, {
-		status: 200,
+	// Streamable-HTTP GET subscription channel: this server does not push server-initiated
+	// messages. Per MCP spec, 405 tells clients the optional SSE channel isn't supported.
+	// A passive ReadableStream that never closes hangs on Cloudflare Pages (~30s wall-clock kill,
+	// scriptThrewException + client reconnect loops that exhaust daily quota).
+	return new Response(null, {
+		status: 405,
 		headers: {
 			...corsHeaders,
-			'Content-Type': 'text/event-stream',
-			'Cache-Control': 'no-cache',
-			Connection: 'keep-alive'
+			Allow: 'POST, OPTIONS, DELETE'
 		}
 	});
 };

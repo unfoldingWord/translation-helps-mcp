@@ -21,6 +21,15 @@ import { ListSubjectsArgs } from "../tools/listSubjects.js";
 import { ListResourcesForLanguageArgs } from "../tools/listResourcesForLanguage.js";
 
 /**
+ * Explains the `reference` tool argument: models must send a full passage, not a book code alone.
+ * Kept in one place so all fetch tools stay consistent in MCP/JSON-Schema.
+ */
+const REFERENCE_INPUT_DESCRIPTION =
+  "Full Bible passage in one string: the book (USFM 3-letter code like JHN, or the book title in English or the request language, e.g. John, Juan, Génesis) plus chapter and verse or verse range, or a whole chapter. " +
+  "This is not only a book code — a bare code with no chapter/verse (e.g. only 'JHN') is wrong. " +
+  'Valid examples: "JHN 3:16", "John 3:16", "Juan 3:16" (use language: es), "GEN 1:1-3", "MAT 5" (entire chapter).';
+
+/**
  * MCP Tool Definition
  */
 export interface MCPToolDefinition {
@@ -38,53 +47,47 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
     {
       name: "fetch_scripture",
       description:
-        "Fetch Bible text for specific verses, passages, or chapters. CRITICAL: Always use standard 3-letter book codes (e.g., GEN=Genesis, EXO=Exodus, JHN=John, 3JN=3 John, TIT=Titus). NEVER use full book names or names in other languages - convert them to 3-letter codes first. Examples: 'JHN 3:16', 'GEN 1:1-3', 'MAT 5', 'TIT 1:15'. Door43 catalog owners are discovered automatically (all-org search).",
+        "Fetch Bible text for a passage: one verse, a verse range, or a whole chapter. " +
+        "The required argument is `reference` as a full passage string (book + chapter/verse, not a book code alone). " +
+        "Book may be USFM (JHN) or a full/localized title that matches the `language` parameter. " +
+        "Examples: JHN 3:16, John 3:16, GEN 1:1-3, MAT 5. Door43 catalog owners are discovered automatically (all-org search).",
       inputSchema: FetchScriptureArgs.omit({ reference: true }).extend({
-        reference: z
-          .string()
-          .describe(
-            'Bible reference using standard 3-letter book code (GEN, EXO, LEV, NUM, DEU, JOS, JDG, RUT, 1SA, 2SA, 1KI, 2KI, 1CH, 2CH, EZR, NEH, EST, JOB, PSA, PRO, ECC, SNG, ISA, JER, LAM, EZK, DAN, HOS, JOL, AMO, OBA, JON, MIC, NAM, HAB, ZEP, HAG, ZEC, MAL, MAT, MRK, LUK, JHN, ACT, ROM, 1CO, 2CO, GAL, EPH, PHP, COL, 1TH, 2TH, 1TI, 2TI, TIT, PHM, HEB, JAS, 1PE, 2PE, 1JN, 2JN, 3JN, JUD, REV). Examples: "JHN 3:16", "GEN 1:1-3", "TIT 1:15"',
-          ),
+        reference: z.string().describe(REFERENCE_INPUT_DESCRIPTION),
       }),
     },
     {
       name: "fetch_translation_notes",
       description:
-        "Fetch translator notes explaining difficult passages, cultural context, and translation recommendations. Returns verseNotes (verse-specific) and contextNotes (book/chapter background) separately. CRITICAL: Always use standard 3-letter book codes (TIT=Titus, JHN=John, etc.). NEVER use full book names or names in other languages. All Door43 organizations are searched automatically.",
+        "Fetch translator notes explaining difficult passages, cultural context, and translation recommendations. " +
+        "Returns verseNotes (verse-specific) and contextNotes (book/chapter background) separately. " +
+        "Pass `reference` as a full passage (book + chapter/verse or range), not a standalone book code. " +
+        "USFM or localized book names are fine when they match `language`. All Door43 organizations are searched automatically.",
       inputSchema: FetchTranslationNotesArgs.omit({ reference: true }).extend({
-        reference: z
-          .string()
-          .describe(
-            'Bible reference using standard 3-letter book code. Examples: "JHN 3:16", "TIT 1:15", "GEN 1:1-3"',
-          ),
+        reference: z.string().describe(REFERENCE_INPUT_DESCRIPTION),
       }),
     },
     {
       name: "fetch_translation_questions",
       description:
-        "Fetch comprehension questions with answers to verify translation accuracy. CRITICAL: Always use standard 3-letter book codes (TIT=Titus, JHN=John, etc.). NEVER use full book names or names in other languages. All Door43 organizations are searched automatically.",
+        "Fetch comprehension questions with answers to verify translation accuracy. " +
+        "Pass `reference` as a full passage (book + chapter/verse or range), not a book code by itself. " +
+        "All Door43 organizations are searched automatically.",
       inputSchema: FetchTranslationQuestionsArgs.omit({
         reference: true,
       }).extend({
-        reference: z
-          .string()
-          .describe(
-            'Bible reference using standard 3-letter book code. Examples: "JHN 3:16", "TIT 1:15", "GEN 1:1-3"',
-          ),
+        reference: z.string().describe(REFERENCE_INPUT_DESCRIPTION),
       }),
     },
     {
       name: "fetch_translation_word_links",
       description:
-        "Fetch list of key biblical terms found in a passage (like 'grace', 'faith', 'covenant') with links to definitions. CRITICAL: Always use standard 3-letter book codes (TIT=Titus, JHN=John, etc.). NEVER use full book names or names in other languages. All Door43 organizations are searched automatically.",
+        "Fetch key biblical terms in a passage (e.g. grace, faith) with links to term articles. " +
+        "Pass `reference` as a full passage (book + chapter/verse or range), not a book code by itself. " +
+        "All Door43 organizations are searched automatically.",
       inputSchema: FetchTranslationWordLinksArgs.omit({
         reference: true,
       }).extend({
-        reference: z
-          .string()
-          .describe(
-            'Bible reference using standard 3-letter book code. Examples: "JHN 3:16", "TIT 1:15", "GEN 1:1-3"',
-          ),
+        reference: z.string().describe(REFERENCE_INPUT_DESCRIPTION),
       }),
     },
     {

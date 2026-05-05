@@ -321,7 +321,7 @@ export async function fetchTranslationNotes(
     topic = "tc-ready",
   } = options;
 
-  const parsedRef = parseReference(reference);
+  const parsedRef = parseReference(reference, { language });
   if (!parsedRef) {
     throw new Error(`Invalid reference format: ${reference}`);
   }

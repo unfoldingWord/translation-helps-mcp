@@ -16,6 +16,12 @@ export interface MCPPromptDefinition {
   arguments: MCPPromptArgument[];
 }
 
+/** Matches tools-registry: `reference` is a full passage, not a bare book code */
+const REFERENCE_PROMPT_ARG =
+  "Full Bible passage: book (USFM code or book title in the request language) plus chapter/verse or range. " +
+  "Invalid: a book code with no location (e.g. only 'JHN'). " +
+  'Valid: "JHN 3:16", "John 3:16", "Juan 3:16" (for language: es), "GEN 1:1-3"';
+
 /**
  * All MCP prompts - single source of truth
  */
@@ -23,12 +29,12 @@ export const MCP_PROMPTS: MCPPromptDefinition[] = [
   {
     name: "translation-helps-report",
     description:
-      "Get a CONDENSED translation helps report for a Bible passage: scripture text (full), questions (full), notes (quote + academy link only), key terms list (titles only), and academy article titles (no full content). Perfect for getting an overview without overwhelming context. CRITICAL: Reference parameter MUST use standard 3-letter book codes (GEN, JHN, TIT, etc.), NOT full book names.",
+      "Get a CONDENSED translation helps report for a Bible passage: scripture text (full), questions (full), notes (quote + academy link only), key terms list (titles only), and academy article titles (no full content). Perfect for getting an overview without overwhelming context. " +
+      "Use the `reference` argument as a full passage (book + chapter/verse), not a bare book code. USFM or localized book names are fine when they match the language option.",
     arguments: [
       {
         name: "reference",
-        description:
-          'Bible reference using 3-letter book code. Examples: "JHN 3:16" (NOT "John 3:16"), "TIT 1:15" (NOT "Titus 1:15"), "GEN 1:1-3" (NOT "Genesis 1:1-3")',
+        description: REFERENCE_PROMPT_ARG,
         required: true,
       },
       {
@@ -41,12 +47,12 @@ export const MCP_PROMPTS: MCPPromptDefinition[] = [
   {
     name: "translation-helps-for-passage",
     description:
-      "Get comprehensive translation help for a Bible passage: scripture text, questions, word definitions (with titles), notes, and related academy articles. WARNING: Returns FULL content for all resources which can be very large. Consider using 'translation-helps-report' for a condensed overview. CRITICAL: Reference parameter MUST use standard 3-letter book codes (GEN, JHN, TIT, etc.), NOT full book names.",
+      "Get comprehensive translation help for a Bible passage: scripture text, questions, word definitions (with titles), notes, and related academy articles. WARNING: Returns FULL content for all resources which can be very large. Consider using 'translation-helps-report' for a condensed overview. " +
+      "Pass a full `reference` (book + location); USFM or localized book names are accepted when they match the language option.",
     arguments: [
       {
         name: "reference",
-        description:
-          'Bible reference using 3-letter book code. Examples: "JHN 3:16" (NOT "John 3:16"), "TIT 1:15" (NOT "Titus 1:15"), "GEN 1:1-3" (NOT "Genesis 1:1-3")',
+        description: REFERENCE_PROMPT_ARG,
         required: true,
       },
       {
@@ -59,12 +65,12 @@ export const MCP_PROMPTS: MCPPromptDefinition[] = [
   {
     name: "get-translation-words-for-passage",
     description:
-      "Get all translation word definitions for a passage, showing dictionary entry titles (not technical term IDs). CRITICAL: Reference parameter MUST use standard 3-letter book codes (GEN, JHN, TIT, etc.), NOT full book names.",
+      "Get all translation word definitions for a passage, showing dictionary entry titles (not technical term IDs). " +
+      "The `reference` must be a full passage (book + chapter/verse), not a bare book code.",
     arguments: [
       {
         name: "reference",
-        description:
-          'Bible reference using 3-letter book code. Examples: "JHN 3:16" (NOT "John 3:16"), "TIT 1:15" (NOT "Titus 1:15")',
+        description: REFERENCE_PROMPT_ARG,
         required: true,
       },
       {
@@ -77,12 +83,12 @@ export const MCP_PROMPTS: MCPPromptDefinition[] = [
   {
     name: "get-translation-academy-for-passage",
     description:
-      "Get Translation Academy training articles referenced in the translation notes for a passage. CRITICAL: Reference parameter MUST use standard 3-letter book codes (GEN, JHN, TIT, etc.), NOT full book names.",
+      "Get Translation Academy training articles referenced in the translation notes for a passage. " +
+      "Use a full `reference` (book + chapter/verse) matching the same rules as fetch tools.",
     arguments: [
       {
         name: "reference",
-        description:
-          'Bible reference using 3-letter book code. Examples: "JHN 3:16" (NOT "John 3:16"), "TIT 1:15" (NOT "Titus 1:15")',
+        description: REFERENCE_PROMPT_ARG,
         required: true,
       },
       {
@@ -135,7 +141,7 @@ export function getPromptTemplate(
     case "translation-helps-report":
       return `Please provide a CONDENSED translation helps report for ${reference} in ${language}.
 
-**CRITICAL**: The reference "${reference}" MUST use standard 3-letter book codes (e.g., "JHN 3:16", "TIT 1:15", "GEN 1"). If the user provided a full book name (like "John" or "Titus"), you must convert it to the 3-letter code first (JHN, TIT, GEN, etc.) before calling any tools.
+**CRITICAL (reference)**: "${reference}" must be a full passage: book (USFM or book title in language ${language}) plus chapter/verse or range. Do not pass a bare book code (e.g. "JHN" with no "3:16"). Pass the same string to every tool call. Localized book names are accepted when they match the language.
 
 **CITATION REQUIREMENTS**: Every resource returned includes a citation object. You MUST:
 1. Read the citation object from each response
@@ -224,7 +230,7 @@ The goal is to provide a clear OVERVIEW that helps translators see what resource
     case "translation-helps-for-passage":
       return `Please provide comprehensive translation help for ${reference} in ${language}.
 
-**CRITICAL**: The reference "${reference}" MUST use standard 3-letter book codes (e.g., "JHN 3:16", "TIT 1:15", "GEN 1"). If the user provided a full book name (like "John" or "Titus"), you must convert it to the 3-letter code first (JHN, TIT, GEN, etc.) before calling any tools.
+**CRITICAL (reference)**: Use a full passage (book + chapter/verse) for "${reference}", not a bare book code. USFM (JHN) or book titles in the request language (John, Juan, Génesis) are all valid. Pass the same string to every tool.
 
 **CITATION REQUIREMENTS**: Every resource returned includes a citation object. You MUST:
 1. Read the citation object from each response
@@ -239,7 +245,7 @@ Follow these steps to gather all relevant information:
 
 1. **Get the Scripture Text:**
    - Use fetch_scripture tool with reference="${reference}" and language="${language}"
-   - IMPORTANT: Ensure reference uses 3-letter code (e.g., "JHN 3:16" not "John 3:16")
+   - IMPORTANT: reference must include chapter/verse (e.g. "JHN 3:16" or "John 3:16" for en)
    - Read scripture.citation object from the response
    - Cite scripture using: [citation.resource version - ${reference}] (e.g., [GLT v41 - ${reference}])
    - This provides the actual Bible text to work with
@@ -286,7 +292,7 @@ The goal is to provide EVERYTHING a translator needs for this passage in one com
     case "get-translation-words-for-passage":
       return `Please show me all the translation word definitions for ${reference} in ${language}.
 
-**CRITICAL**: The reference "${reference}" MUST use standard 3-letter book codes (e.g., "JHN 3:16", "TIT 1:15"). If the user provided a full book name, convert it to the 3-letter code first before calling any tools.
+**CRITICAL (reference)**: "${reference}" must be a full passage (book + location). Do not use a bare book code. USFM or localized titles for ${language} are fine.
 
 **CITATION REQUIREMENTS**: Each translation word article includes a citation object. Always read and cite using [citation.resource version - term] format.
 
@@ -294,7 +300,7 @@ Follow these steps:
 
 1. **Get Translation Word Links:**
    - Use fetch_translation_word_links with reference="${reference}" and language="${language}"
-   - IMPORTANT: Ensure reference uses 3-letter code (e.g., "JHN 3:16" not "John 3:16")
+   - IMPORTANT: pass the same full passage to every tool (e.g. "JHN 3:16" or "John 3:16" for en)
    - This returns items with externalReference: [{externalReference: {target: "tw", path: "bible/kt/love", category: "kt"}}]
 
 2. **Fetch Full Articles and Extract Titles:**
@@ -315,7 +321,7 @@ Focus on making the translation words accessible by showing their proper titles.
     case "get-translation-academy-for-passage":
       return `Please find all the Translation Academy training articles related to ${reference} in ${language}.
 
-**CRITICAL**: The reference "${reference}" MUST use standard 3-letter book codes (e.g., "JHN 3:16", "TIT 1:15"). If the user provided a full book name, convert it to the 3-letter code first before calling any tools.
+**CRITICAL (reference)**: "${reference}" must be a full passage; bare book codes are invalid.
 
 **CITATION REQUIREMENTS**: Each academy article includes a citation object. Always read and cite using [citation.resource version - article] format.
 
@@ -323,7 +329,7 @@ Follow these steps:
 
 1. **Get Translation Notes:**
    - Use fetch_translation_notes with reference="${reference}" and language="${language}"
-   - IMPORTANT: Ensure reference uses 3-letter code (e.g., "JHN 3:16" not "John 3:16")
+   - Pass the same full passage string as elsewhere (e.g. "JHN 3:16" or "John 3:16" for en)
    - Translation notes contain supportReference fields that link to academy articles
 
 2. **Extract External References:**
