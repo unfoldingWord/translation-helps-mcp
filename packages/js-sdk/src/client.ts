@@ -18,6 +18,9 @@ import type {
   ListLanguagesOptions,
   ListSubjectsOptions,
   ListResourcesForLanguageOptions,
+  RagQueryOptions,
+  GetBundleOptions,
+  IndexResourceOptions,
 } from "./types.js";
 import { ContextManager } from "./ContextManager.js";
 import {
@@ -625,6 +628,115 @@ export class TranslationHelpsClient {
     }
 
     throw new Error("Invalid response format from list_resources_for_language");
+  }
+
+  // ============================================================================
+  // RAG tools: rag_query, get_bundle, index_resource
+  // ============================================================================
+
+  /**
+   * Semantic search over indexed translation resources.
+   *
+   * Uses RAG (Retrieval-Augmented Generation) to find relevant passages,
+   * notes, and articles for a given query.
+   *
+   * @example
+   * const results = await client.ragQuery({
+   *   query: "What does grace mean in context?",
+   *   language: "en",
+   *   reference: "JHN 3:16",
+   *   k: 5,
+   * });
+   * console.log(results.documents);
+   */
+  async ragQuery(options: RagQueryOptions): Promise<any> {
+    const params: Record<string, any> = {
+      query: options.query,
+      language: options.language ?? "en",
+    };
+
+    if (options.reference) params.reference = options.reference;
+    if (options.filters) params.filters = options.filters;
+    if (options.k !== undefined) params.k = options.k;
+    if (options.enableExact !== undefined)
+      params.enableExact = options.enableExact;
+    if (options.requestId) params.requestId = options.requestId;
+
+    const response = await this.callTool("rag_query", params);
+
+    if (response.content && response.content[0]?.text) {
+      return JSON.parse(response.content[0].text);
+    }
+
+    throw new Error("Invalid response format from rag_query");
+  }
+
+  /**
+   * Retrieve a fully-assembled translation bundle for a passage.
+   *
+   * Returns scripture text (placeholder), translation notes, and linked
+   * TW/TA articles for the given language+reference pair.
+   *
+   * @example
+   * const bundle = await client.getBundle({
+   *   language: "en",
+   *   reference: "JHN 3:16",
+   * });
+   * console.log(bundle.notes.length, "notes found");
+   * console.log(bundle.metadata.cacheStatus);
+   */
+  async getBundle(options: GetBundleOptions): Promise<any> {
+    const params: Record<string, any> = {
+      language: options.language,
+      reference: options.reference,
+    };
+
+    if (options.owner) params.owner = options.owner;
+    if (options.project) params.project = options.project;
+    if (options.force !== undefined) params.force = options.force;
+    if (options.requestId) params.requestId = options.requestId;
+
+    const response = await this.callTool("get_bundle", params);
+
+    if (response.content && response.content[0]?.text) {
+      return JSON.parse(response.content[0].text);
+    }
+
+    throw new Error("Invalid response format from get_bundle");
+  }
+
+  /**
+   * Enqueue a translation resource for indexing (admin tool).
+   *
+   * Requires `adminToken` matching the server's `ADMIN_TOKEN` env var.
+   * Returns a `taskId` you can use to poll for job status.
+   *
+   * @example
+   * const job = await client.indexResource({
+   *   resourceId: "unfoldingWord/en_tn",
+   *   adminToken: process.env.ADMIN_TOKEN,
+   *   priority: "high",
+   * });
+   * console.log(job.taskId, job.status);
+   */
+  async indexResource(options: IndexResourceOptions): Promise<any> {
+    const params: Record<string, any> = {
+      resourceId: options.resourceId,
+    };
+
+    if (options.zipUrl) params.zipUrl = options.zipUrl;
+    if (options.force !== undefined) params.force = options.force;
+    if (options.priority) params.priority = options.priority;
+    if (options.requestId) params.requestId = options.requestId;
+    if (options.adminToken) params.adminToken = options.adminToken;
+
+    const response = await this.callTool("index_resource", params);
+
+    if (response.content && response.content[0]?.text) {
+      return JSON.parse(response.content[0].text);
+    }
+
+    throw new Error("Invalid response format from index_resource");
   }
 
   /**

@@ -20,6 +20,9 @@ from .types import (
     ListLanguagesOptions,
     ListSubjectsOptions,
     ListResourcesForLanguageOptions,
+    RagQueryOptions,
+    GetBundleOptions,
+    IndexResourceOptions,
 )
 from .context_manager import ContextManager
 from .state_injection_interceptor import (
@@ -580,6 +583,154 @@ class TranslationHelpsClient:
     # ============================================================================
     # End State Injection Interceptor Methods
     # ============================================================================
+
+    # ============================================================================
+    # RAG tools: rag_query, get_bundle, index_resource
+    # ============================================================================
+
+    async def rag_query(self, options: RagQueryOptions) -> Dict[str, Any]:
+        """
+        Semantic search over indexed translation resources using RAG retrieval.
+
+        Args:
+            options: Query options. ``query`` is required.
+
+        Returns:
+            Dictionary with ``documents``, ``fallbackMode``, ``cacheStatus``,
+            ``requestId``, and ``latencyMs``.
+
+        Example::
+
+            results = await client.rag_query({
+                "query": "What does grace mean in context?",
+                "language": "en",
+                "reference": "JHN 3:16",
+                "k": 10,
+            })
+            print(results["documents"])
+        """
+        if not options.get("query"):
+            raise ValueError("query parameter is required")
+
+        params: Dict[str, Any] = {
+            "query": options["query"],
+            "language": options.get("language", "en"),
+        }
+
+        if options.get("reference") is not None:
+            params["reference"] = options["reference"]
+        if options.get("filters") is not None:
+            params["filters"] = options["filters"]
+        if options.get("k") is not None:
+            params["k"] = options["k"]
+        if options.get("enableExact") is not None:
+            params["enableExact"] = options["enableExact"]
+        if options.get("requestId") is not None:
+            params["requestId"] = options["requestId"]
+
+        response = await self.call_tool("rag_query", params)
+
+        if response.get("content") and response["content"][0].get("text"):
+            return json.loads(response["content"][0]["text"])
+
+        raise ValueError("Invalid response format from rag_query")
+
+    async def get_bundle(self, options: GetBundleOptions) -> Dict[str, Any]:
+        """
+        Retrieve a fully-assembled translation bundle for a passage.
+
+        Returns scripture text (placeholder), translation notes, and linked
+        TW/TA articles for the given language+reference pair.
+
+        Args:
+            options: Bundle options. ``language`` and ``reference`` are required.
+
+        Returns:
+            Dictionary with ``scripture``, ``notes``, ``tw``, ``ta``, and
+            ``metadata`` (including ``cacheStatus``).
+
+        Example::
+
+            bundle = await client.get_bundle({
+                "language": "en",
+                "reference": "JHN 3:16",
+            })
+            print(f"{len(bundle['notes'])} notes found")
+            print(bundle["metadata"]["cacheStatus"])
+        """
+        if not options.get("language"):
+            raise ValueError("language parameter is required")
+        if not options.get("reference"):
+            raise ValueError("reference parameter is required")
+
+        params: Dict[str, Any] = {
+            "language": options["language"],
+            "reference": options["reference"],
+        }
+
+        if options.get("owner") is not None:
+            params["owner"] = options["owner"]
+        if options.get("project") is not None:
+            params["project"] = options["project"]
+        if options.get("force") is not None:
+            params["force"] = options["force"]
+        if options.get("requestId") is not None:
+            params["requestId"] = options["requestId"]
+
+        response = await self.call_tool("get_bundle", params)
+
+        if response.get("content") and response["content"][0].get("text"):
+            return json.loads(response["content"][0]["text"])
+
+        raise ValueError("Invalid response format from get_bundle")
+
+    async def index_resource(self, options: IndexResourceOptions) -> Dict[str, Any]:
+        """
+        Enqueue a translation resource for indexing (admin tool).
+
+        Requires ``adminToken`` matching the server's ``ADMIN_TOKEN`` env var.
+        Returns a ``taskId`` you can use to poll for job status.
+
+        Args:
+            options: Indexing options. ``resourceId`` is required.
+
+        Returns:
+            Dictionary with ``taskId`` and ``status`` (``"queued"``).
+
+        Example::
+
+            import os
+            job = await client.index_resource({
+                "resourceId": "unfoldingWord/en_tn",
+                "adminToken": os.environ["ADMIN_TOKEN"],
+                "priority": "high",
+            })
+            print(job["taskId"], job["status"])
+        """
+        if not options.get("resourceId"):
+            raise ValueError("resourceId parameter is required (format: 'owner/project')")
+
+        params: Dict[str, Any] = {
+            "resourceId": options["resourceId"],
+        }
+
+        if options.get("zipUrl") is not None:
+            params["zipUrl"] = options["zipUrl"]
+        if options.get("force") is not None:
+            params["force"] = options["force"]
+        if options.get("priority") is not None:
+            params["priority"] = options["priority"]
+        if options.get("requestId") is not None:
+            params["requestId"] = options["requestId"]
+        if options.get("adminToken") is not None:
+            params["adminToken"] = options["adminToken"]
+
+        response = await self.call_tool("index_resource", params)
+
+        if response.get("content") and response["content"][0].get("text"):
+            return json.loads(response["content"][0]["text"])
+
+        raise ValueError("Invalid response format from index_resource")
 
     def is_connected(self) -> bool:
         """Check if client is initialized."""

@@ -82,3 +82,74 @@ class ListResourcesForLanguageOptions(TypedDict, total=False):
     limit: Optional[int]
     topic: Optional[str]  # Defaults to "tc-ready" if not provided
 
+
+# ---------------------------------------------------------------------------
+# RAG tools (rag_query, get_bundle, index_resource)
+# ---------------------------------------------------------------------------
+
+class RagQueryFilters(TypedDict, total=False):
+    """Metadata filters for rag_query."""
+    resourceType: Optional[Any]  # str or List[str]
+    subject: Optional[List[str]]
+    project: Optional[str]
+    owner: Optional[str]
+
+
+class RagQueryOptions(TypedDict, total=False):
+    """Options for the rag_query MCP tool.
+
+    Example::
+
+        results = await client.rag_query(RagQueryOptions(
+            query="What does grace mean?",
+            language="en",
+            reference="JHN 3:16",
+            k=10,
+        ))
+    """
+    query: str              # Required
+    language: Optional[str]
+    reference: Optional[str]
+    filters: Optional[RagQueryFilters]
+    k: Optional[int]        # 1–100, default 10
+    enableExact: Optional[bool]
+    requestId: Optional[str]
+
+
+class GetBundleOptions(TypedDict, total=False):
+    """Options for the get_bundle MCP tool.
+
+    Example::
+
+        bundle = await client.get_bundle(GetBundleOptions(
+            language="en",
+            reference="JHN 3:16",
+        ))
+    """
+    language: str            # Required
+    reference: str           # Required
+    owner: Optional[str]
+    project: Optional[str]
+    force: Optional[bool]
+    requestId: Optional[str]
+
+
+class IndexResourceOptions(TypedDict, total=False):
+    """Options for the index_resource admin MCP tool.
+
+    Requires ``admin_token`` matching the server's ``ADMIN_TOKEN`` env var.
+
+    Example::
+
+        job = await client.index_resource(IndexResourceOptions(
+            resource_id="unfoldingWord/en_tn",
+            admin_token="secret",
+        ))
+    """
+    resourceId: str          # Required, format "owner/project"
+    zipUrl: Optional[str]
+    force: Optional[bool]
+    priority: Optional[str]  # "low" | "normal" | "high"
+    requestId: Optional[str]
+    adminToken: Optional[str]
+
