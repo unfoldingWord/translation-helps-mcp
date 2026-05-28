@@ -1,24 +1,32 @@
 /**
  * Creates a ServiceContext for local development and unit tests.
  *
- * All providers default to in-process implementations:
- *   vectorStore  → InMemoryVectorStore
- *   kvStore      → InMemoryKVStore
- *   r2Bucket     → null (USE_FS_CACHE fallback in ZipResourceFetcher2)
- *   cfKv         → null
- *   ai           → null (EmbeddingService uses FakeEmbeddingService)
+ * All providers default to in-process (Fake) implementations:
+ *   vectorStore        → InMemoryVectorStore
+ *   kvStore            → InMemoryKVStore
+ *   embeddingService   → FakeEmbeddingService
+ *   llmProvider        → FakeLLMProvider
+ *   r2Bucket           → null (USE_FS_CACHE fallback in ZipResourceFetcher2)
+ *   cfKv               → null
+ *   ai                 → null
  *
- * In T-07 this is updated to inject Fake providers for embedding/LLM.
  * Override individual fields for integration tests that need real services.
  */
 
 import { InMemoryVectorStore } from "../services/rag/InMemoryVectorStore.js";
 import { InMemoryKVStore } from "../services/rag/InMemoryKVStore.js";
+import { FakeEmbeddingService } from "../services/rag/providers/FakeEmbeddingService.js";
+import { FakeLLMProvider } from "../services/rag/providers/FakeLLMProvider.js";
 import type { ServiceContext, ServiceEnv } from "../services/rag/interfaces.js";
+import type { EmbeddingService } from "../services/rag/providers/EmbeddingService.js";
+import type { LLMProvider } from "../services/rag/providers/LLMProvider.js";
 
-export function createDevContext(
-  overrides?: Partial<ServiceContext>,
-): ServiceContext {
+export interface DevContext extends ServiceContext {
+  embeddingService: EmbeddingService;
+  llmProvider: LLMProvider;
+}
+
+export function createDevContext(overrides?: Partial<DevContext>): DevContext {
   const env: ServiceEnv = {
     NODE_ENV: "test",
     EMBEDDINGS_PROVIDER: "fake",
@@ -32,6 +40,8 @@ export function createDevContext(
   return {
     vectorStore: new InMemoryVectorStore(),
     kvStore: new InMemoryKVStore(),
+    embeddingService: new FakeEmbeddingService(),
+    llmProvider: new FakeLLMProvider(),
     r2Bucket: null,
     cfKv: null,
     ai: null,
