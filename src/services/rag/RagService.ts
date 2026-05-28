@@ -20,6 +20,13 @@ import type {
 import type { EmbeddingService } from "./providers/EmbeddingService.js";
 import { Reranker, type RerankConfig } from "./Reranker.js";
 import { RagError } from "./errors.js";
+import { BundleCache, type Bundle } from "./BundleCache.js";
+import { buildLinkGraph, readLinkGraph, writeLinkGraph } from "./LinkGraph.js";
+import {
+  bundleCoalesceKey,
+  COALESCE_BUNDLE_TTL,
+  resourceIndexKey,
+} from "../../config/cache-ttls.js";
 
 // ---------------------------------------------------------------------------
 // Public API types
@@ -60,6 +67,44 @@ export interface QueryResult {
 }
 
 // ---------------------------------------------------------------------------
+// getBundle types
+// ---------------------------------------------------------------------------
+
+export interface GetBundleOptions {
+  language: string;
+  /** USFM reference e.g. "JHN 3:16" */
+  reference: string;
+  owner?: string;
+  project?: string;
+  requestId?: string;
+  /** Skip all caches and force fresh assembly */
+  force?: boolean;
+}
+
+export interface GetBundleResult {
+  requestId: string;
+  bundle: Bundle;
+  latencyMs: number;
+}
+
+// ---------------------------------------------------------------------------
+// indexResource types (thin pass-through; real work in ResourceIndexer)
+// ---------------------------------------------------------------------------
+
+export interface IndexResourceOptions {
+  resourceId: string;
+  zipUrl?: string;
+  force?: boolean;
+  priority?: "low" | "normal" | "high";
+  requestId?: string;
+}
+
+export interface IndexResourceResult {
+  taskId: string;
+  status: "queued" | "started" | "failed";
+}
+
+// ---------------------------------------------------------------------------
 // RagService
 // ---------------------------------------------------------------------------
 
@@ -68,17 +113,20 @@ export class RagService {
   private readonly kvStore: KVStore;
   private readonly embeddingService: EmbeddingService;
   private readonly reranker: Reranker;
+  private readonly bundleCache: BundleCache;
 
   constructor(deps: {
     vectorStore: VectorStore;
     kvStore: KVStore;
     embeddingService: EmbeddingService;
     rerankerConfig?: RerankConfig;
+    bundleCache?: BundleCache;
   }) {
     this.vectorStore = deps.vectorStore;
     this.kvStore = deps.kvStore;
     this.embeddingService = deps.embeddingService;
     this.reranker = new Reranker(deps.rerankerConfig);
+    this.bundleCache = deps.bundleCache ?? new BundleCache();
   }
 
   /**
@@ -201,6 +249,110 @@ export class RagService {
   }
 
   /**
+   * Assemble a translation bundle for a language+reference pair.
+   *
+   * Bundle assembly order (per DETAILED_SPEC.md):
+   *   1. L1 BundleCache → L2 KV cache (skip both if force=true)
+   *   2. Coalescing dedup guard (setNx)
+   *   3. Lexical query for notes, then for each note → TW/TA
+   *   4. Assemble canonical Bundle shape
+   *   5. Write to L1 + L2 caches
+   */
+  async getBundle(opts: GetBundleOptions): Promise<GetBundleResult> {
+    const start = Date.now();
+    const requestId = opts.requestId ?? generateRequestId();
+
+    // L1 cache check
+    if (!opts.force) {
+      const l1 = this.bundleCache.get(opts.language, opts.reference);
+      if (l1) {
+        return { requestId, bundle: l1, latencyMs: Date.now() - start };
+      }
+
+      // L2 KV cache check
+      const l2 = await this.bundleCache.getFromKv(
+        this.kvStore,
+        opts.language,
+        opts.reference,
+      );
+      if (l2) {
+        this.bundleCache.set(opts.language, opts.reference, l2);
+        return { requestId, bundle: l2, latencyMs: Date.now() - start };
+      }
+    }
+
+    // Coalescing dedup guard
+    const coalesceKey = bundleCoalesceKey(opts.language, opts.reference);
+    const acquired = await this.kvStore
+      .setNx(coalesceKey, requestId, COALESCE_BUNDLE_TTL)
+      .catch(() => true);
+    if (!acquired) {
+      // Another worker is assembling; return empty miss
+      return {
+        requestId,
+        bundle: emptyBundle(opts.language, opts.reference, "miss"),
+        latencyMs: Date.now() - start,
+      };
+    }
+
+    try {
+      const bundle = await this.assembleBundle(opts, requestId);
+      this.bundleCache.set(opts.language, opts.reference, bundle);
+      await this.bundleCache.setToKv(
+        this.kvStore,
+        opts.language,
+        opts.reference,
+        bundle,
+      );
+      return { requestId, bundle, latencyMs: Date.now() - start };
+    } finally {
+      await this.kvStore.del(coalesceKey).catch(() => undefined);
+    }
+  }
+
+  /**
+   * Enqueue a resource indexing job.
+   *
+   * Thin entry point; actual indexing runs in ResourceIndexer (Node only).
+   * Writes a job record to KV for the indexer to pick up.
+   */
+  async indexResource(
+    opts: IndexResourceOptions,
+  ): Promise<IndexResourceResult> {
+    const taskId = `idx-${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}`;
+    const requestId = opts.requestId ?? generateRequestId();
+
+    if (!opts.resourceId || !opts.resourceId.includes("/")) {
+      throw new RagError(
+        "INVALID_RESOURCE_ID",
+        "resourceId must be in the form 'owner/project'",
+        { context: { requestId } },
+      );
+    }
+
+    const [owner, project] = opts.resourceId.split("/");
+    const jobRecord = JSON.stringify({
+      taskId,
+      resourceId: opts.resourceId,
+      owner,
+      project,
+      zipUrl: opts.zipUrl ?? null,
+      force: opts.force ?? false,
+      priority: opts.priority ?? "normal",
+      createdAt: new Date().toISOString(),
+      status: "queued",
+    });
+
+    await this.kvStore
+      .set(`indexJob:${taskId}`, jobRecord, 30 * 60)
+      .catch(() => {
+        // non-fatal
+      });
+
+    return { taskId, status: "queued" };
+  }
+
+  /**
    * Health probe for the RagService.
    */
   async health(): Promise<{
@@ -212,7 +364,112 @@ export class RagService {
       .catch(() => ({ status: "degraded" as const }));
     return {
       status: vsHealth.status,
-      details: { vectorStore: vsHealth.status },
+      details: {
+        vectorStore: vsHealth.status,
+        bundleCache: this.bundleCache.stats(),
+      },
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private helpers
+  // ---------------------------------------------------------------------------
+
+  private async assembleBundle(
+    opts: GetBundleOptions,
+    _requestId: string,
+  ): Promise<Bundle> {
+    const { language, reference } = opts;
+    const notesFilter: VectorStoreFilters = {
+      language,
+      resourceType: "tn",
+      ...(opts.owner ? { owner: opts.owner } : {}),
+      ...(opts.project ? { project: opts.project } : {}),
+    };
+
+    // Fetch notes via lexical search (reference is a USFM ref, not a query)
+    let rawNotes: VectorStoreQueryResult[] = [];
+    try {
+      rawNotes = await this.vectorStore.findByText(reference, notesFilter, 20);
+    } catch {
+      // continue with empty notes
+    }
+
+    const notes = rawNotes.map((r) => ({
+      id: r.id,
+      text: r.document.text,
+      externalReference: r.document.metadata["externalReference"] as
+        | { path: string }
+        | undefined,
+    }));
+
+    // Build/fetch link graph
+    let linkGraph = await readLinkGraph(this.kvStore, language, reference);
+    if (!linkGraph) {
+      linkGraph = buildLinkGraph(
+        language,
+        reference,
+        notes.map((n) => ({ id: n.id, text: n.text })),
+      );
+      await writeLinkGraph(this.kvStore, linkGraph);
+    }
+
+    // Fetch TW + TA articles for linked paths
+    const twArticles: Bundle["tw"] = [];
+    const taArticles: Bundle["ta"] = [];
+
+    for (const entry of linkGraph.entries.slice(0, 10)) {
+      const results = await this.vectorStore
+        .findByText(
+          entry.path,
+          { language, resourceType: entry.resourceType },
+          2,
+        )
+        .catch(() => []);
+
+      for (const r of results) {
+        const title = String(r.document.metadata["title"] ?? entry.path);
+        if (entry.resourceType === "tw") {
+          twArticles.push({ id: r.id, title, path: entry.path });
+        } else {
+          taArticles.push({ id: r.id, title, path: entry.path });
+        }
+      }
+    }
+
+    // Determine license from resource index
+    const project = opts.project ?? `${language}_ult`;
+    const idxRaw = await this.kvStore
+      .get(resourceIndexKey(project))
+      .catch(() => null);
+    const license = idxRaw
+      ? ((JSON.parse(idxRaw) as { license?: string }).license ?? "CC BY-SA 4.0")
+      : "CC BY-SA 4.0";
+
+    return {
+      scripture: { text: "", format: "plain" },
+      notes: notes.map((n) => ({
+        id: n.id,
+        text: n.text,
+        ...(n.externalReference
+          ? { externalReference: n.externalReference }
+          : {}),
+      })),
+      tw: deduplicateById(twArticles),
+      ta: deduplicateById(taArticles),
+      metadata: {
+        cacheStatus: "miss",
+        license,
+        language,
+        reference,
+        provenance: rawNotes.slice(0, 5).map((r) => ({
+          r2Key: String(r.document.metadata["r2Key"] ?? ""),
+          path: String(r.document.metadata["path"] ?? ""),
+          project: String(r.document.metadata["project"] ?? project),
+          excerptStart: Number(r.document.metadata["startToken"] ?? 0),
+          excerptEnd: Number(r.document.metadata["endToken"] ?? 0),
+        })),
+      },
     };
   }
 }
@@ -277,4 +534,33 @@ async function safeSet(
   } catch {
     // ignore
   }
+}
+
+function emptyBundle(
+  language: string,
+  reference: string,
+  cacheStatus: Bundle["metadata"]["cacheStatus"],
+): Bundle {
+  return {
+    scripture: { text: "", format: "plain" },
+    notes: [],
+    tw: [],
+    ta: [],
+    metadata: {
+      cacheStatus,
+      license: "CC BY-SA 4.0",
+      language,
+      reference,
+      provenance: [],
+    },
+  };
+}
+
+function deduplicateById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
 }
