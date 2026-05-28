@@ -1,0 +1,45 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`rag_query Contract Tests > Response Shape > full request with filters — matches shape contract > rag-query-full 1`] = `
+{
+  "contentType": "text",
+  "hasContent": true,
+  "isError": false,
+  "metadataKeys": [
+    "cacheStatus",
+    "fallbackMode",
+    "requestId",
+    "resultCount",
+    "tool",
+  ],
+  "parseable": {
+    "hasCacheStatus": true,
+    "hasDocuments": true,
+    "hasFallbackMode": true,
+    "hasLatencyMs": true,
+    "hasRequestId": true,
+  },
+}
+`;
+
+exports[`rag_query Contract Tests > Response Shape > minimal request — query only — matches shape contract > rag-query-minimal 1`] = `
+{
+  "contentType": "text",
+  "hasContent": true,
+  "isError": false,
+  "metadataKeys": [
+    "cacheStatus",
+    "fallbackMode",
+    "requestId",
+    "resultCount",
+    "tool",
+  ],
+  "parseable": {
+    "hasCacheStatus": true,
+    "hasDocuments": true,
+    "hasFallbackMode": true,
+    "hasLatencyMs": true,
+    "hasRequestId": true,
+  },
+}
+`;

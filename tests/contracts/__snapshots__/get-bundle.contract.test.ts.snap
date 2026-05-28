@@ -1,0 +1,97 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`get_bundle Contract Tests > Response Shape (CONTRACTS_DETAILED.md §3) > English John 3:16 — matches bundle shape contract > get-bundle-en-jhn-3-16 1`] = `
+{
+  "bundleKeys": [
+    "metadata",
+    "notes",
+    "scripture",
+    "ta",
+    "tw",
+  ],
+  "hasContent": true,
+  "hasMetadata": true,
+  "hasNotes": true,
+  "hasScripture": true,
+  "hasTa": true,
+  "hasTw": true,
+  "isError": false,
+  "metadataKeys": [
+    "cacheStatus",
+    "latencyMs",
+    "requestId",
+    "tool",
+  ],
+  "metadataShape": {
+    "hasCacheStatus": true,
+    "hasLanguage": true,
+    "hasLicense": true,
+    "hasProvenance": true,
+    "hasReference": true,
+  },
+}
+`;
+
+exports[`get_bundle Contract Tests > Response Shape (CONTRACTS_DETAILED.md §3) > force=true bypasses cache — shape unchanged > get-bundle-force 1`] = `
+{
+  "bundleKeys": [
+    "metadata",
+    "notes",
+    "scripture",
+    "ta",
+    "tw",
+  ],
+  "hasContent": true,
+  "hasMetadata": true,
+  "hasNotes": true,
+  "hasScripture": true,
+  "hasTa": true,
+  "hasTw": true,
+  "isError": false,
+  "metadataKeys": [
+    "cacheStatus",
+    "latencyMs",
+    "requestId",
+    "tool",
+  ],
+  "metadataShape": {
+    "hasCacheStatus": true,
+    "hasLanguage": true,
+    "hasLicense": true,
+    "hasProvenance": true,
+    "hasReference": true,
+  },
+}
+`;
+
+exports[`get_bundle Contract Tests > Response Shape (CONTRACTS_DETAILED.md §3) > with owner/project filters — shape is preserved > get-bundle-with-filters 1`] = `
+{
+  "bundleKeys": [
+    "metadata",
+    "notes",
+    "scripture",
+    "ta",
+    "tw",
+  ],
+  "hasContent": true,
+  "hasMetadata": true,
+  "hasNotes": true,
+  "hasScripture": true,
+  "hasTa": true,
+  "hasTw": true,
+  "isError": false,
+  "metadataKeys": [
+    "cacheStatus",
+    "latencyMs",
+    "requestId",
+    "tool",
+  ],
+  "metadataShape": {
+    "hasCacheStatus": true,
+    "hasLanguage": true,
+    "hasLicense": true,
+    "hasProvenance": true,
+    "hasReference": true,
+  },
+}
+`;

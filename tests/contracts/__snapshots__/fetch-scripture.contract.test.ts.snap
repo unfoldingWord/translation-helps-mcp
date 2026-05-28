@@ -1,32 +1,27 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`fetch-scripture Contract Tests > Golden Reference Behavior > John 3:16 - matches golden snapshot 1`] = `
+exports[`fetch_scripture Contract Tests > Golden Reference Behavior > Genesis 1:1 — matches shape contract > fetch-scripture-gen-1-1 1`] = `
 {
-  "bodyStructure": {
-    "firstTranslation": {
-      "hasReference": true,
-      "hasResource": true,
-      "hasText": true,
-      "language": "en",
-      "organization": "unfoldingWord",
-    },
+  "contentType": "text",
+  "hasContent": true,
+  "hasMetadata": true,
+  "isError": false,
+  "parseable": {
     "hasScripture": true,
-    "scriptureLength": 4,
-    "topLevelFields": {
-      "hasCitation": true,
-      "hasLanguage": true,
-      "hasMetadata": true,
-      "hasOrganization": true,
-    },
     "type": "object",
   },
-  "staticHeaders": {
-    "cache-control": "no-store, no-cache, must-revalidate",
-    "content-type": "application/json; charset=utf-8",
-    "x-available-formats": "json,text,md",
-    "x-cache-status": "hit",
-    "x-recommended-format-llm": "text",
+}
+`;
+
+exports[`fetch_scripture Contract Tests > Golden Reference Behavior > John 3:16 — matches golden snapshot > fetch-scripture-john-3-16 1`] = `
+{
+  "contentType": "text",
+  "hasContent": true,
+  "hasMetadata": true,
+  "isError": false,
+  "parseable": {
+    "hasScripture": true,
+    "type": "object",
   },
-  "status": 200,
 }
 `;
