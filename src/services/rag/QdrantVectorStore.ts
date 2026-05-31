@@ -156,7 +156,8 @@ export class QdrantVectorStore implements VectorStore {
     if (!conditions) return;
     await this.client.delete(this.collection, {
       wait: true,
-      filter: conditions as Parameters<typeof this.client.delete>[1]["filter"],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      filter: conditions as any,
     });
   }
 
@@ -210,7 +211,7 @@ export class QdrantVectorStore implements VectorStore {
 
   async health(): Promise<{ status: "ok" | "degraded" }> {
     try {
-      await this.client.api("cluster").get("/cluster");
+      await this.client.getCollections();
       return { status: "ok" };
     } catch {
       return { status: "degraded" };
