@@ -444,6 +444,99 @@ const scripture = await client.fetchScripture({
 });
 ```
 
+---
+
+## RAG Tools
+
+### `ragQuery(options): Promise<any>`
+
+Semantic search over indexed translation resources using RAG retrieval.
+
+```typescript
+const results = await client.ragQuery({
+  query: "What does grace mean in context?",
+  language: "en",
+  reference: "JHN 3:16",
+  k: 10,
+  filters: { resourceType: "tn" },
+});
+
+console.log(results.documents.length, "documents found");
+console.log(results.fallbackMode); // "ann" | "lexical" | "empty"
+console.log(results.cacheStatus); // "hit" | "miss"
+```
+
+**Parameters:**
+
+| Parameter     | Type              | Required | Description                                              |
+| ------------- | ----------------- | -------- | -------------------------------------------------------- |
+| `query`       | `string`          | ✅       | Natural-language search query                            |
+| `language`    | `string`          |          | IETF BCP 47 code (default: `"en"`)                       |
+| `reference`   | `string`          |          | USFM reference for contextual filtering                  |
+| `filters`     | `RagQueryFilters` |          | Metadata filters (resourceType, project, owner, subject) |
+| `k`           | `number`          |          | Number of results (1–100, default: 10)                   |
+| `enableExact` | `boolean`         |          | Include exact reference matches                          |
+| `requestId`   | `string`          |          | Tracing ID                                               |
+
+---
+
+### `getBundle(options): Promise<any>`
+
+Retrieve a fully-assembled translation bundle (notes + linked TW/TA articles).
+
+```typescript
+const bundle = await client.getBundle({
+  language: "en",
+  reference: "JHN 3:16",
+});
+
+console.log(bundle.notes.length, "translation notes");
+console.log(bundle.tw.length, "Translation Words");
+console.log(bundle.ta.length, "Translation Academy articles");
+console.log(bundle.metadata.cacheStatus); // "memory" | "edge" | "r2" | "miss"
+```
+
+**Parameters:**
+
+| Parameter   | Type      | Required | Description                          |
+| ----------- | --------- | -------- | ------------------------------------ |
+| `language`  | `string`  | ✅       | IETF BCP 47 language code            |
+| `reference` | `string`  | ✅       | USFM reference, e.g. `"JHN 3:16"`    |
+| `owner`     | `string`  |          | Door43 owner org                     |
+| `project`   | `string`  |          | Door43 project slug                  |
+| `force`     | `boolean` |          | Skip caches and force fresh assembly |
+| `requestId` | `string`  |          | Tracing ID                           |
+
+---
+
+### `indexResource(options): Promise<any>` (Admin)
+
+Enqueue a translation resource for indexing. Requires `adminToken`.
+
+```typescript
+const job = await client.indexResource({
+  resourceId: "unfoldingWord/en_tn",
+  adminToken: process.env.ADMIN_TOKEN,
+  priority: "high",
+});
+
+console.log(job.taskId); // "idx-1716896400000-a3f2b891"
+console.log(job.status); // "queued"
+```
+
+**Parameters:**
+
+| Parameter    | Type                          | Required | Description                                            |
+| ------------ | ----------------------------- | -------- | ------------------------------------------------------ |
+| `resourceId` | `string`                      | ✅       | `"owner/project"` format                               |
+| `zipUrl`     | `string`                      |          | URL of ZIP archive to index                            |
+| `force`      | `boolean`                     |          | Re-index even if already indexed                       |
+| `priority`   | `"low" \| "normal" \| "high"` |          | Queue priority (default: `"normal"`)                   |
+| `adminToken` | `string`                      |          | Authentication token (must match server `ADMIN_TOKEN`) |
+| `requestId`  | `string`                      |          | Tracing ID                                             |
+
+---
+
 ## TypeScript Support
 
 This package includes full TypeScript definitions. All types are exported for your convenience:

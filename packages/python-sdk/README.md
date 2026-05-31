@@ -300,6 +300,90 @@ Dynamically check if the MCP server supports prompts.
 
 Get the server's capabilities (tools and prompts support).
 
+---
+
+## RAG Tools
+
+### `async rag_query(options: RagQueryOptions) -> Dict[str, Any]`
+
+Semantic search over indexed translation resources using RAG retrieval.
+
+```python
+results = await client.rag_query({
+    "query": "What does grace mean in context?",
+    "language": "en",
+    "reference": "JHN 3:16",
+    "k": 10,
+    "filters": {"resourceType": "tn"},
+})
+
+print(results["documents"])   # list of matching documents
+print(results["fallbackMode"])  # "ann" | "lexical" | "empty"
+print(results["cacheStatus"])   # "hit" | "miss"
+```
+
+**Parameters:**
+
+| Parameter     | Type              | Required | Description                             |
+| ------------- | ----------------- | -------- | --------------------------------------- |
+| `query`       | `str`             | ✅       | Natural-language search query           |
+| `language`    | `str`             |          | IETF BCP 47 code (default: `"en"`)      |
+| `reference`   | `str`             |          | USFM reference for contextual filtering |
+| `filters`     | `RagQueryFilters` |          | Metadata filters                        |
+| `k`           | `int`             |          | Number of results (1–100, default: 10)  |
+| `enableExact` | `bool`            |          | Include exact reference matches         |
+| `requestId`   | `str`             |          | Tracing ID                              |
+
+---
+
+### `async get_bundle(options: GetBundleOptions) -> Dict[str, Any]`
+
+Retrieve a fully-assembled translation bundle.
+
+```python
+bundle = await client.get_bundle({
+    "language": "en",
+    "reference": "JHN 3:16",
+})
+
+print(f"{len(bundle['notes'])} translation notes")
+print(f"{len(bundle['tw'])} Translation Words")
+print(f"{len(bundle['ta'])} Translation Academy articles")
+print(bundle["metadata"]["cacheStatus"])  # "memory" | "edge" | "r2" | "miss"
+```
+
+**Parameters:**
+
+| Parameter   | Type   | Required | Description                          |
+| ----------- | ------ | -------- | ------------------------------------ |
+| `language`  | `str`  | ✅       | IETF BCP 47 language code            |
+| `reference` | `str`  | ✅       | USFM reference, e.g. `"JHN 3:16"`    |
+| `owner`     | `str`  |          | Door43 owner org                     |
+| `project`   | `str`  |          | Door43 project slug                  |
+| `force`     | `bool` |          | Skip caches and force fresh assembly |
+| `requestId` | `str`  |          | Tracing ID                           |
+
+---
+
+### `async index_resource(options: IndexResourceOptions) -> Dict[str, Any]` (Admin)
+
+Enqueue a translation resource for indexing.
+
+```python
+import os
+
+job = await client.index_resource({
+    "resourceId": "unfoldingWord/en_tn",
+    "adminToken": os.environ["ADMIN_TOKEN"],
+    "priority": "high",
+})
+
+print(job["taskId"])   # "idx-1716896400000-a3f2b891"
+print(job["status"])   # "queued"
+```
+
+---
+
 ## Optional Adapter Utilities
 
 The SDK includes **optional** adapter utilities for converting MCP tools and prompts to different AI provider formats. These are convenience helpers - you can use them, write your own conversion logic, or use MCP tools/prompts directly if your provider supports MCP natively.

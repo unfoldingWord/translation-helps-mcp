@@ -35,5 +35,47 @@ preview_id = "3073e58cc3eb4f16958854a6ec1531e6"
 binding = "ZIP_FILES"
 bucket_name = "translation-helps-mcp-zip-persistence"
 
+
+# ---------------------------------------------------------------------------
+# Workers AI binding (free tier — used by WorkersAIEmbeddingService +
+# WorkersAILLMProvider).
+# Docs: https://developers.cloudflare.com/workers-ai/
+# ---------------------------------------------------------------------------
+[ai]
+binding = "AI"
+
+# ---------------------------------------------------------------------------
+# Vectorize index (free tier — used by CFVectorizeStore).
+# Create with: npx wrangler vectorize create translation-helps-vectors --dimensions=768 --metric=cosine
+# Docs: https://developers.cloudflare.com/vectorize/
+# ---------------------------------------------------------------------------
+[[vectorize]]
+binding = "VECTORIZE_INDEX"
+index_name = "translation-helps-vectors"
+
+# ---------------------------------------------------------------------------
+# Production-environment copies of the new bindings (Pages requires
+# bindings to be declared under both the top-level and [env.production]).
+# ---------------------------------------------------------------------------
+[env.production.ai]
+binding = "AI"
+
+[[env.production.vectorize]]
+binding = "VECTORIZE_INDEX"
+index_name = "translation-helps-vectors"
+
+# ---------------------------------------------------------------------------
+# Preview-environment copies (for wrangler pages dev / staging branch).
+# ---------------------------------------------------------------------------
+[env.preview.ai]
+binding = "AI"
+
+[[env.preview.vectorize]]
+binding = "VECTORIZE_INDEX"
+index_name = "translation-helps-vectors"
+
+# ---------------------------------------------------------------------------
+# Legacy notes — kept for reference
+# ---------------------------------------------------------------------------
 # For Pages deployment, use: npx wrangler pages deploy ui/build
-# For secrets: npx wrangler secret put ANTHROPIC_API_KEY 
+# For secrets: npx wrangler secret put ANTHROPIC_API_KEY
