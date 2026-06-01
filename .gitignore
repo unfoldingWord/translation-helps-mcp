@@ -55,3 +55,14 @@ netlify/functions/_shared/version.json
 .netlify/
 .DS_Store
 ui/.dev.vars
+
+# Local zip/catalog cache (use R2/KV in production)
+.th/
+
+# Work-in-progress patches
+.wip/
+
+# Web build output
+web/.svelte-kit/
+web/build/
+web/playwright-report/
