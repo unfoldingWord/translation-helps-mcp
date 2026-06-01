@@ -1,1 +1,0 @@
-What are two things I do to translate?

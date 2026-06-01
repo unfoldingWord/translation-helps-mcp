@@ -1,1 +1,0 @@
-Checking Authority and Process

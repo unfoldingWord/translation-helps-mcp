@@ -1,1 +1,0 @@
-What are the topics that we need to discuss in order to choose a translation style?

@@ -1,1 +1,0 @@
-What do active and passive mean, and how do I translate passive sentences?

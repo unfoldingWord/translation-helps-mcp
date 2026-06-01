@@ -1,1 +1,0 @@
-How can I translate contrary-to-fact conditions?

@@ -1,1 +1,0 @@
-What translating decision should I make when I see an explanation in the notes?

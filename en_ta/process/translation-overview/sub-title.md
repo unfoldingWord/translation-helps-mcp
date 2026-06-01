@@ -1,1 +1,0 @@
-What is the process for translation that unfoldingWord recommends?

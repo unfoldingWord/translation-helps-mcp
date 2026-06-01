@@ -1,1 +1,0 @@
-How do I translate clauses with a sequential time relationship?

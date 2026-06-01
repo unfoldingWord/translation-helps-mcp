@@ -1,1 +1,0 @@
-Kinds of Written Back Translations

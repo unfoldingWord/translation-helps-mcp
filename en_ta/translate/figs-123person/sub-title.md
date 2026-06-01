@@ -1,1 +1,0 @@
-What are first, second, and third person, and how do I translate when a third person form does not refer to the third person?

@@ -1,1 +1,0 @@
-Connect — Goal (Purpose) Relationship

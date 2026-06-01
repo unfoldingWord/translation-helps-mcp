@@ -1,1 +1,0 @@
-How can I translate the values of money in the Bible?

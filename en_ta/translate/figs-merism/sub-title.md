@@ -1,1 +1,0 @@
-What does the word merism mean and how can I translate phrases that have it?

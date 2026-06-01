@@ -1,14 +1,12 @@
 /**
- * Translation Helps MCP Client
+ * Translation Helps MCP Client v2
  *
- * Connects to the Translation Helps MCP server via HTTP (remote) or STDIO (local).
+ * Connects to the Translation Helps MCP server via Streamable HTTP at /mcp.
+ * Compatible with MCP SDK 1.x Streamable HTTP transport.
  */
 
 import type {
   ClientOptions,
-  MCPTool,
-  MCPPrompt,
-  MCPResponse,
   FetchScriptureOptions,
   FetchTranslationNotesOptions,
   FetchTranslationQuestionsOptions,
@@ -16,814 +14,185 @@ import type {
   FetchTranslationWordLinksOptions,
   FetchTranslationAcademyOptions,
   ListLanguagesOptions,
-  ListSubjectsOptions,
   ListResourcesForLanguageOptions,
   RagQueryOptions,
   GetBundleOptions,
   IndexResourceOptions,
+  MCPToolResult,
+  ToolName,
 } from "./types.js";
-import { ContextManager } from "./ContextManager.js";
-import {
-  StateInjectionInterceptor,
-  type InterceptorOptions,
-  type ToolContextConfig,
-} from "./StateInjectionInterceptor.js";
-import { DEFAULT_TOOL_CONTEXT_CONFIG } from "./defaultToolConfig.js";
-import {
-  languageCodeValidator,
-  stageValidator,
-  referenceValidator,
-  formatValidator,
-  booleanValidator,
-} from "./validators.js";
 
-const DEFAULT_SERVER_URL = "https://tc-helps.mcp.servant.bible/api/mcp";
-const DEFAULT_TIMEOUT = 90000; // Increased from 30s to 90s for cold cache scenarios (DCS ZIP downloads can be slow)
-
-export interface EnhancedClientOptions extends ClientOptions {
-  enableInterceptor?: boolean;
-  toolContextConfig?: ToolContextConfig;
-  interceptorOptions?: InterceptorOptions;
-  initialContext?: Record<string, any>;
-}
+const DEFAULT_SERVER_URL = "https://translation-helps-mcp.workers.dev/mcp";
 
 export class TranslationHelpsClient {
   private serverUrl: string;
   private timeout: number;
   private headers: Record<string, string>;
-  private enableMetrics: boolean;
-  private toolsCache: MCPTool[] | null = null;
-  private promptsCache: MCPPrompt[] | null = null;
-  private initialized = false;
+  private requestId = 0;
 
-  // State Injection Interceptor
-  private contextManager: ContextManager;
-  private interceptor: StateInjectionInterceptor | null = null;
-  private interceptorEnabled = false;
-
-  constructor(options: EnhancedClientOptions = {}) {
-    this.serverUrl = options.serverUrl || DEFAULT_SERVER_URL;
-    this.timeout = options.timeout || DEFAULT_TIMEOUT;
-    this.enableMetrics = options.enableMetrics || false;
+  constructor(options: ClientOptions = {}) {
+    this.serverUrl = options.serverUrl ?? DEFAULT_SERVER_URL;
+    this.timeout = options.timeout ?? 90_000;
     this.headers = {
       "Content-Type": "application/json",
+      Accept: "application/json, text/event-stream",
       ...options.headers,
     };
-
-    // Initialize Context Manager
-    this.contextManager = new ContextManager();
-
-    // Register validation rules
-    this.contextManager.addValidationRule("language", languageCodeValidator);
-    this.contextManager.addValidationRule("stage", stageValidator);
-    this.contextManager.addValidationRule("reference", referenceValidator);
-    this.contextManager.addValidationRule("format", formatValidator);
-    this.contextManager.addValidationRule("includeAlignment", booleanValidator);
-    this.contextManager.addValidationRule("includeContext", booleanValidator);
-    this.contextManager.addValidationRule("includeIntro", booleanValidator);
-
-    // Initialize interceptor if enabled
-    if (options.enableInterceptor) {
-      this.enableStateInjection(
-        options.toolContextConfig,
-        options.interceptorOptions,
-      );
-    }
-
-    // Pre-populate context if provided
-    if (options.initialContext) {
-      this.contextManager.setMany(options.initialContext);
-    }
   }
 
-  /**
-   * Initialize connection to the MCP server
-   */
-  async connect(): Promise<void> {
-    if (this.initialized) {
-      return;
-    }
-
-    try {
-      // Initialize the server
-      const initResponse = await this.sendRequest("initialize");
-
-      if (!initResponse.serverInfo) {
-        throw new Error("Invalid server response: missing serverInfo");
-      }
-
-      // Cache tools and prompts
-      await this.refreshTools();
-      await this.refreshPrompts();
-
-      this.initialized = true;
-    } catch (error) {
-      throw new Error(
-        `Failed to connect to MCP server: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-  }
-
-  /**
-   * Send a request to the MCP server
-   */
-  private async sendRequest(
-    method: string,
-    params?: Record<string, any>,
-  ): Promise<any> {
-    const payload: any = { method };
-    if (params) {
-      payload.params = params;
-    }
+  /** Low-level MCP JSON-RPC call. */
+  async callTool(
+    name: ToolName,
+    args: Record<string, unknown>,
+  ): Promise<MCPToolResult> {
+    const id = ++this.requestId;
+    const body = JSON.stringify({
+      jsonrpc: "2.0",
+      id,
+      method: "tools/call",
+      params: { name, arguments: args },
+    });
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-    const startTime = Date.now();
+    const timer = setTimeout(() => controller.abort(), this.timeout);
 
     try {
       const response = await fetch(this.serverUrl, {
         method: "POST",
         headers: this.headers,
-        body: JSON.stringify(payload),
+        body,
         signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
-      const responseTime = Date.now() - startTime;
-
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(`HTTP ${response.status} from MCP server`);
       }
 
-      const data = (await response.json()) as any;
+      const contentType = response.headers.get("content-type") ?? "";
+      let json: unknown;
 
-      // Handle MCP error responses (JSON-RPC 2.0 format)
-      if (data.error) {
-        console.log("[SDK] 🚨 MCP Error Response:", data.error);
-        console.log("[SDK] 🔍 Has data.error.data?", !!data.error.data);
-        console.log("[SDK] 🔍 data.error.data:", data.error.data);
-
-        const error: any = new Error(data.error.message || "MCP server error");
-
-        // Preserve error.data for AI agents (contains validBookCodes, languageVariants, etc.)
-        if (data.error.data) {
-          console.log(
-            "[SDK] ✅ Preserving error.data with",
-            Object.keys(data.error.data),
-          );
-          error.details = data.error.data;
-
-          // Attach validBookCodes directly for easy access
-          if (data.error.data.validBookCodes) {
-            console.log(
-              "[SDK] ✅ Attaching validBookCodes:",
-              data.error.data.validBookCodes.length,
-              "codes",
-            );
-            error.validBookCodes = data.error.data.validBookCodes;
-            error.invalidCode = data.error.data.invalidCode;
-          }
-
-          // Attach languageVariants directly for easy access
-          if (data.error.data.languageVariants) {
-            console.log(
-              "[SDK] ✅ Attaching languageVariants:",
-              data.error.data.languageVariants,
-            );
-            error.languageVariants = data.error.data.languageVariants;
-            error.requestedLanguage = data.error.data.requestedLanguage;
-          }
-
-          // Attach availableBooks directly for easy access
-          if (data.error.data.availableBooks) {
-            console.log(
-              "[SDK] ✅ Attaching availableBooks:",
-              data.error.data.availableBooks.length,
-              "books",
-            );
-            error.availableBooks = data.error.data.availableBooks;
-            error.requestedBook = data.error.data.requestedBook;
-            error.language = data.error.data.language;
-          }
-        } else {
-          console.warn("[SDK] ⚠️ No data.error.data found in response");
-        }
-
-        console.log(
-          "[SDK] 🎯 Throwing error with details:",
-          !!error.details,
-          "validBookCodes:",
-          !!error.validBookCodes,
-        );
-        throw error;
-      }
-
-      // Extract result from JSON-RPC 2.0 format if present
-      // The server now always returns JSON-RPC 2.0 format: { jsonrpc: "2.0", result: {...}, id: ... }
-      // But we need to support both formats for backward compatibility
-      const responseData = data.result !== undefined ? data.result : data;
-
-      // Extract metrics from headers if enabled
-      if (this.enableMetrics) {
-        const metadata: any = {
-          responseTime,
-          statusCode: response.status,
-          headers: {},
-        };
-
-        // Extract all headers
-        response.headers.forEach((value: string, key: string) => {
-          metadata.headers[key] = value;
-        });
-
-        // Extract specific diagnostic headers
-        const xrayHeader =
-          response.headers.get("X-XRay-Trace") ||
-          response.headers.get("x-xray-trace");
-        if (xrayHeader) {
+      if (contentType.includes("text/event-stream")) {
+        const text = await response.text();
+        const dataLines = text
+          .split("\n")
+          .filter((l) => l.startsWith("data:"))
+          .map((l) => l.slice(5).trim());
+        for (const line of dataLines) {
           try {
-            const cleaned = xrayHeader.replace(/\s+/g, "");
-            metadata.xrayTrace = JSON.parse(atob(cleaned));
-          } catch (_e) {
-            // Ignore parse errors
+            json = JSON.parse(line);
+            break;
+          } catch {
+            /* skip non-JSON events */
           }
         }
-
-        const rt = response.headers.get("X-Response-Time");
-        if (rt) {
-          const rtNum = parseInt(rt.replace(/[^0-9]/g, ""), 10);
-          if (!isNaN(rtNum)) {
-            metadata.responseTime = rtNum; // Use server-reported time if available
-          }
-        }
-
-        const cacheStatus = response.headers.get("X-Cache-Status");
-        if (cacheStatus) {
-          metadata.cacheStatus = cacheStatus.toLowerCase();
-          console.log(
-            `[SDK DEBUG] Captured X-Cache-Status header: ${cacheStatus} → ${metadata.cacheStatus}`,
-          );
-        } else {
-          console.log(
-            `[SDK DEBUG] ⚠️ X-Cache-Status header not found in response`,
-          );
-        }
-
-        const traceId = response.headers.get("X-Trace-Id");
-        if (traceId) {
-          metadata.traceId = traceId;
-        }
-
-        // DEBUG: Log what we captured
-        console.log(`[SDK DEBUG] Captured metadata:`, {
-          cacheStatus: metadata.cacheStatus,
-          responseTime: metadata.responseTime,
-          traceId: metadata.traceId,
-          hasXrayTrace: !!metadata.xrayTrace,
-          xrayTraceCacheStats: metadata.xrayTrace?.cacheStats,
-          allHeaders: Object.keys(metadata.headers),
-        });
-
-        // Attach metadata to response (use responseData to handle JSON-RPC format)
-        if (!responseData.metadata) {
-          responseData.metadata = {};
-        }
-        Object.assign(responseData.metadata, metadata);
-
-        console.log(`[SDK DEBUG] Final response.metadata:`, {
-          cacheStatus: responseData.metadata.cacheStatus,
-          hasXrayTrace: !!responseData.metadata.xrayTrace,
-          xrayTraceKeys: responseData.metadata.xrayTrace
-            ? Object.keys(responseData.metadata.xrayTrace)
-            : [],
-        });
+      } else {
+        json = await response.json();
       }
 
-      return responseData;
-    } catch (error) {
-      clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === "AbortError") {
-        throw new Error(`Request timeout after ${this.timeout}ms`);
-      }
-      throw error;
+      const result = (json as { result?: MCPToolResult })?.result;
+      if (!result) throw new Error("No result in MCP response");
+      return result;
+    } finally {
+      clearTimeout(timer);
     }
   }
 
-  /**
-   * Refresh the tools cache
-   */
-  private async refreshTools(): Promise<void> {
-    const response = await this.sendRequest("tools/list");
-    this.toolsCache = response.tools || [];
-  }
-
-  /**
-   * Refresh the prompts cache
-   */
-  private async refreshPrompts(): Promise<void> {
-    const response = await this.sendRequest("prompts/list");
-    this.promptsCache = response.prompts || [];
-  }
-
-  /**
-   * Ensure the client is initialized
-   */
-  private async ensureInitialized(): Promise<void> {
-    if (!this.initialized) {
-      await this.connect();
-    }
-  }
-
-  /**
-   * List available tools
-   */
-  async listTools(): Promise<MCPTool[]> {
-    await this.ensureInitialized();
-    if (!this.toolsCache) {
-      await this.refreshTools();
-    }
-    return this.toolsCache || [];
-  }
-
-  /**
-   * List available prompts
-   */
-  async listPrompts(): Promise<MCPPrompt[]> {
-    await this.ensureInitialized();
-    if (!this.promptsCache) {
-      await this.refreshPrompts();
-    }
-    return this.promptsCache || [];
-  }
-
-  /**
-   * Call a tool by name
-   */
-  async callTool(
-    name: string,
-    arguments_: Record<string, any>,
-  ): Promise<MCPResponse> {
-    await this.ensureInitialized();
-
-    // Apply state injection interceptor if enabled
-    let finalArguments = arguments_;
-    let interceptionMetadata: any = null;
-
-    if (this.interceptorEnabled && this.interceptor) {
-      const result = this.interceptor.intercept(name, arguments_);
-      finalArguments = result.arguments;
-
-      // Store metadata for debugging/logging
-      if (result.modified) {
-        interceptionMetadata = {
-          injected: result.injected,
-          synced: result.synced,
-          originalArgs: arguments_,
-          finalArgs: finalArguments,
-        };
-
-        console.log(
-          `[SDK] 🔄 State Injection Applied: tool=${name}, ` +
-            `injected=[${Object.keys(result.injected).join(", ")}], ` +
-            `synced=[${Object.keys(result.synced).join(", ")}]`,
-        );
-      }
-    }
-
-    // Call the MCP server with potentially modified arguments
-    const response = await this.sendRequest("tools/call", {
-      name,
-      arguments: finalArguments,
+  /** List all tools exposed by the server. */
+  async listTools(): Promise<Array<{ name: string; description: string }>> {
+    const id = ++this.requestId;
+    const response = await fetch(this.serverUrl, {
+      method: "POST",
+      headers: this.headers,
+      body: JSON.stringify({ jsonrpc: "2.0", id, method: "tools/list" }),
     });
-
-    // Attach interception metadata if metrics are enabled
-    if (this.enableMetrics && interceptionMetadata) {
-      if (!response.metadata) {
-        response.metadata = {};
-      }
-      response.metadata.stateInjection = interceptionMetadata;
-    }
-
-    return response;
-  }
-
-  /**
-   * Get a prompt template
-   */
-  async getPrompt(
-    name: string,
-    arguments_: Record<string, any> = {},
-  ): Promise<MCPResponse> {
-    await this.ensureInitialized();
-    return await this.sendRequest("prompts/get", {
-      name,
-      arguments: arguments_,
-    });
-  }
-
-  // Convenience methods for common operations
-
-  /**
-   * Fetch Bible scripture text
-   */
-  async fetchScripture(options: FetchScriptureOptions): Promise<string> {
-    const params: Record<string, any> = {
-      reference: options.reference,
-      language: options.language || "en",
-      format: options.format || "text",
-      includeVerseNumbers: options.includeVerseNumbers !== false,
+    const json = (await response.json()) as {
+      result?: { tools?: Array<{ name: string; description: string }> };
     };
-
-    // Add optional parameters if provided
-    if (options.resource !== undefined) {
-      params.resource = options.resource;
-    }
-    if (options.includeAlignment !== undefined) {
-      params.includeAlignment = options.includeAlignment;
-    }
-
-    const response = await this.callTool("fetch_scripture", params);
-
-    // Extract text from response
-    if (response.content && response.content[0]?.text) {
-      return response.content[0].text;
-    }
-
-    throw new Error("Invalid response format from fetch_scripture");
+    return json.result?.tools ?? [];
   }
 
-  /**
-   * Fetch translation notes (all Door43 organizations are searched automatically).
-   */
+  // ---------------------------------------------------------------------------
+  // Typed convenience methods — one per tool
+  // ---------------------------------------------------------------------------
+
+  async fetchScripture(opts: FetchScriptureOptions): Promise<MCPToolResult> {
+    return this.callTool("fetch_scripture", opts as Record<string, unknown>);
+  }
+
   async fetchTranslationNotes(
-    options: FetchTranslationNotesOptions,
-  ): Promise<any> {
-    const params: Record<string, any> = {
-      reference: options.reference,
-      language: options.language || "en",
-      includeIntro: options.includeIntro !== false,
-      includeContext: options.includeContext !== false,
-    };
-
-    const response = await this.callTool("fetch_translation_notes", params);
-
-    if (response.content && response.content[0]?.text) {
-      return JSON.parse(response.content[0].text);
-    }
-
-    throw new Error("Invalid response format from fetch_translation_notes");
+    opts: FetchTranslationNotesOptions,
+  ): Promise<MCPToolResult> {
+    return this.callTool(
+      "fetch_translation_notes",
+      opts as Record<string, unknown>,
+    );
   }
 
-  /**
-   * Fetch translation questions
-   */
   async fetchTranslationQuestions(
-    options: FetchTranslationQuestionsOptions,
-  ): Promise<any> {
-    const params: Record<string, any> = {
-      reference: options.reference,
-      language: options.language || "en",
-    };
-
-    const response = await this.callTool("fetch_translation_questions", params);
-
-    if (response.content && response.content[0]?.text) {
-      return JSON.parse(response.content[0].text);
-    }
-
-    throw new Error("Invalid response format from fetch_translation_questions");
+    opts: FetchTranslationQuestionsOptions,
+  ): Promise<MCPToolResult> {
+    return this.callTool(
+      "fetch_translation_questions",
+      opts as Record<string, unknown>,
+    );
   }
 
-  /**
-   * Fetch translation word (by term or reference)
-   */
-  async fetchTranslationWord(
-    options: FetchTranslationWordOptions,
-  ): Promise<any> {
-    const params: Record<string, any> = {
-      reference: options.reference,
-      term: options.term,
-      language: options.language || "en",
-      category: options.category,
-    };
-
-    const response = await this.callTool("fetch_translation_word", params);
-
-    if (response.content && response.content[0]?.text) {
-      return JSON.parse(response.content[0].text);
-    }
-
-    throw new Error("Invalid response format from fetch_translation_word");
-  }
-
-  /**
-   * Fetch translation word links
-   */
   async fetchTranslationWordLinks(
-    options: FetchTranslationWordLinksOptions,
-  ): Promise<any> {
-    const params: Record<string, any> = {
-      reference: options.reference,
-      language: options.language || "en",
-    };
-
-    const response = await this.callTool(
+    opts: FetchTranslationWordLinksOptions,
+  ): Promise<MCPToolResult> {
+    return this.callTool(
       "fetch_translation_word_links",
-      params,
-    );
-
-    if (response.content && response.content[0]?.text) {
-      return JSON.parse(response.content[0].text);
-    }
-
-    throw new Error(
-      "Invalid response format from fetch_translation_word_links",
+      opts as Record<string, unknown>,
     );
   }
 
-  /**
-   * Fetch translation academy articles
-   */
+  async fetchTranslationWord(
+    opts: FetchTranslationWordOptions,
+  ): Promise<MCPToolResult> {
+    return this.callTool(
+      "fetch_translation_word",
+      opts as Record<string, unknown>,
+    );
+  }
+
   async fetchTranslationAcademy(
-    options: FetchTranslationAcademyOptions,
-  ): Promise<any> {
-    const params: Record<string, any> = {
-      reference: options.reference,
-      rcLink: options.rcLink,
-      moduleId: options.moduleId,
-      path: options.path,
-      language: options.language || "en",
-      format: options.format || "json",
-    };
-
-    const response = await this.callTool("fetch_translation_academy", params);
-
-    if (response.content && response.content[0]?.text) {
-      const text = response.content[0].text;
-      if (options.format === "markdown") {
-        return text;
-      }
-      return JSON.parse(text);
-    }
-
-    throw new Error("Invalid response format from fetch_translation_academy");
-  }
-
-  /**
-   * List available languages from Door43 catalog
-   */
-  async listLanguages(options: ListLanguagesOptions = {}): Promise<any> {
-    const response = await this.callTool("list_languages", {
-      stage: options.stage || "prod",
-    });
-
-    if (response.content && response.content[0]?.text) {
-      return JSON.parse(response.content[0].text);
-    }
-
-    throw new Error("Invalid response format from list_languages");
-  }
-
-  /**
-   * List available resource subjects from Door43 catalog
-   */
-  async listSubjects(options: ListSubjectsOptions = {}): Promise<any> {
-    const response = await this.callTool("list_subjects", {
-      language: options.language,
-      stage: options.stage || "prod",
-    });
-
-    if (response.content && response.content[0]?.text) {
-      return JSON.parse(response.content[0].text);
-    }
-
-    throw new Error("Invalid response format from list_subjects");
-  }
-
-  /**
-   * List all resources for a specific language (RECOMMENDED - much faster!)
-   * Single API call (~1-2 seconds)
-   * Use this after listLanguages() to discover what's available for a chosen language
-   *
-   * @param options - Language (required) and optional filters
-   * @param options.topic - Filter by topic tag. Defaults to "tc-ready" if not provided.
-   */
-  async listResourcesForLanguage(
-    options: ListResourcesForLanguageOptions,
-  ): Promise<any> {
-    const params: Record<string, any> = {
-      language: options.language,
-      stage: options.stage || "prod",
-    };
-
-    if (options.subject) params.subject = options.subject;
-    if (options.limit) params.limit = options.limit;
-    // topic defaults to "tc-ready" on the server if not provided
-    if (options.topic) params.topic = options.topic;
-
-    const response = await this.callTool("list_resources_for_language", params);
-
-    if (response.content && response.content[0]?.text) {
-      return JSON.parse(response.content[0].text);
-    }
-
-    throw new Error("Invalid response format from list_resources_for_language");
-  }
-
-  // ============================================================================
-  // RAG tools: rag_query, get_bundle, index_resource
-  // ============================================================================
-
-  /**
-   * Semantic search over indexed translation resources.
-   *
-   * Uses RAG (Retrieval-Augmented Generation) to find relevant passages,
-   * notes, and articles for a given query.
-   *
-   * @example
-   * const results = await client.ragQuery({
-   *   query: "What does grace mean in context?",
-   *   language: "en",
-   *   reference: "JHN 3:16",
-   *   k: 5,
-   * });
-   * console.log(results.documents);
-   */
-  async ragQuery(options: RagQueryOptions): Promise<any> {
-    const params: Record<string, any> = {
-      query: options.query,
-      language: options.language ?? "en",
-    };
-
-    if (options.reference) params.reference = options.reference;
-    if (options.filters) params.filters = options.filters;
-    if (options.k !== undefined) params.k = options.k;
-    if (options.enableExact !== undefined)
-      params.enableExact = options.enableExact;
-    if (options.requestId) params.requestId = options.requestId;
-
-    const response = await this.callTool("rag_query", params);
-
-    if (response.content && response.content[0]?.text) {
-      return JSON.parse(response.content[0].text);
-    }
-
-    throw new Error("Invalid response format from rag_query");
-  }
-
-  /**
-   * Retrieve a fully-assembled translation bundle for a passage.
-   *
-   * Returns scripture text (placeholder), translation notes, and linked
-   * TW/TA articles for the given language+reference pair.
-   *
-   * @example
-   * const bundle = await client.getBundle({
-   *   language: "en",
-   *   reference: "JHN 3:16",
-   * });
-   * console.log(bundle.notes.length, "notes found");
-   * console.log(bundle.metadata.cacheStatus);
-   */
-  async getBundle(options: GetBundleOptions): Promise<any> {
-    const params: Record<string, any> = {
-      language: options.language,
-      reference: options.reference,
-    };
-
-    if (options.owner) params.owner = options.owner;
-    if (options.project) params.project = options.project;
-    if (options.force !== undefined) params.force = options.force;
-    if (options.requestId) params.requestId = options.requestId;
-
-    const response = await this.callTool("get_bundle", params);
-
-    if (response.content && response.content[0]?.text) {
-      return JSON.parse(response.content[0].text);
-    }
-
-    throw new Error("Invalid response format from get_bundle");
-  }
-
-  /**
-   * Enqueue a translation resource for indexing (admin tool).
-   *
-   * Requires `adminToken` matching the server's `ADMIN_TOKEN` env var.
-   * Returns a `taskId` you can use to poll for job status.
-   *
-   * @example
-   * const job = await client.indexResource({
-   *   resourceId: "unfoldingWord/en_tn",
-   *   adminToken: process.env.ADMIN_TOKEN,
-   *   priority: "high",
-   * });
-   * console.log(job.taskId, job.status);
-   */
-  async indexResource(options: IndexResourceOptions): Promise<any> {
-    const params: Record<string, any> = {
-      resourceId: options.resourceId,
-    };
-
-    if (options.zipUrl) params.zipUrl = options.zipUrl;
-    if (options.force !== undefined) params.force = options.force;
-    if (options.priority) params.priority = options.priority;
-    if (options.requestId) params.requestId = options.requestId;
-    if (options.adminToken) params.adminToken = options.adminToken;
-
-    const response = await this.callTool("index_resource", params);
-
-    if (response.content && response.content[0]?.text) {
-      return JSON.parse(response.content[0].text);
-    }
-
-    throw new Error("Invalid response format from index_resource");
-  }
-
-  /**
-   * Check if client is initialized
-   */
-  isConnected(): boolean {
-    return this.initialized;
-  }
-
-  // ============================================================================
-  // State Injection Interceptor Methods
-  // ============================================================================
-
-  /**
-   * Enable the State Injection Interceptor
-   */
-  enableStateInjection(
-    toolConfig?: ToolContextConfig,
-    options?: InterceptorOptions,
-  ): void {
-    const finalConfig = toolConfig || DEFAULT_TOOL_CONTEXT_CONFIG;
-    this.interceptor = new StateInjectionInterceptor(
-      this.contextManager,
-      finalConfig,
-      options || {},
+    opts: FetchTranslationAcademyOptions,
+  ): Promise<MCPToolResult> {
+    return this.callTool(
+      "fetch_translation_academy",
+      opts as Record<string, unknown>,
     );
-    this.interceptorEnabled = true;
   }
 
-  /**
-   * Disable the State Injection Interceptor
-   */
-  disableStateInjection(): void {
-    this.interceptor = null;
-    this.interceptorEnabled = false;
+  async listLanguages(opts?: ListLanguagesOptions): Promise<MCPToolResult> {
+    return this.callTool(
+      "list_languages",
+      (opts ?? {}) as Record<string, unknown>,
+    );
   }
 
-  /**
-   * Get the context manager instance
-   */
-  getContextManager(): ContextManager {
-    return this.contextManager;
+  async listSubjects(): Promise<MCPToolResult> {
+    return this.callTool("list_subjects", {});
   }
 
-  /**
-   * Get the interceptor instance
-   */
-  getInterceptor(): StateInjectionInterceptor | null {
-    return this.interceptor;
+  async listResourcesForLanguage(
+    opts: ListResourcesForLanguageOptions,
+  ): Promise<MCPToolResult> {
+    return this.callTool(
+      "list_resources_for_language",
+      opts as Record<string, unknown>,
+    );
   }
 
-  /**
-   * Set a context value
-   */
-  setContext(key: string, value: any): boolean {
-    return this.contextManager.set(key, value);
+  async ragQuery(opts: RagQueryOptions): Promise<MCPToolResult> {
+    return this.callTool("rag_query", opts as Record<string, unknown>);
   }
 
-  /**
-   * Get a context value
-   */
-  getContext(key: string): any | undefined {
-    return this.contextManager.get(key);
+  async getBundle(opts: GetBundleOptions): Promise<MCPToolResult> {
+    return this.callTool("get_bundle", opts as Record<string, unknown>);
   }
 
-  /**
-   * Set multiple context values at once
-   */
-  setContextMany(values: Record<string, any>): Record<string, boolean> {
-    return this.contextManager.setMany(values);
+  async indexResource(opts: IndexResourceOptions): Promise<MCPToolResult> {
+    return this.callTool("index_resource", opts as Record<string, unknown>);
   }
-
-  /**
-   * Clear all context
-   */
-  clearContext(): void {
-    this.contextManager.clear();
-  }
-
-  /**
-   * Get all context values
-   */
-  getAllContext(): Record<string, any> {
-    return this.contextManager.getAll();
-  }
-
-  // ============================================================================
-  // End State Injection Interceptor Methods
-  // ============================================================================
 }

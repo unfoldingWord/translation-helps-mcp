@@ -1,1 +1,0 @@
-How do I do a translationNotes check?

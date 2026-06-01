@@ -1,1 +1,0 @@
-What is the difference between the original language and the source language?

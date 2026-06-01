@@ -1,1 +1,0 @@
-How do we introduce a new event in a story?

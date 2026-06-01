@@ -1,1 +1,0 @@
-How do I translate politeness into my language?

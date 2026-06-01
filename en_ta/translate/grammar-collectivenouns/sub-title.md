@@ -1,1 +1,0 @@
-What are collective nouns and how can I translate them?

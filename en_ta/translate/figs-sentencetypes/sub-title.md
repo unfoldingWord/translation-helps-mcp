@@ -1,1 +1,0 @@
-What are the different types of sentences and what are they used for?

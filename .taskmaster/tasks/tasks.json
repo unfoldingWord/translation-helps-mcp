@@ -122,7 +122,7 @@
         "status": "done",
         "dependencies": [],
         "priority": "high",
-        "details": "1. Remove code that returns empty/bogus data\n2. Fix experimental endpoints claiming to work but don't\n3. Remove duplicate implementations\n4. PRESERVE the working cascading cache system (DCS API → Files → Response)\n5. KEEP the xray transparency features that work\n6. Move only BROKEN experimental features to lab\n7. Clean up imports and dependencies\n8. Fix any code that hangs waiting for input\n9. Remove interactive commands from build/test scripts",
+        "details": "1. Remove code that returns empty/bogus data\n2. Fix experimental endpoints claiming to work but don't\n3. Remove duplicate implementations\n4. PRESERVE the working cascading cache system (DCS API \u00e2\u2020\u2019 Files \u00e2\u2020\u2019 Response)\n5. KEEP the xray transparency features that work\n6. Move only BROKEN experimental features to lab\n7. Clean up imports and dependencies\n8. Fix any code that hangs waiting for input\n9. Remove interactive commands from build/test scripts",
         "testStrategy": "Run full test suite with REAL data validation, verify no hanging processes, check core endpoints return accurate data, ensure cache performance remains <500ms",
         "subtasks": [
           {
@@ -140,7 +140,7 @@
             "description": "Keep the cascading cache that took 2 days to optimize",
             "status": "done",
             "dependencies": [],
-            "details": "PRESERVE these working features:\n- Cascading cache (DCS API → Files → Response)\n- Cache performance optimizations\n- Xray transparency for debugging\n- Performance monitoring that works\n\nThese are CORE features, not experimental!",
+            "details": "PRESERVE these working features:\n- Cascading cache (DCS API \u00e2\u2020\u2019 Files \u00e2\u2020\u2019 Response)\n- Cache performance optimizations\n- Xray transparency for debugging\n- Performance monitoring that works\n\nThese are CORE features, not experimental!",
             "testStrategy": "Cache performance remains <500ms, xray visibility intact"
           },
           {
@@ -509,7 +509,7 @@
         "status": "pending",
         "dependencies": [5, 6],
         "priority": "critical",
-        "details": "THE SHOWCASE - This is what partners will see first!\n\nCore Requirements:\n1. Sacred Text Constraints:\n   - Scripture quoted VERBATIM (character for character)\n   - NO interpretation of scripture allowed\n   - Resources can be reworded but must cite sources\n   - All responses must cite resource titles used\n\n2. Clean Chat Interface:\n   - First-class, polished UI (not cluttered)\n   - Progressive disclosure (simple → detailed)\n   - Mobile-responsive design\n\n3. X-Ray Tool Visibility:\n   - Show MCP tool discovery process\n   - Expandable tool call details\n   - Response time metrics\n   - Cache hit/miss indicators\n   - Like reasoning traces but for tool usage\n\n4. Transparency Features:\n   - New MCP endpoint: get-system-prompt\n   - Shows exact constraints and instructions\n   - Open source, open methodology\n   - Sets collaboration bar high\n\n5. Reference Implementation:\n   - Shows partners exactly how to integrate\n   - Demonstrates value proposition clearly\n   - 'Taste and See' moment for users",
+        "details": "THE SHOWCASE - This is what partners will see first!\n\nCore Requirements:\n1. Sacred Text Constraints:\n   - Scripture quoted VERBATIM (character for character)\n   - NO interpretation of scripture allowed\n   - Resources can be reworded but must cite sources\n   - All responses must cite resource titles used\n\n2. Clean Chat Interface:\n   - First-class, polished UI (not cluttered)\n   - Progressive disclosure (simple \u00e2\u2020\u2019 detailed)\n   - Mobile-responsive design\n\n3. X-Ray Tool Visibility:\n   - Show MCP tool discovery process\n   - Expandable tool call details\n   - Response time metrics\n   - Cache hit/miss indicators\n   - Like reasoning traces but for tool usage\n\n4. Transparency Features:\n   - New MCP endpoint: get-system-prompt\n   - Shows exact constraints and instructions\n   - Open source, open methodology\n   - Sets collaboration bar high\n\n5. Reference Implementation:\n   - Shows partners exactly how to integrate\n   - Demonstrates value proposition clearly\n   - 'Taste and See' moment for users",
         "testStrategy": "User acceptance testing with actual translators, performance metrics under 500ms, validate sacred text compliance",
         "subtasks": [
           {
@@ -602,7 +602,7 @@
             "id": 4,
             "title": "Scripture array response enforcement",
             "description": "Normalize scripture endpoints to always return an array.",
-            "details": "Single version → single-item array; update docs and tests.",
+            "details": "Single version \u00e2\u2020\u2019 single-item array; update docs and tests.",
             "status": "done",
             "dependencies": [],
             "parentTaskId": 1
@@ -613,7 +613,7 @@
         "id": 2,
         "title": "Error Policy & Standard Envelope",
         "description": "Implement consistent 400 errors with actionable guidance and links; standard error envelope across endpoints.",
-        "details": "- Create error helper returning { code, message, hint, howToFix, examples, docs, traceId }\n- Invalid references → 400 with examples + discovery links\n- Distinguish file-not-found vs org/lang not found\n- Wire into handlers uniformly",
+        "details": "- Create error helper returning { code, message, hint, howToFix, examples, docs, traceId }\n- Invalid references \u00e2\u2020\u2019 400 with examples + discovery links\n- Distinguish file-not-found vs org/lang not found\n- Wire into handlers uniformly",
         "testStrategy": "Negative tests for invalid reference/missing params assert envelope + guidance",
         "status": "done",
         "dependencies": [],
@@ -768,7 +768,7 @@
       {
         "id": 6,
         "title": "DCS Ingredients Helper & Rollout",
-        "description": "Create single helper for catalog search + metadataType=rc → ingredients; case-insensitive book matching; replace call sites.",
+        "description": "Create single helper for catalog search + metadataType=rc \u00e2\u2020\u2019 ingredients; case-insensitive book matching; replace call sites.",
         "details": "- Build pure helper covering rc ingredients flow with exceptions documented\n- Case-insensitive book code matching\n- Replace bespoke implementations\n- Document exceptions and add tests",
         "testStrategy": "Unit tests for helper; integration confirms identical or improved results",
         "status": "pending",
@@ -1163,6 +1163,182 @@
             "testStrategy": "Review the rollback plan with the team and conduct a dry run if possible."
           }
         ]
+      },
+      {
+        "id": 13,
+        "title": "T-01: Dev Environment Setup (Docker + .env.dev)",
+        "description": "Set up Docker Compose for local Qdrant (port 6333) and Redis (port 6379). Create .env.dev template with all required env vars.",
+        "status": "pending",
+        "priority": "high",
+        "dependencies": [],
+        "details": "Deliverables: scripts/docker/docker-compose.dev.yml, .env.dev template. Acceptance: docker-compose up -d && curl http://localhost:6333/healthz. See docs/rewrite-plan/TASKS.md T-01 and docs/rewrite-plan/CODEBASE_INVENTORY.md env vars section.",
+        "testStrategy": "docker-compose -f scripts/docker/docker-compose.dev.yml up -d && curl http://localhost:6333/healthz && redis-cli ping",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "T-02: Scaffold Cleanup and New src/ Layout",
+        "description": "Delete broken scaffold files (EmbeddingService.ts, VectorStore.ts, RagService.ts, SkillService.ts, broken tests). Create empty stubs for src/services/rag/, src/config/cache-ttls.ts, src/test-utils/.",
+        "status": "pending",
+        "priority": "high",
+        "dependencies": [13],
+        "details": "DELETE: src/services/EmbeddingService.ts, VectorStore.ts, RagService.ts, src/skill/SkillService.ts, tests/embedding-service.test.ts, tests/skill-service.test.ts. CREATE empty stubs. DO NOT touch existing tools/parsers/ZipResourceFetcher2. See docs/rewrite-plan/SCAFFOLD_AUDIT.md and docs/rewrite-plan/TASKS.md T-02.",
+        "testStrategy": "npm run typecheck && npm run lint",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "T-03: Port Domain Invariants + linkNormalizer",
+        "description": "Verify all PORT-AS-IS files (referenceParser, r2-storage, ZipResourceFetcher2, platform-adapter, usfm-extractor) import cleanly. Create src/services/rag/linkNormalizer.ts (parseRcUri: rc:// to canonical path).",
+        "status": "pending",
+        "priority": "high",
+        "dependencies": [14],
+        "details": "parseRcUri('rc://en/tw/dict/bible/kt/love') => {path: 'bible/kt/love'}. Port from src/experimental/resource-aggregator.ts. Add unit tests. See docs/rewrite-plan/TASKS.md T-03.",
+        "testStrategy": "npm run typecheck && npm test -- tests/unit/link-normalizer.test.ts && npm test -- tests/unit/reference-parser.test.ts",
+        "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "T-04: Service Interfaces and TTL Config",
+        "description": "Create TypeScript interface files in src/services/rag/: VectorStore.ts, KVStore.ts, ServiceContext.ts, errors.ts. Fill src/config/cache-ttls.ts with all TTL constants from CACHING_STRATEGY.md.",
+        "status": "pending",
+        "priority": "high",
+        "dependencies": [15],
+        "details": "Interfaces per docs/rewrite-plan/DETAILED_SPEC.md. TTL constants: bundle 3600s, chunk 300s, catalog 3600s, resource-index 1800s, link-graph 86400s per docs/rewrite-plan/CACHING_STRATEGY.md. Error codes per docs/rewrite-plan/ERROR_HANDLING.md.",
+        "testStrategy": "npm run typecheck && npm run lint",
+        "subtasks": []
+      },
+      {
+        "id": 17,
+        "title": "T-05: VectorStore Implementations (InMemory + Qdrant)",
+        "description": "Implement InMemoryVectorStore (cosine similarity, BM25-style findByText, metadata filter) and QdrantVectorStore (uses @qdrant/js-client-rest, creates collection on startup).",
+        "status": "pending",
+        "priority": "high",
+        "dependencies": [16],
+        "details": "Qdrant collection: name='translation-helps-{NODE_ENV}', distance=Cosine, size=VECTOR_DIMENSION (default 1536). Create payload indexes on language, resourceType, subject, project, ref. Port filter logic from scaffold per docs/rewrite-plan/SCAFFOLD_AUDIT.md VectorStore harvest. See docs/rewrite-plan/DETAILED_SPEC.md Qdrant init section.",
+        "testStrategy": "VECTOR_DB_URL=http://localhost:6333 npm test -- tests/unit/vector-store.test.ts",
+        "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "T-06: KVStore Implementations + createDevContext",
+        "description": "Implement InMemoryKVStore, RedisKVStore (ioredis), CFKVStore (Cloudflare KV wrapper). Create src/test-utils/createDevContext.ts wiring all InMemory implementations into a ServiceContext.",
+        "status": "pending",
+        "priority": "high",
+        "dependencies": [16],
+        "details": "RedisKVStore uses ioredis. CFKVStore wraps Cloudflare KV binding TRANSLATION_HELPS_CACHE. createDevContext() used in all integration tests. Redis fallback to CFKVStore per docs/rewrite-plan/DETAILED_SPEC.md redis fallback section.",
+        "testStrategy": "redis-cli ping && npm test -- tests/unit/kv-store.test.ts",
+        "subtasks": []
+      },
+      {
+        "id": 19,
+        "title": "T-07: EmbeddingService + LLMProvider Interfaces and Implementations",
+        "description": "Implement EmbeddingService interface with FakeEmbeddingService (deterministic 1536-dim, not 32-dim), OpenAIEmbeddingService (batching + rate-limit retry + daily cap), LocalEmbeddingService. Implement LLMProvider with FakeLLMProvider and OpenAILLMProvider.",
+        "status": "pending",
+        "priority": "high",
+        "dependencies": [17, 18],
+        "details": "FakeEmbeddingService dimension MUST be 1536 (not 32 from scaffold). OpenAI: batch_size=100, BATCH_DELAY_MS=50, daily token cap via KV counter. See docs/rewrite-plan/EMBEDDINGS_PROVIDER.md. Update createDevContext() to include Fake implementations.",
+        "testStrategy": "npm test -- tests/unit/embedding-service.test.ts && npm run typecheck",
+        "subtasks": []
+      },
+      {
+        "id": 20,
+        "title": "T-08: ResourceIndexer Rebuild with USFM/TSV/MD Chunkers",
+        "description": "Rewrite src/indexer/ResourceIndexer.ts: canonical doc_id format, ZipResourceFetcher2 (no fs), license from manifest.yaml, idempotency check. Create usfmChunker (verse-level), tsvChunker (one row), markdownChunker (heading/paragraph).",
+        "status": "pending",
+        "priority": "high",
+        "dependencies": [19],
+        "details": "doc_id: resource:{owner}:{project}@{refTag}:{path}:chunk:{i}. USFM chunker uses src/functions/usfm-extractor.ts. NO fs.readFile on edge (GOTCHAS.md #2). License from manifest.yaml dublin_core.license default CC BY-SA 4.0. Create src/test-utils/loadTestZip.ts. See docs/rewrite-plan/SCAFFOLD_AUDIT.md ResourceIndexer harvest.",
+        "testStrategy": "npm run typecheck && npm test -- tests/rag-service.test.ts (index local ZIP, verify chunk metadata fields)",
+        "subtasks": []
+      },
+      {
+        "id": 21,
+        "title": "T-09: RagService.query with Tier-1 Reranking + Lexical Fallback",
+        "description": "Create src/services/rag/RagService.ts with query() method. Pipeline: embed query -> ANN fetch 3xK -> Tier-1 reranker -> return K. Lexical fallback when vector DB unavailable. Metrics emission.",
+        "status": "pending",
+        "priority": "high",
+        "dependencies": [20],
+        "details": "Port Reranker.ts to src/services/rag/Reranker.ts: fix recencyScore to use refTag (not timestamp), wrap frequency regex in try/catch. Tier-1 max 5ms, always active at edge. Metrics: search.query_duration_ms, search.vector_latency_ms, search.lexical_fallback. Request-ID propagation. See docs/rewrite-plan/RERANKING.md.",
+        "testStrategy": "npm run typecheck && npm test -- tests/unit/reranker.test.ts && npm test -- tests/unit/rag-service-query.test.ts",
+        "subtasks": []
+      },
+      {
+        "id": 22,
+        "title": "T-10: RagService.getBundle + Multi-Layer Caching + Link Graph",
+        "description": "Add getBundle() and indexResource() to RagService. Implement memory LRU + KV caching. Build LinkGraph.ts (BFS, depth 2, cycle detection via visited Set). Coalescing dedup key.",
+        "status": "pending",
+        "priority": "high",
+        "dependencies": [21],
+        "details": "Bundle cache TTLs: memory 3600s, KV 86400s. LRU: 500 entries, lazy TTL expiry. LinkGraph: buildLinkGraph() BFS traversal with visited Set<string>, maxDepth=2, max ~500 nodes. Coalesce key: coalesce:bundle:{lang}:{ref}. Backref map for invalidation. See docs/rewrite-plan/LINK_GRAPH.md and CACHING_STRATEGY.md.",
+        "testStrategy": "npm run typecheck && npm test -- tests/rag-service.test.ts && npm test -- tests/unit/link-graph.test.ts",
+        "subtasks": []
+      },
+      {
+        "id": 23,
+        "title": "T-11: SkillService Greenfield Rebuild with LLM Generation",
+        "description": "Rebuild src/skill/SkillService.ts from scratch per SKILL_LAYER.md. Scripture from ZipResourceFetcher2 only. Notes via callTool('rag_query') through MCP layer. TW/TA via externalReference.path traversal. LLM generation with citations.",
+        "status": "pending",
+        "priority": "high",
+        "dependencies": [22],
+        "details": "CRITICAL: scripture NEVER from RAG. Notes via callTool() not direct ragService.query(). Linked articles: collect unique externalReference.paths (cap 30), fetch via rag_query, classify tw (bible/) vs ta (translate/). composeTranslationReport calls LLMProvider.generate(). Port PromptFormatter with updated Bundle types. See docs/rewrite-plan/SKILL_LAYER.md orchestration pseudocode.",
+        "testStrategy": "npm run typecheck && npm test -- tests/skill-service.test.ts",
+        "subtasks": []
+      },
+      {
+        "id": 24,
+        "title": "T-12: MCP Tool Wiring (rag_query, get_bundle, index_resource)",
+        "description": "Update three MCP tool handlers: remove verbosity from ragQuery.ts Zod schema, fix cacheStatus path in getBundle.ts, add ADMIN_TOKEN guard to indexResource.ts.",
+        "status": "pending",
+        "priority": "high",
+        "dependencies": [23],
+        "details": "ragQuery: remove verbosity z.enum([brief,full]). getBundle: change response.cacheStatus to response.metadata.cacheStatus. indexResource: add requireAdminToken() (Authorization: Bearer {ADMIN_TOKEN}). Update rag-tools.test.ts. See docs/rewrite-plan/SCAFFOLD_AUDIT.md port-with-changes verdicts.",
+        "testStrategy": "npm run typecheck && npm test -- tests/rag-tools.test.ts && npm test -- tests/api/mcp-endpoint.test.ts",
+        "subtasks": []
+      },
+      {
+        "id": 25,
+        "title": "T-13: SDK Sync - js-sdk and python-sdk for RAG Tools",
+        "description": "Update both SDKs per mcp-sdk-sync.mdc for rag_query, get_bundle, index_resource. Add types, client methods, and README examples to both packages.",
+        "status": "pending",
+        "priority": "medium",
+        "dependencies": [24],
+        "details": "JS: RagQueryOptions, GetBundleOptions, IndexResourceOptions in types.ts; ragQuery(), getBundle(), indexResource() in client.ts; update README. Python: same in types.py, client.py, README. Both must build. See .cursor/rules/mcp-sdk-sync.mdc checklist.",
+        "testStrategy": "cd packages/js-sdk && npm run build && npm test; cd packages/python-sdk && py -m pytest; npm run typecheck",
+        "subtasks": []
+      },
+      {
+        "id": 26,
+        "title": "T-14: UI /api/skill/* Endpoints Rebuild with Validation",
+        "description": "Rebuild SvelteKit skill endpoints with Zod validation, try/catch + proper HTTP status codes, rate limiting (60 req/min per IP), requestId propagation. Add new /api/skill/generate (SSE streaming).",
+        "status": "pending",
+        "priority": "medium",
+        "dependencies": [24],
+        "details": "Files: fetch-passage, query, compose-help, generate (new). Rate limit via KV token bucket keyed by CF-Connecting-IP. SSE for generate endpoint. See docs/rewrite-plan/SECURITY_AND_LICENSING.md and GOTCHAS.md #6 (deep relative imports: update after src/ reorganization).",
+        "testStrategy": "npm run build && npm run typecheck",
+        "subtasks": []
+      },
+      {
+        "id": 27,
+        "title": "T-15: Contract Test Restoration",
+        "description": "Restore missing tests/contracts/*.contract.test.ts source files from __snapshots__. Run test:contracts:update to regenerate. Verify diff shows only expected schema changes.",
+        "status": "pending",
+        "priority": "medium",
+        "dependencies": [25, 26],
+        "details": "CREATE: rag-query.contract.test.ts, get-bundle.contract.test.ts, index-resource.contract.test.ts, fetch-scripture.contract.test.ts. Read __snapshots__/*.snap to infer shapes. DO NOT manually edit __snapshots__/. See docs/rewrite-plan/TESTING_STRATEGY.md contract test restoration plan.",
+        "testStrategy": "npm run test:contracts && npm run test:parity",
+        "subtasks": []
+      },
+      {
+        "id": 28,
+        "title": "T-16: Staging Deploy, Load Tests, and Warm-up Cron",
+        "description": "Implement Warmer.ts (warm-up cron for top-20 languages x top-100 passages). Add k6 load test scripts. Deploy to CF Pages staging. Verify P95 <= 500ms, cache hit >= 70%, error rate < 1%.",
+        "status": "pending",
+        "priority": "medium",
+        "dependencies": [27],
+        "details": "Warmer: warm on startup + nightly cron per docs/rewrite-plan/CACHING_STRATEGY.md algorithm. k6 scripts: tests/load/k6/rag-query.js, get-bundle.js. Deploy: scripts/deploy-staging.sh. Daily caps enforced per docs/rewrite-plan/COST_MODEL.md.",
+        "testStrategy": "npm run load-test:baseline (P95 <= 500ms) && npm run load-test:peak (100 VUs, 5min, no crashes)",
+        "subtasks": []
       }
     ],
     "metadata": {

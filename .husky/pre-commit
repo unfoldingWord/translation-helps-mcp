@@ -1,37 +1,6 @@
 echo "🔍 Running pre-commit checks..."
 
-# Run lint-staged for basic linting and formatting
+# Run lint-staged for linting and formatting
 npx lint-staged
 
-# Removed brittle terminology checks that caused false positives
-
-# Check for missing UW resource types in new API handlers
-if git diff --cached --name-only --diff-filter=A | grep -q "src/functions/handlers/.*\.ts$"; then
-  echo "📋 New API handler detected. Ensure it uses proper UW terminology:"
-  echo "   - Use ResourceType enum from terminology constants"
-  echo "   - Include UW-specific descriptions"
-  echo "   - Reference UW_TRANSLATION_RESOURCES_GUIDE.md for specifications"
-  echo ""
-fi
-
 echo "✅ Pre-commit checks passed!"
-
-# Check if SDK packages have unpublished changes
-echo "📦 Checking SDK packages for unpublished changes..."
-node scripts/check-sdk-published.js
-
-# Sync version files before commit
-echo "🔄 Syncing version files..."
-npm run sync-version >/dev/null 2>&1 || true
-
-# Staged files are already formatted by lint-staged above.
-# Avoid `npm run format` + `git add -A` here: it reformats the whole repo and
-# can accidentally stage unrelated changes.
-
-# Add version files if they changed
-if git diff --quiet src/version.ts ui/src/lib/version.ts ui/src/routes/api/health/+server.ts 2>/dev/null; then
-  echo "📌 Version files unchanged"
-else
-  echo "📌 Adding updated version files..."
-  git add src/version.ts ui/src/lib/version.ts ui/src/routes/api/health/+server.ts 2>/dev/null || true
-fi

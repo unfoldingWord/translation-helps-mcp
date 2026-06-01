@@ -1,8 +1,0 @@
-projects:
-- identifier: 'ta'
-  version: '{latest}'
-  media:
-  - identifier: 'pdf'
-    version: '{latest}'
-    contributor: []
-    url: 'https://cdn.door43.org/en/unfoldingWord/en_tw/v{latest}/pdf/en_ta_v{latest}.pdf'

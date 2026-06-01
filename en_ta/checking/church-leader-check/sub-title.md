@@ -1,1 +1,0 @@
-How can the church leaders help improve the translation?

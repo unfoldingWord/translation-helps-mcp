@@ -1,1 +1,0 @@
-How to Use the ULT and UST when Translating the Bible

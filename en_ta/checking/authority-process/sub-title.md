@@ -1,1 +1,0 @@
-What is the difference between the authority to check a Bible translation and the process for checking?

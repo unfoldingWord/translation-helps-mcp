@@ -1,1 +1,0 @@
-What are the parts of a sentence?

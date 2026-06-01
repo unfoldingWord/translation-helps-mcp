@@ -1,1 +1,0 @@
-What are the guidelines for creating a good back translation?

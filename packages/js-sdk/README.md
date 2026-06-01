@@ -1,6 +1,6 @@
 # @translation-helps/mcp-client
 
-Official TypeScript/JavaScript client SDK for the Translation Helps MCP Server.
+TypeScript/JavaScript client for the Translation Helps MCP v2 server.
 
 ## Installation
 
@@ -8,559 +8,106 @@ Official TypeScript/JavaScript client SDK for the Translation Helps MCP Server.
 npm install @translation-helps/mcp-client
 ```
 
-### Browser Usage
-
-The SDK is **fully compatible with browsers**! It uses standard Web APIs (`fetch`, `AbortController`) and has no Node.js dependencies.
-
-**Using a bundler (recommended):**
+## Usage
 
 ```typescript
 import { TranslationHelpsClient } from "@translation-helps/mcp-client";
 
-const client = new TranslationHelpsClient();
-await client.connect();
-```
-
-**Using a CDN (alternative):**
-
-```html
-<script type="module">
-  // Import from CDN (when published)
-  import { TranslationHelpsClient } from "https://cdn.jsdelivr.net/npm/@translation-helps/mcp-client/dist/index.js";
-
-  const client = new TranslationHelpsClient();
-  await client.connect();
-</script>
-```
-
-**Note:** The SDK works in both Node.js and browser environments. No special configuration needed!
-
-## Quick Start
-
-```typescript
-import { TranslationHelpsClient } from "@translation-helps/mcp-client";
-// Import your AI provider's SDK
-// import Anthropic from '@anthropic-ai/sdk';
-
-// Create a client instance
-const mcpClient = new TranslationHelpsClient({
-  serverUrl: "https://tc-helps.mcp.servant.bible/api/mcp",
+const client = new TranslationHelpsClient({
+  // Optional — defaults to the public server
+  serverUrl: "https://translation-helps-mcp.workers.dev/mcp",
 });
 
-await mcpClient.connect();
+// Fetch scripture
+const scripture = await client.fetchScripture({
+  reference: "JHN 3:16",
+  language: "en",
+  resourceType: "ult",
+});
+console.log(scripture);
 
-// Get available tools and prompts
-const tools = await mcpClient.listTools();
-const prompts = await mcpClient.listPrompts();
+// Get all translation helps for a passage
+const bundle = await client.getBundle({
+  reference: "JHN 3:16",
+  language: "en",
+});
 
-// Convert to your AI provider's format
-const availableTools = tools.map((tool) => ({
-  name: tool.name,
-  description: tool.description,
-  input_schema: tool.inputSchema,
-}));
+// Semantic search
+const results = await client.ragQuery({
+  query: "How should I translate figurative language?",
+  language: "en",
+  resourceTypes: ["ta", "tn"],
+  topK: 5,
+});
 
-// Note: Prompts provide instructions/templates - refer to your provider's docs for usage
+// List available languages
+const languages = await client.listLanguages();
 
-// Send user query to AI WITH available tools
-// The AI will decide which tools to call!
-// const response = await aiClient.messages.create({
-//   model: 'your-model',
-//   messages: [{ role: 'user', content: 'What does John 3:16 say?' }],
-//   tools: availableTools
-// });
-
-// When AI requests a tool call, execute it via SDK:
-// const result = await mcpClient.callTool(toolName, toolArgs);
-// Feed result back to AI for final response
+// Fetch a translation word article
+const word = await client.fetchTranslationWord({
+  path: "bible/kt/grace", // preferred: use path from fetchTranslationWordLinks
+  language: "en",
+});
 ```
 
 ## API Reference
 
-### `TranslationHelpsClient`
-
-Main client class for interacting with the Translation Helps MCP server.
-
-#### Constructor
+### Constructor
 
 ```typescript
 new TranslationHelpsClient(options?: ClientOptions)
 ```
 
-**Options:**
+| Option      | Type                     | Default           | Description             |
+| ----------- | ------------------------ | ----------------- | ----------------------- |
+| `serverUrl` | `string`                 | Public server URL | MCP server endpoint     |
+| `timeout`   | `number`                 | `90000`           | Request timeout (ms)    |
+| `headers`   | `Record<string, string>` | `{}`              | Additional HTTP headers |
 
-- `serverUrl?: string` - Server URL (default: production server)
-- `timeout?: number` - Request timeout in ms (default: 30000)
-- `headers?: Record<string, string>` - Custom headers
-- `enableMetrics?: boolean` - Enable metrics collection (response headers, timing, X-Ray traces). Useful for development/debugging (default: false)
+### Methods
 
-#### Methods
+All methods return typed results from the MCP server.
 
-##### `connect(): Promise<void>`
+| Method                            | Description                         |
+| --------------------------------- | ----------------------------------- |
+| `fetchScripture(opts)`            | Fetch Bible text                    |
+| `fetchTranslationNotes(opts)`     | Fetch translation notes             |
+| `fetchTranslationQuestions(opts)` | Fetch comprehension questions       |
+| `fetchTranslationWordLinks(opts)` | Fetch word links for a reference    |
+| `fetchTranslationWord(opts)`      | Fetch a dictionary article          |
+| `fetchTranslationAcademy(opts)`   | Fetch a Translation Academy article |
+| `listLanguages(opts?)`            | List available languages            |
+| `listSubjects(opts?)`             | List available resource subjects    |
+| `listResourcesForLanguage(opts)`  | List resources for a language       |
+| `ragQuery(opts)`                  | Semantic search                     |
+| `getBundle(opts)`                 | Get all helps for a passage         |
+| `indexResource(opts)`             | Index a resource (admin)            |
+| `callTool(name, args)`            | Raw tool call                       |
 
-Initialize connection to the MCP server. Automatically called by convenience methods.
+### Transport
 
-##### `fetchScripture(options): Promise<string>`
+The client uses **Streamable HTTP** — a single POST to `/mcp` that returns either JSON or a `text/event-stream`. This is the standard MCP transport for remote servers.
 
-Fetch Bible scripture text.
+## Error Handling
 
-```typescript
-const text = await client.fetchScripture({
-  reference: "John 3:16",
-  language: "en",
-  format: "text", // or 'usfm'
-  includeVerseNumbers: true,
-  resource: "all", // Optional: 'ult', 'ust', 't4t', 'ueb', 'all', or comma-separated (e.g., 'ult,ust')
-  includeAlignment: false, // Optional: Include word alignment data (only available with USFM format)
-});
-```
-
-##### `fetchTranslationNotes(options): Promise<any>`
-
-Fetch translation notes for a passage.
-
-```typescript
-const notes = await client.fetchTranslationNotes({
-  reference: "John 3:16",
-  language: "en",
-  includeIntro: true,
-  includeContext: true,
-});
-
-// Response shape:
-// {
-//   reference: "John 3:16",
-//   verseNotes: [...],      // Notes specific to the verse
-//   contextNotes: [...],    // Book/chapter introductions
-//   counts: {
-//     verseNotesCount: 3,
-//     contextNotesCount: 2
-//   },
-//   metadata: {...}
-// }
-```
-
-**Response Structure:**
-
-- `verseNotes`: Array of notes specific to the requested verse reference
-- `contextNotes`: Array of book/chapter introductions (each has `contextType: "book" | "chapter"`)
-- `counts`: Separate counts for verse-specific and contextual notes
-- `metadata`: Resource information and citations
-
-##### `fetchTranslationQuestions(options): Promise<any>`
-
-Fetch translation questions for a passage.
+The server returns structured errors with machine-readable codes:
 
 ```typescript
-const questions = await client.fetchTranslationQuestions({
-  reference: "John 3:16",
-  language: "en",
+import { parseResult } from "@translation-helps/mcp-client";
+
+const result = await client.callTool("fetch_scripture", {
+  reference: "invalid",
 });
-```
-
-##### `fetchTranslationWord(options): Promise<any>`
-
-Fetch translation word article by term or reference.
-
-```typescript
-// By term
-const word = await client.fetchTranslationWord({
-  term: "love",
-  language: "en",
-});
-
-// By reference (gets words used in passage)
-const words = await client.fetchTranslationWord({
-  reference: "John 3:16",
-  language: "en",
-});
-```
-
-##### `fetchTranslationWordLinks(options): Promise<any>`
-
-Fetch translation word links for a passage.
-
-```typescript
-const links = await client.fetchTranslationWordLinks({
-  reference: "John 3:16",
-  language: "en",
-});
-```
-
-##### `fetchTranslationAcademy(options): Promise<any>`
-
-Fetch translation academy articles.
-
-```typescript
-const articles = await client.fetchTranslationAcademy({
-  reference: "John 3:16",
-  language: "en",
-  format: "json", // or 'markdown'
-});
-```
-
-##### `listLanguages(options?): Promise<any>`
-
-List all available languages from Door43 catalog (~1 second).
-
-```typescript
-const languages = await client.listLanguages({
-  stage: "prod",
-});
-console.log(`Found ${languages.languages.length} languages`);
-```
-
-##### `listSubjects(options?): Promise<any>`
-
-List all available resource subjects/types from Door43 catalog.
-
-```typescript
-const subjects = await client.listSubjects({
-  language: "en",
-  stage: "prod",
-});
-console.log(`Found ${subjects.subjects.length} resource types`);
-```
-
-##### `listResourcesForLanguage(options): Promise<any>` ⭐ RECOMMENDED
-
-List all resources for a specific language. Fast single API call (~1-2 seconds).
-
-```typescript
-// Discover what's available for Spanish (es-419)
-const resources = await client.listResourcesForLanguage({
-  language: "es-419",
-  // topic defaults to "tc-ready" if not provided
-});
-
-console.log(`Found ${resources.totalResources} resources`);
-console.log(`Subjects: ${resources.subjects.join(", ")}`);
-```
-
-##### `listTools(): Promise<MCPTool[]>`
-
-List all available MCP tools.
-
-##### `listPrompts(): Promise<MCPPrompt[]>`
-
-List all available MCP prompts.
-
-##### `callTool(name, arguments): Promise<MCPResponse>`
-
-Call any MCP tool directly.
-
-## Metrics & Debugging
-
-When `enableMetrics` is enabled in the client options, responses include a `metadata` field with diagnostic information:
-
-```typescript
-const client = new TranslationHelpsClient({
-  enableMetrics: true, // Enable metrics collection for development
-});
-
-const response = await client.callTool("fetch_translation_notes", {
-  reference: "John 3:16",
-});
-
-// Access metrics
-if (response.metadata) {
-  console.log("Response time:", response.metadata.responseTime, "ms");
-  console.log("Cache status:", response.metadata.cacheStatus);
-  console.log("Trace ID:", response.metadata.traceId);
-  console.log("X-Ray trace:", response.metadata.xrayTrace);
-  console.log("All headers:", response.metadata.headers);
+if (result.isError) {
+  const error = parseResult<{ code: string; message: string; hints: string[] }>(
+    result,
+  );
+  console.error(error.code, error.message);
 }
 ```
 
-**Available Metrics:**
-
-- `responseTime` - Response time in milliseconds
-- `cacheStatus` - Cache status (hit/miss/bypass)
-- `traceId` - Trace ID for debugging
-- `xrayTrace` - X-Ray trace data (decoded from header)
-- `statusCode` - HTTP status code
-- `headers` - All response headers
-
-**Note:** Metrics are only available when `enableMetrics: true` is set in the client options. This is useful for development and debugging but adds minimal overhead.
-
-##### `getPrompt(name, arguments?): Promise<MCPResponse>`
-
-Get a prompt template.
-
-## Examples
-
-### Basic Usage
-
-```typescript
-import { TranslationHelpsClient } from "@translation-helps/mcp-client";
-
-const client = new TranslationHelpsClient();
-await client.connect();
-
-// Fetch scripture
-const scripture = await client.fetchScripture({
-  reference: "John 3:16",
-});
-
-// Fetch comprehensive helps
-const notes = await client.fetchTranslationNotes({
-  reference: "John 3:16",
-});
-
-const questions = await client.fetchTranslationQuestions({
-  reference: "John 3:16",
-});
-
-const words = await client.fetchTranslationWord({
-  reference: "John 3:16",
-});
-```
-
-### Error Handling
-
-```typescript
-try {
-  const scripture = await client.fetchScripture({
-    reference: "John 3:16",
-  });
-} catch (error) {
-  console.error("Failed to fetch scripture:", error);
-}
-```
-
-### Custom Server URL
-
-```typescript
-const client = new TranslationHelpsClient({
-  serverUrl: "https://your-custom-server.com/api/mcp",
-  timeout: 60000, // 60 seconds
-});
-```
-
-## Optimized System Prompts
-
-The SDK includes optimized, contextual system prompts for AI interactions with Translation Helps data. These prompts reduce token usage by 60-70% while maintaining all critical functionality.
-
-### Usage
-
-```typescript
-import {
-  getSystemPrompt,
-  detectRequestType,
-} from "@translation-helps/mcp-client";
-
-// Auto-detect request type and get optimized prompt
-const prompt = getSystemPrompt(undefined, endpointCalls, message);
-
-// Or manually specify request type
-const prompt = getSystemPrompt("comprehensive");
-
-// Use in OpenAI call
-const messages = [
-  { role: "system", content: prompt },
-  { role: "user", content: message },
-];
-```
-
-### Request Types
-
-- `comprehensive`: Uses translation-helps-for-passage prompt
-- `list`: User wants concise lists
-- `explanation`: User wants detailed explanations
-- `term`: User asking about translation words
-- `concept`: User asking about translation concepts
-- `default`: Fallback
-
-### Benefits
-
-- **60-70% token reduction** compared to legacy prompts
-- **Contextual rules** injected based on request type
-- **Automatic detection** from endpoint calls and message patterns
-- **Type-safe** with full TypeScript support
-
-### Discovery Methods
-
-#### `listLanguages(options?): Promise<any>`
-
-List all available languages from Door43 catalog (~1 second).
-
-```typescript
-const languages = await client.listLanguages({
-  stage: "prod",
-});
-
-console.log(languages.languages); // Array of language objects
-```
-
-#### `listSubjects(options?): Promise<any>`
-
-List all available resource subjects/types from Door43 catalog.
-
-```typescript
-const subjects = await client.listSubjects({
-  language: "en",
-  stage: "prod",
-});
-
-console.log(subjects.subjects); // Array of subject objects
-```
-
-#### `listResourcesForLanguage(options): Promise<any>` ⭐ RECOMMENDED
-
-List all resources for a specific language. Fast single API call (~1-2 seconds).
-
-```typescript
-// Discover what's available for Spanish (es-419)
-const resources = await client.listResourcesForLanguage({
-  language: "es-419",
-  // topic defaults to "tc-ready" if not provided
-});
-
-console.log(`Found ${resources.totalResources} resources`);
-console.log(resources.subjects); // Array of subject names
-console.log(resources.resourcesBySubject); // Resources grouped by type
-```
-
-**Recommended Discovery Workflow:**
-
-```typescript
-// Step 1: Discover available languages (~1s)
-const langs = await client.listLanguages();
-console.log(
-  "Available languages:",
-  langs.languages.map((l) => l.code),
-);
-
-// Step 2: Get resources for chosen language (~1-2s)
-const spanishResources = await client.listResourcesForLanguage({
-  language: "es-419",
-  // topic defaults to "tc-ready" (production-ready only)
-});
-
-// Step 3: Fetch specific resources
-const scripture = await client.fetchScripture({
-  reference: "John 3:16",
-  language: "es-419",
-});
-```
-
----
-
-## RAG Tools
-
-### `ragQuery(options): Promise<any>`
-
-Semantic search over indexed translation resources using RAG retrieval.
-
-```typescript
-const results = await client.ragQuery({
-  query: "What does grace mean in context?",
-  language: "en",
-  reference: "JHN 3:16",
-  k: 10,
-  filters: { resourceType: "tn" },
-});
-
-console.log(results.documents.length, "documents found");
-console.log(results.fallbackMode); // "ann" | "lexical" | "empty"
-console.log(results.cacheStatus); // "hit" | "miss"
-```
-
-**Parameters:**
-
-| Parameter     | Type              | Required | Description                                              |
-| ------------- | ----------------- | -------- | -------------------------------------------------------- |
-| `query`       | `string`          | ✅       | Natural-language search query                            |
-| `language`    | `string`          |          | IETF BCP 47 code (default: `"en"`)                       |
-| `reference`   | `string`          |          | USFM reference for contextual filtering                  |
-| `filters`     | `RagQueryFilters` |          | Metadata filters (resourceType, project, owner, subject) |
-| `k`           | `number`          |          | Number of results (1–100, default: 10)                   |
-| `enableExact` | `boolean`         |          | Include exact reference matches                          |
-| `requestId`   | `string`          |          | Tracing ID                                               |
-
----
-
-### `getBundle(options): Promise<any>`
-
-Retrieve a fully-assembled translation bundle (notes + linked TW/TA articles).
-
-```typescript
-const bundle = await client.getBundle({
-  language: "en",
-  reference: "JHN 3:16",
-});
-
-console.log(bundle.notes.length, "translation notes");
-console.log(bundle.tw.length, "Translation Words");
-console.log(bundle.ta.length, "Translation Academy articles");
-console.log(bundle.metadata.cacheStatus); // "memory" | "edge" | "r2" | "miss"
-```
-
-**Parameters:**
-
-| Parameter   | Type      | Required | Description                          |
-| ----------- | --------- | -------- | ------------------------------------ |
-| `language`  | `string`  | ✅       | IETF BCP 47 language code            |
-| `reference` | `string`  | ✅       | USFM reference, e.g. `"JHN 3:16"`    |
-| `owner`     | `string`  |          | Door43 owner org                     |
-| `project`   | `string`  |          | Door43 project slug                  |
-| `force`     | `boolean` |          | Skip caches and force fresh assembly |
-| `requestId` | `string`  |          | Tracing ID                           |
-
----
-
-### `indexResource(options): Promise<any>` (Admin)
-
-Enqueue a translation resource for indexing. Requires `adminToken`.
-
-```typescript
-const job = await client.indexResource({
-  resourceId: "unfoldingWord/en_tn",
-  adminToken: process.env.ADMIN_TOKEN,
-  priority: "high",
-});
-
-console.log(job.taskId); // "idx-1716896400000-a3f2b891"
-console.log(job.status); // "queued"
-```
-
-**Parameters:**
-
-| Parameter    | Type                          | Required | Description                                            |
-| ------------ | ----------------------------- | -------- | ------------------------------------------------------ |
-| `resourceId` | `string`                      | ✅       | `"owner/project"` format                               |
-| `zipUrl`     | `string`                      |          | URL of ZIP archive to index                            |
-| `force`      | `boolean`                     |          | Re-index even if already indexed                       |
-| `priority`   | `"low" \| "normal" \| "high"` |          | Queue priority (default: `"normal"`)                   |
-| `adminToken` | `string`                      |          | Authentication token (must match server `ADMIN_TOKEN`) |
-| `requestId`  | `string`                      |          | Tracing ID                                             |
-
----
-
-## TypeScript Support
-
-This package includes full TypeScript definitions. All types are exported for your convenience:
-
-```typescript
-import type {
-  MCPTool,
-  MCPPrompt,
-  ClientOptions,
-  FetchScriptureOptions,
-  ListResourcesForLanguageOptions,
-  ListResourcesByLanguageOptions,
-  RequestType,
-  EndpointCall,
-  // ... other types
-} from "@translation-helps/mcp-client";
-```
+Error codes: `INVALID_REFERENCE`, `INVALID_LANGUAGE`, `RESOURCE_NOT_FOUND`, `UPSTREAM_DCS_ERROR`, `RATE_LIMITED`, `INTERNAL_ERROR`.
 
 ## License
 
 MIT
-
-## Links
-
-- [Documentation](https://tc-helps.mcp.servant.bible)
-- [GitHub Repository](https://github.com/unfoldingWord/translation-helps-mcp)
-- [MCP Protocol](https://modelcontextprotocol.io)

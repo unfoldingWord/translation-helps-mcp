@@ -1,1 +1,0 @@
-How can unfoldingWord® Translation Words help me make a better translation?

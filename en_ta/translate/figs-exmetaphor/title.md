@@ -1,1 +1,0 @@
-Biblical Imagery — Extended Metaphors

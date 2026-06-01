@@ -1,1 +1,0 @@
-How do I translate narrative with crowds into my language?

@@ -1,247 +1,123 @@
-# Translation Helps MCP Server v6.6.3
+# Translation Helps MCP v2
 
-**🚨 MAJOR UPDATE: 100% Real Data - Zero Mock Fallbacks**
+A proper [Model Context Protocol](https://modelcontextprotocol.io) server giving LLMs direct access to Bible translation resources — scripture text, notes, words, and Academy articles from [unfoldingWord](https://unfoldingword.org).
 
-A comprehensive MCP (Model Context Protocol) server that provides AI agents with access to Bible translation resources from Door43's Content Service (DCS). This server enables AI assistants to fetch, process, and intelligently work with translation helps including scripture texts, translation notes, translation words, and translation questions.
+## Quick Start
 
-## 🎉 What's New in v6.6.3
+### Connect to Claude Desktop / Cursor
 
-### Complete Architecture Overhaul
+**Claude Desktop** (`claude_desktop_config.json`):
 
-- **✅ 100% Real Data** - All mock data removed, every endpoint fetches from DCS
-- **✅ Unified Architecture** - Single `UnifiedResourceFetcher` class handles all data
-- **✅ Markdown Support Everywhere** - All endpoints support `format=md` for LLMs
-- **✅ Wrangler-Only Testing** - Standardized on port 8787 with real KV/R2 bindings
-- **✅ No Mock Fallbacks** - Real errors instead of fake success
+```json
+{
+  "mcpServers": {
+    "translation-helps": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://translation-helps-mcp.workers.dev/mcp"
+      ]
+    }
+  }
+}
+```
 
-### Breaking Changes
+**Cursor** (`.cursor/mcp.json`):
 
-**Removed Endpoints:**
+```json
+{
+  "mcpServers": {
+    "translation-helps": {
+      "url": "https://translation-helps-mcp.workers.dev/mcp"
+    }
+  }
+}
+```
 
-- `/api/fetch-ult-scripture` → Use `fetch-scripture?resource=ult`
-- `/api/fetch-ust-scripture` → Use `fetch-scripture?resource=ust`
-- `/api/fetch-resources` → Use specific endpoints
-- `/api/resource-recommendations` → Removed completely
-- `/api/language-coverage` → Removed completely
-- `/api/get-words-for-reference` → Use `fetch-translation-words`
-
-See [MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md) for detailed migration instructions.
-
-## 🚀 Key Features
-
-### Core Translation Resources
-
-- **Scripture Texts**: Multiple translations (ULT, UST, T4T, UEB) with real-time DCS fetching
-- **Translation Notes**: Verse-by-verse explanations from TSV data
-- **Translation Words**: Biblical term definitions from markdown files
-- **Translation Word Links**: Connections between scripture and word articles
-- **Translation Questions**: Comprehension questions from TSV data
-- **Translation Academy**: Training modules for translators
-
-### 🤖 MCP Prompts (NEW!)
-
-**Guided workflows that teach AI assistants to chain tools intelligently:**
-
-- **`translation-helps-for-passage`** - Get everything: scripture + notes + questions + words (with titles) + academy articles
-- **`get-translation-words-for-passage`** - Show dictionary entry titles (not technical IDs)
-- **`get-translation-academy-for-passage`** - Find training articles referenced in notes
-
-**📖 [Complete Usage Guide →](./HOW_TO_USE_PROMPTS.md)** | **📚 [Technical Docs →](./MCP_PROMPTS_GUIDE.md)**
-
-**Why prompts matter:**
-
-- One command replaces 6-10 tool calls
-- Shows human-readable titles instead of IDs
-- Standardizes best practices for translation workflows
-- Makes AI assistants much smarter about Bible translation
-
-### Technical Excellence
-
-- **Real Data Only**: No mock data, no fake responses, no fallbacks
-- **Unified Fetcher**: Single class (`UnifiedResourceFetcher`) for all resources
-- **Smart Caching**: KV for catalogs, R2 for ZIPs, Cache API for extracted files
-- **Format Support**: JSON, Markdown, Text, and TSV (where applicable)
-- **Cloudflare Pages**: Global edge deployment with sub-100ms response times
-
-## 🌟 Deployment
-
-### Live Production
-
-- **API Base**: `https://tc-helps.mcp.servant.bible/api/`
-- **Documentation**: `https://tc-helps.mcp.servant.bible/`
-- **Health Check**: `https://tc-helps.mcp.servant.bible/api/health`
-
-### Quick Start
+**Direct HTTP** (Streamable MCP):
 
 ```bash
-# Fetch scripture
-curl "https://tc-helps.mcp.servant.bible/api/fetch-scripture?reference=John%203:16"
-
-# Get translation notes in markdown (for LLMs)
-curl "https://tc-helps.mcp.servant.bible/api/translation-notes?reference=Genesis%201:1&format=md"
-
-# Fetch translation word links
-curl "https://tc-helps.mcp.servant.bible/api/fetch-translation-word-links?reference=Titus%201:1"
-
-# Browse translation academy modules
-curl "https://tc-helps.mcp.servant.bible/api/browse-translation-academy?language=en"
+curl -X POST https://translation-helps-mcp.workers.dev/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
-## 🛠️ Architecture
+## Available Tools
 
-### Unified Data Fetching
+| Tool                           | Description                               |
+| ------------------------------ | ----------------------------------------- |
+| `fetch_scripture`              | Bible text (ULT/UST) for any reference    |
+| `fetch_translation_notes`      | Exegetical notes for a passage            |
+| `fetch_translation_word_links` | Translation Words at a reference          |
+| `fetch_translation_word`       | Full dictionary article (by path or term) |
+| `fetch_translation_academy`    | Translation Academy articles              |
+| `fetch_translation_questions`  | Comprehension questions for a passage     |
+| `list_languages`               | All available language codes              |
+| `list_subjects`                | All available resource subjects           |
+| `list_resources_for_language`  | Resources for a language                  |
+| `rag_query`                    | Semantic search over all resources        |
+| `get_bundle`                   | All translation helps for a passage       |
+| `index_resource`               | Admin: index a resource for RAG           |
 
-All endpoints use the same architecture:
+## Architecture
 
 ```
-API Endpoint → createSimpleEndpoint → UnifiedResourceFetcher → ZipResourceFetcher2 → DCS
+Cloudflare Worker
+├── /mcp  →  TranslationHelpsMCP (McpAgent Durable Object)
+│            Streamable HTTP + SSE, structured outputs, trace IDs
+└── /*    →  SvelteKit website (Workers Assets)
+             Landing · Playground · Docs · Metrics
 ```
 
-**Key Components:**
+- **Transport**: Streamable HTTP + SSE via `McpAgent` (Cloudflare Durable Objects)
+- **Storage**: KV (cache) + R2 (ZIP persistence) + Vectorize (RAG)
+- **AI**: Workers AI for embeddings, Reranker for relevance
+- **Observability**: Analytics Engine metrics, structured JSON logs → GitHub Issues
 
-1. **UnifiedResourceFetcher** - Single interface for all resource types
-2. **ZipResourceFetcher2** - Handles ZIP archives with intelligent caching
-3. **createSimpleEndpoint** - Standardized endpoint creation pattern
-4. **Real Error Handling** - No mock fallbacks, actual error messages
+## SDKs
 
-### Caching Strategy
+- **JavaScript/TypeScript**: `packages/js-sdk/`
+- **Python**: `packages/python-sdk/`
 
-```
-DCS API → KV Cache (1hr TTL) → Catalog Metadata
-        ↓
-     R2 Storage → ZIP Files
-        ↓
-    Cache API → Extracted Files
-```
-
-## 🚨 Production Setup
-
-**⚠️ CRITICAL: R2 bucket must be populated with ZIP files for production to work!**
-
-See [R2 Setup Guide](docs/R2_SETUP_GUIDE.md) for instructions on populating the R2 bucket.
-
-## 🧪 Testing with Wrangler
-
-**⚠️ IMPORTANT: All tests MUST use Wrangler for KV/R2 functionality**
-
-### Setup
+## Development
 
 ```bash
-# Start Wrangler (REQUIRED for tests)
-cd ui && npx wrangler pages dev .svelte-kit/cloudflare --port 8787
-
-# In another terminal, run tests
-npm test
-```
-
-### Test Configuration
-
-- **Port**: Always 8787 (enforced by test setup)
-- **Bindings**: Real KV and R2 bindings
-- **No Mocks**: Tests use real Cloudflare services
-
-See [tests/TESTING_REQUIREMENTS.md](tests/TESTING_REQUIREMENTS.md) for details.
-
-## 📚 API Documentation
-
-### Scripture Endpoints
-
-```bash
-# Fetch multiple translations
-GET /api/fetch-scripture?reference=John%203:16&resource=ult,ust
-
-# Response format options
-GET /api/fetch-scripture?reference=John%203:16&format=md    # Markdown
-GET /api/fetch-scripture?reference=John%203:16&format=text  # Plain text
-```
-
-### Translation Helps
-
-```bash
-# Translation notes (from TSV)
-GET /api/translation-notes?reference=John%203:16
-
-# Translation questions (from TSV)
-GET /api/translation-questions?reference=John%203:16
-
-# Translation words (from markdown)
-GET /api/fetch-translation-words?reference=John%203:16
-
-# Translation word links (from TSV) - NEW!
-GET /api/fetch-translation-word-links?reference=John%203:16
-
-# Translation academy modules
-GET /api/fetch-translation-academy?moduleId=figs-metaphor
-
-# Browse academy modules
-GET /api/browse-translation-academy?language=en&category=translate
-```
-
-### Discovery Endpoints
-
-```bash
-# Available languages
-GET /api/simple-languages
-
-# Available books
-GET /api/get-available-books?language=en
-
-# Resource catalog
-GET /api/resource-catalog?language=en&subject=Bible
-```
-
-See [API_ENDPOINTS.md](docs/API_ENDPOINTS.md) for complete documentation.
-
-## 🔧 Development
-
-### Prerequisites
-
-- Node.js 18+
-- Wrangler CLI (`npm install -g wrangler`)
-
-### Local Development
-
-```bash
-# Install dependencies
+# Install deps
 npm install
-cd ui && npm install
+cd web && npm install && cd ..
 
-# Start Wrangler dev server (REQUIRED)
-cd ui && npx wrangler pages dev .svelte-kit/cloudflare --port 8787
+# Type check
+npm run typecheck
 
-# Run tests
+# Lint
+npm run lint
+
+# Test (81 unit + contract tests)
 npm test
 
-# Build for production
-npm run build
+# Run locally (requires wrangler auth)
+npm run dev:worker
+
+# Deploy to staging
+npm run deploy:staging
+
+# Deploy to production
+npm run deploy:prod
 ```
 
-### Development Standards
+## Versioning
 
-- **KISS**: Keep It Simple - no over-engineering
-- **DRY**: Don't Repeat Yourself - single source of truth
-- **Consistent**: Same patterns everywhere
-- **Antifragile**: Fail fast with real errors, no hiding issues
+This project uses [Changesets](https://github.com/changesets/changesets) for version management.
 
-## 🤝 Contributing
+```bash
+# Add a changeset for your change
+npm run changeset
 
-1. Fork the repository
-2. Create a feature branch
-3. **Use Wrangler for all testing** (no exceptions!)
-4. Ensure all tests pass
-5. Submit a pull request
+# Release (auto-run in CI)
+npm run release
+```
 
-**Remember**:
+## License
 
-- No mock data
-- All endpoints must support markdown format
-- Use `UnifiedResourceFetcher` for new features
-- Test with real KV/R2 bindings
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
----
-
-Built with ❤️ for Bible translators worldwide
+MIT — See [LICENSE](LICENSE)

@@ -1,1 +1,0 @@
-How can I translate a contrast relationship?

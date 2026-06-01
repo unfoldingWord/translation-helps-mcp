@@ -1,1 +1,0 @@
-Connecting Statement and General Information in the Notes

@@ -1,1 +1,0 @@
-What is a metaphor and how can I translate a Bible passage that has one?

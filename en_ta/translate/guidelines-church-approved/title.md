@@ -1,1 +1,0 @@
-Create Church-Approved Translations

@@ -1,1 +1,0 @@
-Acceptable Style

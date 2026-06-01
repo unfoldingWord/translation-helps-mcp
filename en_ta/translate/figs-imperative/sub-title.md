@@ -1,1 +1,0 @@
-What other uses are there for imperative sentences in the Bible?

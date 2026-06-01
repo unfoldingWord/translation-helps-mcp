@@ -1,1 +1,0 @@
-What should I know about checking before I begin?

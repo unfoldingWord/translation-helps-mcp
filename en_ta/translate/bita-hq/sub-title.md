@@ -1,1 +1,0 @@
-What are some examples of body parts and human qualities that are used as images in the Bible?

@@ -1,1 +1,0 @@
-How can I check the accuracy of the important words in my translation?

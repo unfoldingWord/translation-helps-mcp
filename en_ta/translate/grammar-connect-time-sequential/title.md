@@ -1,1 +1,0 @@
-Connect — Sequential Time Relationship

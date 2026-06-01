@@ -1,1 +1,0 @@
-What are the steps that I, as a Quality Checker, should follow to check a translation?

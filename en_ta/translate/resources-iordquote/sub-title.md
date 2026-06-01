@@ -1,1 +1,0 @@
-How will translationNotes help me translate indirect and direct quotes?

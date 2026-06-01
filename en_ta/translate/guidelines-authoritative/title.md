@@ -1,1 +1,0 @@
-Create Authoritative Translations

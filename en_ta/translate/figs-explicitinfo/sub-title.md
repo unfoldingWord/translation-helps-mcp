@@ -1,1 +1,0 @@
-What can I do if some of the explicit information seems confusing, unnatural, or unnecessary in our language?

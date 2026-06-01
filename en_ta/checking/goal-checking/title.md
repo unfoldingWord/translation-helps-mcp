@@ -1,1 +1,0 @@
-The Goal of Checking

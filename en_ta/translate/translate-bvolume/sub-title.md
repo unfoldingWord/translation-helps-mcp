@@ -1,1 +1,0 @@
-How can I translate the measures of volume that are in the Bible?

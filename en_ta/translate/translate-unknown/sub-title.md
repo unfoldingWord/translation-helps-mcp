@@ -1,1 +1,0 @@
-How can I translate ideas that my readers are not familiar with?

@@ -1,1 +1,0 @@
-How do I choose a translation team?

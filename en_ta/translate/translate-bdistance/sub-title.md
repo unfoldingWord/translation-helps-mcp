@@ -1,1 +1,0 @@
-How can I translate the lengths and distances that are in the Bible?

@@ -1,1 +1,0 @@
-How can I set up a translation team?

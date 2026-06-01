@@ -1,1 +1,0 @@
-What are blessings, and how can I translate them?

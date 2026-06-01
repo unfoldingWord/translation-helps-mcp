@@ -1,1 +1,0 @@
-What more should I know about translation?

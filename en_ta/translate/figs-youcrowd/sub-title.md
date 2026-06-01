@@ -1,1 +1,0 @@
-How do I translate singular pronouns that refer to groups of people?

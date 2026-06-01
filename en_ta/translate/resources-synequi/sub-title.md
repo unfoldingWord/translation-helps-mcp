@@ -1,1 +1,0 @@
-What translating decision should I make when I see words in double quote marks in the notes?

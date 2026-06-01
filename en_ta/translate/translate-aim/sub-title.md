@@ -1,1 +1,0 @@
-What should be the purpose of our Bible Translation?

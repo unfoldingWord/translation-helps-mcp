@@ -1,1 +1,0 @@
-What are questions that a Quality Checker should ask about a translation?

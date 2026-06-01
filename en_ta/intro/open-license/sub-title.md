@@ -1,1 +1,0 @@
-What freedoms do users have with unfoldingWord® content?

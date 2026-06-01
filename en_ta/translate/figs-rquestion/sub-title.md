@@ -1,1 +1,0 @@
-What are rhetorical questions and how can I translate them?

@@ -1,1 +1,0 @@
-How can version numbers help me select a source text?

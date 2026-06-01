@@ -1,1 +1,0 @@
-What are pronouns, and what kinds of pronouns are in some languages?

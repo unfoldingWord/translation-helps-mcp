@@ -1,1 +1,0 @@
-Connect — Background Information

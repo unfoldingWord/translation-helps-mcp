@@ -1,1 +1,0 @@
-Notes with Alternate Translations

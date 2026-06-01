@@ -1,1 +1,0 @@
-What is irony and how can I translate it?

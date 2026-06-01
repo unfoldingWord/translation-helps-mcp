@@ -1,1 +1,0 @@
-When to Keep Information Implicit

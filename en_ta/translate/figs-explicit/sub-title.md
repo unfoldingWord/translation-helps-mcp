@@ -1,1 +1,0 @@
-How can I be sure that my translation communicates the assumed knowledge and implicit information along with the explicit information of the original message?

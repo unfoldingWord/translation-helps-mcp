@@ -1,62 +1,66 @@
 name = "translation-helps-mcp"
-compatibility_date = "2024-09-23"
-pages_build_output_dir = "ui/.svelte-kit/cloudflare"
-
-# Enable Node.js compatibility for fs, path, etc.
+main = "src/worker.ts"
+compatibility_date = "2025-05-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Cloudflare Pages specific configuration
-[env.production.vars]
-  NODE_ENV = "production"
+# Workers Assets — SvelteKit output goes here
+[assets]
+directory = "web/.svelte-kit/cloudflare"
 
-[env.production]
-  # Duplicate bindings under production environment so Pages Functions get them
-  [[env.production.kv_namespaces]]
-  binding = "TRANSLATION_HELPS_CACHE"
-  id = "a0b2bcf08829441e932230cb06cb5e07"
+# Structured JSON logging via Workers Logs (enables log tailing + Logpush)
+[observability]
+enabled = true
+head_sampling_rate = 1
 
-  [[env.production.r2_buckets]]
-  binding = "ZIP_FILES"
-  bucket_name = "translation-helps-mcp-zip-persistence"
+# ---------------------------------------------------------------------------
+# Bindings
+# ---------------------------------------------------------------------------
 
-[env.preview.vars]
-  NODE_ENV = "development"
-
-# KV Namespace binding (you'll need to create this in Cloudflare dashboard)
-# Run: npx wrangler kv namespace create "TRANSLATION_HELPS_CACHE"
-# Then update the id below with the actual namespace ID
 [[kv_namespaces]]
 binding = "TRANSLATION_HELPS_CACHE"
 id = "a0b2bcf08829441e932230cb06cb5e07"
 preview_id = "3073e58cc3eb4f16958854a6ec1531e6"
 
-# R2 bucket for ZIPs and extracted files
 [[r2_buckets]]
 binding = "ZIP_FILES"
 bucket_name = "translation-helps-mcp-zip-persistence"
 
-
-# ---------------------------------------------------------------------------
-# Workers AI binding (free tier — used by WorkersAIEmbeddingService +
-# WorkersAILLMProvider).
-# Docs: https://developers.cloudflare.com/workers-ai/
-# ---------------------------------------------------------------------------
 [ai]
 binding = "AI"
 
-# ---------------------------------------------------------------------------
-# Vectorize index (free tier — used by CFVectorizeStore).
-# Create with: npx wrangler vectorize create translation-helps-vectors --dimensions=768 --metric=cosine
-# Docs: https://developers.cloudflare.com/vectorize/
-# ---------------------------------------------------------------------------
 [[vectorize]]
 binding = "VECTORIZE_INDEX"
 index_name = "translation-helps-vectors"
 
+# Analytics Engine for performance metrics + error-rate tracking
+[[analytics_engine_datasets]]
+binding = "ANALYTICS"
+dataset = "translation_helps_metrics"
+
+# Durable Object for McpAgent (TranslationHelpsMCP)
+[[durable_objects.bindings]]
+name = "MCP_AGENT"
+class_name = "TranslationHelpsMCP"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["TranslationHelpsMCP"]
+
 # ---------------------------------------------------------------------------
-# Production-environment copies of the new bindings (Pages requires
-# bindings to be declared under both the top-level and [env.production]).
+# Environment overrides
 # ---------------------------------------------------------------------------
+
+[env.production]
+vars = { NODE_ENV = "production" }
+
+[[env.production.kv_namespaces]]
+binding = "TRANSLATION_HELPS_CACHE"
+id = "a0b2bcf08829441e932230cb06cb5e07"
+
+[[env.production.r2_buckets]]
+binding = "ZIP_FILES"
+bucket_name = "translation-helps-mcp-zip-persistence"
+
 [env.production.ai]
 binding = "AI"
 
@@ -64,18 +68,21 @@ binding = "AI"
 binding = "VECTORIZE_INDEX"
 index_name = "translation-helps-vectors"
 
-# ---------------------------------------------------------------------------
-# Preview-environment copies (for wrangler pages dev / staging branch).
-# ---------------------------------------------------------------------------
-[env.preview.ai]
-binding = "AI"
+[[env.production.analytics_engine_datasets]]
+binding = "ANALYTICS"
+dataset = "translation_helps_metrics"
 
-[[env.preview.vectorize]]
-binding = "VECTORIZE_INDEX"
-index_name = "translation-helps-vectors"
+[[env.production.durable_objects.bindings]]
+name = "MCP_AGENT"
+class_name = "TranslationHelpsMCP"
 
-# ---------------------------------------------------------------------------
-# Legacy notes — kept for reference
-# ---------------------------------------------------------------------------
-# For Pages deployment, use: npx wrangler pages deploy ui/build
-# For secrets: npx wrangler secret put ANTHROPIC_API_KEY
+[env.preview]
+vars = { NODE_ENV = "development" }
+
+[[env.preview.kv_namespaces]]
+binding = "TRANSLATION_HELPS_CACHE"
+preview_id = "3073e58cc3eb4f16958854a6ec1531e6"
+
+[[env.preview.durable_objects.bindings]]
+name = "MCP_AGENT"
+class_name = "TranslationHelpsMCP"

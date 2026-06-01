@@ -1,1 +1,0 @@
-Copy or Borrow Words

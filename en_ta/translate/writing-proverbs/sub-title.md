@@ -1,1 +1,0 @@
-What are proverbs, and how can I translate them?

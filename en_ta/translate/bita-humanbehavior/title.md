@@ -1,1 +1,0 @@
-Biblical Imagery — Human Behavior

@@ -1,1 +1,0 @@
-How do I create natural translations?

@@ -1,1 +1,0 @@
-Choosing a Translation Platform

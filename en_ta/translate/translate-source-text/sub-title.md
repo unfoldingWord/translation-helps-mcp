@@ -1,1 +1,0 @@
-What factors should be considered when choosing a source text?

@@ -1,1 +1,0 @@
-Chapter and Verse Numbers

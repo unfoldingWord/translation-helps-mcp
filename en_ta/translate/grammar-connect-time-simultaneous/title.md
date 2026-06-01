@@ -1,1 +1,0 @@
-Connect — Simultaneous Time Relationship

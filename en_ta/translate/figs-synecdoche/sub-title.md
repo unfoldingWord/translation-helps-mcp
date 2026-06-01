@@ -1,1 +1,0 @@
-What is a synecdoche, and how can I translate such a thing into my language?

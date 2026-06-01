@@ -1,1 +1,0 @@
-Oath Formulas

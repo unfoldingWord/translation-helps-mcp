@@ -1,1 +1,0 @@
-How can I translate the reason-result relationship?

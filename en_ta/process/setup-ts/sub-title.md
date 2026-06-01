@@ -1,1 +1,0 @@
-How do I set up translationStudio?

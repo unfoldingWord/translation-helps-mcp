@@ -1,1 +1,0 @@
-Why are the chapter and verse numbers in my Bible different from those in your Bible?

@@ -1,1 +1,0 @@
-What kinds of information are given at the end of a story?

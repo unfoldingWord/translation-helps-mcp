@@ -1,1 +1,0 @@
-Does the translation use consistent punctuation?

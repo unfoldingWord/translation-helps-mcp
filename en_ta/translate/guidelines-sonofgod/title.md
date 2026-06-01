@@ -1,1 +1,0 @@
-Son of God and God the Father

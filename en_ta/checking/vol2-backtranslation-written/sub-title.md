@@ -1,1 +1,0 @@
-What kinds of written back translations are there?

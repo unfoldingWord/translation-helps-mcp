@@ -1,0 +1,40 @@
+name: Error → GitHub Issues
+
+on:
+  schedule:
+    # Every 30 minutes
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      lookback_hours:
+        description: Hours of logs to scan
+        default: "1"
+        required: false
+
+jobs:
+  log-to-issues:
+    name: Scan Worker Logs → Create Issues
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Run log-to-issues
+        run: npx tsx scripts/log-to-issues.ts
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_WORKER_NAME: translation-helps-mcp
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+          LOOKBACK_HOURS: ${{ github.event.inputs.lookback_hours || '1' }}

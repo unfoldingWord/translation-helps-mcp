@@ -1,1 +1,0 @@
-In the Bible, what ideas are often used to represent other ideas?

@@ -1,1 +1,0 @@
-What are hyperboles? What are generalizations? How can I translate them?

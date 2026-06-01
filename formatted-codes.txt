@@ -1,2 +1,0 @@
-{"error":"...","details":{"validBookCodes":[
-as fetch

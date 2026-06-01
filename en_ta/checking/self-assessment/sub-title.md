@@ -1,1 +1,0 @@
-How can I objectively assess the quality of the translation?
