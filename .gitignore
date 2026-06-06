@@ -69,3 +69,6 @@ web/playwright-report/
 
 # Windows reserved device name (cannot be a real file)
 nul
+
+web/.dev.vars
+web/.dev.vars.bak
