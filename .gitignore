@@ -66,3 +66,6 @@ ui/.dev.vars
 web/.svelte-kit/
 web/build/
 web/playwright-report/
+
+# Windows reserved device name (cannot be a real file)
+nul

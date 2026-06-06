@@ -11,7 +11,11 @@
  * Multi-part quotes (separated by `&`) are supported.
  */
 
-import type { OptimizedChapter, OptimizedToken, OptimizedVerse } from "./usfmTokenizer.js";
+import type {
+  OptimizedChapter,
+  OptimizedToken,
+  OptimizedVerse,
+} from "./usfmTokenizer.js";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -73,13 +77,26 @@ export class QuoteMatcher {
   ): QuoteMatchResult {
     try {
       if (!quote || quote.trim().length === 0) {
-        return { success: false, matches: [], totalTokens: [], error: "Quote cannot be empty" };
+        return {
+          success: false,
+          matches: [],
+          totalTokens: [],
+          error: "Quote cannot be empty",
+        };
       }
 
-      const quotes = quote.split("&").map((q) => q.trim()).filter((q) => q.length > 0);
+      const quotes = quote
+        .split("&")
+        .map((q) => q.trim())
+        .filter((q) => q.length > 0);
 
       if (quotes.length === 0) {
-        return { success: false, matches: [], totalTokens: [], error: "No valid quotes found after parsing" };
+        return {
+          success: false,
+          matches: [],
+          totalTokens: [],
+          error: "No valid quotes found after parsing",
+        };
       }
 
       const verses = this.getVersesInRange(chapters, reference);
@@ -130,7 +147,11 @@ export class QuoteMatcher {
         }
       }
 
-      return { success: true, matches, totalTokens: matches.flatMap((m) => m.tokens) };
+      return {
+        success: true,
+        matches,
+        totalTokens: matches.flatMap((m) => m.tokens),
+      };
     } catch (err) {
       return {
         success: false,
@@ -155,14 +176,24 @@ export class QuoteMatcher {
 
       for (const originalToken of originalTokens) {
         const originalVerseRef = this.constructVerseRef(reference);
-        const targetVerse = this.findCorrespondingVerse(targetVerses, originalVerseRef);
+        const targetVerse = this.findCorrespondingVerse(
+          targetVerses,
+          originalVerseRef,
+        );
 
         if (!targetVerse?.tokens) continue;
 
-        const alignedTokens = this.findAlignedTokensInVerse(originalToken, targetVerse);
+        const alignedTokens = this.findAlignedTokensInVerse(
+          originalToken,
+          targetVerse,
+        );
 
         if (alignedTokens.length > 0) {
-          alignedMatches.push({ originalToken, alignedTokens, verseRef: originalVerseRef });
+          alignedMatches.push({
+            originalToken,
+            alignedTokens,
+            verseRef: originalVerseRef,
+          });
         }
       }
 
@@ -201,9 +232,14 @@ export class QuoteMatcher {
       if (!verse.tokens?.length) continue;
 
       const wordTokens = verse.tokens.filter((t) => t.type === "word");
-      const verseText = wordTokens.map((t) => this.normalizeText(t.text)).join(" ");
+      const verseText = wordTokens
+        .map((t) => this.normalizeText(t.text))
+        .join(" ");
 
-      const occurrences = this.findQuoteOccurrencesInText(verseText, normalizedQuote);
+      const occurrences = this.findQuoteOccurrencesInText(
+        verseText,
+        normalizedQuote,
+      );
 
       for (const occ of occurrences) {
         if (i === startVerseIndex && occ.start < startPosition) continue;
@@ -234,7 +270,7 @@ export class QuoteMatcher {
     if (!quote) return matches;
 
     let startIndex = 0;
-    while (true) {
+    for (;;) {
       const index = text.indexOf(quote, startIndex);
       if (index === -1) break;
       matches.push({ start: index, end: index + quote.length });
@@ -266,12 +302,21 @@ export class QuoteMatcher {
     }
 
     const foundWords = quoteWords
-      .map((qw) => textWords.find((tw) => this.normalizeText(tw.word) === this.normalizeText(qw)))
+      .map((qw) =>
+        textWords.find(
+          (tw) => this.normalizeText(tw.word) === this.normalizeText(qw),
+        ),
+      )
       .filter(Boolean) as typeof textWords;
 
     if (foundWords.length !== quoteWords.length) return [];
     foundWords.sort((a, b) => a.start - b.start);
-    return [{ start: foundWords[0].start, end: foundWords[foundWords.length - 1].end }];
+    return [
+      {
+        start: foundWords[0].start,
+        end: foundWords[foundWords.length - 1].end,
+      },
+    ];
   }
 
   private extractTokensForMatch(
@@ -326,11 +371,18 @@ export class QuoteMatcher {
     const endVerse = reference.endVerse ?? reference.startVerse;
 
     for (const chapter of chapters) {
-      if (chapter.number < reference.startChapter || chapter.number > endChapter) continue;
+      if (
+        chapter.number < reference.startChapter ||
+        chapter.number > endChapter
+      )
+        continue;
 
       for (const verse of chapter.verses) {
         if (reference.startChapter === endChapter) {
-          if (verse.number >= reference.startVerse && verse.number <= endVerse) {
+          if (
+            verse.number >= reference.startVerse &&
+            verse.number <= endVerse
+          ) {
             verses.push(verse);
           }
         } else if (chapter.number === reference.startChapter) {
@@ -380,7 +432,10 @@ export class QuoteMatcher {
     return text
       .replace(/־/g, " ")
       .replace(/[׃׀]/g, "")
-      .replace(/[\u0591-\u05AF\u05BD\u05BF\u05C1-\u05C2\u05C4-\u05C5\u05C7]/g, "")
+      .replace(
+        /[\u0591-\u05AF\u05BD\u05BF\u05C1-\u05C2\u05C4-\u05C5\u05C7]/g,
+        "",
+      )
       .replace(/[\u05B0\u05B1\u05B4\u05B5\u05B8\u05B9\u05BB\u05BC]/g, "")
       .replace(/⁠/g, "")
       .replace(/\s+/g, " ")
