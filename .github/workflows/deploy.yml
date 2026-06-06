@@ -37,9 +37,18 @@ jobs:
         run: npm run build
         working-directory: web
 
-      - name: Deploy Worker
+      - name: Deploy Worker (production)
+        if: ${{ (github.event.inputs.environment || 'production') == 'production' }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --config wrangler.toml
+          command: deploy --config wrangler.toml --env production
+
+      - name: Deploy Worker (preview)
+        if: ${{ github.event.inputs.environment == 'preview' }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --config wrangler.toml --env preview

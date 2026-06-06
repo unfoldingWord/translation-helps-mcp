@@ -17,7 +17,6 @@
 		"@eslint/js": "^9.18.0",
 		"@fontsource/fira-mono": "^5.0.0",
 		"@playwright/test": "^1.54.2",
-		"@sveltejs/adapter-static": "^3.0.8",
 		"@tailwindcss/typography": "^0.5.16",
 		"@vitest/browser": "^3.2.3",
 		"eslint": "^9.18.0",

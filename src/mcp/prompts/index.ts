@@ -107,7 +107,7 @@ export const PROMPTS: PromptModule[] = [
               text:
                 `Find Translation Academy articles about "${topic}" (language: ${language}).\n\n` +
                 `Steps:\n` +
-                `1. Call rag_query with query="${topic}", language="${language}", resourceTypes=["ta"].\n` +
+                `1. Call search_articles with query="${topic}", language="${language}", resourceTypes=["ta"].\n` +
                 `2. For the top result, call fetch_translation_academy with the article path.\n` +
                 `3. Summarize the key translation principles.`,
             },

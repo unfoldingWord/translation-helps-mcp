@@ -1,10 +1,7 @@
 /**
  * fetch_translation_word — get the dictionary article for a Translation Word.
  *
- * Accepts EITHER a `path` (preferred, e.g. "bible/kt/grace") OR a `term`
- * (e.g. "grace"). When only `term` is supplied we attempt a best-effort lookup.
- * If neither matches, an error is returned with a hint to use
- * fetch_translation_word_links first.
+ * Requires a `path` (e.g. "bible/kt/grace") obtained from fetch_translation_word_links.
  */
 
 import { z } from "zod";
@@ -12,44 +9,38 @@ import { languageParam, ok, type ToolModule } from "./shared.js";
 import { Errors, TranslationHelpsError, ErrorCode } from "../../core/errors.js";
 import { getResourceZipUrl } from "../../core/resources/dcsClient.js";
 import { ZipResourceFetcher2 } from "../../core/resources/ZipResourceFetcher2.js";
+import { buildTwPathCandidates } from "../../core/parsers/markdown.js";
 import type { Env } from "../agent.js";
 
-const inputSchema = z
-  .object({
-    path: z
-      .string()
-      .optional()
-      .describe(
-        'Preferred: the exact word path from fetch_translation_word_links, e.g. "bible/kt/grace" or "bible/other/sheep". ' +
-          "This resolves unambiguously to a dictionary article.",
-      ),
-    term: z
-      .string()
-      .optional()
-      .describe(
-        'Fallback: a word or short phrase, e.g. "grace", "holy spirit". ' +
-          "May be ambiguous — provide `path` when available.",
-      ),
-    language: languageParam,
-    organization: z
-      .string()
-      .default("unfoldingWord")
-      .describe("Organization on Door43."),
-  })
-  .refine((data) => data.path !== undefined || data.term !== undefined, {
-    message:
-      "Provide either path (preferred) or term. Use fetch_translation_word_links to get the path.",
-  });
+const inputSchema = z.object({
+  path: z
+    .string()
+    .describe(
+      'Word path from fetch_translation_word_links, e.g. "bible/kt/grace" or "bible/other/sheep". ' +
+        "Use fetch_translation_word_links to get this path for a given Bible reference.",
+    ),
+  language: languageParam,
+});
 
 export type FetchTranslationWordParams = z.infer<typeof inputSchema>;
+
+const outputSchema = {
+  language: z.string(),
+  path: z.string().describe("Resolved path used for the lookup."),
+  article: z.string().describe("Full Markdown content of the dictionary article."),
+  requestId: z.string(),
+};
 
 export const fetchTranslationWordTool: ToolModule<typeof inputSchema> = {
   name: "fetch_translation_word",
   description:
-    "Get the dictionary article for a specific Translation Word. " +
-    'Provide `path` (e.g. "bible/kt/grace") from fetch_translation_word_links, ' +
-    "or `term` as a fallback. Returns the full Markdown article.",
+    "Get the dictionary article for a specific Translation Word (TW). " +
+    "Use this to explain the meaning, significance, and translation guidance for a biblical key term. " +
+    "Requires a `path` obtained from fetch_translation_word_links or list_translation_words. " +
+    "Returns the full Markdown article including definition, translation suggestions, and Bible examples. " +
+    "Limitation: if you do not have the path, call fetch_translation_word_links for a reference or search_articles for a concept.",
   inputSchema,
+  outputSchema,
   annotations: {
     readOnlyHint: true,
     title: "Fetch Translation Word",
@@ -60,12 +51,14 @@ export const fetchTranslationWordTool: ToolModule<typeof inputSchema> = {
     env: Env,
     requestId: string,
   ) {
-    const { path: wordPath, term, language, organization } = params;
+    const { path: wordPath, language } = params;
 
     const resolved = await getResourceZipUrl(
       language,
       "Translation Words",
-      organization,
+      "unfoldingWord",
+      "prod",
+      env.TRANSLATION_HELPS_CACHE,
     );
     if (!resolved)
       throw Errors.resourceNotFound(`Translation Words for "${language}"`);
@@ -76,24 +69,7 @@ export const fetchTranslationWordTool: ToolModule<typeof inputSchema> = {
     });
     const zipBuffer = await fetcher.getOrDownloadZip(resolved.zipUrl);
 
-    // Build candidate paths
-    const candidates: string[] = [];
-    if (wordPath) {
-      // Normalise: strip leading "/" and "bible/" prefix variations
-      const clean = wordPath.replace(/^\//, "").replace(/\.md$/, "");
-      candidates.push(`${clean}.md`, clean, `${clean.toLowerCase()}.md`);
-    }
-    if (term) {
-      const slug = term.toLowerCase().replace(/\s+/g, "");
-      candidates.push(
-        `bible/kt/${slug}.md`,
-        `bible/other/${slug}.md`,
-        `bible/names/${slug}.md`,
-        `kt/${slug}.md`,
-        `other/${slug}.md`,
-        `names/${slug}.md`,
-      );
-    }
+    const candidates = buildTwPathCandidates(wordPath);
 
     let article: string | null = null;
     let resolvedPath = "";
@@ -108,7 +84,7 @@ export const fetchTranslationWordTool: ToolModule<typeof inputSchema> = {
     if (!article) {
       throw new TranslationHelpsError({
         code: ErrorCode.RESOURCE_NOT_FOUND,
-        message: `Translation Word not found: ${wordPath ?? term}`,
+        message: `Translation Word not found at path: "${wordPath}"`,
         hints: [
           {
             message:

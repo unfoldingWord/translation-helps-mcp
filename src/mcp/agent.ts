@@ -18,20 +18,18 @@ import {
   ErrorCode,
   type TranslationHelpsError,
 } from "../core/errors.js";
+import { SERVER_INSTRUCTIONS } from "./instructions.js";
 
-// Tool modules
-import { fetchScriptureTool } from "./tools/fetchScripture.js";
-import { fetchTranslationNotesTool } from "./tools/fetchTranslationNotes.js";
-import { fetchTranslationQuestionsTool } from "./tools/fetchTranslationQuestions.js";
-import { fetchTranslationWordLinksTool } from "./tools/fetchTranslationWordLinks.js";
-import { fetchTranslationWordTool } from "./tools/fetchTranslationWord.js";
-import { fetchTranslationAcademyTool } from "./tools/fetchTranslationAcademy.js";
+// Workflow tool modules (new progressive-disclosure surface)
+import { getPassageTool } from "./tools/getPassage.js";
+import { getPassageContextTool } from "./tools/getPassageContext.js";
+import { getPassageIndexTool } from "./tools/getPassageIndex.js";
+import { getNoteTool } from "./tools/getNote.js";
+import { getAcademyArticleTool } from "./tools/getAcademyArticle.js";
+import { getWordArticleTool } from "./tools/getWordArticle.js";
+import { getPassageQuestionsTool } from "./tools/getPassageQuestions.js";
+import { searchArticlesWorkflowTool } from "./tools/searchArticlesWorkflow.js";
 import { listLanguagesTool } from "./tools/listLanguages.js";
-import { listSubjectsTool } from "./tools/listSubjects.js";
-import { listResourcesForLanguageTool } from "./tools/listResourcesForLanguage.js";
-import { ragQueryTool } from "./tools/ragQuery.js";
-import { getBundleTool } from "./tools/getBundle.js";
-import { indexResourceTool } from "./tools/indexResource.js";
 
 // Prompt modules
 import { PROMPTS } from "./prompts/index.js";
@@ -40,29 +38,34 @@ export interface Env {
   MCP_AGENT: DurableObjectNamespace;
   TRANSLATION_HELPS_CACHE: KVNamespace;
   ZIP_FILES: R2Bucket;
-  AI: Ai;
-  VECTORIZE_INDEX: VectorizeIndex;
   ANALYTICS: AnalyticsEngineDataset;
+  /** Cloudflare service binding to the REST Data API worker. */
+  API?: Fetcher;
+  /** Base URL for the REST Data API worker (local dev when service binding is absent). */
+  API_BASE_URL?: string;
   ADMIN_TOKEN?: string;
   OPENAI_API_KEY?: string;
   UPSTASH_REDIS_REST_URL?: string;
   UPSTASH_REDIS_REST_TOKEN?: string;
 }
 
-/** All registered tools, in discovery order. */
+/**
+ * Progressive-disclosure workflow tools (in canonical flow order).
+ * Retired: get_bundle, fetch_scripture, fetch_translation_notes,
+ *          fetch_translation_questions, fetch_translation_word,
+ *          fetch_translation_academy, fetch_translation_word_links.
+ * Their parsing logic is preserved in src/core/ and the REST API.
+ */
 const ALL_TOOLS = [
-  fetchScriptureTool,
-  fetchTranslationNotesTool,
-  fetchTranslationQuestionsTool,
-  fetchTranslationWordLinksTool,
-  fetchTranslationWordTool,
-  fetchTranslationAcademyTool,
-  listLanguagesTool,
-  listSubjectsTool,
-  listResourcesForLanguageTool,
-  ragQueryTool,
-  getBundleTool,
-  indexResourceTool,
+  listLanguagesTool,           // orient: discover valid language codes
+  getPassageTool,              // orient/draft: scripture text (all versions) — cheap, repeatable
+  getPassageContextTool,       // orient: book/chapter intros + resource availability
+  getPassageIndexTool,         // survey: compact index of issues + key terms (no bodies)
+  getNoteTool,                 // drill: full note body by id
+  getAcademyArticleTool,       // drill: full TA article by path
+  getWordArticleTool,          // drill: full TW article by path
+  getPassageQuestionsTool,     // check: comprehension questions for a passage
+  searchArticlesWorkflowTool,  // lateral: concept -> article path
 ] as const;
 
 export type ToolName = (typeof ALL_TOOLS)[number]["name"];
@@ -70,40 +73,48 @@ export type ToolName = (typeof ALL_TOOLS)[number]["name"];
 /** MCP-standard error response helper. */
 function mcpError(err: TranslationHelpsError): {
   content: { type: "text"; text: string }[];
+  structuredContent: Record<string, unknown>;
   isError: true;
 } {
+  const payload = err.toMcpError();
   return {
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify(err.toMcpError(), null, 2),
-      },
-    ],
+    content: [{ type: "text", text: `Error ${payload.code}: ${payload.message}` }],
+    structuredContent: payload as unknown as Record<string, unknown>,
     isError: true,
   };
 }
 
 export class TranslationHelpsMCP extends McpAgent<Env> {
-  server = new McpServer({
-    name: SERVER_NAME,
-    version: VERSION,
-  });
+  server = new McpServer(
+    { name: SERVER_NAME, version: VERSION },
+    { instructions: SERVER_INSTRUCTIONS },
+  );
 
   async init(): Promise<void> {
-    // Register every tool
+    // Register every tool with full metadata: title, outputSchema, annotations
     for (const tool of ALL_TOOLS) {
-      const { name, description, inputSchema, handler } = tool;
+      const { name, description, inputSchema, outputSchema, annotations, handler } = tool;
 
-      // Extract shape: handle both ZodObject and ZodEffects
+      // Extract ZodRawShape: handle both ZodObject and ZodEffects
       const schemaShape =
         inputSchema instanceof z.ZodEffects
           ? (inputSchema.innerType() as z.ZodObject<z.ZodRawShape>).shape
           : (inputSchema as z.ZodObject<z.ZodRawShape>).shape;
 
-      this.server.tool(
+      this.server.registerTool(
         name,
-        description,
-        schemaShape as Record<string, z.ZodTypeAny>,
+        {
+          title: annotations.title,
+          description,
+          inputSchema: schemaShape as Record<string, z.ZodTypeAny>,
+          ...(outputSchema ? { outputSchema } : {}),
+          annotations: {
+            readOnlyHint: annotations.readOnlyHint,
+            ...(annotations.destructiveHint !== undefined
+              ? { destructiveHint: annotations.destructiveHint }
+              : {}),
+          },
+        },
         async (params: Record<string, unknown>) => {
           const requestId = crypto.randomUUID();
           const start = Date.now();
@@ -172,18 +183,20 @@ export class TranslationHelpsMCP extends McpAgent<Env> {
               cacheStatus: "none",
               errorCode,
             });
+            const errPayload = {
+              code: errorCode,
+              message: `Internal error in ${name}: ${message}`,
+              retryable: false,
+              hints: [],
+            };
             return {
               content: [
                 {
                   type: "text" as const,
-                  text: JSON.stringify({
-                    code: errorCode,
-                    message: `Internal error in ${name}: ${message}`,
-                    retryable: false,
-                    hints: [],
-                  }),
+                  text: `Error ${errorCode}: ${errPayload.message}`,
                 },
               ],
+              structuredContent: errPayload,
               isError: true,
             } as never;
           }

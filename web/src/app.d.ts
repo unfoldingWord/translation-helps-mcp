@@ -43,6 +43,10 @@ declare global {
 				XAI_API_KEY?: string;
 				// Environment variables from wrangler.toml
 				NODE_ENV?: string;
+				// Optional: override the MCP server base URL (default: same origin).
+				// Set via `wrangler secret put MCP_BASE_URL` or web/.dev.vars for local dev.
+				// Example: https://translation-helps-mcp.workers.dev
+				MCP_BASE_URL?: string;
 			};
 			context?: {
 				waitUntil(promise: Promise<any>): void;

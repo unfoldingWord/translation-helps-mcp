@@ -6,6 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 # Workers Assets — SvelteKit output goes here
 [assets]
 directory = "web/.svelte-kit/cloudflare"
+binding = "ASSETS"
 
 # Structured JSON logging via Workers Logs (enables log tailing + Logpush)
 [observability]
@@ -25,13 +26,6 @@ preview_id = "3073e58cc3eb4f16958854a6ec1531e6"
 binding = "ZIP_FILES"
 bucket_name = "translation-helps-mcp-zip-persistence"
 
-[ai]
-binding = "AI"
-
-[[vectorize]]
-binding = "VECTORIZE_INDEX"
-index_name = "translation-helps-vectors"
-
 # Analytics Engine for performance metrics + error-rate tracking
 [[analytics_engine_datasets]]
 binding = "ANALYTICS"
@@ -45,6 +39,19 @@ class_name = "TranslationHelpsMCP"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["TranslationHelpsMCP"]
+
+# Service binding to the REST Data API worker (zero-latency same-DC call)
+[[services]]
+binding = "API"
+service = "translation-helps-api"
+
+# ---------------------------------------------------------------------------
+# Top-level vars (used in local wrangler dev; overridden by service binding in prod)
+# ---------------------------------------------------------------------------
+# Fallback URL for the REST API worker when the service binding is unavailable
+# (e.g. when running only one wrangler dev process). Set to the API worker port.
+[vars]
+API_BASE_URL = "http://localhost:8788"
 
 # ---------------------------------------------------------------------------
 # Environment overrides
@@ -61,13 +68,6 @@ id = "a0b2bcf08829441e932230cb06cb5e07"
 binding = "ZIP_FILES"
 bucket_name = "translation-helps-mcp-zip-persistence"
 
-[env.production.ai]
-binding = "AI"
-
-[[env.production.vectorize]]
-binding = "VECTORIZE_INDEX"
-index_name = "translation-helps-vectors"
-
 [[env.production.analytics_engine_datasets]]
 binding = "ANALYTICS"
 dataset = "translation_helps_metrics"
@@ -76,13 +76,30 @@ dataset = "translation_helps_metrics"
 name = "MCP_AGENT"
 class_name = "TranslationHelpsMCP"
 
+[[env.production.services]]
+binding = "API"
+service = "translation-helps-api"
+
 [env.preview]
 vars = { NODE_ENV = "development" }
 
 [[env.preview.kv_namespaces]]
 binding = "TRANSLATION_HELPS_CACHE"
+id = "3073e58cc3eb4f16958854a6ec1531e6"
 preview_id = "3073e58cc3eb4f16958854a6ec1531e6"
+
+[[env.preview.r2_buckets]]
+binding = "ZIP_FILES"
+bucket_name = "translation-helps-mcp-zip-persistence"
+
+[[env.preview.analytics_engine_datasets]]
+binding = "ANALYTICS"
+dataset = "translation_helps_metrics"
 
 [[env.preview.durable_objects.bindings]]
 name = "MCP_AGENT"
 class_name = "TranslationHelpsMCP"
+
+[[env.preview.services]]
+binding = "API"
+service = "translation-helps-api"

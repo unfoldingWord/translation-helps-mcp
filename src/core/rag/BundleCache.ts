@@ -20,9 +20,15 @@ import {
   BUNDLE_CACHE_MAX_SIZE,
 } from "../cache-ttls.js";
 
+export interface ScriptureVersion {
+  resourceType: string;
+  text: string;
+  source: string;
+}
+
 export interface Bundle {
   scripture: {
-    text: string;
+    versions: ScriptureVersion[];
     format: "usfm" | "plain";
   };
   notes: Array<{
@@ -36,6 +42,8 @@ export interface Bundle {
     cacheStatus: "memory" | "edge" | "r2" | "miss";
     license: string;
     language: string;
+    /** Effective language after variant resolution (e.g. "es-419" when "es" was requested). */
+    effectiveLanguage?: string;
     reference: string;
     provenance: Array<{
       r2Key: string;

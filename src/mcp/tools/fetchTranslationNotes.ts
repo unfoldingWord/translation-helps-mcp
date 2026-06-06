@@ -12,24 +12,49 @@ import {
 import { Errors } from "../../core/errors.js";
 import { getResourceZipUrl } from "../../core/resources/dcsClient.js";
 import { ZipResourceFetcher2 } from "../../core/resources/ZipResourceFetcher2.js";
+import { parseReferenceForTool } from "../../core/resources/referenceParser.js";
+import { parseTranslationNotesTsv } from "../../core/parsers/tsv.js";
+import type { TranslationNoteRow } from "../../core/contracts/index.js";
 import type { Env } from "../agent.js";
 
 const inputSchema = z.object({
   reference: referenceParam,
   language: languageParam,
-  organization: z
-    .string()
-    .default("unfoldingWord")
-    .describe("Content organization on Door43 (default: unfoldingWord)."),
 });
 
 export type FetchTranslationNotesParams = z.infer<typeof inputSchema>;
 
+const noteSchema = {
+  book: z.string(),
+  chapter: z.string(),
+  verse: z.string(),
+  id: z.string(),
+  supportReference: z.string(),
+  quote: z.string(),
+  occurrence: z.string(),
+  note: z.string(),
+};
+
+const outputSchema = {
+  reference: z.string(),
+  language: z.string(),
+  book: z.string(),
+  chapter: z.string(),
+  verse: z.string().optional(),
+  notes: z.array(z.object(noteSchema)),
+  requestId: z.string(),
+};
+
 export const fetchTranslationNotesTool: ToolModule<typeof inputSchema> = {
   name: "fetch_translation_notes",
   description:
-    "Fetch translation notes (TN) for a specific Bible reference. Notes explain difficult phrases, cultural context, and translation strategies. Use after fetch_scripture to understand a passage.",
+    "Fetch translation notes (TN) for a specific Bible reference. " +
+    "Notes explain difficult phrases, cultural context, translation strategies, and alternate renderings written for mother-tongue translators. " +
+    "Use after fetch_scripture to identify which parts of a passage need closer attention. " +
+    "Returns an array of note objects with `quote`, `note`, and `supportReference` fields; `supportReference` often contains an rc:// URI pointing to a Translation Academy article. " +
+    "Limitation: notes are verse-specific; a chapter reference returns all verses in that chapter.",
   inputSchema,
+  outputSchema,
   annotations: {
     readOnlyHint: true,
     title: "Fetch Translation Notes",
@@ -40,19 +65,18 @@ export const fetchTranslationNotesTool: ToolModule<typeof inputSchema> = {
     env: Env,
     requestId: string,
   ) {
-    const { reference, language, organization } = params;
+    const { reference, language } = params;
 
-    const refMatch = reference.match(
-      /^([1-3]?[A-Za-z]{2,4})\s+(\d+)(?::(\d+)(?:-(\d+))?)?/,
-    );
-    if (!refMatch) throw Errors.invalidReference(reference);
-    const [, bookRaw, chapter, verseStart] = refMatch;
-    const book = bookRaw.toUpperCase();
+    const parsed = parseReferenceForTool(reference);
+    if (!parsed) throw Errors.invalidReference(reference);
+    const { book, chapter, verseStart } = parsed;
 
     const resolved = await getResourceZipUrl(
       language,
       "TSV Translation Notes",
-      organization,
+      "unfoldingWord",
+      "prod",
+      env.TRANSLATION_HELPS_CACHE,
     );
     if (!resolved) {
       throw Errors.resourceNotFound(
@@ -66,12 +90,11 @@ export const fetchTranslationNotesTool: ToolModule<typeof inputSchema> = {
     });
     const zipBuffer = await fetcher.getOrDownloadZip(resolved.zipUrl);
 
-    // TN files: tn_<BOOK>.tsv
     const paths = [`tn_${book}.tsv`, `${book}.tsv`];
     for (const ing of resolved.entry.ingredients) {
       if (
         ing.identifier?.toUpperCase() === book ||
-        ing.path?.includes(book.toLowerCase())
+        ing.path?.toUpperCase().includes(book)
       ) {
         paths.unshift(ing.path.replace(/^\.\//, ""));
       }
@@ -88,7 +111,7 @@ export const fetchTranslationNotesTool: ToolModule<typeof inputSchema> = {
         `Translation Notes file for book "${book}"`,
       );
 
-    const notes = parseTsv(tsv, chapter, verseStart);
+    const notes = parseTranslationNotesTsv(tsv, chapter, verseStart);
 
     return ok(
       {
@@ -105,39 +128,5 @@ export const fetchTranslationNotesTool: ToolModule<typeof inputSchema> = {
   },
 };
 
-interface Note {
-  book: string;
-  chapter: string;
-  verse: string;
-  id: string;
-  supportReference: string;
-  quote: string;
-  occurrence: string;
-  note: string;
-}
-
-function parseTsv(tsv: string, chapter: string, verse?: string): Note[] {
-  const lines = tsv.split("\n");
-  const results: Note[] = [];
-
-  for (const line of lines) {
-    if (!line.trim() || line.startsWith("Book")) continue;
-    const cols = line.split("\t");
-    if (cols.length < 8) continue;
-    const [book, ch, vs, id, supRef, quote, occurrence, note] = cols;
-    if (ch !== chapter) continue;
-    if (verse && vs !== verse) continue;
-    results.push({
-      book,
-      chapter: ch,
-      verse: vs,
-      id,
-      supportReference: supRef,
-      quote,
-      occurrence,
-      note: note?.trim() ?? "",
-    });
-  }
-
-  return results;
-}
+// Re-export the shared type so existing consumers of this tool file still compile.
+export type { TranslationNoteRow as Note };

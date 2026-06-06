@@ -1,24 +1,16 @@
 /**
  * SkillService — high-level chat primitives for translation assistance.
  *
- * Implements the four skill primitives from SKILL_LAYER.md:
- *   1. fetchPassageWithNotesAndLinks() — bundle assembly via MCP tools
+ * Implements the skill primitives:
+ *   1. fetchPassageWithNotesAndLinks() — bundle assembly via get_bundle tool
  *   2. generateTranslationHelp()       — LLM generation from a bundle
- *   3. queryRAG()                      — transparent pass-through to rag_query
+ *   3. searchArticles()                — concept search via search_articles tool
  *   4. composeTranslationReport()      — fetchPassage + generateHelp combined
- *
- * Key rule: Skill calls rag_query THROUGH callTool() (MCP tool wrapper),
- * preserving input validation, rate limiting, and logging.
- * Exception: background warmers call getBundle() directly on RagService.
- *
- * See SKILL_LAYER.md for authoritative pseudocode.
  */
 
 import type { Bundle } from "../rag/BundleCache.js";
 import type { LLMProvider } from "../rag/providers/LLMProvider.js";
 import { PromptFormatter } from "../rag/PromptFormatter.js";
-import type { QueryResult } from "../rag/RagService.js";
-import type { VectorStoreQueryResult } from "../rag/interfaces.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,7 +31,6 @@ export interface FetchPassageOptions {
   language: string;
   reference: string;
   includeTA?: boolean;
-  maxArticles?: number;
   requestId?: string;
 }
 
@@ -59,13 +50,24 @@ export interface GenerateResult {
   citations: Citation[];
 }
 
-export interface QueryRAGOptions {
+export interface SearchArticlesOptions {
   language?: string;
-  reference?: string;
-  filters?: Record<string, unknown>;
-  k?: number;
-  enableExact?: boolean;
+  resourceTypes?: Array<"ta" | "tw">;
+  topK?: number;
   requestId?: string;
+}
+
+export interface ArticleSearchHit {
+  path: string;
+  title: string;
+  resourceType: "ta" | "tw";
+  score: number;
+}
+
+export interface SearchArticlesResult {
+  query: string;
+  language: string;
+  results: ArticleSearchHit[];
 }
 
 export interface ComposeResult {
@@ -103,8 +105,9 @@ export class SkillService {
     const result = await this.ctx.callTool("get_bundle", {
       language: opts.language,
       reference: opts.reference,
-      includeTA: opts.includeTA ?? true,
-      maxArticles: opts.maxArticles ?? 30,
+      includeScripture: true,
+      includeNotes: true,
+      includeWords: opts.includeTA ?? true,
       requestId,
     });
 
@@ -148,25 +151,22 @@ export class SkillService {
   }
 
   /**
-   * Primitive 3: Transparent pass-through to rag_query MCP tool.
+   * Primitive 3: Lexical article search (replaces rag_query).
    */
-  async queryRAG(
+  async searchArticles(
     query: string,
-    opts: QueryRAGOptions = {},
-  ): Promise<QueryResult> {
+    opts: SearchArticlesOptions = {},
+  ): Promise<SearchArticlesResult> {
     const requestId =
       opts.requestId ?? this.ctx.requestId ?? generateRequestId();
+    const language = opts.language ?? "en";
 
-    const params: Record<string, unknown> = { query, requestId };
-    if (opts.language) params["language"] = opts.language;
-    if (opts.reference) params["reference"] = opts.reference;
-    if (opts.filters) params["filters"] = opts.filters;
-    if (opts.k) params["k"] = opts.k;
-    if (opts.enableExact !== undefined)
-      params["enableExact"] = opts.enableExact;
+    const params: Record<string, unknown> = { query, language, requestId };
+    if (opts.resourceTypes?.length) params["resourceTypes"] = opts.resourceTypes;
+    if (opts.topK) params["topK"] = opts.topK;
 
-    const result = await this.ctx.callTool("rag_query", params);
-    return extractQueryResult(result, query, opts.language ?? "");
+    const result = await this.ctx.callTool("search_articles", params);
+    return extractSearchResult(result, query, language);
   }
 
   /**
@@ -262,7 +262,7 @@ function extractBundle(
   }
   // Fallback empty bundle
   return {
-    scripture: { text: "", format: "plain" },
+    scripture: { versions: [], format: "plain" },
     notes: [],
     tw: [],
     ta: [],
@@ -277,33 +277,16 @@ function extractBundle(
 }
 
 /**
- * Extract a QueryResult from an unknown MCP tool response.
+ * Extract a SearchArticlesResult from an unknown MCP tool response.
  */
-function extractQueryResult(
+function extractSearchResult(
   result: unknown,
   query: string,
   language: string,
-): QueryResult {
-  const fallback: QueryResult = {
-    requestId: generateRequestId(),
-    query,
-    language,
-    documents: [],
-    fallbackMode: "empty",
-    cacheStatus: "miss",
-    latencyMs: 0,
-  };
-
+): SearchArticlesResult {
+  const fallback: SearchArticlesResult = { query, language, results: [] };
   if (!result || typeof result !== "object") return fallback;
   const r = result as Record<string, unknown>;
-
-  const docs = (r["documents"] as VectorStoreQueryResult[] | undefined) ?? [];
-  return {
-    ...fallback,
-    documents: docs,
-    fallbackMode: (r["fallbackMode"] as QueryResult["fallbackMode"]) ?? "ann",
-    cacheStatus: (r["cacheStatus"] as QueryResult["cacheStatus"]) ?? "miss",
-    latencyMs: (r["latencyMs"] as number) ?? 0,
-    requestId: (r["requestId"] as string) ?? fallback.requestId,
-  };
+  const results = (r["results"] as ArticleSearchHit[] | undefined) ?? [];
+  return { query, language: String(r["language"] ?? language), results };
 }

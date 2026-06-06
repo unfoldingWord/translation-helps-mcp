@@ -21,7 +21,7 @@
 		try {
 			const res = await fetch('/api/metrics');
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const data = await res.json();
+			const data = await res.json() as { metrics?: MetricRow[] };
 			metrics = data.metrics ?? [];
 			lastRefreshed = new Date().toLocaleTimeString();
 		} catch (e) {
@@ -68,18 +68,18 @@
 			{/each}
 		</div>
 	{:else if metrics.length > 0}
+		{@const totalCalls = metrics.reduce((a, m) => a + m.calls, 0)}
+		{@const avgP50 = Math.round(metrics.reduce((a, m) => a + m.p50Ms, 0) / metrics.length)}
+		{@const avgErrorRate = (
+			(metrics.reduce((a, m) => a + m.errorRate, 0) / metrics.length) *
+			100
+		).toFixed(1)}
+		{@const avgCacheHit = (
+			(metrics.reduce((a, m) => a + m.cacheHitRate, 0) / metrics.length) *
+			100
+		).toFixed(1)}
 		<!-- Summary cards -->
 		<div class="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-			{@const totalCalls = metrics.reduce((a, m) => a + m.calls, 0)}
-			{@const avgP50 = Math.round(metrics.reduce((a, m) => a + m.p50Ms, 0) / metrics.length)}
-			{@const avgErrorRate = (
-				(metrics.reduce((a, m) => a + m.errorRate, 0) / metrics.length) *
-				100
-			).toFixed(1)}
-			{@const avgCacheHit = (
-				(metrics.reduce((a, m) => a + m.cacheHitRate, 0) / metrics.length) *
-				100
-			).toFixed(1)}
 
 			<div class="rounded-xl border border-gray-800 bg-gray-900 p-5">
 				<div class="text-3xl font-bold text-white">{totalCalls.toLocaleString()}</div>

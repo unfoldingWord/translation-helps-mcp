@@ -28,9 +28,10 @@
 			emoji: '📋',
 			desc: 'Resources available for a language'
 		},
-		{ name: 'rag_query', emoji: '🔍', desc: 'Semantic search over all resources' },
-		{ name: 'get_bundle', emoji: '📦', desc: 'All helps for a passage in one call' },
-		{ name: 'index_resource', emoji: '⚡', desc: 'Admin: index a resource for RAG' }
+		{ name: 'list_translation_academy', emoji: '📚', desc: 'Browse all Translation Academy articles' },
+		{ name: 'list_translation_words', emoji: '🔑', desc: 'Browse all Translation Words articles' },
+		{ name: 'search_articles', emoji: '🔍', desc: 'Lexical search over TA/TW catalogs' },
+		{ name: 'get_bundle', emoji: '📦', desc: 'All helps for a passage in one call' }
 	];
 
 	const CONNECT_EXAMPLES = [
@@ -99,7 +100,7 @@ Content-Type: application/json
 			</a>
 		</div>
 		<p class="mt-6 text-sm text-gray-500">
-			Streamable HTTP + SSE · McpAgent on Cloudflare Workers · Structured outputs · RAG
+			Streamable HTTP + SSE · McpAgent on Cloudflare Workers · Structured outputs · Lexical Article Search
 		</p>
 	</div>
 </section>
@@ -167,16 +168,16 @@ Content-Type: application/json
 			<div class="mb-3 text-3xl">⚡</div>
 			<h3 class="mb-2 font-bold text-white">Cloudflare Workers</h3>
 			<p class="text-sm text-gray-400">
-				Deployed on Cloudflare Workers with Durable Objects for the McpAgent, KV caching, R2 zip
-				storage, and Vectorize for RAG.
+				Deployed on Cloudflare Workers with Durable Objects for the McpAgent, KV caching, and R2 zip
+				storage for fast resource delivery.
 			</p>
 		</div>
 		<div class="rounded-xl border border-gray-800 bg-gray-900 p-6">
 			<div class="mb-3 text-3xl">🔍</div>
-			<h3 class="mb-2 font-bold text-white">RAG-Powered Search</h3>
+			<h3 class="mb-2 font-bold text-white">Catalog + Article Search</h3>
 			<p class="text-sm text-gray-400">
-				Semantic search across Translation Notes, Words, and Academy using Workers AI embeddings and
-				Vectorize vector store.
+				Lexical search over Translation Academy and Translation Words catalogs — no indexing or
+				embeddings required. Deterministic, fast, and cache-friendly.
 			</p>
 		</div>
 		<div class="rounded-xl border border-gray-800 bg-gray-900 p-6">

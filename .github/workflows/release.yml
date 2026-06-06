@@ -44,6 +44,20 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Sync Python SDK version with JS SDK
+        if: steps.changesets.outputs.published == 'true'
+        run: |
+          JS_VERSION=$(node -p "require('./packages/js-sdk/package.json').version")
+          echo "Syncing Python SDK to version $JS_VERSION"
+          # Update version in pyproject.toml
+          sed -i "s/^version = .*/version = \"$JS_VERSION\"/" packages/python-sdk/pyproject.toml
+          # Commit if changed
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packages/python-sdk/pyproject.toml
+          git diff --staged --quiet || git commit -m "chore: sync Python SDK version to $JS_VERSION"
+          git push || true
+
       - name: Publish Python SDK
         if: steps.changesets.outputs.published == 'true'
         run: |

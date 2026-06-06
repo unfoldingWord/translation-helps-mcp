@@ -1,0 +1,84 @@
+name: MCP Health Check
+
+on:
+  schedule:
+    # Run every 10 minutes
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    name: Ping /mcp tools/list
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check MCP endpoint
+        id: check
+        run: |
+          WORKER_URL="${{ vars.WORKER_URL || 'https://translation-helps-mcp.workers.dev' }}"
+          echo "Checking $WORKER_URL/mcp"
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$WORKER_URL/mcp" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json, text/event-stream" \
+            -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' \
+            --max-time 30)
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+
+          echo "HTTP status: $HTTP_CODE"
+          echo "Response: $BODY"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::MCP health check failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+          # Verify the response contains tools
+          if ! echo "$BODY" | grep -q '"tools"'; then
+            # Try SSE format
+            if ! echo "$BODY" | grep -q '"method"'; then
+              echo "::error::MCP response missing expected 'tools' field"
+              exit 1
+            fi
+          fi
+
+          echo "✓ MCP health check passed"
+
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = `MCP Health Check Failed - ${new Date().toISOString().slice(0, 10)}`;
+            const body = `## MCP Health Check Failure\n\nThe automated health check for the Translation Helps MCP server failed.\n\n**Time:** ${new Date().toISOString()}\n**Endpoint:** ${process.env.WORKER_URL || 'https://translation-helps-mcp.workers.dev'}/mcp\n\n### Next Steps\n1. Check the [Worker logs](https://dash.cloudflare.com) for errors\n2. Verify wrangler deployment status\n3. Test manually with: \`curl -X POST https://translation-helps-mcp.workers.dev/mcp -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'\`\n\n_Auto-created by the health-check workflow._`;
+
+            // Check for existing open issue
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'health-check-failure'
+            });
+
+            if (issues.data.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['health-check-failure', 'bug']
+              });
+              console.log('Created new health check failure issue');
+            } else {
+              // Comment on existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues.data[0].number,
+                body: `Health check still failing at ${new Date().toISOString()}`
+              });
+              console.log('Commented on existing issue #' + issues.data[0].number);
+            }

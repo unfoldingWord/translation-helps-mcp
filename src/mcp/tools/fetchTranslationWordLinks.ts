@@ -13,26 +13,54 @@ import {
 import { Errors } from "../../core/errors.js";
 import { getResourceZipUrl } from "../../core/resources/dcsClient.js";
 import { ZipResourceFetcher2 } from "../../core/resources/ZipResourceFetcher2.js";
+import { parseReferenceForTool } from "../../core/resources/referenceParser.js";
+import { parseTranslationWordLinksTsv } from "../../core/parsers/tsv.js";
+import type { TranslationWordLinkRow } from "../../core/contracts/index.js";
 import type { Env } from "../agent.js";
 
 const inputSchema = z.object({
   reference: referenceParam,
   language: languageParam,
-  organization: z
-    .string()
-    .default("unfoldingWord")
-    .describe("Organization on Door43."),
 });
 
 export type FetchTranslationWordLinksParams = z.infer<typeof inputSchema>;
 
+const outputSchema = {
+  reference: z.string(),
+  language: z.string(),
+  book: z.string(),
+  chapter: z.string(),
+  verse: z.string().optional(),
+  wordLinks: z.array(
+    z.object({
+      book: z.string(),
+      chapter: z.string(),
+      verse: z.string(),
+      twId: z.string(),
+      supportReference: z.string(),
+      origWords: z.string(),
+      occurrence: z.string(),
+      twLink: z.string(),
+      wordPath: z
+        .string()
+        .describe(
+          'Pass this to fetch_translation_word as the `path` parameter, e.g. "bible/kt/grace".',
+        ),
+    }),
+  ),
+  requestId: z.string(),
+};
+
 export const fetchTranslationWordLinksTool: ToolModule<typeof inputSchema> = {
   name: "fetch_translation_word_links",
   description:
-    "List the Translation Words (TW) that appear at a specific Bible reference. " +
-    'Returns word paths like "bible/kt/grace" that you can pass to fetch_translation_word. ' +
-    "Always call this before fetch_translation_word if you do not already have a path.",
+    "List the Translation Word entries linked at a specific Bible reference. " +
+    "Use this to discover which key biblical terms appear at a passage before fetching their definitions. " +
+    'Returns an array of word link objects each containing a `wordPath` (e.g. "bible/kt/grace") — pass this path directly to fetch_translation_word. ' +
+    "Also returns the original-language words (`origWords`) and the TWLink for traceability. " +
+    "Limitation: only returns links explicitly tagged in the TWL resource; not every word in the verse will have a TW entry.",
   inputSchema,
+  outputSchema,
   annotations: {
     readOnlyHint: true,
     title: "Fetch Translation Word Links",
@@ -43,19 +71,18 @@ export const fetchTranslationWordLinksTool: ToolModule<typeof inputSchema> = {
     env: Env,
     requestId: string,
   ) {
-    const { reference, language, organization } = params;
+    const { reference, language } = params;
 
-    const refMatch = reference.match(
-      /^([1-3]?[A-Za-z]{2,4})\s+(\d+)(?::(\d+)(?:-(\d+))?)?/,
-    );
-    if (!refMatch) throw Errors.invalidReference(reference);
-    const [, bookRaw, chapter, verseStart] = refMatch;
-    const book = bookRaw.toUpperCase();
+    const parsed = parseReferenceForTool(reference);
+    if (!parsed) throw Errors.invalidReference(reference);
+    const { book, chapter, verseStart } = parsed;
 
     const resolved = await getResourceZipUrl(
       language,
       "TSV Translation Words Links",
-      organization,
+      "unfoldingWord",
+      "prod",
+      env.TRANSLATION_HELPS_CACHE,
     );
     if (!resolved)
       throw Errors.resourceNotFound(`Translation Word Links for "${language}"`);
@@ -70,7 +97,7 @@ export const fetchTranslationWordLinksTool: ToolModule<typeof inputSchema> = {
     for (const ing of resolved.entry.ingredients) {
       if (
         ing.identifier?.toUpperCase() === book ||
-        ing.path?.includes(book.toLowerCase())
+        ing.path?.toUpperCase().includes(book)
       ) {
         paths.unshift(ing.path.replace(/^\.\//, ""));
       }
@@ -84,7 +111,7 @@ export const fetchTranslationWordLinksTool: ToolModule<typeof inputSchema> = {
     if (!tsv)
       throw Errors.resourceNotFound(`Word Links file for book "${book}"`);
 
-    const links = parseTwl(tsv, chapter, verseStart);
+    const links = parseTranslationWordLinksTsv(tsv, chapter, verseStart);
     return ok(
       {
         reference,
@@ -100,49 +127,5 @@ export const fetchTranslationWordLinksTool: ToolModule<typeof inputSchema> = {
   },
 };
 
-interface WordLink {
-  book: string;
-  chapter: string;
-  verse: string;
-  twId: string;
-  supportReference: string;
-  origWords: string;
-  occurrence: string;
-  twLink: string;
-  /** Derived path suitable for fetch_translation_word, e.g. "bible/kt/grace" */
-  wordPath: string;
-}
-
-function parseTwl(tsv: string, chapter: string, verse?: string): WordLink[] {
-  return tsv
-    .split("\n")
-    .filter((l) => l.trim() && !l.startsWith("Book"))
-    .map((l) => {
-      const [
-        book,
-        ch,
-        vs,
-        twId,
-        supportReference,
-        origWords,
-        occurrence,
-        twLink,
-      ] = l.split("\t");
-      const wordPath =
-        twLink
-          ?.replace(/^rc:\/\/\*\/tw\/dict\//, "")
-          .replace(/^rc:\/\/[^/]+\/tw\/dict\//, "") ?? "";
-      return {
-        book,
-        chapter: ch,
-        verse: vs,
-        twId,
-        supportReference: supportReference?.trim(),
-        origWords: origWords?.trim(),
-        occurrence,
-        twLink: twLink?.trim() ?? "",
-        wordPath,
-      };
-    })
-    .filter((w) => w.chapter === chapter && (!verse || w.verse === verse));
-}
+// Re-export the shared type so existing consumers still compile.
+export type { TranslationWordLinkRow as WordLink };

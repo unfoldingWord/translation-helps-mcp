@@ -1,7 +1,7 @@
 /**
  * Contract tests for MCP tool schemas.
  *
- * Validates that each tool module exports the expected shape:
+ * Validates that each workflow tool module exports the expected shape:
  * - name (string)
  * - description (string)
  * - inputSchema (Zod object with required parameters)
@@ -12,33 +12,27 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
 
-// Import all tool modules
-import { fetchScriptureTool } from "../../src/mcp/tools/fetchScripture.js";
-import { fetchTranslationNotesTool } from "../../src/mcp/tools/fetchTranslationNotes.js";
-import { fetchTranslationQuestionsTool } from "../../src/mcp/tools/fetchTranslationQuestions.js";
-import { fetchTranslationWordLinksTool } from "../../src/mcp/tools/fetchTranslationWordLinks.js";
-import { fetchTranslationWordTool } from "../../src/mcp/tools/fetchTranslationWord.js";
-import { fetchTranslationAcademyTool } from "../../src/mcp/tools/fetchTranslationAcademy.js";
+// New workflow tools — matches ALL_TOOLS in src/mcp/agent.ts
 import { listLanguagesTool } from "../../src/mcp/tools/listLanguages.js";
-import { listSubjectsTool } from "../../src/mcp/tools/listSubjects.js";
-import { listResourcesForLanguageTool } from "../../src/mcp/tools/listResourcesForLanguage.js";
-import { ragQueryTool } from "../../src/mcp/tools/ragQuery.js";
-import { getBundleTool } from "../../src/mcp/tools/getBundle.js";
-import { indexResourceTool } from "../../src/mcp/tools/indexResource.js";
+import { getPassageTool } from "../../src/mcp/tools/getPassage.js";
+import { getPassageContextTool } from "../../src/mcp/tools/getPassageContext.js";
+import { getPassageIndexTool } from "../../src/mcp/tools/getPassageIndex.js";
+import { getNoteTool } from "../../src/mcp/tools/getNote.js";
+import { getAcademyArticleTool } from "../../src/mcp/tools/getAcademyArticle.js";
+import { getWordArticleTool } from "../../src/mcp/tools/getWordArticle.js";
+import { getPassageQuestionsTool } from "../../src/mcp/tools/getPassageQuestions.js";
+import { searchArticlesWorkflowTool } from "../../src/mcp/tools/searchArticlesWorkflow.js";
 
 const ALL_TOOLS = [
-  fetchScriptureTool,
-  fetchTranslationNotesTool,
-  fetchTranslationQuestionsTool,
-  fetchTranslationWordLinksTool,
-  fetchTranslationWordTool,
-  fetchTranslationAcademyTool,
   listLanguagesTool,
-  listSubjectsTool,
-  listResourcesForLanguageTool,
-  ragQueryTool,
-  getBundleTool,
-  indexResourceTool,
+  getPassageTool,
+  getPassageContextTool,
+  getPassageIndexTool,
+  getNoteTool,
+  getAcademyArticleTool,
+  getWordArticleTool,
+  getPassageQuestionsTool,
+  searchArticlesWorkflowTool,
 ];
 
 describe("Tool module contracts", () => {
@@ -55,7 +49,6 @@ describe("Tool module contracts", () => {
       });
 
       it("has a Zod inputSchema", () => {
-        // Most schemas are ZodObject; fetch_translation_word uses ZodEffects (refine)
         expect(
           tool.inputSchema instanceof z.ZodObject ||
             tool.inputSchema instanceof z.ZodEffects,
@@ -71,6 +64,18 @@ describe("Tool module contracts", () => {
       it("has a handler function", () => {
         expect(typeof tool.handler).toBe("function");
       });
+
+      it("has an outputSchema (ZodRawShape) if defined", () => {
+        if (tool.outputSchema !== undefined) {
+          expect(typeof tool.outputSchema).toBe("object");
+          for (const [key, val] of Object.entries(tool.outputSchema)) {
+            expect(
+              val instanceof z.ZodType,
+              `outputSchema.${key} should be a ZodType`,
+            ).toBe(true);
+          }
+        }
+      });
     });
   }
 });
@@ -84,42 +89,64 @@ describe("Tool name uniqueness", () => {
 });
 
 describe("Tool annotations", () => {
-  it("index_resource is not readOnly", () => {
-    expect(indexResourceTool.annotations.readOnlyHint).toBe(false);
-  });
-
-  it("all fetch_* tools are readOnly", () => {
-    const fetchTools = ALL_TOOLS.filter((t) => t.name.startsWith("fetch_"));
-    for (const tool of fetchTools) {
+  it("all tools are readOnly", () => {
+    for (const tool of ALL_TOOLS) {
       expect(tool.annotations.readOnlyHint).toBe(true);
     }
   });
 });
 
 describe("Key param requirements", () => {
-  it("fetch_scripture requires reference", () => {
-    const shape = fetchScriptureTool.inputSchema.shape;
+  it("get_passage requires reference", () => {
+    const shape = getPassageTool.inputSchema.shape;
     expect(shape.reference).toBeDefined();
-    // Should be non-optional (not ZodOptional)
     expect(shape.reference instanceof z.ZodOptional).toBe(false);
   });
 
-  it("fetch_translation_word has optional path and term", () => {
-    // inputSchema is ZodEffects due to .refine() — access inner schema
-    const inner =
-      fetchTranslationWordTool.inputSchema instanceof z.ZodEffects
-        ? fetchTranslationWordTool.inputSchema.innerType()
-        : fetchTranslationWordTool.inputSchema;
-    expect(
-      inner instanceof z.ZodObject ? inner.shape.path : undefined,
-    ).toBeDefined();
-    expect(
-      inner instanceof z.ZodObject ? inner.shape.term : undefined,
-    ).toBeDefined();
+  it("get_passage_context requires reference", () => {
+    const shape = getPassageContextTool.inputSchema.shape;
+    expect(shape.reference).toBeDefined();
+    expect(shape.reference instanceof z.ZodOptional).toBe(false);
   });
 
-  it("index_resource requires adminToken", () => {
-    const shape = indexResourceTool.inputSchema.shape;
-    expect(shape.adminToken).toBeDefined();
+  it("get_passage_index requires reference", () => {
+    const shape = getPassageIndexTool.inputSchema.shape;
+    expect(shape.reference).toBeDefined();
+    expect(shape.reference instanceof z.ZodOptional).toBe(false);
+  });
+
+  it("search_articles requires query", () => {
+    const shape = searchArticlesWorkflowTool.inputSchema.shape;
+    expect(shape.query).toBeDefined();
+    expect(shape.query instanceof z.ZodOptional).toBe(false);
+  });
+
+  it("get_academy_article requires path", () => {
+    const shape = getAcademyArticleTool.inputSchema.shape;
+    expect(shape.path).toBeDefined();
+    expect(shape.path instanceof z.ZodOptional).toBe(false);
+  });
+
+  it("get_word_article requires path", () => {
+    const shape = getWordArticleTool.inputSchema.shape;
+    expect(shape.path).toBeDefined();
+    expect(shape.path instanceof z.ZodOptional).toBe(false);
+  });
+});
+
+describe("Workflow tool names follow convention", () => {
+  it("passage tools use get_ prefix", () => {
+    const passageTools = ALL_TOOLS.filter((t) =>
+      ["get_passage", "get_passage_context", "get_passage_index", "get_note", "get_questions"].includes(t.name),
+    );
+    expect(passageTools.length).toBe(5);
+    for (const t of passageTools) {
+      expect(t.name.startsWith("get_")).toBe(true);
+    }
+  });
+
+  it("article drill tools use get_ prefix", () => {
+    expect(getAcademyArticleTool.name).toBe("get_academy_article");
+    expect(getWordArticleTool.name).toBe("get_word_article");
   });
 });

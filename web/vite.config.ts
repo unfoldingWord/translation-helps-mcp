@@ -32,6 +32,15 @@ export default defineConfig({
 	server: {
 		port: 8174,
 		host: true,
+		// Proxy /mcp to the wrangler worker in local dev
+		// (In production both run as the same Cloudflare Worker)
+		proxy: {
+			'/mcp': {
+				target: 'http://127.0.0.1:8787',
+				changeOrigin: true,
+				ws: true
+			}
+		},
 		// Configure file watching to include parent src directory
 		watch: {
 			usePolling: true,

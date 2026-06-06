@@ -12,7 +12,7 @@ Usage::
     result = client.get_bundle({"reference": "JHN 3:16", "language": "en"})
 """
 
-from .client import TranslationHelpsClient
+from .client import TranslationHelpsClient, AsyncTranslationHelpsClient
 from .types import (
     ClientOptions,
     FetchScriptureOptions,
@@ -24,15 +24,17 @@ from .types import (
     ListLanguagesOptions,
     ListSubjectsOptions,
     ListResourcesForLanguageOptions,
-    RagQueryOptions,
     GetBundleOptions,
-    IndexResourceOptions,
+    ListTranslationAcademyOptions,
+    ListTranslationWordsOptions,
+    SearchArticlesOptions,
 )
 
 __version__ = "2.0.0"
 
 __all__ = [
     "TranslationHelpsClient",
+    "AsyncTranslationHelpsClient",
     "ClientOptions",
     "FetchScriptureOptions",
     "FetchTranslationNotesOptions",
@@ -43,7 +45,8 @@ __all__ = [
     "ListLanguagesOptions",
     "ListSubjectsOptions",
     "ListResourcesForLanguageOptions",
-    "RagQueryOptions",
     "GetBundleOptions",
-    "IndexResourceOptions",
+    "ListTranslationAcademyOptions",
+    "ListTranslationWordsOptions",
+    "SearchArticlesOptions",
 ]

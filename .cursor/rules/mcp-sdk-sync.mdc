@@ -164,12 +164,16 @@ After updating SDKs, verify:
 | `list_subjects` | `listSubjects()` | `list_subjects()` | Discovery tool |
 | `list_resources_by_language` | `listResourcesByLanguage()` | `list_resources_by_language()` | Discovery tool |
 | `list_resources_for_language` | `listResourcesForLanguage()` | `list_resources_for_language()` | Discovery tool ⭐ |
+| `list_translation_academy` | `listTranslationAcademy()` | `list_translation_academy()` | Catalog tool |
+| `list_translation_words` | `listTranslationWords()` | `list_translation_words()` | Catalog tool |
+| `search_articles` | `searchArticles()` | `search_articles()` | Lexical search (replaces rag_query) |
 | `fetch_scripture` | `fetchScripture()` | `fetch_scripture()` | Fetch tool |
 | `fetch_translation_notes` | `fetchTranslationNotes()` | `fetch_translation_notes()` | Fetch tool |
 | `fetch_translation_questions` | `fetchTranslationQuestions()` | `fetch_translation_questions()` | Fetch tool |
 | `fetch_translation_word` | `fetchTranslationWord()` | `fetch_translation_word()` | Fetch tool |
 | `fetch_translation_word_links` | `fetchTranslationWordLinks()` | `fetch_translation_word_links()` | Fetch tool |
 | `fetch_translation_academy` | `fetchTranslationAcademy()` | `fetch_translation_academy()` | Fetch tool |
+| `get_bundle` | `getBundle()` | `get_bundle()` | Bundle assembly (deterministic) |
 
 ## 🚀 When Adding a New Tool
 

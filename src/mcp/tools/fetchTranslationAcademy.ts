@@ -7,6 +7,7 @@ import { languageParam, ok, type ToolModule } from "./shared.js";
 import { Errors, TranslationHelpsError, ErrorCode } from "../../core/errors.js";
 import { getResourceZipUrl } from "../../core/resources/dcsClient.js";
 import { ZipResourceFetcher2 } from "../../core/resources/ZipResourceFetcher2.js";
+import { buildTaPathCandidates } from "../../core/parsers/markdown.js";
 import type { Env } from "../agent.js";
 
 const inputSchema = z.object({
@@ -14,24 +15,30 @@ const inputSchema = z.object({
     .string()
     .describe(
       'The article path within Translation Academy, e.g. "translate/figs-metaphor" or "checking/accuracy". ' +
-        "Use rag_query to discover relevant articles if you do not know the path.",
+        "Use search_articles to discover relevant articles if you do not know the path.",
     ),
   language: languageParam,
-  organization: z
-    .string()
-    .default("unfoldingWord")
-    .describe("Organization on Door43."),
 });
 
 export type FetchTranslationAcademyParams = z.infer<typeof inputSchema>;
+
+const outputSchema = {
+  language: z.string(),
+  path: z.string().describe("Resolved path of the article in the zip."),
+  article: z.string().describe("Full Markdown content of the Translation Academy article."),
+  requestId: z.string(),
+};
 
 export const fetchTranslationAcademyTool: ToolModule<typeof inputSchema> = {
   name: "fetch_translation_academy",
   description:
     "Fetch a Translation Academy (TA) article by its path. " +
-    "Articles cover translation principles, checking procedures, and linguistic topics. " +
-    "Use rag_query to find relevant article paths if you do not know them.",
+    "TA articles teach translation principles (figures of speech, grammar patterns, cultural topics) and checking procedures. " +
+    "Use this when a translation note's `supportReference` points to a TA article, or when you want to explain a translation principle to a translator. " +
+    "Returns the full Markdown article text. " +
+    "Limitation: you must know the exact path; use search_articles or list_translation_academy to discover paths if you do not know them.",
   inputSchema,
+  outputSchema,
   annotations: {
     readOnlyHint: true,
     title: "Fetch Translation Academy Article",
@@ -42,7 +49,7 @@ export const fetchTranslationAcademyTool: ToolModule<typeof inputSchema> = {
     env: Env,
     requestId: string,
   ) {
-    const { path: articlePath, language, organization } = params;
+    const { path: articlePath, language } = params;
 
     if (!articlePath || articlePath.trim().length < 3) {
       throw Errors.missingParam("path", "fetch_translation_academy");
@@ -51,7 +58,9 @@ export const fetchTranslationAcademyTool: ToolModule<typeof inputSchema> = {
     const resolved = await getResourceZipUrl(
       language,
       "Translation Academy",
-      organization,
+      "unfoldingWord",
+      "prod",
+      env.TRANSLATION_HELPS_CACHE,
     );
     if (!resolved)
       throw Errors.resourceNotFound(`Translation Academy for "${language}"`);
@@ -62,13 +71,7 @@ export const fetchTranslationAcademyTool: ToolModule<typeof inputSchema> = {
     });
     const zipBuffer = await fetcher.getOrDownloadZip(resolved.zipUrl);
 
-    const clean = articlePath.replace(/^\//, "").replace(/\.md$/, "");
-    const candidates = [
-      `${clean}.md`,
-      clean,
-      `content/${clean}.md`,
-      `content/${clean}/01.md`,
-    ];
+    const candidates = buildTaPathCandidates(articlePath);
 
     let article: string | null = null;
     let resolvedPath = "";
@@ -87,7 +90,7 @@ export const fetchTranslationAcademyTool: ToolModule<typeof inputSchema> = {
         hints: [
           {
             message:
-              'Use rag_query with query like "figures of speech" to discover article paths.',
+              'Use search_articles with query like "figures of speech" to discover article paths.',
           },
           {
             message:

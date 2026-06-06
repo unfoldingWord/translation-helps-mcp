@@ -12,8 +12,9 @@ export type {
   ListLanguagesOptions,
   ListSubjectsOptions,
   ListResourcesForLanguageOptions,
-  RagQueryOptions,
   GetBundleOptions,
-  IndexResourceOptions,
+  ListTranslationAcademyOptions,
+  ListTranslationWordsOptions,
+  SearchArticlesOptions,
 } from "./types.js";
 export { parseResult } from "./types.js";

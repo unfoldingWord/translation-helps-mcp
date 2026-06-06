@@ -6,7 +6,7 @@
  *   binding = "TRANSLATION_HELPS_CACHE"
  *
  * This is the L3 cache fallback when Upstash Redis is unavailable or
- * when running on Cloudflare Pages without a Redis connection.
+ * when running on Cloudflare Workers without a Redis connection.
  *
  * CF KV free tier: 100K reads / 1K writes per day.
  * Appropriate for metadata and bundle caching at moderate traffic.

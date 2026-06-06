@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "cd web && npm run dev",
-    "dev:worker": "npx wrangler dev --config wrangler.toml",
+    "dev:worker": "npx wrangler dev --config wrangler.toml --port 8787",
+    "dev:api": "npx wrangler dev --config wrangler.api.toml --port 8788",
+    "dev:all": "concurrently \"npm run dev:api\" \"npm run dev:worker\" \"npm run dev\"",
     "build": "cd web && npm install && npm run build",
     "typecheck": "tsc --noEmit && cd web && npx tsc --noEmit",
     "lint": "eslint src/",
@@ -17,7 +19,8 @@
     "test:unit": "vitest run tests/unit/",
     "test:contracts": "vitest run tests/contracts/",
     "deploy:staging": "bash scripts/deploy-staging.sh",
-    "deploy:prod": "npx wrangler deploy --config wrangler.toml",
+    "deploy:api": "npx wrangler deploy --config wrangler.api.toml",
+    "deploy:prod": "npm run deploy:api && npx wrangler deploy --config wrangler.toml",
     "changeset": "changeset",
     "version": "changeset version",
     "release": "changeset publish",
@@ -25,7 +28,6 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.15.1",
-    "@qdrant/js-client-rest": "^1.18.0",
     "@upstash/redis": "^1.28.0",
     "agents": "^0.0.97",
     "lru-cache": "^11.5.1",
@@ -67,7 +69,7 @@
     "mcp",
     "cloudflare-workers",
     "door43",
-    "rag"
+    "article-search"
   ],
   "author": "unfoldingWord",
   "license": "MIT",

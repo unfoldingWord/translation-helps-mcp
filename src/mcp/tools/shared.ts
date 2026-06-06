@@ -59,8 +59,8 @@ export interface ToolModule<TInput extends AnyZodSchema> {
   description: string;
   /** Zod schema for the tool's input parameters. */
   inputSchema: TInput;
-  /** Optional Zod schema for the structured output. */
-  outputSchema?: z.ZodTypeAny;
+  /** Optional Zod schema for the structured output (plain ZodRawShape for registerTool). */
+  outputSchema?: Record<string, z.ZodTypeAny>;
   /** MCP tool annotations for capability hints. */
   annotations: {
     readOnlyHint: boolean;
@@ -89,15 +89,24 @@ export interface ToolResult {
   cacheStatus?: "hit" | "miss" | "stale" | "none";
 }
 
-/** Build a successful text+JSON result (structuredContent is the same data). */
+/**
+ * Build a successful result.
+ *
+ * `structuredContent` is the authoritative data channel for modern MCP clients
+ * (protocol >= 2025-11-05) that support it.
+ *
+ * `content` always includes a compact JSON payload so that stdio clients and
+ * older HTTP clients that only read `content` still receive usable data.
+ * The optional human-readable summary is prepended when provided.
+ */
 export function ok(data: unknown, humanText?: string): ToolResult {
   const structured = data as Record<string, unknown>;
-  const json = JSON.stringify(data, null, 2);
   const content: Array<{ type: "text"; text: string }> = [];
   if (humanText) {
     content.push({ type: "text", text: humanText });
   }
-  content.push({ type: "text", text: json });
+  // Compact JSON fallback — keeps stdio / legacy clients functional
+  content.push({ type: "text", text: JSON.stringify(data) });
   return { content, structuredContent: structured, isError: false };
 }
 

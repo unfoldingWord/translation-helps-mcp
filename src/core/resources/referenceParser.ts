@@ -52,6 +52,7 @@ export function parseReference(referenceString: string): ParsedReference {
     }
 
     const map: Record<string, string> = {
+      // ── English abbreviations ──────────────────────────────────────────────
       gen: "Genesis",
       ge: "Genesis",
       gn: "Genesis",
@@ -121,7 +122,6 @@ export function parseReference(referenceString: string): ParsedReference {
       php: "Philippians",
       col: "Colossians",
       th: "Thessalonians",
-      tim: "Timothy",
       ti: "Titus",
       phm: "Philemon",
       heb: "Hebrews",
@@ -133,21 +133,102 @@ export function parseReference(referenceString: string): ParsedReference {
       jud: "Jude",
       rev: "Revelation",
       re: "Revelation",
+      // ── Spanish full names ─────────────────────────────────────────────────
+      genesis: "Genesis",
+      exodo: "Exodus",
+      levitico: "Leviticus",
+      numeros: "Numbers",
+      deuteronomio: "Deuteronomy",
+      josue: "Joshua",
+      jueces: "Judges",
+      jue: "Judges",
+      reyes: "Kings",
+      rey: "Kings",
+      cronicas: "Chronicles",
+      cron: "Chronicles",
+      esdras: "Ezra",
+      esd: "Ezra",
+      nehemias: "Nehemiah",
+      ester: "Esther",
+      salmos: "Psalms",
+      sal: "Psalms",
+      proverbios: "Proverbs",
+      eclesiastes: "Ecclesiastes",
+      ecl: "Ecclesiastes",
+      cantares: "Song of Songs",
+      cnt: "Song of Songs",
+      isaias: "Isaiah",
+      jeremias: "Jeremiah",
+      lamentaciones: "Lamentations",
+      ezequiel: "Ezekiel",
+      eze: "Ezekiel",
+      oseas: "Hosea",
+      ose: "Hosea",
+      joel: "Joel",
+      amos: "Amos",
+      abdias: "Obadiah",
+      abd: "Obadiah",
+      jonas: "Jonah",
+      miqueas: "Micah",
+      miq: "Micah",
+      nahum: "Nahum",
+      habacuc: "Habakkuk",
+      sofonias: "Zephaniah",
+      sof: "Zephaniah",
+      hageo: "Haggai",
+      zacarias: "Zechariah",
+      zac: "Zechariah",
+      malaquias: "Malachi",
+      mateo: "Matthew",
+      marcos: "Mark",
+      mar: "Mark",
+      lucas: "Luke",
+      luc: "Luke",
+      juan: "John",
+      hechos: "Acts",
+      hch: "Acts",
+      romanos: "Romans",
+      corintios: "Corinthians",
+      galatas: "Galatians",
+      efesios: "Ephesians",
+      efe: "Ephesians",
+      filipenses: "Philippians",
+      fil: "Philippians",
+      colosenses: "Colossians",
+      tesalonicenses: "Thessalonians",
+      tes: "Thessalonians",
+      timoteo: "Timothy",
+      tim: "Timothy",
+      tito: "Titus",
+      filemon: "Philemon",
+      flm: "Philemon",
+      hebreos: "Hebrews",
+      santiago: "James",
+      sant: "James",
+      pedro: "Peter",
+      judas: "Jude",
+      apocalipsis: "Revelation",
+      apoc: "Revelation",
     };
 
     // Special handling for numbered books (e.g., 1Co -> 1 Corinthians)
     if (numPrefix) {
       if (base.startsWith("co") || base.startsWith("cor"))
         return `${numPrefix} Corinthians`;
-      if (base.startsWith("th")) return `${numPrefix} Thessalonians`;
+      if (base.startsWith("th") || base.startsWith("tes"))
+        return `${numPrefix} Thessalonians`;
+      if (base.startsWith("tim")) return `${numPrefix} Timothy`;
       if (base.startsWith("ti")) return `${numPrefix} Timothy`;
-      if (base.startsWith("pe")) return `${numPrefix} Peter`;
+      if (base.startsWith("pe") || base.startsWith("ped"))
+        return `${numPrefix} Peter`;
       // Only map to numbered John epistles when an explicit number is present
-      if (base === "jn" || base === "jhn" || base === "john")
+      if (base === "jn" || base === "jhn" || base === "john" || base === "juan")
         return `${numPrefix} John`;
       if (base.startsWith("sa")) return `${numPrefix} Samuel`;
-      if (base.startsWith("ki")) return `${numPrefix} Kings`;
-      if (base.startsWith("ch")) return `${numPrefix} Chronicles`;
+      if (base.startsWith("ki") || base.startsWith("rey"))
+        return `${numPrefix} Kings`;
+      if (base.startsWith("ch") || base.startsWith("cron"))
+        return `${numPrefix} Chronicles`;
     }
 
     const mapped = map[base] || map[lower] || null;
@@ -282,6 +363,201 @@ export function isValidReference(ref: ParsedReference): boolean {
   }
 
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// USFM code lookup
+// ---------------------------------------------------------------------------
+
+/** Map full/common English book names to USFM 3-letter codes. */
+const BOOK_NAME_TO_USFM: Record<string, string> = {
+  Genesis: "GEN",
+  Exodus: "EXO",
+  Leviticus: "LEV",
+  Numbers: "NUM",
+  Deuteronomy: "DEU",
+  Joshua: "JOS",
+  Judges: "JDG",
+  Ruth: "RUT",
+  "1 Samuel": "1SA",
+  "2 Samuel": "2SA",
+  "1 Kings": "1KI",
+  "2 Kings": "2KI",
+  "1 Chronicles": "1CH",
+  "2 Chronicles": "2CH",
+  Ezra: "EZR",
+  Nehemiah: "NEH",
+  Esther: "EST",
+  Job: "JOB",
+  Psalms: "PSA",
+  Psalm: "PSA",
+  Proverbs: "PRO",
+  Ecclesiastes: "ECC",
+  "Song of Songs": "SNG",
+  "Song of Solomon": "SNG",
+  Isaiah: "ISA",
+  Jeremiah: "JER",
+  Lamentations: "LAM",
+  Ezekiel: "EZK",
+  Daniel: "DAN",
+  Hosea: "HOS",
+  Joel: "JOL",
+  Amos: "AMO",
+  Obadiah: "OBA",
+  Jonah: "JON",
+  Micah: "MIC",
+  Nahum: "NAM",
+  Habakkuk: "HAB",
+  Zephaniah: "ZEP",
+  Haggai: "HAG",
+  Zechariah: "ZEC",
+  Malachi: "MAL",
+  Matthew: "MAT",
+  Mark: "MRK",
+  Luke: "LUK",
+  John: "JHN",
+  Acts: "ACT",
+  Romans: "ROM",
+  "1 Corinthians": "1CO",
+  "2 Corinthians": "2CO",
+  Galatians: "GAL",
+  Ephesians: "EPH",
+  Philippians: "PHP",
+  Colossians: "COL",
+  "1 Thessalonians": "1TH",
+  "2 Thessalonians": "2TH",
+  "1 Timothy": "1TI",
+  "2 Timothy": "2TI",
+  Titus: "TIT",
+  Philemon: "PHM",
+  Hebrews: "HEB",
+  James: "JAS",
+  "1 Peter": "1PE",
+  "2 Peter": "2PE",
+  "1 John": "1JN",
+  "2 John": "2JN",
+  "3 John": "3JN",
+  Jude: "JUD",
+  Revelation: "REV",
+  // ── Spanish full names ─────────────────────────────────────────────────────
+  "Génesis": "GEN",
+  "Éxodo": "EXO",
+  "Exodo": "EXO",
+  "Levítico": "LEV",
+  "Levitico": "LEV",
+  "Números": "NUM",
+  "Numeros": "NUM",
+  "Deuteronomio": "DEU",
+  "Josué": "JOS",
+  "Josue": "JOS",
+  "Jueces": "JDG",
+  "1 Reyes": "1KI",
+  "2 Reyes": "2KI",
+  "1 Crónicas": "1CH",
+  "2 Crónicas": "2CH",
+  "1 Cronicas": "1CH",
+  "2 Cronicas": "2CH",
+  "Esdras": "EZR",
+  "Nehemías": "NEH",
+  "Nehemias": "NEH",
+  "Ester": "EST",
+  "Salmos": "PSA",
+  "Salmo": "PSA",
+  "Proverbios": "PRO",
+  "Eclesiastés": "ECC",
+  "Eclesiastes": "ECC",
+  "Cantares": "SNG",
+  "Cantar de los Cantares": "SNG",
+  "Isaías": "ISA",
+  "Isaias": "ISA",
+  "Jeremías": "JER",
+  "Jeremias": "JER",
+  "Lamentaciones": "LAM",
+  "Ezequiel": "EZK",
+  "Oseas": "HOS",
+  "Amós": "AMO",
+  "Abdías": "OBA",
+  "Abdias": "OBA",
+  "Jonás": "JON",
+  "Jonas": "JON",
+  "Miqueas": "MIC",
+  "Nahúm": "NAM",
+  "Habacuc": "HAB",
+  "Sofonías": "ZEP",
+  "Sofonias": "ZEP",
+  "Hageo": "HAG",
+  "Zacarías": "ZEC",
+  "Zacarias": "ZEC",
+  "Malaquías": "MAL",
+  "Malaquias": "MAL",
+  "Mateo": "MAT",
+  "Marcos": "MRK",
+  "Lucas": "LUK",
+  "Juan": "JHN",
+  "Hechos": "ACT",
+  "Romanos": "ROM",
+  "1 Corintios": "1CO",
+  "2 Corintios": "2CO",
+  "Gálatas": "GAL",
+  "Galatas": "GAL",
+  "Efesios": "EPH",
+  "Filipenses": "PHP",
+  "Colosenses": "COL",
+  "1 Tesalonicenses": "1TH",
+  "2 Tesalonicenses": "2TH",
+  "1 Timoteo": "1TI",
+  "2 Timoteo": "2TI",
+  "Tito": "TIT",
+  "Filemón": "PHM",
+  "Filemon": "PHM",
+  "Hebreos": "HEB",
+  "Santiago": "JAS",
+  "1 Pedro": "1PE",
+  "2 Pedro": "2PE",
+  "1 Juan": "1JN",
+  "2 Juan": "2JN",
+  "3 Juan": "3JN",
+  "Judas": "JUD",
+  "Apocalipsis": "REV",
+};
+
+/**
+ * Convert a full/common book name to its USFM 3-letter code.
+ * Falls back to the uppercased input (handles codes passed directly).
+ */
+export function bookNameToUsfm(bookName: string): string {
+  const trimmed = bookName.trim();
+  return BOOK_NAME_TO_USFM[trimmed] ?? trimmed.toUpperCase();
+}
+
+// ---------------------------------------------------------------------------
+// Tool-friendly reference parsing
+// ---------------------------------------------------------------------------
+
+export interface ToolReference {
+  /** USFM book code, e.g. "JHN" */
+  book: string;
+  chapter: string;
+  verseStart?: string;
+  verseEnd?: string;
+}
+
+/**
+ * Parse a reference string into fields suitable for zip-file lookups.
+ * Returns null if the reference has no chapter (book-only is not supported
+ * by fetch tools).
+ */
+export function parseReferenceForTool(reference: string): ToolReference | null {
+  const parsed = parseReference(reference);
+  if (!parsed.isValid || !parsed.chapter) return null;
+
+  const book = bookNameToUsfm(parsed.book);
+  return {
+    book,
+    chapter: String(parsed.chapter),
+    verseStart: parsed.verse !== undefined ? String(parsed.verse) : undefined,
+    verseEnd: parsed.endVerse !== undefined ? String(parsed.endVerse) : undefined,
+  };
 }
 
 /**

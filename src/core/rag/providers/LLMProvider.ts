@@ -28,6 +28,15 @@ export interface LLMProvider {
     options?: LLMGenerateOptions,
   ): Promise<string>;
 
+  /**
+   * Stream a completion token-by-token.
+   * Optional — callers must fall back to `generate()` when absent.
+   */
+  generateStream?(
+    messages: LLMMessage[],
+    options?: LLMGenerateOptions,
+  ): AsyncIterable<string>;
+
   /** Human-readable model identifier for observability. */
   modelId(): string;
 }

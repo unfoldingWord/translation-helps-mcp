@@ -45,20 +45,22 @@ curl -X POST https://translation-helps-mcp.workers.dev/mcp \
 
 ## Available Tools
 
-| Tool                           | Description                               |
-| ------------------------------ | ----------------------------------------- |
-| `fetch_scripture`              | Bible text (ULT/UST) for any reference    |
-| `fetch_translation_notes`      | Exegetical notes for a passage            |
-| `fetch_translation_word_links` | Translation Words at a reference          |
-| `fetch_translation_word`       | Full dictionary article (by path or term) |
-| `fetch_translation_academy`    | Translation Academy articles              |
-| `fetch_translation_questions`  | Comprehension questions for a passage     |
-| `list_languages`               | All available language codes              |
-| `list_subjects`                | All available resource subjects           |
-| `list_resources_for_language`  | Resources for a language                  |
-| `rag_query`                    | Semantic search over all resources        |
-| `get_bundle`                   | All translation helps for a passage       |
-| `index_resource`               | Admin: index a resource for RAG           |
+| Tool                           | Description                                                     |
+| ------------------------------ | --------------------------------------------------------------- |
+| `get_bundle`                   | All translation helps for a passage (scripture + notes + words) |
+| `fetch_scripture`              | Bible text (ULT/UST/GLT/GST) for any reference                  |
+| `fetch_translation_notes`      | Exegetical notes for a passage                                  |
+| `fetch_translation_questions`  | Comprehension questions for a passage                           |
+| `fetch_translation_word_links` | Translation Word paths linked at a reference                    |
+| `fetch_translation_word`       | Full TW dictionary article by path                              |
+| `fetch_translation_academy`    | Translation Academy article by path                             |
+| `search_articles`              | Lexical search over TA + TW catalogs                            |
+| `list_translation_academy`     | Browse all Translation Academy articles                         |
+| `list_translation_words`       | Browse all Translation Words articles                           |
+| `list_languages`               | All available language codes (with pagination)                  |
+| `list_subjects`                | All available resource subject types                            |
+| `list_resources_for_language`  | Resources available for a language (with pagination)            |
+| `list_resources_by_language`   | Alias for list_resources_for_language                           |
 
 ## Architecture
 
@@ -71,9 +73,9 @@ Cloudflare Worker
 ```
 
 - **Transport**: Streamable HTTP + SSE via `McpAgent` (Cloudflare Durable Objects)
-- **Storage**: KV (cache) + R2 (ZIP persistence) + Vectorize (RAG)
-- **AI**: Workers AI for embeddings, Reranker for relevance
-- **Observability**: Analytics Engine metrics, structured JSON logs → GitHub Issues
+- **Storage**: KV (resource + catalog cache) + R2 (ZIP persistence)
+- **Article discovery**: Lexical search over TA/TW catalogs (`search_articles`) — no vector store required
+- **Observability**: Analytics Engine metrics, structured JSON logs
 
 ## SDKs
 
