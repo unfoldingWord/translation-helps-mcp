@@ -101,7 +101,9 @@ const CASES = [
 	{ cls: 'PROD', name: '#5 notes {includeIntro,reference:"Genesis 1:1-3",format:json}', tool: 'fetch_translation_notes', args: { includeIntro: true, reference: 'Genesis 1:1-3', format: 'json' }, kind: 'resolves' },
 	{ cls: 'PROD', name: '#7 notes {includeIntro,reference:"GEN 1:1-3",format:json}', tool: 'fetch_translation_notes', args: { includeIntro: true, reference: 'GEN 1:1-3', format: 'json' }, kind: 'resolves' },
 	{ cls: 'PROD', name: '#8 notes {reference:"EZK 36:25-27"} (parse fixed; verse no-data)', tool: 'fetch_translation_notes', args: { reference: 'EZK 36:25-27' }, kind: 'resolves' },
-	{ cls: 'PROD', name: '#9 notes {reference:"Ruth 3:9",language:"pt"}', tool: 'fetch_translation_notes', args: { reference: 'Ruth 3:9', language: 'pt' }, kind: 'resolves' }
+	{ cls: 'PROD', name: '#9 notes {reference:"Ruth 3:9",language:"pt"}', tool: 'fetch_translation_notes', args: { reference: 'Ruth 3:9', language: 'pt' }, kind: 'resolves' },
+	// Straggler found in staging A/B logs: model used `article` as the path synonym.
+	{ cls: 'PROD', name: 'academy {article:"translate-names"} (alias article→path)', tool: 'fetch_translation_academy', args: { article: 'translate-names' }, kind: 'ok', expectText: 'name' }
 ];
 
 async function callTool(tool, args) {
