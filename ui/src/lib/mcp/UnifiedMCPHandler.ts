@@ -147,9 +147,11 @@ export class UnifiedMCPHandler {
 		// value is passed through verbatim as the path.
 		if (requiredParams.includes('path')) {
 			if (isBlank(args.path)) {
-				// `topic` is last: it's a legitimate filter on these tools, so only
-				// fall back to it when no clearer synonym is present.
-				for (const k of ['term', 'word', 'moduleId', 'module', 'topic']) {
+				// Synonyms observed in prod logs the model sends instead of `path`:
+				// term / word / name (issue #24). `topic` is last — it's a legitimate
+				// filter on these tools, so only fall back to it when nothing clearer
+				// is present.
+				for (const k of ['term', 'word', 'name', 'moduleId', 'module', 'topic']) {
 					if (!isBlank(args[k])) {
 						args.path = String(args[k]).trim();
 						if (k === 'topic') delete args.topic; // consumed the filter as the path
@@ -160,7 +162,7 @@ export class UnifiedMCPHandler {
 			}
 			// `term` is a deprecated endpoint param (rejected downstream); the other
 			// synonyms aren't endpoint params either — drop any we didn't consume.
-			for (const k of ['term', 'word', 'moduleId', 'module']) delete args[k];
+			for (const k of ['term', 'word', 'name', 'moduleId', 'module']) delete args[k];
 		}
 
 		return args;

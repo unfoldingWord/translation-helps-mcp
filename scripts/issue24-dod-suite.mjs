@@ -88,7 +88,20 @@ const CASES = [
 	{ cls: 'CTRL', name: 'notes Mark 9:1 (single-digit)', tool: 'fetch_translation_notes', args: { reference: 'Mark 9:1', language: 'en' }, kind: 'data', minItems: 1 },
 	{ cls: 'CTRL', name: 'scripture John 3:16', tool: 'fetch_scripture', args: { reference: 'John 3:16', language: 'en' }, kind: 'ok', expectText: 'John' },
 	{ cls: 'CTRL', name: 'word path=bible/kt/love (canonical path)', tool: 'fetch_translation_word', args: { path: 'bible/kt/love', language: 'en' }, kind: 'ok', expectText: 'love' },
-	{ cls: 'CTRL', name: 'academy path=translate/figs-metaphor', tool: 'fetch_translation_academy', args: { path: 'translate/figs-metaphor', language: 'en' }, kind: 'ok', expectText: 'etaphor' }
+	{ cls: 'CTRL', name: 'academy path=translate/figs-metaphor', tool: 'fetch_translation_academy', args: { path: 'translate/figs-metaphor', language: 'en' }, kind: 'ok', expectText: 'etaphor' },
+
+	// ── REAL prod failures: exact (tool, args) from 7-day prod log (issue #24) ──
+	// NL prompt text is not logged (redacted); these are the verbatim args the
+	// model emitted. #6 (scripture, language:"en-US") is a separate language-
+	// variant issue, out of scope — tracked separately, not included here.
+	{ cls: 'PROD', name: '#1 notes {reference:"MAR 10:25"}', tool: 'fetch_translation_notes', args: { reference: 'MAR 10:25' }, kind: 'data', minItems: 1 },
+	{ cls: 'PROD', name: '#2 word {word:"new creation"}', tool: 'fetch_translation_word', args: { word: 'new creation' }, kind: 'resolves' },
+	{ cls: 'PROD', name: '#3 word {term:"lovingkindness"}', tool: 'fetch_translation_word', args: { term: 'lovingkindness' }, kind: 'resolves' },
+	{ cls: 'PROD', name: '#4 word {name:"god",language:"en",format:"md"}', tool: 'fetch_translation_word', args: { name: 'god', language: 'en', format: 'md' }, kind: 'ok', expectText: 'god' },
+	{ cls: 'PROD', name: '#5 notes {includeIntro,reference:"Genesis 1:1-3",format:json}', tool: 'fetch_translation_notes', args: { includeIntro: true, reference: 'Genesis 1:1-3', format: 'json' }, kind: 'resolves' },
+	{ cls: 'PROD', name: '#7 notes {includeIntro,reference:"GEN 1:1-3",format:json}', tool: 'fetch_translation_notes', args: { includeIntro: true, reference: 'GEN 1:1-3', format: 'json' }, kind: 'resolves' },
+	{ cls: 'PROD', name: '#8 notes {reference:"EZK 36:25-27"} (parse fixed; verse no-data)', tool: 'fetch_translation_notes', args: { reference: 'EZK 36:25-27' }, kind: 'resolves' },
+	{ cls: 'PROD', name: '#9 notes {reference:"Ruth 3:9",language:"pt"}', tool: 'fetch_translation_notes', args: { reference: 'Ruth 3:9', language: 'pt' }, kind: 'resolves' }
 ];
 
 async function callTool(tool, args) {
