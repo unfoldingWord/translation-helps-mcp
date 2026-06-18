@@ -27,7 +27,9 @@ import { ListResourcesForLanguageArgs } from "../tools/listResourcesForLanguage.
 const REFERENCE_INPUT_DESCRIPTION =
   "Full Bible passage in one string: the book (USFM 3-letter code like JHN, or the book title in English or the request language, e.g. John, Juan, Génesis) plus chapter and verse or verse range, or a whole chapter. " +
   "This is not only a book code — a bare code with no chapter/verse (e.g. only 'JHN') is wrong. " +
-  'Valid examples: "JHN 3:16", "John 3:16", "Juan 3:16" (use language: es), "GEN 1:1-3", "MAT 5" (entire chapter).';
+  'Valid examples: "JHN 3:16", "John 3:16", "Juan 3:16" (use language: es), "GEN 1:1-3", "MAT 5" (entire chapter), "1 Corinthians 13:4-7". ' +
+  'Full English/localized book names and multi-digit chapters (e.g. "Mark 10:25") are accepted. ' +
+  "You may also send the parts separately as book + chapter + verse and they will be combined into one reference.";
 
 /**
  * MCP Tool Definition
@@ -93,13 +95,19 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
     {
       name: "fetch_translation_word",
       description:
-        "Fetch dictionary entries for biblical terms by name (e.g., 'grace', 'paul', 'covenant'), path, or Bible reference.",
+        "Fetch the dictionary article for a biblical term (e.g. grace, love, Abraham, covenant). " +
+        'Identify the term with `path` — preferably the value from `externalReference` in a fetch_translation_word_links response (e.g. "bible/kt/love") — ' +
+        'but a plain term name also works: send `path: "love"`, or `term`/`word: "love"` and it is resolved across all categories (kt/names/other). ' +
+        "No file extensions.",
       inputSchema: GetTranslationWordArgs,
     },
     {
       name: "fetch_translation_academy",
       description:
-        "Fetch Translation Academy training articles teaching translation principles, methods, and techniques.",
+        "Fetch Translation Academy training articles teaching translation principles, methods, and techniques. " +
+        'Identify the article with `path` — preferably the value from `externalReference` in a fetch_translation_notes response (e.g. "translate/figs-metaphor") — ' +
+        'but a plain module id also works: send `path: "figs-metaphor"`, or `term`/`moduleId: "figs-metaphor"` and it is resolved across categories. ' +
+        "No file extensions.",
       inputSchema: FetchTranslationAcademyArgs,
     },
     {
