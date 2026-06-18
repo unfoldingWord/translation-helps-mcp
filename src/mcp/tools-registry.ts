@@ -32,6 +32,58 @@ const REFERENCE_INPUT_DESCRIPTION =
   "You may also send the parts separately as book + chapter + verse and they will be combined into one reference.";
 
 /**
+ * Tolerated-argument fields advertised on the input schemas (issue #24).
+ *
+ * The server normalizes these to the canonical fields in
+ * `UnifiedMCPHandler.normalizeArgs()` before validation. They are advertised
+ * here — optional, plus `.passthrough()` on each tool so the generated JSON
+ * Schema does NOT set `additionalProperties: false` — so schema-aware MCP
+ * clients are not blocked from sending the exact shapes the server accepts.
+ * The canonical fields (`reference`, `path`) remain the documented preference.
+ */
+const intOrString = () => z.union([z.string(), z.number()]);
+
+/** Reference tools: decomposed book/chapter/verse + `language_code`; `reference` becomes optional. */
+const REFERENCE_TOLERANCE_FIELDS = {
+  reference: z.string().optional().describe(REFERENCE_INPUT_DESCRIPTION),
+  book: z
+    .string()
+    .optional()
+    .describe(
+      "Decomposed reference: book (USFM code or English/localized name). Combined with chapter/verse into a single `reference`. Prefer sending the whole `reference` string instead.",
+    ),
+  chapter: intOrString()
+    .optional()
+    .describe("Decomposed reference: chapter number."),
+  verse: intOrString()
+    .optional()
+    .describe("Decomposed reference: verse number."),
+  endVerse: intOrString()
+    .optional()
+    .describe("Decomposed reference: end verse for a range."),
+  language_code: z
+    .string()
+    .optional()
+    .describe("Alias for `language` (BCP-47 tag)."),
+};
+
+/** Word/Academy tools: the `path` synonyms the server accepts and normalizes. */
+const PATH_TOLERANCE_FIELDS = {
+  term: z
+    .string()
+    .optional()
+    .describe(
+      "Alias for `path` — a plain term/module name resolved across categories.",
+    ),
+  word: z.string().optional().describe("Alias for `path`."),
+  name: z.string().optional().describe("Alias for `path`."),
+  article: z.string().optional().describe("Alias for `path`."),
+  moduleId: z.string().optional().describe("Alias for `path`."),
+  module: z.string().optional().describe("Alias for `path`."),
+  identifier: z.string().optional().describe("Alias for `path`."),
+};
+
+/**
  * MCP Tool Definition
  */
 export interface MCPToolDefinition {
@@ -53,9 +105,9 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
         "The required argument is `reference` as a full passage string (book + chapter/verse, not a book code alone). " +
         "Book may be USFM (JHN) or a full/localized title that matches the `language` parameter. " +
         "Examples: JHN 3:16, John 3:16, GEN 1:1-3, MAT 5. Door43 catalog owners are discovered automatically (all-org search).",
-      inputSchema: FetchScriptureArgs.omit({ reference: true }).extend({
-        reference: z.string().describe(REFERENCE_INPUT_DESCRIPTION),
-      }),
+      inputSchema: FetchScriptureArgs.omit({ reference: true })
+        .extend(REFERENCE_TOLERANCE_FIELDS)
+        .passthrough(),
     },
     {
       name: "fetch_translation_notes",
@@ -64,9 +116,9 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
         "Returns verseNotes (verse-specific) and contextNotes (book/chapter background) separately. " +
         "Pass `reference` as a full passage (book + chapter/verse or range), not a standalone book code. " +
         "USFM or localized book names are fine when they match `language`. All Door43 organizations are searched automatically.",
-      inputSchema: FetchTranslationNotesArgs.omit({ reference: true }).extend({
-        reference: z.string().describe(REFERENCE_INPUT_DESCRIPTION),
-      }),
+      inputSchema: FetchTranslationNotesArgs.omit({ reference: true })
+        .extend(REFERENCE_TOLERANCE_FIELDS)
+        .passthrough(),
     },
     {
       name: "fetch_translation_questions",
@@ -74,11 +126,9 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
         "Fetch comprehension questions with answers to verify translation accuracy. " +
         "Pass `reference` as a full passage (book + chapter/verse or range), not a book code by itself. " +
         "All Door43 organizations are searched automatically.",
-      inputSchema: FetchTranslationQuestionsArgs.omit({
-        reference: true,
-      }).extend({
-        reference: z.string().describe(REFERENCE_INPUT_DESCRIPTION),
-      }),
+      inputSchema: FetchTranslationQuestionsArgs.omit({ reference: true })
+        .extend(REFERENCE_TOLERANCE_FIELDS)
+        .passthrough(),
     },
     {
       name: "fetch_translation_word_links",
@@ -86,11 +136,9 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
         "Fetch key biblical terms in a passage (e.g. grace, faith) with links to term articles. " +
         "Pass `reference` as a full passage (book + chapter/verse or range), not a book code by itself. " +
         "All Door43 organizations are searched automatically.",
-      inputSchema: FetchTranslationWordLinksArgs.omit({
-        reference: true,
-      }).extend({
-        reference: z.string().describe(REFERENCE_INPUT_DESCRIPTION),
-      }),
+      inputSchema: FetchTranslationWordLinksArgs.omit({ reference: true })
+        .extend(REFERENCE_TOLERANCE_FIELDS)
+        .passthrough(),
     },
     {
       name: "fetch_translation_word",
@@ -99,7 +147,9 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
         'Identify the term with `path` — preferably the value from `externalReference` in a fetch_translation_word_links response (e.g. "bible/kt/love") — ' +
         'but a plain term name also works: send `path: "love"`, or `term`/`word: "love"` and it is resolved across all categories (kt/names/other). ' +
         "No file extensions.",
-      inputSchema: GetTranslationWordArgs,
+      inputSchema: GetTranslationWordArgs.extend(
+        PATH_TOLERANCE_FIELDS,
+      ).passthrough(),
     },
     {
       name: "fetch_translation_academy",
@@ -108,7 +158,9 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
         'Identify the article with `path` — preferably the value from `externalReference` in a fetch_translation_notes response (e.g. "translate/figs-metaphor") — ' +
         'but a plain module id also works: send `path: "figs-metaphor"`, or `term`/`moduleId: "figs-metaphor"` and it is resolved across categories. ' +
         "No file extensions.",
-      inputSchema: FetchTranslationAcademyArgs,
+      inputSchema: FetchTranslationAcademyArgs.extend(
+        PATH_TOLERANCE_FIELDS,
+      ).passthrough(),
     },
     {
       name: "list_tools",
