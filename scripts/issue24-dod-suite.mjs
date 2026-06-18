@@ -13,14 +13,23 @@
  *   node scripts/issue24-dod-suite.mjs http://localhost:8788
  *
  * A case "passes" when its expectation holds:
- *   - kind:"ok"   → call returns a result (no JSON-RPC error) AND, if `expectText`
- *                   is given, the result text contains it.
- *   - kind:"data" → call returns a result whose text parses to non-empty data
- *                   (>= `minItems` items where applicable).
- *   - kind:"error"→ call returns a JSON-RPC error (used only for control/negative).
+ *   - kind:"ok"      → result returned (no JSON-RPC error) AND, if `expectText`
+ *                      given, the result text contains it.
+ *   - kind:"data"    → result text parses to >= `minItems` items.
+ *   - kind:"resolves"→ the input is no longer *parse-rejected*: either a result
+ *                      is returned, or the only error is a downstream "no data
+ *                      for this verse" 404. A genuine parse/validation rejection
+ *                      (Invalid reference / Missing parameter) still fails. This
+ *                      is the correct bar for the parser fix: resolving "2KI 12:8"
+ *                      to a real book that simply has no verse note is success.
+ *   - kind:"error"   → expects a JSON-RPC error (control/negative).
  *
  * Exit code 0 only if every case passes.
  */
+
+/** Error messages that mean the input was REJECTED before reaching real data. */
+const PARSE_REJECTION =
+	/invalid bible reference|invalid book reference|invalid reference format|missing required parameter|could not (parse|determine)|expected record/i;
 
 const base = (process.argv[2] || 'https://tc-helps.mcp.servant.bible').replace(/\/+$/, '');
 const endpoint = `${base}/api/mcp`;
@@ -42,13 +51,15 @@ const CASES = [
 	{ cls: 'A', name: 'notes Mark 10:25 (multi-digit)', tool: 'fetch_translation_notes', args: { reference: 'Mark 10:25', language: 'en' }, kind: 'data', minItems: 1 },
 	{ cls: 'A', name: 'notes Matthew 13:55 (multi-digit)', tool: 'fetch_translation_notes', args: { reference: 'Matthew 13:55', language: 'en' }, kind: 'data', minItems: 1 },
 	{ cls: 'A', name: 'notes Genesis 50:1 (multi-digit)', tool: 'fetch_translation_notes', args: { reference: 'Genesis 50:1', language: 'en' }, kind: 'data', minItems: 1 },
-	{ cls: 'A', name: 'questions Mark 10:25 (multi-digit)', tool: 'fetch_translation_questions', args: { reference: 'Mark 10:25', language: 'en' }, kind: 'data', minItems: 1 },
+	{ cls: 'A', name: 'questions Mark 10:23 (multi-digit, has data)', tool: 'fetch_translation_questions', args: { reference: 'Mark 10:23', language: 'en' }, kind: 'data', minItems: 1 },
+	{ cls: 'A', name: 'questions Mark 10:25 (multi-digit, resolves)', tool: 'fetch_translation_questions', args: { reference: 'Mark 10:25', language: 'en' }, kind: 'resolves' },
 	{ cls: 'A', name: 'notes Mark 10 (whole multi-digit chapter)', tool: 'fetch_translation_notes', args: { reference: 'Mark 10', language: 'en' }, kind: 'data', minItems: 1 },
 
 	// ── Class A: invalid / spaceless USFM codes ──────────────────────────
 	{ cls: 'A', name: 'notes MAR 10:25 (invalid code MAR→MRK)', tool: 'fetch_translation_notes', args: { reference: 'MAR 10:25', language: 'en' }, kind: 'data', minItems: 1 },
-	{ cls: 'A', name: 'notes 2KI 12:8 (spaceless numbered code)', tool: 'fetch_translation_notes', args: { reference: '2KI 12:8', language: 'en' }, kind: 'data', minItems: 1 },
-	{ cls: 'A', name: 'notes 2KGS 12:8 (invalid code 2KGS→2KI)', tool: 'fetch_translation_notes', args: { reference: '2KGS 12:8', language: 'en' }, kind: 'data', minItems: 1 },
+	{ cls: 'A', name: 'notes 2KI 5:1 (spaceless code, has data)', tool: 'fetch_translation_notes', args: { reference: '2KI 5:1', language: 'en' }, kind: 'data', minItems: 1 },
+	{ cls: 'A', name: 'notes 2KGS 5:1 (invalid code 2KGS→2KI, has data)', tool: 'fetch_translation_notes', args: { reference: '2KGS 5:1', language: 'en' }, kind: 'data', minItems: 1 },
+	{ cls: 'A', name: 'notes 2KI 12:8 (issue example, resolves)', tool: 'fetch_translation_notes', args: { reference: '2KI 12:8', language: 'en' }, kind: 'resolves' },
 
 	// ── Class B: missing path; word/term synonyms ────────────────────────
 	{ cls: 'B', name: 'word term=love (alias term→path)', tool: 'fetch_translation_word', args: { term: 'love', language: 'en' }, kind: 'ok', expectText: 'love' },
@@ -59,7 +70,7 @@ const CASES = [
 	// ── Class C: decomposed book+chapter+verse → reference ────────────────
 	{ cls: 'C', name: 'notes decomposed 1CO 15:58', tool: 'fetch_translation_notes', args: { book: '1CO', chapter: 15, verse: 58, language: 'en' }, kind: 'data', minItems: 1 },
 	{ cls: 'C', name: 'word_links decomposed John 3:16', tool: 'fetch_translation_word_links', args: { book: 'John', chapter: 3, verse: 16, language: 'en' }, kind: 'data', minItems: 1 },
-	{ cls: 'C', name: 'questions decomposed Mark 10:25', tool: 'fetch_translation_questions', args: { book: 'Mark', chapter: 10, verse: 25, language: 'en' }, kind: 'data', minItems: 1 },
+	{ cls: 'C', name: 'questions decomposed Mark 10:23', tool: 'fetch_translation_questions', args: { book: 'Mark', chapter: 10, verse: 23, language: 'en' }, kind: 'data', minItems: 1 },
 
 	// ── Class D: language_code alias → language ──────────────────────────
 	{ cls: 'D', name: 'list_resources language_code=en', tool: 'list_resources_for_language', args: { language_code: 'en' }, kind: 'ok', expectText: 'en' },
@@ -126,6 +137,12 @@ function evaluate(c, status, parsed) {
 	const text = resultText(parsed);
 	if (c.kind === 'error') {
 		return { pass: Boolean(err), detail: err ? `error: ${err.message?.slice(0, 80)}` : 'expected error, got result' };
+	}
+	if (c.kind === 'resolves') {
+		if (!err) return { pass: true, detail: 'resolved (returned data)' };
+		const msg = String(err.message || '');
+		if (PARSE_REJECTION.test(msg)) return { pass: false, detail: `parse-rejected: ${msg.slice(0, 90)}` };
+		return { pass: true, detail: `resolved (no-data: ${msg.slice(0, 70)})` };
 	}
 	if (err) {
 		return { pass: false, detail: `JSON-RPC error: ${String(err.message).slice(0, 120)}` };
