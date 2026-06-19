@@ -83,7 +83,8 @@ const CASES = [
 	{ cls: 'C-key', name: 'word_links {book_id} 1JN 3:10', tool: 'fetch_translation_word_links', args: { book_id: '1JN', chapter: 3, verse: 10, language: 'en' }, kind: 'data', minItems: 1 },
 	{ cls: 'C-key', name: 'questions {bookId} Mark 10:23', tool: 'fetch_translation_questions', args: { bookId: 'Mark', chapter: 10, verse: 23, language: 'en' }, kind: 'data', minItems: 1 },
 	{ cls: 'C-key', name: 'notes chapter-only {book_id} 1TI 2', tool: 'fetch_translation_notes', args: { book_id: '1TI', chapter: 2, language: 'en' }, kind: 'data', minItems: 1 },
-	{ cls: 'C-key', name: 'scripture {book_id} JHN 3:16', tool: 'fetch_scripture', args: { book_id: 'JHN', chapter: 3, verse: 16, language: 'en' }, kind: 'ok', expectText: 'John' },
+	// expectText would match the VERSE CONTENT, not the book name — assert returned scripture data instead.
+	{ cls: 'C-key', name: 'scripture {book_id} JHN 3:16', tool: 'fetch_scripture', args: { book_id: 'JHN', chapter: 3, verse: 16, language: 'en' }, kind: 'data', minItems: 1 },
 
 	// ── Class D: language_code alias → language ──────────────────────────
 	{ cls: 'D', name: 'list_resources language_code=en', tool: 'list_resources_for_language', args: { language_code: 'en' }, kind: 'ok', expectText: 'en' },
