@@ -76,11 +76,13 @@ const BOOK_MAPPINGS: Record<string, { code: string; name: string }> = {
   // 1 Kings
   "1kings": { code: "1KI", name: "1 Kings" },
   "1ki": { code: "1KI", name: "1 Kings" },
+  "1kgs": { code: "1KI", name: "1 Kings" }, // common invalid LLM code → 1KI
   "1k": { code: "1KI", name: "1 Kings" },
 
   // 2 Kings
   "2kings": { code: "2KI", name: "2 Kings" },
   "2ki": { code: "2KI", name: "2 Kings" },
+  "2kgs": { code: "2KI", name: "2 Kings" }, // common invalid LLM code → 2KI
   "2k": { code: "2KI", name: "2 Kings" },
 
   // 1 Chronicles
@@ -390,8 +392,18 @@ const BOOK_MAPPINGS: Record<string, { code: string; name: string }> = {
   romains: { code: "ROM", name: "Romans" },
 };
 
-/** Book title: optional "1/2/3 " prefix + word starting with a letter (incl. accents) + rest */
-const BOOK_HEAD = "(?:[1-3]\\s+)?[\\p{L}][\\p{L}0-9\\s\\.'’\\-]*";
+/** Book title: optional "1/2/3" prefix (space optional) + word starting with a letter (incl. accents) + rest */
+// NOTE 1: The trailing character class must NOT include digits. Bible book names
+// never contain interior digits (numbered books use the leading `[1-3]\s*`), and
+// allowing 0-9 here let the greedy book-head absorb the first chapter digit of a
+// multi-digit chapter (e.g. "Mark 10:25" -> book "Mark 1", chapter "0"), which
+// then failed the `chapter < 1` guard and made parseReference() return null for
+// every chapter >= 10. That surfaced as bogus "Invalid reference format" errors
+// on translation notes/questions for the majority of the Bible. See issue #24.
+// NOTE 2: The numbered-book prefix uses `\s*` (not `\s+`) so spaceless codes the
+// LLM emits — "2KI", "1Co", "1Jn" — parse the same as "2 Kings"/"1 Corinthians".
+// resolveBookInfo() strips spaces before lookup, so "2KI"/"2 Ki" both resolve.
+const BOOK_HEAD = "(?:[1-3]\\s*)?[\\p{L}][\\p{L}\\s\\.'’\\-]*";
 
 function resolveBookInfo(
   bookStr: string,

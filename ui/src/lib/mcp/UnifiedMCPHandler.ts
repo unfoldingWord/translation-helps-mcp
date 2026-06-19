@@ -5,6 +5,45 @@
 
 import { ToolRegistry, type MCPToolResponse } from '../../../../src/contracts/ToolContracts';
 
+/** True for values an LLM may send for "no value": undefined, null, or empty/blank string. */
+function isBlank(v: unknown): boolean {
+	return v === undefined || v === null || (typeof v === 'string' && v.trim() === '');
+}
+
+/** Return the first non-blank value, or undefined if all are blank. */
+function firstNonBlank(...vals: unknown[]): unknown {
+	for (const v of vals) {
+		if (!isBlank(v)) return v;
+	}
+	return undefined;
+}
+
+/**
+ * Assemble a single `reference` string from decomposed book/chapter/verse args
+ * (issue #24 Class C). The model sometimes sends {book,chapter,verse} instead of
+ * one reference; the endpoints only accept a reference string.
+ */
+function assembleReference(a: Record<string, any>): string {
+	const book = String(a.book).trim();
+	const chapter = firstNonBlank(a.chapter, a.startChapter, a.start_chapter);
+	const verse = firstNonBlank(a.verse, a.startVerse, a.start_verse);
+	const endVerse = firstNonBlank(a.endVerse, a.end_verse);
+	const endChapter = firstNonBlank(a.endChapter, a.end_chapter);
+
+	let ref = book;
+	if (!isBlank(chapter)) {
+		ref += ` ${String(chapter).trim()}`;
+		if (!isBlank(verse)) {
+			ref += `:${String(verse).trim()}`;
+			if (!isBlank(endVerse)) ref += `-${String(endVerse).trim()}`;
+		} else if (!isBlank(endChapter)) {
+			// Whole-chapter range, e.g. {book:"Titus",chapter:1,endChapter:2} → "Titus 1-2"
+			ref += `-${String(endChapter).trim()}`;
+		}
+	}
+	return ref;
+}
+
 /** Build a readable message from JSON error bodies (e.g. simpleEndpoint 400 responses). */
 function formatEndpointFailureMessage(status: number, body: unknown): string {
 	const base = `Tool endpoint failed: ${status}`;
@@ -42,24 +81,125 @@ export class UnifiedMCPHandler {
 	}
 
 	/**
+	 * Normalize LLM-generated tool arguments into the shape the endpoints expect.
+	 *
+	 * Issue #24: ~90% of production tool-call errors are strict validation
+	 * rejecting recoverable input. The worker forwards model arguments verbatim,
+	 * so this dispatch chokepoint is the single place to be liberal in what we
+	 * accept (Postel's law). Every transform is additive and only fires when the
+	 * canonical field is absent, so well-formed calls pass through untouched.
+	 *
+	 * - Class H: args arriving as null / an array / a non-object → {}
+	 * - Class D: language_code / languageCode / lang → language
+	 * - Class C: decomposed book + chapter + verse → a single `reference`
+	 * - Class B: term / word / moduleId / topic → `path` (for path-required tools)
+	 */
+	private normalizeArgs(
+		toolName: string,
+		requiredParams: string[],
+		rawArgs: any
+	): Record<string, any> {
+		// Class H — coerce any non-plain-object container to an empty object.
+		const args: Record<string, any> =
+			rawArgs && typeof rawArgs === 'object' && !Array.isArray(rawArgs) ? { ...rawArgs } : {};
+
+		// Class D — language synonyms → language.
+		if (isBlank(args.language)) {
+			const langAlias = firstNonBlank(args.language_code, args.languageCode, args.lang);
+			if (langAlias !== undefined) {
+				args.language = langAlias;
+				console.log(`[UNIFIED HANDLER] Aliased language for ${toolName}:`, langAlias);
+			}
+		}
+		delete args.language_code;
+		delete args.languageCode;
+		delete args.lang;
+
+		// Class C — decomposed book/chapter/verse → reference (only for ref tools).
+		if (requiredParams.includes('reference') && isBlank(args.reference) && !isBlank(args.book)) {
+			args.reference = assembleReference(args);
+			console.log(
+				`[UNIFIED HANDLER] Assembled reference for ${toolName} from decomposed args:`,
+				args.reference
+			);
+		}
+		if (!isBlank(args.reference)) {
+			// Strip decomposed leftovers so they don't leak into the query string.
+			for (const k of [
+				'book',
+				'chapter',
+				'verse',
+				'startChapter',
+				'start_chapter',
+				'startVerse',
+				'start_verse',
+				'endVerse',
+				'end_verse',
+				'endChapter',
+				'end_chapter'
+			]) {
+				delete args[k];
+			}
+		}
+
+		// Class B — term/word synonyms → bare `path` (path-required tools only).
+		// The endpoints resolve a bare term across all categories, so the synonym
+		// value is passed through verbatim as the path.
+		if (requiredParams.includes('path')) {
+			if (isBlank(args.path)) {
+				// Synonyms observed in prod/staging logs the model sends instead of
+				// `path`: term / word / name / article / moduleId / identifier
+				// (issue #24). `topic` is last — it's a legitimate filter on these
+				// tools, so only fall back to it when nothing clearer is present.
+				for (const k of [
+					'term',
+					'word',
+					'name',
+					'article',
+					'moduleId',
+					'module',
+					'identifier',
+					'topic'
+				]) {
+					if (!isBlank(args[k])) {
+						args.path = String(args[k]).trim();
+						if (k === 'topic') delete args.topic; // consumed the filter as the path
+						console.log(`[UNIFIED HANDLER] Aliased path for ${toolName} from ${k}:`, args.path);
+						break;
+					}
+				}
+			}
+			// `term` is a deprecated endpoint param (rejected downstream); the other
+			// synonyms aren't endpoint params either — drop any we didn't consume.
+			for (const k of ['term', 'word', 'name', 'article', 'moduleId', 'module', 'identifier'])
+				delete args[k];
+		}
+
+		return args;
+	}
+
+	/**
 	 * Handle any MCP tool call consistently
 	 */
-	async handleToolCall(toolName: string, args: any): Promise<MCPToolResponse> {
+	async handleToolCall(toolName: string, rawArgs: any): Promise<MCPToolResponse> {
 		const tool = ToolRegistry[toolName as keyof typeof ToolRegistry];
 
 		if (!tool) {
 			throw new Error(`Unknown tool: ${toolName}`);
 		}
 
-		// Log received parameters (before defaults are applied)
+		// Log received parameters (before normalization / defaults)
 		console.log(
 			`[UNIFIED HANDLER] Received parameters for ${toolName}:`,
-			JSON.stringify(args, null, 2)
+			JSON.stringify(rawArgs, null, 2)
 		);
+
+		// Normalize LLM-generated arguments (issue #24 tolerance) before validation.
+		const args = this.normalizeArgs(toolName, tool.requiredParams, rawArgs);
 
 		// Validate required parameters
 		for (const param of tool.requiredParams) {
-			if (!args[param]) {
+			if (isBlank(args[param])) {
 				throw new Error(`Missing required parameter: ${param}`);
 			}
 		}
