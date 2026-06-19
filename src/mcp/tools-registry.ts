@@ -25,11 +25,12 @@ import { ListResourcesForLanguageArgs } from "../tools/listResourcesForLanguage.
  * Kept in one place so all fetch tools stay consistent in MCP/JSON-Schema.
  */
 const REFERENCE_INPUT_DESCRIPTION =
-  "Full Bible passage in one string: the book (USFM 3-letter code like JHN, or the book title in English or the request language, e.g. John, Juan, Génesis) plus chapter and verse or verse range, or a whole chapter. " +
-  "This is not only a book code — a bare code with no chapter/verse (e.g. only 'JHN') is wrong. " +
-  'Valid examples: "JHN 3:16", "John 3:16", "Juan 3:16" (use language: es), "GEN 1:1-3", "MAT 5" (entire chapter), "1 Corinthians 13:4-7". ' +
-  'Full English/localized book names and multi-digit chapters (e.g. "Mark 10:25") are accepted. ' +
-  "You may also send the parts separately as book + chapter + verse and they will be combined into one reference.";
+  "REQUIRED. Pass the whole passage as ONE string here — do NOT split it into separate book/chapter/verse fields. " +
+  "Format: book + chapter:verse (or verse range, or a whole chapter). The book may be a USFM 3-letter code (JHN), " +
+  "a full English title (John, Genesis), or the title in the request language (Juan, Génesis with language: es). " +
+  "A bare book code with no chapter/verse (e.g. only 'JHN') is NOT a valid reference. " +
+  'Valid examples: "John 3:16", "JHN 3:16", "Juan 3:16" (language: es), "GEN 1:1-3", "MAT 5" (entire chapter), "1 Corinthians 13:4-7". ' +
+  'Full/localized book names and multi-digit chapters (e.g. "Mark 10:25") are accepted.';
 
 /**
  * Tolerated-argument fields advertised on the input schemas (issue #24).
@@ -56,24 +57,33 @@ const LANGUAGE_ALIAS_FIELDS = {
   lang: z.string().optional().describe("Alias for `language`."),
 };
 
-/** Reference tools: decomposed book/chapter/verse + language aliases; `reference` becomes optional. */
+/**
+ * Reference tools: `reference` is the canonical (preferred) field. The
+ * decomposed book/chapter/verse fields are a FALLBACK kept only so strict
+ * schema-aware clients that already split a passage are still accepted — the
+ * server reassembles them into a single `reference` (issue #24). New callers
+ * should always send `reference`. `reference` is advertised optional only so
+ * the decomposed fallback can satisfy the requirement instead.
+ */
+const FALLBACK_DECOMPOSED_NOTE =
+  "Fallback only — prefer sending the whole passage in `reference`. If present, this is reassembled into a single `reference` server-side.";
 const REFERENCE_TOLERANCE_FIELDS = {
   reference: z.string().optional().describe(REFERENCE_INPUT_DESCRIPTION),
   book: z
     .string()
     .optional()
     .describe(
-      "Decomposed reference: book (USFM code or English/localized name). Combined with chapter/verse into a single `reference`. Prefer sending the whole `reference` string instead.",
+      `Book (USFM code or English/localized name). ${FALLBACK_DECOMPOSED_NOTE}`,
     ),
   chapter: intOrString()
     .optional()
-    .describe("Decomposed reference: chapter number."),
+    .describe(`Chapter number. ${FALLBACK_DECOMPOSED_NOTE}`),
   verse: intOrString()
     .optional()
-    .describe("Decomposed reference: verse number."),
+    .describe(`Verse number. ${FALLBACK_DECOMPOSED_NOTE}`),
   endVerse: intOrString()
     .optional()
-    .describe("Decomposed reference: end verse for a range."),
+    .describe(`End verse for a range. ${FALLBACK_DECOMPOSED_NOTE}`),
   ...LANGUAGE_ALIAS_FIELDS,
 };
 
@@ -91,6 +101,7 @@ const PATH_TOLERANCE_FIELDS = {
   moduleId: z.string().optional().describe("Alias for `path`."),
   module: z.string().optional().describe("Alias for `path`."),
   identifier: z.string().optional().describe("Alias for `path`."),
+  id: z.string().optional().describe("Alias for `path`."),
 };
 
 /**

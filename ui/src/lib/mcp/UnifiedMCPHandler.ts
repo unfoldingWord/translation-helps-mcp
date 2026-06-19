@@ -18,27 +18,85 @@ function firstNonBlank(...vals: unknown[]): unknown {
 	return undefined;
 }
 
-/**
- * Assemble a single `reference` string from decomposed book/chapter/verse args
- * (issue #24 Class C). The model sometimes sends {book,chapter,verse} instead of
- * one reference; the endpoints only accept a reference string.
- */
-function assembleReference(a: Record<string, any>): string {
-	const book = String(a.book).trim();
-	const chapter = firstNonBlank(a.chapter, a.startChapter, a.start_chapter);
-	const verse = firstNonBlank(a.verse, a.startVerse, a.start_verse);
-	const endVerse = firstNonBlank(a.endVerse, a.end_verse);
-	const endChapter = firstNonBlank(a.endChapter, a.end_chapter);
+/** Normalize an arg key for structural matching: drop _, -, spaces; lowercase. */
+function normKey(k: string): string {
+	return k.replace(/[_\s-]/g, '').toLowerCase();
+}
 
-	let ref = book;
-	if (!isBlank(chapter)) {
-		ref += ` ${String(chapter).trim()}`;
-		if (!isBlank(verse)) {
-			ref += `:${String(verse).trim()}`;
-			if (!isBlank(endVerse)) ref += `-${String(endVerse).trim()}`;
-		} else if (!isBlank(endChapter)) {
+type RefPart = 'book' | 'chapter' | 'verse' | 'endVerse' | 'endChapter';
+
+/**
+ * Classify an arg key as a decomposed-reference part by its STRUCTURE, not by
+ * matching a fixed list of names (issue #24 Class C).
+ *
+ * The first fix only matched the literal key `book` — but real production
+ * traffic spells the book a dozen ways (`book_id`, `bookId`, `book_code`, …),
+ * so it missed ~95% of decomposed calls. The fix is to match structurally:
+ *
+ *  - `book` is the high-variance dimension, so any key whose normalized form
+ *    STARTS WITH `book` (book, bookId, book_code, bookName, bookUsfm, …) is the
+ *    book. This is robust to permutations we have not seen yet.
+ *  - chapter/verse have no observed variance, so they use prefix matches that
+ *    cannot collide with unrelated params: `startsWith('verse')` does NOT match
+ *    `version` (`'version'.startsWith('verse')` is false). The range start/end
+ *    bounds are checked first so they are not swallowed by the plain cases.
+ *
+ * Returns the canonical part name, or null if the key is not a reference part.
+ */
+function classifyRefPart(nk: string): RefPart | null {
+	if (nk.startsWith('book')) return 'book';
+	if (nk.startsWith('endverse') || nk === 'verseend') return 'endVerse';
+	if (nk.startsWith('endchapter') || nk === 'chapterend') return 'endChapter';
+	// Range start bounds collapse onto the primary chapter/verse.
+	if (nk.startsWith('startchapter') || nk.startsWith('fromchapter')) return 'chapter';
+	if (nk.startsWith('startverse') || nk.startsWith('fromverse')) return 'verse';
+	if (nk.startsWith('chapter') || nk === 'chap') return 'chapter';
+	if (nk.startsWith('verse') || nk === 'v') return 'verse';
+	return null;
+}
+
+interface DecomposedRef {
+	parts: Partial<Record<RefPart, unknown>>;
+	/** Every original arg key that was classified as a reference part. */
+	consumedKeys: string[];
+}
+
+/**
+ * Structurally collect decomposed reference parts from arbitrary arg keys
+ * (issue #24 Class C). Scans every key once; first non-blank value wins per
+ * part. `reference` itself is never treated as a part.
+ */
+function collectDecomposedRef(args: Record<string, any>): DecomposedRef {
+	const parts: Partial<Record<RefPart, unknown>> = {};
+	const consumedKeys: string[] = [];
+	for (const k of Object.keys(args)) {
+		if (k === 'reference') continue;
+		const part = classifyRefPart(normKey(k));
+		if (!part) continue;
+		consumedKeys.push(k);
+		if (parts[part] === undefined && !isBlank(args[k])) {
+			parts[part] = args[k];
+		}
+	}
+	return { parts, consumedKeys };
+}
+
+/**
+ * Assemble a single `reference` string from collected decomposed parts
+ * (issue #24 Class C). The model sometimes sends the passage split across
+ * book/chapter/verse keys instead of one reference; the endpoints only accept
+ * a reference string.
+ */
+function assembleReference(parts: Partial<Record<RefPart, unknown>>): string {
+	let ref = String(parts.book).trim();
+	if (!isBlank(parts.chapter)) {
+		ref += ` ${String(parts.chapter).trim()}`;
+		if (!isBlank(parts.verse)) {
+			ref += `:${String(parts.verse).trim()}`;
+			if (!isBlank(parts.endVerse)) ref += `-${String(parts.endVerse).trim()}`;
+		} else if (!isBlank(parts.endChapter)) {
 			// Whole-chapter range, e.g. {book:"Titus",chapter:1,endChapter:2} → "Titus 1-2"
-			ref += `-${String(endChapter).trim()}`;
+			ref += `-${String(parts.endChapter).trim()}`;
 		}
 	}
 	return ref;
@@ -91,8 +149,11 @@ export class UnifiedMCPHandler {
 	 *
 	 * - Class H: args arriving as null / an array / a non-object → {}
 	 * - Class D: language_code / languageCode / lang → language
-	 * - Class C: decomposed book + chapter + verse → a single `reference`
-	 * - Class B: term / word / moduleId / topic → `path` (for path-required tools)
+	 * - Class C: decomposed reference parts → a single `reference`. Matched
+	 *            STRUCTURALLY (any `book*` key, e.g. book_id/bookId/book_code),
+	 *            not against a fixed name list — see classifyRefPart().
+	 * - Class B: term / word / name / article / moduleId / id / topic → `path`
+	 *            (for path-required tools)
 	 */
 	private normalizeArgs(
 		toolName: string,
@@ -116,29 +177,21 @@ export class UnifiedMCPHandler {
 		delete args.lang;
 
 		// Class C — decomposed book/chapter/verse → reference (only for ref tools).
-		if (requiredParams.includes('reference') && isBlank(args.reference) && !isBlank(args.book)) {
-			args.reference = assembleReference(args);
-			console.log(
-				`[UNIFIED HANDLER] Assembled reference for ${toolName} from decomposed args:`,
-				args.reference
-			);
-		}
-		if (!isBlank(args.reference)) {
-			// Strip decomposed leftovers so they don't leak into the query string.
-			for (const k of [
-				'book',
-				'chapter',
-				'verse',
-				'startChapter',
-				'start_chapter',
-				'startVerse',
-				'start_verse',
-				'endVerse',
-				'end_verse',
-				'endChapter',
-				'end_chapter'
-			]) {
-				delete args[k];
+		// Structural: catches book/book_id/bookId/book_code/… (any "book*" key),
+		// not just the literal `book` the first fix matched (issue #24 root cause).
+		if (requiredParams.includes('reference')) {
+			const { parts, consumedKeys } = collectDecomposedRef(args);
+			if (isBlank(args.reference) && !isBlank(parts.book)) {
+				args.reference = assembleReference(parts);
+				console.log(
+					`[UNIFIED HANDLER] Assembled reference for ${toolName} from decomposed args:`,
+					args.reference
+				);
+			}
+			// Once a reference exists (assembled or supplied), strip the decomposed
+			// leftovers so they don't leak into the query string.
+			if (!isBlank(args.reference)) {
+				for (const k of consumedKeys) delete args[k];
 			}
 		}
 
@@ -148,7 +201,7 @@ export class UnifiedMCPHandler {
 		if (requiredParams.includes('path')) {
 			if (isBlank(args.path)) {
 				// Synonyms observed in prod/staging logs the model sends instead of
-				// `path`: term / word / name / article / moduleId / identifier
+				// `path`: term / word / name / article / moduleId / identifier / id
 				// (issue #24). `topic` is last — it's a legitimate filter on these
 				// tools, so only fall back to it when nothing clearer is present.
 				for (const k of [
@@ -159,6 +212,7 @@ export class UnifiedMCPHandler {
 					'moduleId',
 					'module',
 					'identifier',
+					'id',
 					'topic'
 				]) {
 					if (!isBlank(args[k])) {
@@ -171,7 +225,7 @@ export class UnifiedMCPHandler {
 			}
 			// `term` is a deprecated endpoint param (rejected downstream); the other
 			// synonyms aren't endpoint params either — drop any we didn't consume.
-			for (const k of ['term', 'word', 'name', 'article', 'moduleId', 'module', 'identifier'])
+			for (const k of ['term', 'word', 'name', 'article', 'moduleId', 'module', 'identifier', 'id'])
 				delete args[k];
 		}
 

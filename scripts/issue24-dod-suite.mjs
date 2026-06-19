@@ -68,9 +68,23 @@ const CASES = [
 	{ cls: 'B', name: 'academy term=figs-metaphor (alias term→path)', tool: 'fetch_translation_academy', args: { term: 'figs-metaphor', language: 'en' }, kind: 'ok', expectText: 'etaphor' },
 
 	// ── Class C: decomposed book+chapter+verse → reference ────────────────
-	{ cls: 'C', name: 'notes decomposed 1CO 15:58', tool: 'fetch_translation_notes', args: { book: '1CO', chapter: 15, verse: 58, language: 'en' }, kind: 'data', minItems: 1 },
-	{ cls: 'C', name: 'word_links decomposed John 3:16', tool: 'fetch_translation_word_links', args: { book: 'John', chapter: 3, verse: 16, language: 'en' }, kind: 'data', minItems: 1 },
-	{ cls: 'C', name: 'questions decomposed Mark 10:23', tool: 'fetch_translation_questions', args: { book: 'Mark', chapter: 10, verse: 23, language: 'en' }, kind: 'data', minItems: 1 },
+	// The literal `book` key (what the first fix handled and the only shape the
+	// old suite tested — hence the false 36/36 confidence while prod stayed broken).
+	{ cls: 'C', name: 'notes decomposed {book} 1CO 15:58', tool: 'fetch_translation_notes', args: { book: '1CO', chapter: 15, verse: 58, language: 'en' }, kind: 'data', minItems: 1 },
+	{ cls: 'C', name: 'word_links decomposed {book} John 3:16', tool: 'fetch_translation_word_links', args: { book: 'John', chapter: 3, verse: 16, language: 'en' }, kind: 'data', minItems: 1 },
+	{ cls: 'C', name: 'questions decomposed {book} Mark 10:23', tool: 'fetch_translation_questions', args: { book: 'Mark', chapter: 10, verse: 23, language: 'en' }, kind: 'data', minItems: 1 },
+
+	// ── Class C (structural): the REAL prod key spellings (issue #24 root cause) ──
+	// These are the verbatim shapes from the 24h prod log that the book-only fix
+	// MISSED. The structural classifier must catch every "book*" key variant.
+	{ cls: 'C-key', name: 'notes {book_id} 2TH 3:13', tool: 'fetch_translation_notes', args: { book_id: '2TH', chapter: 3, verse: 13, language: 'en' }, kind: 'resolves' },
+	{ cls: 'C-key', name: 'notes {book_code} MAT 6:25', tool: 'fetch_translation_notes', args: { book_code: 'MAT', chapter: 6, verse: 25, language: 'en' }, kind: 'data', minItems: 1 },
+	{ cls: 'C-key', name: 'notes {bookId} MAT 6:5', tool: 'fetch_translation_notes', args: { bookId: 'MAT', language: 'en', chapter: 6, verse: 5 }, kind: 'data', minItems: 1 },
+	{ cls: 'C-key', name: 'word_links {book_id} 1JN 3:10', tool: 'fetch_translation_word_links', args: { book_id: '1JN', chapter: 3, verse: 10, language: 'en' }, kind: 'data', minItems: 1 },
+	{ cls: 'C-key', name: 'questions {bookId} Mark 10:23', tool: 'fetch_translation_questions', args: { bookId: 'Mark', chapter: 10, verse: 23, language: 'en' }, kind: 'data', minItems: 1 },
+	{ cls: 'C-key', name: 'notes chapter-only {book_id} 1TI 2', tool: 'fetch_translation_notes', args: { book_id: '1TI', chapter: 2, language: 'en' }, kind: 'data', minItems: 1 },
+	// expectText would match the VERSE CONTENT, not the book name — assert returned scripture data instead.
+	{ cls: 'C-key', name: 'scripture {book_id} JHN 3:16', tool: 'fetch_scripture', args: { book_id: 'JHN', chapter: 3, verse: 16, language: 'en' }, kind: 'data', minItems: 1 },
 
 	// ── Class D: language_code alias → language ──────────────────────────
 	{ cls: 'D', name: 'list_resources language_code=en', tool: 'list_resources_for_language', args: { language_code: 'en' }, kind: 'ok', expectText: 'en' },
@@ -103,7 +117,10 @@ const CASES = [
 	{ cls: 'PROD', name: '#8 notes {reference:"EZK 36:25-27"} (parse fixed; verse no-data)', tool: 'fetch_translation_notes', args: { reference: 'EZK 36:25-27' }, kind: 'resolves' },
 	{ cls: 'PROD', name: '#9 notes {reference:"Ruth 3:9",language:"pt"}', tool: 'fetch_translation_notes', args: { reference: 'Ruth 3:9', language: 'pt' }, kind: 'resolves' },
 	// Straggler found in staging A/B logs: model used `article` as the path synonym.
-	{ cls: 'PROD', name: 'academy {article:"translate-names"} (alias article→path)', tool: 'fetch_translation_academy', args: { article: 'translate-names' }, kind: 'ok', expectText: 'name' }
+	{ cls: 'PROD', name: 'academy {article:"translate-names"} (alias article→path)', tool: 'fetch_translation_academy', args: { article: 'translate-names' }, kind: 'ok', expectText: 'name' },
+	// Straggler from 24h prod log: model used `id` as the academy path synonym.
+	{ cls: 'PROD', name: 'academy {id:"figs-synecdoche"} (alias id→path)', tool: 'fetch_translation_academy', args: { id: 'figs-synecdoche' }, kind: 'resolves' },
+	{ cls: 'PROD', name: 'word {id:"grace"} (alias id→path)', tool: 'fetch_translation_word', args: { id: 'grace' }, kind: 'ok', expectText: 'grace' }
 ];
 
 async function callTool(tool, args) {
