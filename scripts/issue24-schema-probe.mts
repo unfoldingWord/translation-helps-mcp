@@ -28,9 +28,29 @@ for (const t of ['fetch_scripture', 'fetch_translation_notes', 'fetch_translatio
 		fail++;
 	}
 }
-// path tools: aliases present
-check('fetch_translation_word', ['path', 'term', 'word', 'name', 'article', 'moduleId', 'identifier']);
-check('fetch_translation_academy', ['path', 'term', 'name', 'article', 'moduleId', 'identifier']);
+// path tools: aliases present (incl. language aliases)
+check('fetch_translation_word', ['path', 'term', 'word', 'name', 'article', 'moduleId', 'identifier', 'language_code', 'languageCode', 'lang']);
+check('fetch_translation_academy', ['path', 'term', 'name', 'article', 'moduleId', 'identifier', 'language_code', 'languageCode', 'lang']);
+
+// required-language tool: language must be optional + aliases advertised (Class D DoD shape)
+check('list_resources_for_language', ['language', 'language_code', 'languageCode', 'lang']);
+{
+	const s: any = zodToJsonSchema(tools['list_resources_for_language'].inputSchema, { $refStrategy: 'none' });
+	if ((s.required || []).includes('language')) {
+		console.log('   FAIL: list_resources_for_language still requires `language`');
+		fail++;
+	}
+}
+check('list_subjects', ['language_code', 'languageCode', 'lang']);
+
+// No tool may advertise additionalProperties:false (handler tolerates extras everywhere).
+for (const name of Object.keys(tools)) {
+	const s: any = zodToJsonSchema(tools[name].inputSchema, { $refStrategy: 'none' });
+	if (s.additionalProperties === false) {
+		console.log(`FAIL  ${name}: additionalProperties === false`);
+		fail++;
+	}
+}
 
 console.log('\n' + (fail ? `${fail} FAILURES` : 'ALL SCHEMA CHECKS PASS'));
 process.exit(fail ? 1 : 0);

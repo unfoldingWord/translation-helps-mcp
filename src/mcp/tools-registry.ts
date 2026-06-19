@@ -43,7 +43,20 @@ const REFERENCE_INPUT_DESCRIPTION =
  */
 const intOrString = () => z.union([z.string(), z.number()]);
 
-/** Reference tools: decomposed book/chapter/verse + `language_code`; `reference` becomes optional. */
+/**
+ * Language synonyms the handler normalizes to `language` for EVERY tool
+ * (issue #24 Class D). Advertised on every tool that takes `language`.
+ */
+const LANGUAGE_ALIAS_FIELDS = {
+  language_code: z
+    .string()
+    .optional()
+    .describe("Alias for `language` (BCP-47 tag)."),
+  languageCode: z.string().optional().describe("Alias for `language`."),
+  lang: z.string().optional().describe("Alias for `language`."),
+};
+
+/** Reference tools: decomposed book/chapter/verse + language aliases; `reference` becomes optional. */
 const REFERENCE_TOLERANCE_FIELDS = {
   reference: z.string().optional().describe(REFERENCE_INPUT_DESCRIPTION),
   book: z
@@ -61,10 +74,7 @@ const REFERENCE_TOLERANCE_FIELDS = {
   endVerse: intOrString()
     .optional()
     .describe("Decomposed reference: end verse for a range."),
-  language_code: z
-    .string()
-    .optional()
-    .describe("Alias for `language` (BCP-47 tag)."),
+  ...LANGUAGE_ALIAS_FIELDS,
 };
 
 /** Word/Academy tools: the `path` synonyms the server accepts and normalizes. */
@@ -147,9 +157,10 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
         'Identify the term with `path` — preferably the value from `externalReference` in a fetch_translation_word_links response (e.g. "bible/kt/love") — ' +
         'but a plain term name also works: send `path: "love"`, or `term`/`word: "love"` and it is resolved across all categories (kt/names/other). ' +
         "No file extensions.",
-      inputSchema: GetTranslationWordArgs.extend(
-        PATH_TOLERANCE_FIELDS,
-      ).passthrough(),
+      inputSchema: GetTranslationWordArgs.extend({
+        ...PATH_TOLERANCE_FIELDS,
+        ...LANGUAGE_ALIAS_FIELDS,
+      }).passthrough(),
     },
     {
       name: "fetch_translation_academy",
@@ -158,33 +169,42 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
         'Identify the article with `path` — preferably the value from `externalReference` in a fetch_translation_notes response (e.g. "translate/figs-metaphor") — ' +
         'but a plain module id also works: send `path: "figs-metaphor"`, or `term`/`moduleId: "figs-metaphor"` and it is resolved across categories. ' +
         "No file extensions.",
-      inputSchema: FetchTranslationAcademyArgs.extend(
-        PATH_TOLERANCE_FIELDS,
-      ).passthrough(),
+      inputSchema: FetchTranslationAcademyArgs.extend({
+        ...PATH_TOLERANCE_FIELDS,
+        ...LANGUAGE_ALIAS_FIELDS,
+      }).passthrough(),
     },
     {
       name: "list_tools",
       description:
         "List all available MCP tools with their schemas and descriptions. Use this to discover what translation helps tools are available.",
-      inputSchema: z.object({}).describe("No parameters required"),
+      // passthrough so additionalProperties is not false (the handler tolerates extra args on every tool)
+      inputSchema: z
+        .object({})
+        .passthrough()
+        .describe("No parameters required"),
     },
     {
       name: "list_languages",
       description:
         "List available Bible translation languages with codes and names. All Door43 organizations are searched automatically.",
-      inputSchema: ListLanguagesArgs,
+      inputSchema: ListLanguagesArgs.passthrough(),
     },
     {
       name: "list_subjects",
       description:
         "List available resource types (Bibles, notes, questions, terms, training) to discover what translation helps exist.",
-      inputSchema: ListSubjectsArgs,
+      inputSchema: ListSubjectsArgs.extend(LANGUAGE_ALIAS_FIELDS).passthrough(),
     },
     {
       name: "list_resources_for_language",
       description:
         "List all translation resources for a specific language organized by type. Automatically falls back to language variants if base language has no resources (e.g., 'es' → 'es-419'). Recommended workflow: 1) list_languages to find codes, 2) this tool to see available resources, 3) fetch tools to get content.",
-      inputSchema: ListResourcesForLanguageArgs,
+      // `language` is required by the handler, but `language_code`/`languageCode`/`lang`
+      // are normalized to it first — so advertise it as optional with the aliases.
+      inputSchema: ListResourcesForLanguageArgs.partial({ language: true })
+        .extend(LANGUAGE_ALIAS_FIELDS)
+        .passthrough(),
     },
   ];
 }
