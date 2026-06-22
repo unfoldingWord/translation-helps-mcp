@@ -41,6 +41,14 @@ const PROBES: Probe[] = [
 	{ name: 'version NOT eaten as verse', tool: 'fetch_scripture', args: { book: 'GEN', chapter: 1, verse: 1, version: 'ult', language: 'en' }, want: ['reference=GEN 1:1', 'version=ult'] },
 	{ name: 'academy {id} alias→path', tool: 'fetch_translation_academy', args: { id: 'figs-synecdoche', language: 'en' }, want: ['path=figs-synecdoche'], notWant: ['id='] },
 	{ name: 'word {id} alias→path', tool: 'fetch_translation_word', args: { id: 'grace', language: 'en' }, want: ['path=grace'] },
+	// issue #28 — structural `_id`-suffixed path synonyms (verbatim prod shapes).
+	{ name: 'word {word_id} alias→path', tool: 'fetch_translation_word', args: { word_id: 'love', language: 'en' }, want: ['path=love'], notWant: ['word_id', 'word='] },
+	{ name: 'word {wordId} alias→path', tool: 'fetch_translation_word', args: { wordId: 'grace', language: 'en' }, want: ['path=grace'], notWant: ['wordId'] },
+	{ name: 'academy {article_id} alias→path', tool: 'fetch_translation_academy', args: { article_id: 'figs-activepassive', language: 'en' }, want: ['path=figs-activepassive'], notWant: ['article_id'] },
+	{ name: 'academy {articleId} alias→path', tool: 'fetch_translation_academy', args: { articleId: 'figs-metaphor', language: 'en' }, want: ['path=figs-metaphor'], notWant: ['articleId'] },
+	{ name: 'word {term_id} alias→path (generalization)', tool: 'fetch_translation_word', args: { term_id: 'faith', language: 'en' }, want: ['path=faith'], notWant: ['term_id'] },
+	{ name: 'word {uuid} NOT eaten as path; word wins', tool: 'fetch_translation_word', args: { uuid: 'x', word: 'love', language: 'en' }, want: ['path=love'], notWant: ['path=x'] },
+	{ name: 'word {path} canonical unchanged (control)', tool: 'fetch_translation_word', args: { path: 'bible/kt/love', language: 'en' }, want: ['path=bible/kt/love'] },
 ];
 
 let fail = 0;

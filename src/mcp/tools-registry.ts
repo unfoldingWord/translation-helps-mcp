@@ -167,6 +167,7 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
         "Fetch the dictionary article for a biblical term (e.g. grace, love, Abraham, covenant). " +
         'Identify the term with `path` — preferably the value from `externalReference` in a fetch_translation_word_links response (e.g. "bible/kt/love") — ' +
         'but a plain term name also works: send `path: "love"`, or `term`/`word: "love"` and it is resolved across all categories (kt/names/other). ' +
+        "`<synonym>_id`/`<synonym>Id` forms (e.g. `word_id`, `wordId`) are also accepted, but `path` is preferred. " +
         "No file extensions.",
       inputSchema: GetTranslationWordArgs.extend({
         ...PATH_TOLERANCE_FIELDS,
@@ -179,6 +180,7 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
         "Fetch Translation Academy training articles teaching translation principles, methods, and techniques. " +
         'Identify the article with `path` — preferably the value from `externalReference` in a fetch_translation_notes response (e.g. "translate/figs-metaphor") — ' +
         'but a plain module id also works: send `path: "figs-metaphor"`, or `term`/`moduleId: "figs-metaphor"` and it is resolved across categories. ' +
+        "`<synonym>_id`/`<synonym>Id` forms (e.g. `article_id`, `articleId`) are also accepted, but `path` is preferred. " +
         "No file extensions.",
       inputSchema: FetchTranslationAcademyArgs.extend({
         ...PATH_TOLERANCE_FIELDS,
