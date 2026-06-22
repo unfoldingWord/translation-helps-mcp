@@ -86,6 +86,16 @@ const CASES = [
 	// expectText would match the VERSE CONTENT, not the book name — assert returned scripture data instead.
 	{ cls: 'C-key', name: 'scripture {book_id} JHN 3:16', tool: 'fetch_scripture', args: { book_id: 'JHN', chapter: 3, verse: 16, language: 'en' }, kind: 'data', minItems: 1 },
 
+	// ── Class B (structural): `_id`-suffixed path synonyms (issue #28) ───
+	// Verbatim shapes from the 24h post-#27 prod log that the fixed-list path
+	// match MISSED. classifyPathSynonym must resolve every `<synonym>_id`/Id form.
+	{ cls: 'B-id', name: 'word {word_id:"love"} (alias word_id→path)', tool: 'fetch_translation_word', args: { word_id: 'love', language: 'en' }, kind: 'ok', expectText: 'love' },
+	{ cls: 'B-id', name: 'word {wordId:"grace"} (camelCase)', tool: 'fetch_translation_word', args: { wordId: 'grace', language: 'en' }, kind: 'ok', expectText: 'grace' },
+	{ cls: 'B-id', name: 'academy {article_id:"figs-activepassive"}', tool: 'fetch_translation_academy', args: { article_id: 'figs-activepassive', language: 'en' }, kind: 'resolves' },
+	{ cls: 'B-id', name: 'academy {articleId:"figs-metaphor"} (camelCase)', tool: 'fetch_translation_academy', args: { articleId: 'figs-metaphor', language: 'en' }, kind: 'ok', expectText: 'etaphor' },
+	{ cls: 'B-id', name: 'word {term_id:"faith"} (generalization)', tool: 'fetch_translation_word', args: { term_id: 'faith', language: 'en' }, kind: 'resolves' },
+	{ cls: 'B-id', name: 'word {uuid,word:"love"} (uuid NOT consumed as path)', tool: 'fetch_translation_word', args: { uuid: 'x', word: 'love', language: 'en' }, kind: 'ok', expectText: 'love' },
+
 	// ── Class D: language_code alias → language ──────────────────────────
 	{ cls: 'D', name: 'list_resources language_code=en', tool: 'list_resources_for_language', args: { language_code: 'en' }, kind: 'ok', expectText: 'en' },
 

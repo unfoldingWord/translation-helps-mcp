@@ -55,6 +55,36 @@ function classifyRefPart(nk: string): RefPart | null {
 	return null;
 }
 
+/** Canonical bare-`path` synonyms (issue #24 Class B). `topic` is excluded — it
+ *  is a legitimate filter on these tools, handled only as a last-resort fallback. */
+const PATH_SYNONYMS = new Set([
+	'term',
+	'word',
+	'name',
+	'article',
+	'module',
+	'moduleid',
+	'identifier'
+]);
+
+/**
+ * Classify an arg key as a `path` synonym STRUCTURALLY (issue #24 Round 3 / #28),
+ * returning its canonical base or null. Catches `<synonym>_id` / `<synonym>Id`
+ * (word_id, wordId, article_id, …) the model emits without enumerating every
+ * spelling — same principle as classifyRefPart() for `book*`. `nk` is normKey(key).
+ *
+ * The trailing `id` is only stripped when the remainder is a known synonym, so it
+ * cannot misfire: `uuid` → `uu` ∉ set → ignored; `identifier` is matched whole.
+ */
+function classifyPathSynonym(nk: string): string | null {
+	if (nk === 'id') return 'id'; // bare id
+	if (PATH_SYNONYMS.has(nk)) return nk; // term/word/name/article/module/moduleid/identifier
+	if (nk.endsWith('id') && PATH_SYNONYMS.has(nk.slice(0, -2))) {
+		return nk.slice(0, -2); // word_id->word, article_id->article, term_id->term
+	}
+	return null;
+}
+
 interface DecomposedRef {
 	parts: Partial<Record<RefPart, unknown>>;
 	/** Every original arg key that was classified as a reference part. */
@@ -153,7 +183,9 @@ export class UnifiedMCPHandler {
 	 *            STRUCTURALLY (any `book*` key, e.g. book_id/bookId/book_code),
 	 *            not against a fixed name list — see classifyRefPart().
 	 * - Class B: term / word / name / article / moduleId / id / topic → `path`
-	 *            (for path-required tools)
+	 *            (for path-required tools). Matched STRUCTURALLY, so `<synonym>_id`
+	 *            / `<synonym>Id` (word_id, article_id, …) resolve too — see
+	 *            classifyPathSynonym().
 	 */
 	private normalizeArgs(
 		toolName: string,
@@ -197,36 +229,49 @@ export class UnifiedMCPHandler {
 
 		// Class B — term/word synonyms → bare `path` (path-required tools only).
 		// The endpoints resolve a bare term across all categories, so the synonym
-		// value is passed through verbatim as the path.
+		// value is passed through verbatim as the path. Synonyms are matched
+		// STRUCTURALLY (classifyPathSynonym), so `<synonym>_id`/`<synonym>Id`
+		// spellings the model emits (word_id, article_id, …) resolve too — issue #28.
 		if (requiredParams.includes('path')) {
 			if (isBlank(args.path)) {
-				// Synonyms observed in prod/staging logs the model sends instead of
-				// `path`: term / word / name / article / moduleId / identifier / id
-				// (issue #24). `topic` is last — it's a legitimate filter on these
-				// tools, so only fall back to it when nothing clearer is present.
-				for (const k of [
+				// Map each canonical synonym to the model's original arg key (first
+				// non-blank wins). Then pick by priority — the model's preferred
+				// identifier wins. `topic` is NOT a synonym: it's a real filter, used
+				// as the path only as a last resort when nothing clearer is present.
+				const bySyn = new Map<string, string>();
+				for (const k of Object.keys(args)) {
+					const syn = classifyPathSynonym(normKey(k));
+					if (syn && !isBlank(args[k]) && !bySyn.has(syn)) bySyn.set(syn, k);
+				}
+				const PRIORITY = [
 					'term',
 					'word',
 					'name',
 					'article',
-					'moduleId',
 					'module',
+					'moduleid',
 					'identifier',
-					'id',
-					'topic'
-				]) {
-					if (!isBlank(args[k])) {
+					'id'
+				];
+				for (const syn of PRIORITY) {
+					const k = bySyn.get(syn);
+					if (k) {
 						args.path = String(args[k]).trim();
-						if (k === 'topic') delete args.topic; // consumed the filter as the path
 						console.log(`[UNIFIED HANDLER] Aliased path for ${toolName} from ${k}:`, args.path);
 						break;
 					}
 				}
+				if (isBlank(args.path) && !isBlank(args.topic)) {
+					args.path = String(args.topic).trim();
+					delete args.topic; // consumed the filter as the path
+					console.log(`[UNIFIED HANDLER] Aliased path for ${toolName} from topic:`, args.path);
+				}
 			}
-			// `term` is a deprecated endpoint param (rejected downstream); the other
-			// synonyms aren't endpoint params either — drop any we didn't consume.
-			for (const k of ['term', 'word', 'name', 'article', 'moduleId', 'module', 'identifier', 'id'])
-				delete args[k];
+			// These synonyms aren't endpoint params (`term` is a rejected deprecated
+			// one); strip any consumed key so it doesn't leak into the query string.
+			for (const k of Object.keys(args)) {
+				if (k !== 'path' && classifyPathSynonym(normKey(k)) !== null) delete args[k];
+			}
 		}
 
 		return args;
