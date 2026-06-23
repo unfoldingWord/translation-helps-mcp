@@ -135,6 +135,23 @@ describe("buildResourceUnavailableResult", () => {
     expect(body.requestedLanguage).toBe("qaa");
   });
 
+  it("strips an inline (Trace: {...}) blob from the message", () => {
+    const err = {
+      code: "RESOURCE_NOT_AVAILABLE",
+      status: 404,
+      message:
+        "Translation word 'xyz' not found.\n\nPlease try one of these instead. " +
+        '(Trace: {"traceId":"tw-1","apiCalls":[{"url":"internal://x","status":404}]})',
+    };
+    const body = JSON.parse(
+      buildResourceUnavailableResult(err)!.content![0].text,
+    );
+    expect(body.message).toBe(
+      "Translation word 'xyz' not found.\n\nPlease try one of these instead.",
+    );
+    expect(body.message).not.toMatch(/Trace:/);
+  });
+
   it("returns null for a genuine failure (no 404 / not-available code)", () => {
     expect(buildResourceUnavailableResult(new Error("boom"))).toBeNull();
     expect(

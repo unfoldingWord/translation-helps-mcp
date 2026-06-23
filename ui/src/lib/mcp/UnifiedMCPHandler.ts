@@ -352,9 +352,15 @@ export class UnifiedMCPHandler {
 			// what surfaced to users as "the translation-helps server is down"
 			// (issue #30 / #12).
 			if (response.status === 404) {
-				const message =
+				// Some endpoints append a verbose `(Trace: {...})` X-ray blob to the
+				// error message; strip it so it doesn't ride along in this model-facing
+				// result (PR #31 review).
+				const rawMessage =
 					(errorBody && (errorBody.error || errorBody.message)) ||
 					'The requested resource is not available.';
+				const message = String(rawMessage)
+					.replace(/\s*\(Trace:\s*\{[\s\S]*\}\)\s*$/, '')
+					.trim();
 				const payload: Record<string, unknown> = {
 					available: false,
 					code: (errorBody && errorBody.code) || 'RESOURCE_NOT_AVAILABLE',

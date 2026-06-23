@@ -19,6 +19,15 @@ export function extractErrorMessage(error: unknown): string {
   if (typeof error === "string") {
     return error;
   }
+  // Plain ServiceError-shaped objects ({code, message, status}) carry the
+  // message as a property — read it rather than stringifying to "[object Object]".
+  if (
+    error &&
+    typeof error === "object" &&
+    typeof (error as { message?: unknown }).message === "string"
+  ) {
+    return (error as { message: string }).message;
+  }
   return String(error);
 }
 
@@ -67,6 +76,15 @@ const RETRY_HINT_KEYS = [
 ] as const;
 
 /**
+ * Some endpoints append a verbose `(Trace: {...})` X-ray blob to their error
+ * MESSAGE (e.g. fetch-translation-word/-academy routes). That diagnostic must
+ * not ride along in the model-facing "not available" result (PR #31 review).
+ */
+export function stripInlineDiagnostics(message: string): string {
+  return message.replace(/\s*\(Trace:\s*\{[\s\S]*\}\)\s*$/, "").trim();
+}
+
+/**
  * If the error represents a "resource not available" condition (HTTP 404 family
  * — e.g. an unpublished resource or an unavailable language) rather than a
  * server failure, return a NORMAL (isError:false) MCP result describing the
@@ -85,7 +103,7 @@ export function buildResourceUnavailableResult(
   const isNotAvailable = status === 404 || code === RESOURCE_NOT_AVAILABLE;
   if (!isNotAvailable) return null;
 
-  const message = extractErrorMessage(error);
+  const message = stripInlineDiagnostics(extractErrorMessage(error));
 
   const payload: Record<string, unknown> = {
     available: false,
