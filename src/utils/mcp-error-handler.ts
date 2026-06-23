@@ -49,15 +49,21 @@ export function extractErrorCode(error: unknown): string | undefined {
 }
 
 /**
- * Keys carrying caller-facing retry hints that should survive on a
+ * Keys carrying caller-facing recovery hints that should survive on a
  * "resource not available" result (so the model can suggest alternatives).
+ * This is an allowlist: anything NOT here (stack, endpoint/path/params,
+ * timestamps, traces) must never leak into the model-facing result (PR #31).
  */
 const RETRY_HINT_KEYS = [
   "languageVariants",
   "requestedLanguage",
   "availableVariants",
+  "baseLanguage",
   "suggestion",
   "validBookCodes",
+  "invalidCode",
+  "availableBooks",
+  "toc",
 ] as const;
 
 /**
@@ -88,11 +94,18 @@ export function buildResourceUnavailableResult(
     message,
   };
 
+  // Promote only allowlisted recovery hints — from the top level OR nested in a
+  // `details` object — and never the raw `details` blob (which may carry a stack
+  // trace or other diagnostics). See PR #31 review.
   if (error && typeof error === "object") {
     const e = error as Record<string, unknown>;
-    if (e.details !== undefined) payload.details = e.details;
+    const nested =
+      e.details && typeof e.details === "object"
+        ? (e.details as Record<string, unknown>)
+        : {};
     for (const key of RETRY_HINT_KEYS) {
-      if (e[key] !== undefined) payload[key] = e[key];
+      const value = e[key] !== undefined ? e[key] : nested[key];
+      if (value !== undefined) payload[key] = value;
     }
   }
 

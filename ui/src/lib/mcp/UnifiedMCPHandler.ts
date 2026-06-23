@@ -361,12 +361,24 @@ export class UnifiedMCPHandler {
 					status: 404,
 					message
 				};
+				// This payload IS the answer the worker/model consumes, so only promote
+				// caller-facing recovery hints. Do NOT spread the raw REST `details`,
+				// which carries diagnostics (stack, endpoint/path/params, timestamp,
+				// trace) that must not leak into a normal tool result (PR #31 review).
 				if (errorDetails && typeof errorDetails === 'object') {
-					if (Object.keys(errorDetails).length > 0) payload.details = errorDetails;
-					if (errorDetails.languageVariants)
-						payload.languageVariants = errorDetails.languageVariants;
-					if (errorDetails.requestedLanguage)
-						payload.requestedLanguage = errorDetails.requestedLanguage;
+					const CALLER_FACING = [
+						'languageVariants',
+						'requestedLanguage',
+						'availableVariants',
+						'suggestion',
+						'availableBooks',
+						'validBookCodes',
+						'invalidCode',
+						'toc'
+					];
+					for (const key of CALLER_FACING) {
+						if (errorDetails[key] !== undefined) payload[key] = errorDetails[key];
+					}
 				}
 				console.log(
 					`[UNIFIED HANDLER] Resource not available (404) for ${toolName} — returning non-error result:`,

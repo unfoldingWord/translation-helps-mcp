@@ -109,7 +109,30 @@ describe("buildResourceUnavailableResult", () => {
     expect(result!.isError).toBe(false);
     const body = JSON.parse(result!.content![0].text);
     expect(body.code).toBe("LANGUAGE_NOT_FOUND");
-    expect(body.details).toEqual({ availableVariants: ["es-419"] });
+    // Recovery hints are promoted out of nested `details` to the top level…
+    expect(body.availableVariants).toEqual(["es-419"]);
+  });
+
+  it("never leaks the raw details blob (no stack / endpoint / params)", () => {
+    const svcErr = {
+      code: "RESOURCE_NOT_AVAILABLE",
+      message: "nope",
+      status: 404,
+      details: {
+        stack: ["Error: nope", "  at foo"],
+        endpoint: "fetch-scripture-v2",
+        params: { reference: "JHN 3:16" },
+        requestedLanguage: "qaa",
+      },
+    };
+    const result = buildResourceUnavailableResult(svcErr);
+    const body = JSON.parse(result!.content![0].text);
+    expect(body.details).toBeUndefined();
+    expect(body.stack).toBeUndefined();
+    expect(body.endpoint).toBeUndefined();
+    expect(body.params).toBeUndefined();
+    // …but allowlisted recovery hints still come through.
+    expect(body.requestedLanguage).toBe("qaa");
   });
 
   it("returns null for a genuine failure (no 404 / not-available code)", () => {
