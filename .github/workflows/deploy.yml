@@ -33,7 +33,8 @@ jobs:
           cd ui && npx wrangler pages dev .svelte-kit/cloudflare --port 8788 &
           sleep 8
           curl -f http://localhost:8788/about | grep -q "About"
-          curl -f http://localhost:8788/api | grep -q "Translation Helps"
+          # Use a real API route — bare /api has no index route and 404s (issue #26)
+          curl -f http://localhost:8788/api/health | grep -q "healthy"
           status=$(curl -s -o /dev/null -w "%{http_code}" -X GET \
             -H "Accept: text/event-stream" http://localhost:8788/api/mcp)
           [ "$status" = "405" ] || (echo "GET /api/mcp expected 405, got $status" && exit 1)
