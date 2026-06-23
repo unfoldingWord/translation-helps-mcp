@@ -345,6 +345,57 @@ export class UnifiedMCPHandler {
 				console.warn('[UNIFIED HANDLER] Failed to parse error response body');
 			}
 
+			// A 404 means the requested resource isn't published/available — an
+			// EXPECTED outcome, NOT a server failure. Return it as a NORMAL
+			// (isError:false) result so downstream consumers (bt-servant-worker)
+			// don't treat it as an outage and trip their health circuit, which is
+			// what surfaced to users as "the translation-helps server is down"
+			// (issue #30 / #12).
+			if (response.status === 404) {
+				// Some endpoints append a verbose `(Trace: {...})` X-ray blob to the
+				// error message; strip it so it doesn't ride along in this model-facing
+				// result (PR #31 review).
+				const rawMessage =
+					(errorBody && (errorBody.error || errorBody.message)) ||
+					'The requested resource is not available.';
+				const message = String(rawMessage)
+					.replace(/\s*\(Trace:\s*\{[\s\S]*\}\)\s*$/, '')
+					.trim();
+				const payload: Record<string, unknown> = {
+					available: false,
+					code: (errorBody && errorBody.code) || 'RESOURCE_NOT_AVAILABLE',
+					status: 404,
+					message
+				};
+				// This payload IS the answer the worker/model consumes, so only promote
+				// caller-facing recovery hints. Do NOT spread the raw REST `details`,
+				// which carries diagnostics (stack, endpoint/path/params, timestamp,
+				// trace) that must not leak into a normal tool result (PR #31 review).
+				if (errorDetails && typeof errorDetails === 'object') {
+					const CALLER_FACING = [
+						'languageVariants',
+						'requestedLanguage',
+						'availableVariants',
+						'suggestion',
+						'availableBooks',
+						'validBookCodes',
+						'invalidCode',
+						'toc'
+					];
+					for (const key of CALLER_FACING) {
+						if (errorDetails[key] !== undefined) payload[key] = errorDetails[key];
+					}
+				}
+				console.log(
+					`[UNIFIED HANDLER] Resource not available (404) for ${toolName} — returning non-error result:`,
+					message
+				);
+				return {
+					content: [{ type: 'text', text: JSON.stringify(payload) }],
+					isError: false
+				};
+			}
+
 			// Create enhanced error with details attached (message includes API validation text for clients/tests)
 			const error: any = new Error(formatEndpointFailureMessage(response.status, errorBody));
 			error.status = response.status;

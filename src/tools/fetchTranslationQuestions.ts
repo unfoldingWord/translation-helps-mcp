@@ -6,14 +6,24 @@
 
 import { z } from "zod";
 import { logger } from "../utils/logger.js";
-import { handleMCPError } from "../utils/mcp-error-handler.js";
-import { createTranslationQuestionsService, type TranslationQuestionsParams } from "../unified-services/index.js";
+import {
+  handleMCPError,
+  buildResourceUnavailableResult,
+} from "../utils/mcp-error-handler.js";
+import {
+  createTranslationQuestionsService,
+  type TranslationQuestionsParams,
+} from "../unified-services/index.js";
 import { toZodObject, PARAMETER_GROUPS } from "../config/parameters/index.js";
 
 // Input schema - generated from unified parameter definitions
-export const FetchTranslationQuestionsArgs = toZodObject(PARAMETER_GROUPS.translationQuestions.parameters);
+export const FetchTranslationQuestionsArgs = toZodObject(
+  PARAMETER_GROUPS.translationQuestions.parameters,
+);
 
-export type FetchTranslationQuestionsArgs = z.infer<typeof FetchTranslationQuestionsArgs>;
+export type FetchTranslationQuestionsArgs = z.infer<
+  typeof FetchTranslationQuestionsArgs
+>;
 
 /**
  * Handle the fetch translation questions tool call
@@ -28,13 +38,14 @@ export async function handleFetchTranslationQuestions(
     // Create and execute unified service
     const service = createTranslationQuestionsService();
     const response = await service.execute(args as TranslationQuestionsParams, {
-      platform: 'mcp',
+      platform: "mcp",
     });
 
     // Format response for MCP
-    const textContent = typeof response.data === 'string' 
-      ? response.data 
-      : JSON.stringify(response.data, null, 2);
+    const textContent =
+      typeof response.data === "string"
+        ? response.data
+        : JSON.stringify(response.data, null, 2);
 
     return {
       content: [
@@ -47,6 +58,16 @@ export async function handleFetchTranslationQuestions(
       ...(response.metadata && { metadata: response.metadata }),
     };
   } catch (error: any) {
+    // A not-available resource (404) is an expected result, not a failure (issue #30/#12).
+    const notAvailable = buildResourceUnavailableResult(error);
+    if (notAvailable) {
+      logger.info("Translation questions resource not available", {
+        args,
+        message: error?.message,
+      });
+      return notAvailable;
+    }
+
     logger.error("Failed to fetch translation questions", { error, args });
     return handleMCPError({
       toolName: "fetch_translation_questions",

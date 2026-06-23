@@ -5,6 +5,7 @@
  */
 
 import { logger } from "../utils/logger.js";
+import { resourceNotAvailable } from "../utils/errorEnvelope.js";
 import { proxyFetch } from "../utils/httpClient.js";
 import { parseReference } from "./reference-parser";
 import { getResourceForBook, getResourcesForBook } from "./resource-detector";
@@ -104,23 +105,21 @@ async function fetchTranslationNotesFromMultipleResources(
       ["TSV Translation Notes"],
     );
 
-    // Create structured error with recovery data
-    const error: any = new Error(
+    // Valid request, resource simply isn't published → 404 RESOURCE_NOT_AVAILABLE
+    // (issue #30), NOT a server failure.
+    const message =
       languageVariants.length > 0
         ? `No translation notes found for language '${language}'.\n\nAvailable language variants: ${languageVariants.join(", ")}\n\nPlease try one of these language codes instead.`
-        : `No translation notes available for language '${language}'.`,
-    );
+        : `No translation notes available for language '${language}'.`;
 
-    // Attach structured data for automatic retry
+    const extras: Record<string, unknown> = { requestedLanguage: language };
     if (languageVariants.length > 0) {
-      error.languageVariants = languageVariants;
-      error.requestedLanguage = language;
+      extras.languageVariants = languageVariants;
       logger.info("Throwing language variant error for translation notes", {
         language,
         variants: languageVariants,
       });
     } else {
-      error.requestedLanguage = language;
       logger.info(
         "Throwing language not supported error for translation notes",
         {
@@ -129,7 +128,7 @@ async function fetchTranslationNotesFromMultipleResources(
       );
     }
 
-    throw error;
+    throw resourceNotAvailable(message, extras);
   }
 
   logger.info(
@@ -376,17 +375,16 @@ export async function fetchTranslationNotes(
     // Filter out the current language to prevent infinite retry loops
     const filteredVariants = languageVariants.filter((v) => v !== language);
 
-    // Create structured error with recovery data
-    const error: any = new Error(
+    // Valid request, resource simply isn't published → 404 RESOURCE_NOT_AVAILABLE
+    // (issue #30), NOT a server failure.
+    const message =
       filteredVariants.length > 0
         ? `No translation notes found for language '${language}'.\n\nAvailable language variants: ${filteredVariants.join(", ")}\n\nPlease try one of these language codes instead.`
-        : `No translation notes available for language '${language}'.`,
-    );
+        : `No translation notes available for language '${language}'.`;
 
-    // Attach structured data for automatic retry
+    const extras: Record<string, unknown> = { requestedLanguage: language };
     if (filteredVariants.length > 0) {
-      error.languageVariants = filteredVariants;
-      error.requestedLanguage = language;
+      extras.languageVariants = filteredVariants;
       logger.info(
         "Throwing language variant error for translation notes (single org)",
         {
@@ -396,7 +394,6 @@ export async function fetchTranslationNotes(
         },
       );
     } else {
-      error.requestedLanguage = language;
       logger.info(
         "Throwing language not supported error for translation notes (single org)",
         {
@@ -406,7 +403,7 @@ export async function fetchTranslationNotes(
       );
     }
 
-    throw error;
+    throw resourceNotAvailable(message, extras);
   }
 
   logger.info(`Using resource`, {
@@ -434,8 +431,10 @@ export async function fetchTranslationNotes(
       book: parsedRef.book,
       ingredients: resourceInfo.ingredients,
     });
-    throw new Error(
+    // The resource exists but doesn't include this book → not available (404).
+    throw resourceNotAvailable(
       `Book ${parsedRef.book} not found in resource ${resourceInfo.name}`,
+      { requestedLanguage: language },
     );
   }
 

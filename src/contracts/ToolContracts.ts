@@ -8,6 +8,12 @@ export interface MCPToolResponse {
     type: "text";
     text: string;
   }>;
+  /**
+   * MCP error flag. Omitted/false for normal results. A "resource not available"
+   * (404) outcome is returned with isError:false so consumers don't treat it as
+   * a server failure (issue #30).
+   */
+  isError?: boolean;
 }
 
 export interface ScriptureToolArgs {

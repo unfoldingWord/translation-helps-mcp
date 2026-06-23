@@ -1,16 +1,16 @@
 /**
  * Base Service Class
- * 
+ *
  * Provides common functionality for all unified services
  */
 
-import type { UnifiedParameterDef } from '../config/parameters/index.js';
+import type { UnifiedParameterDef } from "../config/parameters/index.js";
 import type {
   UnifiedService,
   ServiceResponse,
   ServiceError,
   ServiceContext,
-} from './types.js';
+} from "./types.js";
 
 /**
  * Base class for unified services
@@ -27,7 +27,7 @@ export abstract class BaseService<TParams = any, TResult = any>
    */
   abstract execute(
     params: TParams,
-    context?: ServiceContext
+    context?: ServiceContext,
   ): Promise<ServiceResponse<TResult>>;
 
   /**
@@ -35,8 +35,8 @@ export abstract class BaseService<TParams = any, TResult = any>
    */
   protected success(
     data: TResult,
-    metadata?: ServiceResponse['metadata'],
-    format?: ServiceResponse['format']
+    metadata?: ServiceResponse["metadata"],
+    format?: ServiceResponse["format"],
   ): ServiceResponse<TResult> {
     return {
       data,
@@ -52,7 +52,7 @@ export abstract class BaseService<TParams = any, TResult = any>
     code: string,
     message: string,
     details?: any,
-    status?: number
+    status?: number,
   ): ServiceError {
     const error: ServiceError = {
       code,
@@ -62,7 +62,7 @@ export abstract class BaseService<TParams = any, TResult = any>
     };
 
     // Include stack trace in development
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === "development") {
       error.stack = new Error().stack;
     }
 
@@ -72,55 +72,79 @@ export abstract class BaseService<TParams = any, TResult = any>
   /**
    * Handle errors consistently
    */
-  protected handleError(error: any, context?: ServiceContext): ServiceError {
+  protected handleError(error: any, _context?: ServiceContext): ServiceError {
     // If it's already a ServiceError, return it
     if (this.isServiceError(error)) {
       return error;
     }
 
-    // Handle common error types
-    if (error.message?.includes('404') || error.message?.includes('not found')) {
-      return this.error('NOT_FOUND', error.message || 'Resource not found', error, 404);
-    }
-
-    if (error.message?.includes('401') || error.message?.includes('unauthorized')) {
+    // Resource-not-available (issue #30): an unpublished/unavailable resource is
+    // a 404, NOT a server failure. Match before the substring branches below so
+    // it can never be downgraded to INTERNAL_ERROR/500 (its message — e.g.
+    // "No scripture resources found" — contains neither "404" nor "not found").
+    if (error?.code === "RESOURCE_NOT_AVAILABLE") {
       return this.error(
-        'UNAUTHORIZED',
-        error.message || 'Unauthorized access',
+        "RESOURCE_NOT_AVAILABLE",
+        error.message || "Resource not available",
         error,
-        401
+        404,
       );
     }
 
-    if (error.message?.includes('timeout')) {
+    // Handle common error types
+    if (
+      error.message?.includes("404") ||
+      error.message?.includes("not found")
+    ) {
       return this.error(
-        'TIMEOUT',
-        error.message || 'Request timeout',
+        "NOT_FOUND",
+        error.message || "Resource not found",
         error,
-        504
+        404,
+      );
+    }
+
+    if (
+      error.message?.includes("401") ||
+      error.message?.includes("unauthorized")
+    ) {
+      return this.error(
+        "UNAUTHORIZED",
+        error.message || "Unauthorized access",
+        error,
+        401,
+      );
+    }
+
+    if (error.message?.includes("timeout")) {
+      return this.error(
+        "TIMEOUT",
+        error.message || "Request timeout",
+        error,
+        504,
       );
     }
 
     // Handle invalid reference/book code errors (400 Bad Request)
     if (
-      error.message?.includes('Invalid reference') ||
-      error.message?.includes('book code') ||
-      error.message?.includes('3-letter')
+      error.message?.includes("Invalid reference") ||
+      error.message?.includes("book code") ||
+      error.message?.includes("3-letter")
     ) {
       return this.error(
-        'INVALID_REFERENCE',
-        error.message || 'Invalid reference format',
+        "INVALID_REFERENCE",
+        error.message || "Invalid reference format",
         error,
-        400
+        400,
       );
     }
 
     // Generic error
     return this.error(
-      'INTERNAL_ERROR',
-      error.message || 'An unexpected error occurred',
+      "INTERNAL_ERROR",
+      error.message || "An unexpected error occurred",
       error,
-      500
+      500,
     );
   }
 
@@ -128,7 +152,9 @@ export abstract class BaseService<TParams = any, TResult = any>
    * Check if an object is a ServiceError
    */
   private isServiceError(obj: any): obj is ServiceError {
-    return obj && typeof obj.code === 'string' && typeof obj.message === 'string';
+    return (
+      obj && typeof obj.code === "string" && typeof obj.message === "string"
+    );
   }
 
   /**
@@ -136,13 +162,13 @@ export abstract class BaseService<TParams = any, TResult = any>
    */
   protected async withTiming<T>(
     fn: () => Promise<T>,
-    label?: string
+    label?: string,
   ): Promise<{ result: T; elapsed: number }> {
     const start = performance.now();
     const result = await fn();
     const elapsed = Math.round(performance.now() - start);
 
-    if (label && process.env.NODE_ENV === 'development') {
+    if (label && process.env.NODE_ENV === "development") {
       console.log(`[${this.name}] ${label}: ${elapsed}ms`);
     }
 
@@ -159,7 +185,10 @@ export abstract class BaseService<TParams = any, TResult = any>
       const value = params[param.name];
 
       // Check required parameters
-      if (param.required && (value === undefined || value === null || value === '')) {
+      if (
+        param.required &&
+        (value === undefined || value === null || value === "")
+      ) {
         errors.push(`Missing required parameter: ${param.name}`);
         continue;
       }
@@ -171,10 +200,10 @@ export abstract class BaseService<TParams = any, TResult = any>
 
       // Type validation
       if (value !== undefined && value !== null) {
-        const actualType = Array.isArray(value) ? 'array' : typeof value;
-        if (param.type !== actualType && param.type !== 'object') {
+        const actualType = Array.isArray(value) ? "array" : typeof value;
+        if (param.type !== actualType && param.type !== "object") {
           errors.push(
-            `Invalid type for ${param.name}: expected ${param.type}, got ${actualType}`
+            `Invalid type for ${param.name}: expected ${param.type}, got ${actualType}`,
           );
         }
       }
@@ -184,9 +213,9 @@ export abstract class BaseService<TParams = any, TResult = any>
         const validationResult = param.validate(value);
         if (validationResult !== true) {
           errors.push(
-            typeof validationResult === 'string'
+            typeof validationResult === "string"
               ? validationResult
-              : `Validation failed for ${param.name}`
+              : `Validation failed for ${param.name}`,
           );
         }
       }

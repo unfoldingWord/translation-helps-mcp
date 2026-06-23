@@ -736,9 +736,15 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 			// Custom error handling
 			if (config.onError && error instanceof Error) {
 				const { status, message } = config.onError(error);
+				// A 404 means "resource not available" — tag it with a stable, machine-
+				// readable code so consumers can distinguish it from a server outage
+				// (issue #30). Honor an explicit code on the error if present.
+				const code =
+					(error as any)?.code || (status === 404 ? 'RESOURCE_NOT_AVAILABLE' : undefined);
 				return json(
 					{
 						error: message,
+						...(code ? { code } : {}),
 						details: errorDetails,
 						status
 					},
@@ -818,9 +824,12 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 			}
 
 			// Default error
+			const code =
+				(error as any)?.code || (errorStatus === 404 ? 'RESOURCE_NOT_AVAILABLE' : undefined);
 			return json(
 				{
 					error: errorMessage,
+					...(code ? { code } : {}),
 					details: errorDetails,
 					status: errorStatus
 				},

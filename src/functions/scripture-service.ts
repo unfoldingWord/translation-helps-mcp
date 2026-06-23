@@ -15,6 +15,7 @@ import { CacheBypassOptions } from "./unified-cache.js";
 import { EdgeXRayTracer } from "./edge-xray.js";
 import { ZipFetcherFactory } from "../services/zip-fetcher-provider.js";
 import { getBookCodesForError } from "../utils/book-codes.js";
+import { resourceNotAvailable } from "../utils/errorEnvelope.js";
 import {
   getPinnedOrganizationValue,
   isPinnedSingleOrganization,
@@ -183,8 +184,12 @@ export async function fetchScripture(
         organization: organization || "all",
         topic,
       });
-      throw new Error(
+      // Valid request, but the resource simply isn't published → 404, NOT a
+      // server failure. Keep the "No scripture resources found" wording so the
+      // language-variant fallback in ScriptureService still triggers (issue #30).
+      throw resourceNotAvailable(
         `No scripture resources found for ${language}${organization ? `/${organization}` : ""} with topic=${topic}`,
+        { requestedLanguage: language },
       );
     }
 
