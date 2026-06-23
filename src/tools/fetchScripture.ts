@@ -6,13 +6,21 @@
 
 import { z } from "zod";
 import { logger } from "../utils/logger.js";
-import { handleMCPError } from "../utils/mcp-error-handler.js";
+import {
+  handleMCPError,
+  buildResourceUnavailableResult,
+} from "../utils/mcp-error-handler.js";
 import { withPerformanceTracking } from "../utils/mcp-performance-tracker.js";
-import { createScriptureService, type ScriptureParams } from "../unified-services/index.js";
+import {
+  createScriptureService,
+  type ScriptureParams,
+} from "../unified-services/index.js";
 import { toZodObject, PARAMETER_GROUPS } from "../config/parameters/index.js";
 
 // Input schema - generated from unified parameter definitions
-export const FetchScriptureArgs = toZodObject(PARAMETER_GROUPS.scripture.parameters);
+export const FetchScriptureArgs = toZodObject(
+  PARAMETER_GROUPS.scripture.parameters,
+);
 
 export type FetchScriptureArgs = z.infer<typeof FetchScriptureArgs>;
 
@@ -30,13 +38,14 @@ export async function handleFetchScripture(args: FetchScriptureArgs) {
         // Create and execute unified service
         const service = createScriptureService();
         const response = await service.execute(args as ScriptureParams, {
-          platform: 'mcp',
+          platform: "mcp",
         });
 
         // Format response for MCP
-        const textContent = typeof response.data === 'string' 
-          ? response.data 
-          : JSON.stringify(response.data, null, 2);
+        const textContent =
+          typeof response.data === "string"
+            ? response.data
+            : JSON.stringify(response.data, null, 2);
 
         return {
           content: [
@@ -49,6 +58,18 @@ export async function handleFetchScripture(args: FetchScriptureArgs) {
           ...(response.metadata && { metadata: response.metadata }),
         };
       } catch (error: any) {
+        // A not-available resource (404) is an expected result, not a failure:
+        // return it as a normal (isError:false) result so downstream consumers
+        // don't treat it as a server outage (issue #30).
+        const notAvailable = buildResourceUnavailableResult(error);
+        if (notAvailable) {
+          logger.info("Scripture resource not available", {
+            args,
+            message: error?.message,
+          });
+          return notAvailable;
+        }
+
         logger.error("Failed to fetch scripture", { error, args });
         return handleMCPError({
           toolName: "fetch_scripture",

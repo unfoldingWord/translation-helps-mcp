@@ -18,6 +18,7 @@ import {
 import {
   extractErrorMessage,
   extractErrorStatus,
+  extractErrorCode,
 } from "../utils/mcp-error-handler.js";
 import type { DataSourceConfig, EndpointConfig } from "./EndpointConfig.js";
 
@@ -193,11 +194,13 @@ export const createZIPFetcher = (
           // Extract error status if present
           const errorStatus = extractErrorStatus(error);
           const errorMessage = extractErrorMessage(error);
+          const errorCode = extractErrorCode(error);
 
           // If service threw an error, return appropriate HTTP error response
           const status = errorStatus || 500;
           const response = {
             error: errorMessage,
+            ...(errorCode ? { code: errorCode } : {}),
             citation: "",
             language,
             organization,
@@ -326,11 +329,13 @@ export const createZIPFetcher = (
           // Extract error status if present
           const errorStatus = extractErrorStatus(error);
           const errorMessage = extractErrorMessage(error);
+          const errorCode = extractErrorCode(error);
 
           // Return error response
           const status = errorStatus || 500;
           const response = {
             error: errorMessage,
+            ...(errorCode ? { code: errorCode } : {}),
             _metadata: {
               success: false,
               status,

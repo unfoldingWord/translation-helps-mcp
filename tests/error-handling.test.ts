@@ -157,62 +157,77 @@ describe("Error Handling Tests", () => {
     });
   });
 
-  describe("Resource Not Found (404 errors)", () => {
-    it("should return 404 for non-existent language", async () => {
-      let mcpError: string = "";
-      let restError: string = "";
+  describe("Resource Not Available (404 / RESOURCE_NOT_AVAILABLE)", () => {
+    // Issue #30 / #12: an unavailable resource must surface as a 404 +
+    // RESOURCE_NOT_AVAILABLE on REST, and as a NON-error (isError:false)
+    // structured result on MCP — never as a generic error that downstream
+    // consumers read as "the server is down".
 
+    /** Parse an MCP tool result's JSON text payload. */
+    function parseMCP(res: any): any {
+      const text = res?.content?.[0]?.text ?? "";
       try {
-        await client.callMCPTool({
-          name: "fetch_scripture",
-          arguments: {
-            reference: TEST_DATA.references.singleVerse,
-            language: TEST_DATA.languages.invalid,
-          },
-        });
-      } catch (error: any) {
-        mcpError = error.message;
+        return JSON.parse(text);
+      } catch {
+        return { _raw: text };
       }
+    }
 
-      try {
-        await client.callREST("fetch-scripture", {
+    it("returns a NON-error 'not available' MCP result for an unavailable language (scripture)", async () => {
+      const res = await client.callMCPTool({
+        name: "fetch_scripture",
+        arguments: {
           reference: TEST_DATA.references.singleVerse,
           language: TEST_DATA.languages.invalid,
-        });
-      } catch (error: any) {
-        restError = error.message;
-      }
+        },
+      });
 
-      // Both should fail
-      expect(mcpError).toBeTruthy();
-      expect(restError).toBeTruthy();
-
-      // Unresolvable language may be 404 upstream or 400 invalid parameter
-      expect(mcpError.toLowerCase()).toMatch(
-        /not found|404|invalid|language|parameter|scripture/,
-      );
-      expect(restError.toLowerCase()).toMatch(
-        /not found|404|invalid|language|parameter|scripture/,
-      );
+      // Must NOT be flagged as a tool error (that trips the worker health circuit)
+      expect(res.isError, "not-available must not be an MCP error").toBe(false);
+      const body = parseMCP(res);
+      expect(body.available).toBe(false);
+      expect(body.status).toBe(404);
+      expect(typeof body.code).toBe("string");
     });
 
-    it("should return 404 for non-existent resource path", async () => {
-      let mcpError: string = "";
+    it("returns HTTP 404 + code via REST for an unavailable language (scripture)", async () => {
+      const { status, data } = await client.callRESTRaw("fetch-scripture", {
+        reference: TEST_DATA.references.singleVerse,
+        language: TEST_DATA.languages.invalid,
+      });
 
-      try {
-        await client.callMCPTool({
-          name: "fetch_translation_word",
-          arguments: {
-            path: "kt/nonexistent-word-xyz123",
-            language: "en",
-          },
-        });
-      } catch (error: any) {
-        mcpError = error.message;
-      }
+      expect(status).toBe(404);
+      expect(data?.code).toBe("RESOURCE_NOT_AVAILABLE");
+      expect(data?.status ?? data?._metadata?.status).toBe(404);
+    });
 
-      expect(mcpError).toBeTruthy();
-      expect(mcpError.toLowerCase()).toMatch(/not found|404/);
+    it("returns a NON-error 'not available' MCP result for unavailable translation questions (#12)", async () => {
+      const res = await client.callMCPTool({
+        name: "fetch_translation_questions",
+        arguments: {
+          reference: TEST_DATA.references.singleVerse,
+          language: TEST_DATA.languages.invalid,
+        },
+      });
+
+      expect(res.isError).toBe(false);
+      const body = parseMCP(res);
+      expect(body.available).toBe(false);
+      expect(body.status).toBe(404);
+    });
+
+    it("does not 5xx for a non-existent reference (no false 'server down')", async () => {
+      // A bad/unknown reference must resolve to a 4xx client outcome, never a
+      // 5xx that downstream would read as a server outage. (The precise
+      // 400-invalid-vs-404-not-available split is asserted deterministically in
+      // tests/coded-errors.test.ts against BaseService.handleError.)
+      const { status } = await client.callRESTRaw("fetch-scripture", {
+        reference: "NotARealBook 1:1",
+        language: "en",
+      });
+
+      expect(status).toBeGreaterThanOrEqual(400);
+      expect(status).toBeLessThan(500);
     });
   });
 

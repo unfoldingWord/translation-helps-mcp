@@ -345,6 +345,39 @@ export class UnifiedMCPHandler {
 				console.warn('[UNIFIED HANDLER] Failed to parse error response body');
 			}
 
+			// A 404 means the requested resource isn't published/available — an
+			// EXPECTED outcome, NOT a server failure. Return it as a NORMAL
+			// (isError:false) result so downstream consumers (bt-servant-worker)
+			// don't treat it as an outage and trip their health circuit, which is
+			// what surfaced to users as "the translation-helps server is down"
+			// (issue #30 / #12).
+			if (response.status === 404) {
+				const message =
+					(errorBody && (errorBody.error || errorBody.message)) ||
+					'The requested resource is not available.';
+				const payload: Record<string, unknown> = {
+					available: false,
+					code: (errorBody && errorBody.code) || 'RESOURCE_NOT_AVAILABLE',
+					status: 404,
+					message
+				};
+				if (errorDetails && typeof errorDetails === 'object') {
+					if (Object.keys(errorDetails).length > 0) payload.details = errorDetails;
+					if (errorDetails.languageVariants)
+						payload.languageVariants = errorDetails.languageVariants;
+					if (errorDetails.requestedLanguage)
+						payload.requestedLanguage = errorDetails.requestedLanguage;
+				}
+				console.log(
+					`[UNIFIED HANDLER] Resource not available (404) for ${toolName} — returning non-error result:`,
+					message
+				);
+				return {
+					content: [{ type: 'text', text: JSON.stringify(payload) }],
+					isError: false
+				};
+			}
+
 			// Create enhanced error with details attached (message includes API validation text for clients/tests)
 			const error: any = new Error(formatEndpointFailureMessage(response.status, errorBody));
 			error.status = response.status;

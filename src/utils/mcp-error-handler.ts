@@ -6,7 +6,7 @@
  */
 
 import { logger } from "./logger.js";
-import { buildMetadata } from "./metadata-builder.js";
+import { RESOURCE_NOT_AVAILABLE } from "./errorEnvelope.js";
 
 /**
  * Extract error message from unknown error type
@@ -23,16 +23,88 @@ export function extractErrorMessage(error: unknown): string {
 }
 
 /**
- * Extract HTTP status code from error if present
+ * Extract HTTP status code from error if present.
+ * Handles both Error instances and plain ServiceError-shaped objects.
  */
 export function extractErrorStatus(error: unknown): number | undefined {
-  if (error instanceof Error && "status" in error) {
-    const status = (error as Error & { status?: number }).status;
+  if (error && typeof error === "object" && "status" in error) {
+    const status = (error as { status?: unknown }).status;
     if (typeof status === "number" && status >= 400 && status < 600) {
       return status;
     }
   }
   return undefined;
+}
+
+/**
+ * Extract a stable error code from error if present.
+ * Handles both Error instances and plain ServiceError-shaped objects.
+ */
+export function extractErrorCode(error: unknown): string | undefined {
+  if (error && typeof error === "object" && "code" in error) {
+    const code = (error as { code?: unknown }).code;
+    if (typeof code === "string") return code;
+  }
+  return undefined;
+}
+
+/**
+ * Keys carrying caller-facing retry hints that should survive on a
+ * "resource not available" result (so the model can suggest alternatives).
+ */
+const RETRY_HINT_KEYS = [
+  "languageVariants",
+  "requestedLanguage",
+  "availableVariants",
+  "suggestion",
+  "validBookCodes",
+] as const;
+
+/**
+ * If the error represents a "resource not available" condition (HTTP 404 family
+ * — e.g. an unpublished resource or an unavailable language) rather than a
+ * server failure, return a NORMAL (isError:false) MCP result describing the
+ * unavailability. Otherwise return null so the caller falls back to
+ * handleMCPError (isError:true).
+ *
+ * This is the crux of issue #30: a not-available response must NOT look like a
+ * tool error, because bt-servant-worker converts any isError:true into a health
+ * failure that, after 3 strikes, reports the server as "down".
+ */
+export function buildResourceUnavailableResult(
+  error: unknown,
+): MCPErrorResponse | null {
+  const status = extractErrorStatus(error);
+  const code = extractErrorCode(error);
+  const isNotAvailable = status === 404 || code === RESOURCE_NOT_AVAILABLE;
+  if (!isNotAvailable) return null;
+
+  const message = extractErrorMessage(error);
+
+  const payload: Record<string, unknown> = {
+    available: false,
+    code: code || RESOURCE_NOT_AVAILABLE,
+    status: status || 404,
+    message,
+  };
+
+  if (error && typeof error === "object") {
+    const e = error as Record<string, unknown>;
+    if (e.details !== undefined) payload.details = e.details;
+    for (const key of RETRY_HINT_KEYS) {
+      if (e[key] !== undefined) payload[key] = e[key];
+    }
+  }
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify(payload, null, 2),
+      },
+    ],
+    isError: false,
+  };
 }
 
 export interface MCPErrorResponse {
@@ -95,6 +167,9 @@ export function handleMCPError(context: ErrorContext): MCPErrorResponse {
       ? originalError.message
       : String(originalError);
 
+  const code = extractErrorCode(originalError);
+  const status = extractErrorStatus(originalError);
+
   const responseTime = Date.now() - startTime;
 
   // Log error with full context
@@ -102,6 +177,8 @@ export function handleMCPError(context: ErrorContext): MCPErrorResponse {
     ...args,
     ...additionalContext,
     error: errorMessage,
+    ...(code ? { code } : {}),
+    ...(status ? { status } : {}),
     responseTime,
     timestamp: new Date().toISOString(),
     // Include stack trace if available
@@ -118,6 +195,8 @@ export function handleMCPError(context: ErrorContext): MCPErrorResponse {
         text: JSON.stringify(
           {
             error: errorMessage,
+            ...(code ? { code } : {}),
+            ...(status ? { status } : {}),
             tool: toolName,
             timestamp: new Date().toISOString(),
             responseTime,
