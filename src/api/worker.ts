@@ -29,6 +29,7 @@ import { handleQuote } from "./routes/quote.js";
 import { handleSearch } from "./routes/search.js";
 import { handleResources } from "./routes/resources.js";
 import { handlePrefetch } from "./routes/prefetch.js";
+import { handleObs, handleObsNotes, handleObsQuestions } from "./routes/obs.js";
 
 // ---------------------------------------------------------------------------
 // CORS / common headers
@@ -61,7 +62,11 @@ function apiError(
 // ---------------------------------------------------------------------------
 
 export default {
-  async fetch(request: Request, env: Env, execCtx: ExecutionContext): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: Env,
+    execCtx: ExecutionContext,
+  ): Promise<Response> {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
@@ -71,7 +76,11 @@ export default {
 
     // Health check (GET only)
     if (path === "/health" || path === "/api/health") {
-      return json({ status: "ok", service: "translation-helps-api", version: "1" });
+      return json({
+        status: "ok",
+        service: "translation-helps-api",
+        version: "1",
+      });
     }
 
     // Strip /api/v1 prefix
@@ -83,7 +92,11 @@ export default {
     const routePath = path.slice("/api/v1".length);
     if (routePath === "/prefetch") {
       if (request.method !== "GET" && request.method !== "POST") {
-        return apiError("METHOD_NOT_ALLOWED", "Only GET or POST is supported", 405);
+        return apiError(
+          "METHOD_NOT_ALLOWED",
+          "Only GET or POST is supported",
+          405,
+        );
       }
       return handlePrefetch({ url, env, execCtx });
     }
@@ -133,15 +146,26 @@ export default {
       // --- Resource availability ---
       if (routePath === "/resources") return await handleResources(ctx);
 
+      // --- Open Bible Stories ---
+      if (routePath === "/obs") return await handleObs(ctx);
+      if (routePath === "/obs-notes") return await handleObsNotes(ctx);
+      if (routePath === "/obs-questions") return await handleObsQuestions(ctx);
+
       return apiError("NOT_FOUND", `Unknown route: ${routePath}`, 404);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      const isNotFound = msg.toLowerCase().includes("not found") || msg.includes("404");
+      const isNotFound =
+        msg.toLowerCase().includes("not found") || msg.includes("404");
       if (isNotFound) {
         return apiError("NOT_FOUND", msg, 404, false);
       }
       console.error("[api] Unhandled error:", msg);
-      return apiError("INTERNAL_ERROR", "An unexpected error occurred", 500, true);
+      return apiError(
+        "INTERNAL_ERROR",
+        "An unexpected error occurred",
+        500,
+        true,
+      );
     }
   },
 } satisfies ExportedHandler<Env>;

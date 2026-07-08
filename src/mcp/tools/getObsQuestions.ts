@@ -1,0 +1,62 @@
+/**
+ * get_obs_questions — fetch OBS Translation Questions for a story:frame reference.
+ */
+
+import { z } from "zod";
+import { languageParam, ok, notAvailable, type ToolModule } from "./shared.js";
+import { ApiClient } from "../apiClient.js";
+import type { Env } from "../agent.js";
+
+const inputSchema = z.object({
+  reference: z
+    .string()
+    .min(1)
+    .describe(
+      'OBS story:frame reference, e.g. "1:1", "1:0", "front". ' +
+        "Omit the frame to get questions for an entire story.",
+    ),
+  language: languageParam,
+});
+
+export type GetObsQuestionsParams = z.infer<typeof inputSchema>;
+
+export const getObsQuestionsTool: ToolModule<typeof inputSchema> = {
+  name: "get_obs_questions",
+  description:
+    "Fetch Open Bible Stories Translation Questions (OBS-TQ) for a story:frame reference. " +
+    "OBS-TQ provides comprehension questions and expected answers for each frame of the 50 OBS stories. " +
+    "Use these after a translator has produced a draft to verify the translation conveys the correct meaning. " +
+    'Use reference "1:1" for frame-level questions, or "1" for all questions in a story. ' +
+    "Pairs with get_obs_story to provide the story text context.",
+  inputSchema,
+  annotations: {
+    readOnlyHint: true,
+    title: "Get OBS Translation Questions",
+  },
+
+  async handler(params: GetObsQuestionsParams, env: Env, _requestId: string) {
+    const { reference, language } = params;
+    const client = new ApiClient(env);
+
+    const data = await client.get<Record<string, unknown>>(
+      "/api/v1/obs-questions",
+      {
+        reference,
+        language,
+      },
+    );
+
+    if (data.available === false) {
+      return notAvailable(
+        `OBS Translation Questions for language "${language}"`,
+        String(data.message ?? ""),
+      );
+    }
+
+    const questions = (data.questions as unknown[]) ?? [];
+    return ok(
+      data,
+      `${questions.length} OBS question(s) for ${reference} (${language})`,
+    );
+  },
+};
