@@ -52,7 +52,7 @@ except ImportError:
     HAS_URLLIB = False
 
 
-DEFAULT_SERVER_URL = "https://translation-helps-mcp.workers.dev/mcp"
+DEFAULT_SERVER_URL = "https://translation-helps-mcp-v2.workers.dev/mcp"
 
 
 class TranslationHelpsClient:

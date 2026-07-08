@@ -47,7 +47,7 @@ import type {
   ToolName,
 } from "./types.js";
 
-const DEFAULT_SERVER_URL = "https://translation-helps-mcp.workers.dev/mcp";
+const DEFAULT_SERVER_URL = "https://translation-helps-mcp-v2.workers.dev/mcp";
 
 export class TranslationHelpsClient {
   private serverUrl: string;
@@ -117,6 +117,37 @@ export class TranslationHelpsClient {
       const result = (json as { result?: MCPToolResult })?.result;
       if (!result) throw new Error("No result in MCP response");
       return result;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /**
+   * Call a legacy fetch_* tool via the /api/tool REST endpoint.
+   * These tools are not on the MCP /mcp surface in v2 but remain available
+   * at POST /api/tool for backward compatibility.
+   */
+  private async callLegacyTool(
+    name: string,
+    args: Record<string, unknown>,
+  ): Promise<MCPToolResult> {
+    const apiToolUrl = this.serverUrl.replace(/\/mcp$/, "/api/tool");
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeout);
+    try {
+      const response = await fetch(apiToolUrl, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ tool: name, args }),
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} from /api/tool`);
+      }
+      const json = (await response.json()) as MCPToolResult & {
+        content?: MCPToolResult["content"];
+      };
+      return json;
     } finally {
       clearTimeout(timer);
     }
@@ -352,59 +383,59 @@ export class TranslationHelpsClient {
   // Legacy methods — kept for ContextHarness / backward compatibility
   // ---------------------------------------------------------------------------
 
-  /** @deprecated Use getPassage instead */
+  /** @deprecated Use getPassage instead. Routes to /api/tool for backward compat. */
   async fetchScripture(opts: FetchScriptureOptions): Promise<MCPToolResult> {
-    return this.callTool(
+    return this.callLegacyTool(
       "fetch_scripture",
       opts as unknown as Record<string, unknown>,
     );
   }
 
-  /** @deprecated Use getNote instead */
+  /** @deprecated Use getNote instead. Routes to /api/tool for backward compat. */
   async fetchTranslationNotes(
     opts: FetchTranslationNotesOptions,
   ): Promise<MCPToolResult> {
-    return this.callTool(
+    return this.callLegacyTool(
       "fetch_translation_notes",
       opts as unknown as Record<string, unknown>,
     );
   }
 
-  /** @deprecated Use getQuestions instead */
+  /** @deprecated Use getQuestions instead. Routes to /api/tool for backward compat. */
   async fetchTranslationQuestions(
     opts: FetchTranslationQuestionsOptions,
   ): Promise<MCPToolResult> {
-    return this.callTool(
+    return this.callLegacyTool(
       "fetch_translation_questions",
       opts as unknown as Record<string, unknown>,
     );
   }
 
-  /** @deprecated Use getPassageIndex instead */
+  /** @deprecated Use getPassageIndex instead. Routes to /api/tool for backward compat. */
   async fetchTranslationWordLinks(
     opts: FetchTranslationWordLinksOptions,
   ): Promise<MCPToolResult> {
-    return this.callTool(
+    return this.callLegacyTool(
       "fetch_translation_word_links",
       opts as unknown as Record<string, unknown>,
     );
   }
 
-  /** @deprecated Use getWordArticle instead */
+  /** @deprecated Use getWordArticle instead. Routes to /api/tool for backward compat. */
   async fetchTranslationWord(
     opts: FetchTranslationWordOptions,
   ): Promise<MCPToolResult> {
-    return this.callTool(
+    return this.callLegacyTool(
       "fetch_translation_word",
       opts as unknown as Record<string, unknown>,
     );
   }
 
-  /** @deprecated Use getAcademyArticle instead */
+  /** @deprecated Use getAcademyArticle instead. Routes to /api/tool for backward compat. */
   async fetchTranslationAcademy(
     opts: FetchTranslationAcademyOptions,
   ): Promise<MCPToolResult> {
-    return this.callTool(
+    return this.callLegacyTool(
       "fetch_translation_academy",
       opts as unknown as Record<string, unknown>,
     );
@@ -423,9 +454,9 @@ export class TranslationHelpsClient {
     );
   }
 
-  /** @deprecated Use getPassageContext + getPassageIndex instead */
+  /** @deprecated Use getPassageContext + getPassageIndex instead. Routes to /api/tool. */
   async getBundle(opts: GetBundleOptions): Promise<MCPToolResult> {
-    return this.callTool(
+    return this.callLegacyTool(
       "get_bundle",
       opts as unknown as Record<string, unknown>,
     );
