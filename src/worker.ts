@@ -11,6 +11,9 @@ import { TranslationHelpsMCP } from "./mcp/agent.js";
 import { logger } from "./core/logger.js";
 import { normalizeToolArgs } from "./mcp/normalizeToolArgs.js";
 
+// Per-session MCP routing: each client session gets its own Durable Object instance.
+const mcpHandler = TranslationHelpsMCP.serve("/mcp", { binding: "MCP_AGENT" });
+
 // New workflow tools (MCP-facing, new progressive-disclosure surface)
 import { listLanguagesTool } from "./mcp/tools/listLanguages.js";
 import { getPassageTool } from "./mcp/tools/getPassage.js";
@@ -98,11 +101,10 @@ export default {
   ): Promise<Response> {
     const url = new URL(request.url);
 
-    // Route MCP traffic to the McpAgent Durable Object
+    // Route MCP traffic to per-session McpAgent Durable Object instances.
+    // McpAgent.serve creates a unique DO instance per session ID instead of a singleton.
     if (url.pathname === "/mcp" || url.pathname.startsWith("/mcp/")) {
-      const id = env.MCP_AGENT.idFromName("singleton");
-      const stub = env.MCP_AGENT.get(id);
-      return stub.fetch(request);
+      return mcpHandler.fetch(request, env, _ctx);
     }
 
     // Internal HTTP tool runner — used by the Skills chat layer.

@@ -69,8 +69,14 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		});
 	}
 
-	// Build skill context
-	const skillCtx = createSkill({ OPENAI_API_KEY: openaiKey, MCP_BASE_URL: mcpBaseUrl }, '', model);
+	// Build skill context — pass url.origin so MCP_BASE_URL fallback is a proper absolute URL
+	const { url } = request;
+	const requestOrigin = url ? new URL(url).origin : undefined;
+	const skillCtx = createSkill(
+		{ OPENAI_API_KEY: openaiKey, MCP_BASE_URL: mcpBaseUrl },
+		requestOrigin ?? '',
+		model
+	);
 
 	// Prior turns (exclude last user message)
 	const priorTurns = messages
@@ -90,6 +96,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	// ---------------------------------------------------------------------------
 	// Build SSE ReadableStream
 	// ---------------------------------------------------------------------------
+	let heartbeat: ReturnType<typeof setInterval> | null = null;
+	let cancelled = false;
+	const abortController = new AbortController();
+
 	const stream = new ReadableStream({
 		async start(controller) {
 			const encode = (event: string, data: unknown) => {
@@ -97,7 +107,14 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 				return `event: ${event}\ndata: ${json}\n\n`;
 			};
 
-			const enqueue = (frame: string) => controller.enqueue(new TextEncoder().encode(frame));
+			const enqueue = (frame: string) => {
+				if (cancelled) return;
+				try {
+					controller.enqueue(new TextEncoder().encode(frame));
+				} catch {
+					// stream already closed
+				}
+			};
 
 			// Track the last time any event was emitted so the heartbeat knows
 			// whether it needs to fire.
@@ -109,14 +126,23 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			// Keepalive heartbeat — emits a status frame every 3 s when the
 			// pipeline is silent, preventing the browser from treating a live
 			// stream as a dead connection.
-			const heartbeat = setInterval(() => {
+			heartbeat = setInterval(() => {
+				if (cancelled) {
+					clearInterval(heartbeat!);
+					return;
+				}
 				if (Date.now() - lastEmitAt > 3000) {
 					enqueue(encode('status', { text: 'Still gathering resources\u2026' }));
 					touch();
 				}
 			}, 3000);
 
-			const stopHeartbeat = () => clearInterval(heartbeat);
+			const stopHeartbeat = () => {
+				if (heartbeat) {
+					clearInterval(heartbeat);
+					heartbeat = null;
+				}
+			};
 
 			const emit: StreamEmit = {
 				status(text) {
@@ -165,6 +191,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 					waitUntil
 				);
 			} catch (err) {
+				if (cancelled) return; // client disconnected — skip error emission
 				const msg = err instanceof Error ? err.message : String(err);
 				// Ensure stream closes even on unexpected errors
 				stopHeartbeat();
@@ -175,6 +202,14 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 					// already closed
 				}
 			}
+		},
+		cancel() {
+			cancelled = true;
+			if (heartbeat) {
+				clearInterval(heartbeat);
+				heartbeat = null;
+			}
+			abortController.abort();
 		}
 	});
 
