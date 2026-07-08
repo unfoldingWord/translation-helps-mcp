@@ -125,6 +125,11 @@
 	let messagesEnd: HTMLElement;
 	let statusLine = '';
 
+	// Per-send AbortController to cancel in-flight SSE streams on clearChat()
+	let currentAbortController: AbortController | null = null;
+	// Increments on each new send; frame handlers check this to discard stale frames
+	let generationId = 0;
+
 	// Tool-call side panel (dev mode)
 	let showToolPanel = false;
 	let expandedCalls: Set<string> = new Set();
@@ -275,6 +280,11 @@
 		statusLine = '';
 		thinkingSteps = new Map();
 
+		// Cancel any in-flight request from a previous send
+		currentAbortController?.abort();
+		currentAbortController = new AbortController();
+		const myGenId = ++generationId;
+
 		// Switch to resources on mobile when sending (after response arrives)
 		const assistantIdx = messages.length;
 		messages = [
@@ -300,7 +310,8 @@
 					language,
 					model,
 					profile
-				})
+				}),
+				signal: currentAbortController.signal
 			});
 
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -311,6 +322,9 @@
 			let sseBuffer = '';
 
 			const processFrame = (frame: string) => {
+				// Discard frames from a previous generation (e.g. after clearChat)
+				if (myGenId !== generationId) return;
+
 				const lines = frame.split('\n');
 				let event = 'message';
 				let data = '';
@@ -323,16 +337,6 @@
 				try {
 					const parsed = JSON.parse(data) as Record<string, unknown>;
 
-					if (event === 'ui')
-						console.log(
-							'[SSE] ui event received:',
-							(parsed as { type?: string }).type,
-							'assistantIdx=',
-							assistantIdx,
-							'messages.length=',
-							messages.length
-						);
-
 					if (event === 'status') {
 						statusLine = String(parsed.text ?? '');
 					} else if (event === 'thinking') {
@@ -342,6 +346,7 @@
 					} else if (event === 'ui') {
 						const component = parsed as UIComponentData;
 						if (component.type) {
+							if (!messages[assistantIdx]) return;
 							const existing = messages[assistantIdx].uiComponents ?? [];
 							messages[assistantIdx] = {
 								...messages[assistantIdx],
@@ -354,6 +359,7 @@
 							}
 						}
 					} else if (event === 'token') {
+						if (!messages[assistantIdx]) return;
 						const delta = String(parsed.delta ?? '');
 						messages[assistantIdx] = {
 							...messages[assistantIdx],
@@ -482,8 +488,13 @@
 	}
 
 	function clearChat() {
+		currentAbortController?.abort();
+		currentAbortController = null;
+		generationId++; // invalidate any in-flight frame handlers
 		messages = [];
 		error = '';
+		isLoading = false;
+		statusLine = '';
 		mobileView = 'chat';
 	}
 
