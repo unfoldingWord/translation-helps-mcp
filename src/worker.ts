@@ -9,6 +9,7 @@
 
 import { TranslationHelpsMCP } from "./mcp/agent.js";
 import { logger } from "./core/logger.js";
+import { normalizeToolArgs } from "./mcp/normalizeToolArgs.js";
 
 // New workflow tools (MCP-facing, new progressive-disclosure surface)
 import { listLanguagesTool } from "./mcp/tools/listLanguages.js";
@@ -35,6 +36,9 @@ import { listTranslationWordsTool } from "./mcp/tools/listTranslationWords.js";
 import { listSubjectsTool } from "./mcp/tools/listSubjects.js";
 import { listResourcesForLanguageTool } from "./mcp/tools/listResourcesForLanguage.js";
 import { listResourcesByLanguageTool } from "./mcp/tools/listResourcesByLanguage.js";
+import { getObsStoryTool } from "./mcp/tools/getObsStory.js";
+import { getObsNotesTool } from "./mcp/tools/getObsNotes.js";
+import { getObsQuestionsTool } from "./mcp/tools/getObsQuestions.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const TOOL_REGISTRY: Record<string, any> = {
@@ -61,6 +65,10 @@ const TOOL_REGISTRY: Record<string, any> = {
   list_subjects: listSubjectsTool,
   list_resources_for_language: listResourcesForLanguageTool,
   list_resources_by_language: listResourcesByLanguageTool,
+  // OBS tools (MCP surface + /api/tool)
+  get_obs_story: getObsStoryTool,
+  get_obs_notes: getObsNotesTool,
+  get_obs_questions: getObsQuestionsTool,
 };
 
 // Re-export the Durable Object class so Cloudflare can find it via the binding.
@@ -107,7 +115,6 @@ export default {
     // Route everything else to the SvelteKit site (Workers Assets)
     return env.ASSETS.fetch(request);
   },
-
 };
 
 async function handleToolCall(request: Request, env: Env): Promise<Response> {
@@ -121,7 +128,11 @@ async function handleToolCall(request: Request, env: Env): Promise<Response> {
     return new Response(null, { status: 204, headers: cors });
   }
 
-  let body: { name?: string; params?: Record<string, unknown>; requestId?: string };
+  let body: {
+    name?: string;
+    params?: Record<string, unknown>;
+    requestId?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -148,10 +159,14 @@ async function handleToolCall(request: Request, env: Env): Promise<Response> {
   }
 
   try {
-    const validated = tool.inputSchema.parse(params);
+    const normalized = normalizeToolArgs(name, params);
+    const validated = tool.inputSchema.parse(normalized);
     const result = await tool.handler(validated, env, requestId);
     return new Response(
-      JSON.stringify({ structuredContent: result.structuredContent, content: result.content }),
+      JSON.stringify({
+        structuredContent: result.structuredContent,
+        content: result.content,
+      }),
       { status: 200, headers: { "Content-Type": "application/json", ...cors } },
     );
   } catch (err) {
@@ -163,4 +178,3 @@ async function handleToolCall(request: Request, env: Env): Promise<Response> {
     });
   }
 }
-

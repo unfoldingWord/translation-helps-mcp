@@ -19,6 +19,8 @@ import {
   type TranslationHelpsError,
 } from "../core/errors.js";
 import { SERVER_INSTRUCTIONS } from "./instructions.js";
+import { normalizeToolArgs } from "./normalizeToolArgs.js";
+import { ApiClientError } from "./apiClient.js";
 
 // Workflow tool modules (new progressive-disclosure surface)
 import { getPassageTool } from "./tools/getPassage.js";
@@ -30,6 +32,11 @@ import { getWordArticleTool } from "./tools/getWordArticle.js";
 import { getPassageQuestionsTool } from "./tools/getPassageQuestions.js";
 import { searchArticlesWorkflowTool } from "./tools/searchArticlesWorkflow.js";
 import { listLanguagesTool } from "./tools/listLanguages.js";
+
+// OBS tools
+import { getObsStoryTool } from "./tools/getObsStory.js";
+import { getObsNotesTool } from "./tools/getObsNotes.js";
+import { getObsQuestionsTool } from "./tools/getObsQuestions.js";
 
 // Prompt modules
 import { PROMPTS } from "./prompts/index.js";
@@ -57,15 +64,19 @@ export interface Env {
  * Their parsing logic is preserved in src/core/ and the REST API.
  */
 const ALL_TOOLS = [
-  listLanguagesTool,           // orient: discover valid language codes
-  getPassageTool,              // orient/draft: scripture text (all versions) — cheap, repeatable
-  getPassageContextTool,       // orient: book/chapter intros + resource availability
-  getPassageIndexTool,         // survey: compact index of issues + key terms (no bodies)
-  getNoteTool,                 // drill: full note body by id
-  getAcademyArticleTool,       // drill: full TA article by path
-  getWordArticleTool,          // drill: full TW article by path
-  getPassageQuestionsTool,     // check: comprehension questions for a passage
-  searchArticlesWorkflowTool,  // lateral: concept -> article path
+  listLanguagesTool, // orient: discover valid language codes
+  getPassageTool, // orient/draft: scripture text (all versions) — cheap, repeatable
+  getPassageContextTool, // orient: book/chapter intros + resource availability
+  getPassageIndexTool, // survey: compact index of issues + key terms (no bodies)
+  getNoteTool, // drill: full note body by id
+  getAcademyArticleTool, // drill: full TA article by path
+  getWordArticleTool, // drill: full TW article by path
+  getPassageQuestionsTool, // check: comprehension questions for a passage
+  searchArticlesWorkflowTool, // lateral: concept -> article path
+  // OBS tools
+  getObsStoryTool, // obs: OBS story text by story:frame
+  getObsNotesTool, // obs: OBS translation notes
+  getObsQuestionsTool, // obs: OBS comprehension questions
 ] as const;
 
 export type ToolName = (typeof ALL_TOOLS)[number]["name"];
@@ -78,9 +89,35 @@ function mcpError(err: TranslationHelpsError): {
 } {
   const payload = err.toMcpError();
   return {
-    content: [{ type: "text", text: `Error ${payload.code}: ${payload.message}` }],
+    content: [
+      { type: "text", text: `Error ${payload.code}: ${payload.message}` },
+    ],
     structuredContent: payload as unknown as Record<string, unknown>,
     isError: true,
+  };
+}
+
+/**
+ * Non-error "resource not available" result (upstream #30 contract).
+ * isError is false so MCP clients do not treat missing data as a failure.
+ */
+function mcpNotAvailable(message: string): {
+  content: { type: "text"; text: string }[];
+  structuredContent: Record<string, unknown>;
+  isError: false;
+} {
+  const payload = {
+    available: false,
+    code: "RESOURCE_NOT_AVAILABLE",
+    message,
+    hints: [
+      "Run list_resources_for_language to see what is available for this language.",
+    ],
+  };
+  return {
+    content: [{ type: "text", text: JSON.stringify(payload) }],
+    structuredContent: payload,
+    isError: false,
   };
 }
 
@@ -90,10 +127,58 @@ export class TranslationHelpsMCP extends McpAgent<Env> {
     { instructions: SERVER_INSTRUCTIONS },
   );
 
+  /**
+   * Intercept JSON-RPC `tools/call` requests to normalize LLM-generated
+   * arguments BEFORE the SDK validates them against the tool's Zod schema.
+   * This ensures synonyms (word_id, article_id, etc.) and decomposed references
+   * ({book, chapter, verse}) are accepted without Zod rejection.
+   */
+  override async fetch(request: Request): Promise<Response> {
+    if (request.method === "POST") {
+      try {
+        const cloned = request.clone();
+        const body = (await cloned.json()) as Record<string, unknown>;
+        if (
+          body.method === "tools/call" &&
+          body.params &&
+          typeof body.params === "object"
+        ) {
+          const params = body.params as { name?: string; arguments?: unknown };
+          if (params.name) {
+            const normalized = normalizeToolArgs(
+              params.name,
+              params.arguments ?? {},
+            );
+            const newBody = {
+              ...body,
+              params: { ...params, arguments: normalized },
+            };
+            const newRequest = new Request(request.url, {
+              method: request.method,
+              headers: request.headers,
+              body: JSON.stringify(newBody),
+            });
+            return super.fetch(newRequest);
+          }
+        }
+      } catch {
+        // Could not parse/intercept — pass through unchanged.
+      }
+    }
+    return super.fetch(request);
+  }
+
   async init(): Promise<void> {
     // Register every tool with full metadata: title, outputSchema, annotations
     for (const tool of ALL_TOOLS) {
-      const { name, description, inputSchema, outputSchema, annotations, handler } = tool;
+      const {
+        name,
+        description,
+        inputSchema,
+        outputSchema,
+        annotations,
+        handler,
+      } = tool;
 
       // Extract ZodRawShape: handle both ZodObject and ZodEffects
       const schemaShape =
@@ -165,6 +250,26 @@ export class TranslationHelpsMCP extends McpAgent<Env> {
                 errorCode,
               });
               return mcpError(err) as never;
+            }
+
+            // HTTP 404 from the REST API → resource not available, not a failure.
+            // This keeps the LLM's circuit-breaker logic from treating missing
+            // resources as server outages (upstream #30 contract).
+            if (err instanceof ApiClientError && err.status === 404) {
+              errorCode = "RESOURCE_NOT_AVAILABLE";
+              logger.info(`tool:not_available`, {
+                tool: name,
+                requestId,
+                message: err.message,
+              });
+              recordToolCall(this.env.ANALYTICS, {
+                tool: name,
+                requestId,
+                latencyMs: Date.now() - start,
+                cacheStatus: "none",
+                errorCode,
+              });
+              return mcpNotAvailable(err.message) as never;
             }
 
             // Unexpected error

@@ -97,6 +97,28 @@ describe("parseReferenceForTool", () => {
     expect(result2).not.toBeNull();
     expect(result2!.book).toBe("2TI");
   });
+
+  it("parses 2KGS (LLM-generated non-standard code) as 2KI", () => {
+    const result = parseReferenceForTool("2KGS 12:8");
+    expect(result).not.toBeNull();
+    expect(result!.book).toBe("2KI");
+    expect(result!.chapter).toBe("12");
+    expect(result!.verseStart).toBe("8");
+  });
+
+  it("parses 1KGS as 1KI", () => {
+    const result = parseReferenceForTool("1KGS 5:1");
+    expect(result).not.toBeNull();
+    expect(result!.book).toBe("1KI");
+  });
+
+  it("parses MAR (Spanish/LLM abbreviation for Mark) as MRK", () => {
+    const result = parseReferenceForTool("MAR 1:1");
+    expect(result).not.toBeNull();
+    expect(result!.book).toBe("MRK");
+    expect(result!.chapter).toBe("1");
+    expect(result!.verseStart).toBe("1");
+  });
 });
 
 describe("parseReference (existing behaviour)", () => {

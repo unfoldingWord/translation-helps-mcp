@@ -16,7 +16,8 @@ export const REFERENCE_DESCRIPTION =
   "A full Bible passage: book name (or USFM code) + chapter + verse or verse range. " +
   "The book MUST be accompanied by chapter/verse — a bare book code is invalid. " +
   "The book name may be localized when it matches the `language` parameter. " +
-  'Examples: "JHN 3:16", "John 3:16", "Juan 3:16" (language:"es"), "GEN 1:1-3", "MAT 5" (full chapter).';
+  'Examples: "JHN 3:16", "John 3:16", "Juan 3:16" (language:"es"), "GEN 1:1-3", "MAT 5" (full chapter). ' +
+  "Decomposed arguments {book, chapter, verse} and common non-standard codes (MAR, 2KGS) are also accepted.";
 
 export const LANGUAGE_DESCRIPTION =
   "BCP-47 language code. Accepts both base codes and region variants: " +
@@ -108,6 +109,37 @@ export function ok(data: unknown, humanText?: string): ToolResult {
   // Compact JSON fallback — keeps stdio / legacy clients functional
   content.push({ type: "text", text: JSON.stringify(data) });
   return { content, structuredContent: structured, isError: false };
+}
+
+/**
+ * Build a "resource not available" result (upstream issues #30 / #12 contract).
+ *
+ * IMPORTANT: isError is deliberately false. Returning isError:true for missing
+ * data causes downstream MCP clients to treat the response as a server failure
+ * (potentially tripping circuit-breakers). A structured "not available" result
+ * lets the LLM communicate the gap gracefully without implying an outage.
+ *
+ * Use this when a resource genuinely does not exist for the requested
+ * language/book (e.g. no TQ data for Mark, unpublished Psalms scripture).
+ * Keep throwing for truly unexpected errors (zip fetch failures, parse errors).
+ */
+export function notAvailable(description: string, extra?: string): ToolResult {
+  const message =
+    `No ${description} available for this reference or language.` +
+    (extra ? ` ${extra}` : "");
+  const data = {
+    available: false,
+    code: "RESOURCE_NOT_AVAILABLE",
+    message,
+    hints: [
+      "Run list_resources_for_language to see what is available for this language.",
+    ],
+  };
+  return {
+    content: [{ type: "text", text: JSON.stringify(data) }],
+    structuredContent: data as unknown as Record<string, unknown>,
+    isError: false,
+  };
 }
 
 /** Build a successful result with a cache status hint (for the metrics layer). */
