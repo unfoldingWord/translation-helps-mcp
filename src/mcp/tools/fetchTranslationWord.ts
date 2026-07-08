@@ -5,8 +5,7 @@
  */
 
 import { z } from "zod";
-import { languageParam, ok, type ToolModule } from "./shared.js";
-import { Errors, TranslationHelpsError, ErrorCode } from "../../core/errors.js";
+import { languageParam, ok, notAvailable, type ToolModule } from "./shared.js";
 import { getResourceZipUrl } from "../../core/resources/dcsClient.js";
 import { ZipResourceFetcher2 } from "../../core/resources/ZipResourceFetcher2.js";
 import { buildTwPathCandidates } from "../../core/parsers/markdown.js";
@@ -27,7 +26,9 @@ export type FetchTranslationWordParams = z.infer<typeof inputSchema>;
 const outputSchema = {
   language: z.string(),
   path: z.string().describe("Resolved path used for the lookup."),
-  article: z.string().describe("Full Markdown content of the dictionary article."),
+  article: z
+    .string()
+    .describe("Full Markdown content of the dictionary article."),
   requestId: z.string(),
 };
 
@@ -61,7 +62,7 @@ export const fetchTranslationWordTool: ToolModule<typeof inputSchema> = {
       env.TRANSLATION_HELPS_CACHE,
     );
     if (!resolved)
-      throw Errors.resourceNotFound(`Translation Words for "${language}"`);
+      return notAvailable(`Translation Words for language "${language}"`);
 
     const fetcher = new ZipResourceFetcher2({
       KV: env.TRANSLATION_HELPS_CACHE,
@@ -82,19 +83,10 @@ export const fetchTranslationWordTool: ToolModule<typeof inputSchema> = {
     }
 
     if (!article) {
-      throw new TranslationHelpsError({
-        code: ErrorCode.RESOURCE_NOT_FOUND,
-        message: `Translation Word not found at path: "${wordPath}"`,
-        hints: [
-          {
-            message:
-              "Use fetch_translation_word_links to get the exact path for your reference.",
-          },
-          {
-            message: `Example path format: "bible/kt/grace", "bible/other/sheep"`,
-          },
-        ],
-      });
+      return notAvailable(
+        `Translation Word at path "${wordPath}"`,
+        'Use fetch_translation_word_links to get a valid path. Example format: "bible/kt/grace".',
+      );
     }
 
     return ok(

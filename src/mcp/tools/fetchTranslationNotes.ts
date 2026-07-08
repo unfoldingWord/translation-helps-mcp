@@ -7,6 +7,7 @@ import {
   referenceParam,
   languageParam,
   ok,
+  notAvailable,
   type ToolModule,
 } from "./shared.js";
 import { Errors } from "../../core/errors.js";
@@ -79,9 +80,7 @@ export const fetchTranslationNotesTool: ToolModule<typeof inputSchema> = {
       env.TRANSLATION_HELPS_CACHE,
     );
     if (!resolved) {
-      throw Errors.resourceNotFound(
-        `Translation Notes for language "${language}"`,
-      );
+      return notAvailable(`Translation Notes for language "${language}"`);
     }
 
     const fetcher = new ZipResourceFetcher2({
@@ -107,8 +106,8 @@ export const fetchTranslationNotesTool: ToolModule<typeof inputSchema> = {
     }
 
     if (!tsv)
-      throw Errors.resourceNotFound(
-        `Translation Notes file for book "${book}"`,
+      return notAvailable(
+        `Translation Notes for book "${book}" in language "${language}"`,
       );
 
     const notes = parseTranslationNotesTsv(tsv, chapter, verseStart);

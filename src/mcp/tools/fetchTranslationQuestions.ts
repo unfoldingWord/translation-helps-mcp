@@ -7,6 +7,7 @@ import {
   referenceParam,
   languageParam,
   ok,
+  notAvailable,
   type ToolModule,
 } from "./shared.js";
 import { Errors } from "../../core/errors.js";
@@ -75,7 +76,7 @@ export const fetchTranslationQuestionsTool: ToolModule<typeof inputSchema> = {
       env.TRANSLATION_HELPS_CACHE,
     );
     if (!resolved)
-      throw Errors.resourceNotFound(`Translation Questions for "${language}"`);
+      return notAvailable(`Translation Questions for language "${language}"`);
 
     const fetcher = new ZipResourceFetcher2({
       KV: env.TRANSLATION_HELPS_CACHE,
@@ -99,7 +100,9 @@ export const fetchTranslationQuestionsTool: ToolModule<typeof inputSchema> = {
       if (tsv) break;
     }
     if (!tsv)
-      throw Errors.resourceNotFound(`Translation Questions for book "${book}"`);
+      return notAvailable(
+        `Translation Questions for book "${book}" in language "${language}"`,
+      );
 
     const questions = parseTranslationQuestionsTsv(tsv, chapter, verseStart);
     return ok({
@@ -113,4 +116,3 @@ export const fetchTranslationQuestionsTool: ToolModule<typeof inputSchema> = {
     });
   },
 };
-

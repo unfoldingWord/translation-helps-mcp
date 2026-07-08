@@ -92,6 +92,7 @@ When both ULT and UST are provided, always reference both — they complement ea
 - When Translation Word Links are provided, name the theologically significant terms in the verse.
 - Cite sources using [Source: id] markers.
 - Suggest concrete Alternate Translation options when the notes provide them.
+- **TRANSLATION ACADEMY FIDELITY:** When citing a Translation Academy article, quote the exact strategy names and descriptions from the article — do NOT rewrite, reorder, or generate new strategies not present in the source. If the article lists 2 strategies, present exactly those 2 strategies using the article's own wording. Never fabricate or hallucinate strategy names.
 - **Always respond in the same language the user is writing in.** If the user writes in Spanish, respond entirely in Spanish. If they write in Portuguese, respond in Portuguese, etc. Never switch to English unless the user does first.`;
 
 // ---------------------------------------------------------------------------
@@ -164,7 +165,9 @@ Help the user select a strategic language for their translation work. Respond wa
  * Return a short intent-specific instruction block for the system prompt.
  */
 export function intentSystemFragment(intent: IntentType | string): string {
-  return INTENT_FRAGMENTS[intent as IntentType] ?? INTENT_FRAGMENTS["open_ended"];
+  return (
+    INTENT_FRAGMENTS[intent as IntentType] ?? INTENT_FRAGMENTS["open_ended"]
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -196,7 +199,11 @@ export function renderEnrichedBundle(bundle: EnrichedBundle): string {
     context += `## Translation Notes — ${bundle.metadata.reference} (${bundle.notes.length} notes)\n`;
     context += `Each note explains a specific phrase or concept. [Source: id] identifies each note.\n\n`;
     for (const note of bundle.notes) {
-      const n = note as unknown as { id: string; text: string; supportReference?: string };
+      const n = note as unknown as {
+        id: string;
+        text: string;
+        supportReference?: string;
+      };
       context += `- [Source: ${n.id}] ${n.text}`;
       if (n.supportReference) {
         context += ` *(See TA: ${n.supportReference})*`;
@@ -279,7 +286,11 @@ export class PromptFormatter {
       context += `## Translation Word Links — Theologically Significant Terms (${bundle.tw.length})\n`;
       context += `These terms in this verse have Translation Word articles. Each is a key biblical/theological concept.\n\n`;
       bundle.tw.slice(0, maxArticles).forEach((tw) => {
-        const raw = tw as unknown as { title?: string; origWords?: string; wordPath?: string };
+        const raw = tw as unknown as {
+          title?: string;
+          origWords?: string;
+          wordPath?: string;
+        };
         const title = raw.title ?? raw.origWords ?? tw.path;
         const path = raw.wordPath ?? tw.path;
         context += `- **${title}** — TW article path: ${path} [Source: ${path}]\n`;

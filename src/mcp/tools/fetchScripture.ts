@@ -7,6 +7,7 @@ import {
   referenceParam,
   languageParam,
   ok,
+  notAvailable,
   type ToolModule,
 } from "./shared.js";
 import { Errors } from "../../core/errors.js";
@@ -54,7 +55,7 @@ export const fetchScriptureTool: ToolModule<typeof inputSchema> = {
     "Discovers all scripture versions available for the language via the catalog (topic=tc-ready, subject=Aligned Bible/Bible) " +
     "and returns every found version — no need to specify a resource type. " +
     "Returns a `versions` array where each entry has `resourceType` (e.g. ult, ust, glt), `text`, and `source`. " +
-    "Use `reference` like \"JHN 3:16\" for a verse, \"JHN 3:16-18\" for a range, or \"MAT 5\" for a whole chapter. " +
+    'Use `reference` like "JHN 3:16" for a verse, "JHN 3:16-18" for a range, or "MAT 5" for a whole chapter. ' +
     "Limitation: fetches all available versions; if only one translation type is needed prefer get_bundle for combined context.",
   inputSchema,
   outputSchema,
@@ -81,7 +82,7 @@ export const fetchScriptureTool: ToolModule<typeof inputSchema> = {
     });
 
     if (entries.length === 0) {
-      throw Errors.resourceNotFound(`Scripture for language "${language}"`);
+      return notAvailable(`Scripture for language "${language}"`);
     }
 
     const fetcher = new ZipResourceFetcher2({
@@ -116,23 +117,36 @@ export const fetchScriptureTool: ToolModule<typeof inputSchema> = {
 
         if (!usfmContent) return null;
 
-        const text = extractVerses(usfmContent, chapter, verseStart, verseEnd, format);
+        const text = extractVerses(
+          usfmContent,
+          chapter,
+          verseStart,
+          verseEnd,
+          format,
+        );
+        if (text === null) return null;
         // Derive a friendly resource type label from the repo name (e.g. "en_ult" → "ult")
-        const resourceType = entry.abbreviation ?? entry.repo.replace(/^[a-z]+_/, "");
+        const resourceType =
+          entry.abbreviation ?? entry.repo.replace(/^[a-z]+_/, "");
         return { resourceType, text, source: zipUrl };
       }),
     );
 
     const versions = settled
       .filter(
-        (r): r is PromiseFulfilledResult<{ resourceType: string; text: string; source: string }> =>
-          r.status === "fulfilled" && r.value !== null,
+        (
+          r,
+        ): r is PromiseFulfilledResult<{
+          resourceType: string;
+          text: string;
+          source: string;
+        }> => r.status === "fulfilled" && r.value !== null,
       )
       .map((r) => r.value);
 
     if (versions.length === 0) {
-      throw Errors.resourceNotFound(
-        `Book "${book}" in scripture resources for language "${language}"`,
+      return notAvailable(
+        `Scripture for book "${book}" in language "${language}"`,
       );
     }
 
@@ -143,9 +157,17 @@ export const fetchScriptureTool: ToolModule<typeof inputSchema> = {
       : null;
 
     return ok(
-      { reference, language, book, chapter, verse, format, versions, requestId },
+      {
+        reference,
+        language,
+        book,
+        chapter,
+        verse,
+        format,
+        versions,
+        requestId,
+      },
       `Scripture ${reference} (${language}) — ${versions.map((v) => v.resourceType).join(", ")}`,
     );
   },
 };
-

@@ -8,6 +8,7 @@ import {
   referenceParam,
   languageParam,
   ok,
+  notAvailable,
   type ToolModule,
 } from "./shared.js";
 import { Errors } from "../../core/errors.js";
@@ -85,7 +86,7 @@ export const fetchTranslationWordLinksTool: ToolModule<typeof inputSchema> = {
       env.TRANSLATION_HELPS_CACHE,
     );
     if (!resolved)
-      throw Errors.resourceNotFound(`Translation Word Links for "${language}"`);
+      return notAvailable(`Translation Word Links for language "${language}"`);
 
     const fetcher = new ZipResourceFetcher2({
       KV: env.TRANSLATION_HELPS_CACHE,
@@ -109,7 +110,9 @@ export const fetchTranslationWordLinksTool: ToolModule<typeof inputSchema> = {
       if (tsv) break;
     }
     if (!tsv)
-      throw Errors.resourceNotFound(`Word Links file for book "${book}"`);
+      return notAvailable(
+        `Translation Word Links for book "${book}" in language "${language}"`,
+      );
 
     const links = parseTranslationWordLinksTsv(tsv, chapter, verseStart);
     return ok(

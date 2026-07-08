@@ -3,8 +3,8 @@
  */
 
 import { z } from "zod";
-import { languageParam, ok, type ToolModule } from "./shared.js";
-import { Errors, TranslationHelpsError, ErrorCode } from "../../core/errors.js";
+import { languageParam, ok, notAvailable, type ToolModule } from "./shared.js";
+import { Errors } from "../../core/errors.js";
 import { getResourceZipUrl } from "../../core/resources/dcsClient.js";
 import { ZipResourceFetcher2 } from "../../core/resources/ZipResourceFetcher2.js";
 import { buildTaPathCandidates } from "../../core/parsers/markdown.js";
@@ -25,7 +25,9 @@ export type FetchTranslationAcademyParams = z.infer<typeof inputSchema>;
 const outputSchema = {
   language: z.string(),
   path: z.string().describe("Resolved path of the article in the zip."),
-  article: z.string().describe("Full Markdown content of the Translation Academy article."),
+  article: z
+    .string()
+    .describe("Full Markdown content of the Translation Academy article."),
   requestId: z.string(),
 };
 
@@ -63,7 +65,7 @@ export const fetchTranslationAcademyTool: ToolModule<typeof inputSchema> = {
       env.TRANSLATION_HELPS_CACHE,
     );
     if (!resolved)
-      throw Errors.resourceNotFound(`Translation Academy for "${language}"`);
+      return notAvailable(`Translation Academy for language "${language}"`);
 
     const fetcher = new ZipResourceFetcher2({
       KV: env.TRANSLATION_HELPS_CACHE,
@@ -84,20 +86,10 @@ export const fetchTranslationAcademyTool: ToolModule<typeof inputSchema> = {
     }
 
     if (!article) {
-      throw new TranslationHelpsError({
-        code: ErrorCode.RESOURCE_NOT_FOUND,
-        message: `Translation Academy article not found: "${articlePath}"`,
-        hints: [
-          {
-            message:
-              'Use search_articles with query like "figures of speech" to discover article paths.',
-          },
-          {
-            message:
-              'Example paths: "translate/figs-metaphor", "translate/translate-names".',
-          },
-        ],
-      });
+      return notAvailable(
+        `Translation Academy article at path "${articlePath}"`,
+        'Use search_articles to discover article paths. Example: "translate/figs-metaphor".',
+      );
     }
 
     return ok(
