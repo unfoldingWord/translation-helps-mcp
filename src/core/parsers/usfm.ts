@@ -19,25 +19,27 @@
  * - Alignment markup that leaves one token per line (joins with spaces)
  */
 export function stripUsfm(usfm: string): string {
-  return usfm
-    // 1. Remove alignment milestone wrappers (\zaln-s ... \* and \zaln-e\*)
-    .replace(/\\zaln-[se][^\\]*\\\*/g, "")
-    // 2. \w word|attributes\w* → keep word
-    .replace(/\\w\s+([^|\\]+)\|[^\\]*\\w\*/g, "$1")
-    // 3. \w word\w* (no attributes) → keep word
-    .replace(/\\w\s+([^\\]+)\\w\*/g, "$1")
-    // 4. Remaining pipe-separated attributes
-    .replace(/\|[^\s\n\\]*/g, "")
-    // 5. All remaining backslash markers (e.g. \p, \v 1, \c 3, \q1)
-    .replace(/\\[a-z]+\d*\*?\s*/g, "")
-    // 6. Orphaned \*
-    .replace(/\\\*/g, "")
-    // 7. Collapse single newlines → space (alignment markup leaves one word per line)
-    .replace(/\n(?!\n)/g, " ")
-    // 8. Collapse multiple spaces / blank lines
-    .replace(/[ \t]{2,}/g, " ")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  return (
+    usfm
+      // 1. Remove alignment milestone wrappers (\zaln-s ... \* and \zaln-e\*)
+      .replace(/\\zaln-[se][^\\]*\\\*/g, "")
+      // 2. \w word|attributes\w* → keep word
+      .replace(/\\w\s+([^|\\]+)\|[^\\]*\\w\*/g, "$1")
+      // 3. \w word\w* (no attributes) → keep word
+      .replace(/\\w\s+([^\\]+)\\w\*/g, "$1")
+      // 4. Remaining pipe-separated attributes
+      .replace(/\|[^\s\n\\]*/g, "")
+      // 5. All remaining backslash markers (e.g. \p, \v 1, \c 3, \q1)
+      .replace(/\\[a-z]+\d*\*?\s*/g, "")
+      // 6. Orphaned \*
+      .replace(/\\\*/g, "")
+      // 7. Collapse single newlines → space (alignment markup leaves one word per line)
+      .replace(/\n(?!\n)/g, " ")
+      // 8. Collapse multiple spaces / blank lines
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim()
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -59,10 +61,10 @@ export function extractVerses(
   verseStart?: string,
   verseEnd?: string,
   format: "usfm" | "text" = "text",
-): string {
+): string | null {
   const chapterRe = new RegExp(`\\\\c\\s+${chapter}\\b`);
   const chapterIdx = usfm.search(chapterRe);
-  if (chapterIdx < 0) return format === "usfm" ? usfm : stripUsfm(usfm);
+  if (chapterIdx < 0) return null;
 
   const nextChapterRe = /\\c\s+\d+/g;
   nextChapterRe.lastIndex = chapterIdx + 1;
@@ -97,6 +99,7 @@ export function extractVerses(
     if (inRange) out.push(line);
   }
 
-  const extracted = out.join("\n").trim() || chapterText;
+  const extracted = out.join("\n").trim();
+  if (!extracted) return null;
   return format === "usfm" ? extracted : stripUsfm(extracted);
 }

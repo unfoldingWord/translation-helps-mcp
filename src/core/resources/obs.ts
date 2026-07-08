@@ -67,6 +67,14 @@ export function parseObsReference(input: string): ObsReference | null {
     return { story: null, frame: null, isFront: true, canonical: "front" };
   }
 
+  // Bare story number: "2" → whole story { story: 2, frame: null }
+  const bareMatch = s.match(/^(\d+)$/);
+  if (bareMatch) {
+    const story = parseInt(bareMatch[1], 10);
+    if (story < 1 || story > 50) return null;
+    return { story, frame: null, isFront: false, canonical: `${story}` };
+  }
+
   // story:frame or story:frame-endFrame
   const match = s.match(/^(\d+):(\d+)(?:-(\d+))?$/);
   if (!match) return null;
@@ -190,7 +198,14 @@ export function parseObsStoryMarkdown(
     }
   }
 
-  return { story: storyNumber, title, frames, attribution };
+  // Prepend a synthetic frame 0 representing the story title
+  const titleFrame: ObsFrame = { index: 0, imageUrl: null, text: title };
+  return {
+    story: storyNumber,
+    title,
+    frames: [titleFrame, ...frames],
+    attribution,
+  };
 }
 
 // ---------------------------------------------------------------------------

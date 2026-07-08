@@ -18,7 +18,10 @@ import {
 } from "./helpers.js";
 import { catalogSearch } from "../../core/resources/dcsClient.js";
 import { extractVerses } from "../../core/parsers/usfm.js";
-import type { ScriptureVersion, ScriptureVersionRole } from "../../core/contracts/index.js";
+import type {
+  ScriptureVersion,
+  ScriptureVersionRole,
+} from "../../core/contracts/index.js";
 import { resolveScriptureVersionRole } from "../../core/resources/scriptureRoles.js";
 
 const SCRIPTURE_SUBJECTS = "Aligned Bible,Bible";
@@ -93,6 +96,7 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
       if (!usfm) return null;
 
       const text = extractVerses(usfm, chapter, verseStart, verseEnd, format);
+      if (text === null) return null;
       const abbrev = entry.abbreviation ?? entry.repo.replace(/^[a-z]+_/, "");
       const role: ScriptureVersionRole = isOriginal
         ? "original"
@@ -128,7 +132,15 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
       : verseStart
     : undefined;
 
-  return json({ reference, language, book, chapter, verse: verseStr ?? null, format, versions });
+  return json({
+    reference,
+    language,
+    book,
+    chapter,
+    verse: verseStr ?? null,
+    format,
+    versions,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -136,9 +148,33 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
 // ---------------------------------------------------------------------------
 
 const NT_BOOKS = new Set([
-  "MAT","MRK","LUK","JHN","ACT","ROM","1CO","2CO","GAL","EPH","PHP","COL",
-  "1TH","2TH","1TI","2TI","TIT","PHM","HEB","JAS","1PE","2PE","1JN","2JN",
-  "3JN","JUD","REV",
+  "MAT",
+  "MRK",
+  "LUK",
+  "JHN",
+  "ACT",
+  "ROM",
+  "1CO",
+  "2CO",
+  "GAL",
+  "EPH",
+  "PHP",
+  "COL",
+  "1TH",
+  "2TH",
+  "1TI",
+  "2TI",
+  "TIT",
+  "PHM",
+  "HEB",
+  "JAS",
+  "1PE",
+  "2PE",
+  "1JN",
+  "2JN",
+  "3JN",
+  "JUD",
+  "REV",
 ]);
 
 function isNtBook(book: string): boolean {

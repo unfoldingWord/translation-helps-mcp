@@ -110,11 +110,12 @@ export async function handleObs(ctx: RouteContext): Promise<Response> {
 
   const story = parseObsStoryMarkdown(obsRef.story, markdown);
 
-  // If a specific frame was requested, filter to that frame
+  // If a specific frame was requested, filter to that frame.
+  // frame === 0 returns the synthetic title frame; frame === null returns all frames.
   const frames =
     obsRef.frame !== null
       ? story.frames.filter((f) => f.index === obsRef.frame)
-      : story.frames;
+      : story.frames.filter((f) => f.index > 0); // exclude synthetic title frame for whole-story
 
   return json({
     reference,
@@ -150,7 +151,13 @@ export async function handleObsNotes(ctx: RouteContext): Promise<Response> {
     env.TRANSLATION_HELPS_CACHE,
   );
   if (!resolved) {
-    return json({ reference, language, notes: [] });
+    return json({
+      reference,
+      language,
+      available: false,
+      code: "RESOURCE_NOT_AVAILABLE",
+      message: `No OBS Translation Notes resource available for language "${language}".`,
+    });
   }
 
   const fetcher = makeFetcher(env);
@@ -165,7 +172,13 @@ export async function handleObsNotes(ctx: RouteContext): Promise<Response> {
   }
 
   if (!tsv) {
-    return json({ reference, language, notes: [] });
+    return json({
+      reference,
+      language,
+      available: false,
+      code: "RESOURCE_NOT_AVAILABLE",
+      message: `OBS Translation Notes TSV not found in resource for language "${language}".`,
+    });
   }
 
   const notes = parseObsNotesTsv(tsv, obsRef);
@@ -196,7 +209,13 @@ export async function handleObsQuestions(ctx: RouteContext): Promise<Response> {
     env.TRANSLATION_HELPS_CACHE,
   );
   if (!resolved) {
-    return json({ reference, language, questions: [] });
+    return json({
+      reference,
+      language,
+      available: false,
+      code: "RESOURCE_NOT_AVAILABLE",
+      message: `No OBS Translation Questions resource available for language "${language}".`,
+    });
   }
 
   const fetcher = makeFetcher(env);
@@ -210,7 +229,13 @@ export async function handleObsQuestions(ctx: RouteContext): Promise<Response> {
   }
 
   if (!tsv) {
-    return json({ reference, language, questions: [] });
+    return json({
+      reference,
+      language,
+      available: false,
+      code: "RESOURCE_NOT_AVAILABLE",
+      message: `OBS Translation Questions TSV not found in resource for language "${language}".`,
+    });
   }
 
   const questions = parseObsQuestionsTsv(tsv, obsRef);

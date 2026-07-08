@@ -547,6 +547,8 @@ export interface ToolReference {
   /** USFM book code, e.g. "JHN" */
   book: string;
   chapter: string;
+  /** End chapter for multi-chapter ranges, e.g. "2" in "GEN 1:1-2:3" */
+  endChapter?: string;
   verseStart?: string;
   verseEnd?: string;
 }
@@ -561,9 +563,14 @@ export function parseReferenceForTool(reference: string): ToolReference | null {
   if (!parsed.isValid || !parsed.chapter) return null;
 
   const book = bookNameToUsfm(parsed.book);
+  const endChapter =
+    parsed.endChapter !== undefined && parsed.endChapter !== parsed.chapter
+      ? String(parsed.endChapter)
+      : undefined;
   return {
     book,
     chapter: String(parsed.chapter),
+    ...(endChapter ? { endChapter } : {}),
     verseStart: parsed.verse !== undefined ? String(parsed.verse) : undefined,
     verseEnd:
       parsed.endVerse !== undefined ? String(parsed.endVerse) : undefined,
