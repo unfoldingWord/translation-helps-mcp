@@ -38,13 +38,13 @@ export function formatScriptureResponse(data: any, options: FormatterOptions): s
 		// Add metadata section - only show non-redundant info
 		// (organizations and resources are already shown per-verse)
 		if (includeMetadata && data.metadata) {
-			const hasNonRedundantMetadata = 
-				data.metadata.license || 
-				data.metadata.copyright || 
-				data.metadata.publisher || 
+			const hasNonRedundantMetadata =
+				data.metadata.license ||
+				data.metadata.copyright ||
+				data.metadata.publisher ||
 				data.metadata.contributors?.length ||
 				data.metadata.checkingLevel;
-			
+
 			if (hasNonRedundantMetadata) {
 				markdown += `## Metadata\n\n`;
 				if (data.metadata.license) {
@@ -118,11 +118,9 @@ export function formatScriptureResponse(data: any, options: FormatterOptions): s
 		// Add metadata footer - only show non-redundant info
 		// (organizations are already shown per-verse inline)
 		if (includeMetadata && data.metadata) {
-			const hasNonRedundantMetadata = 
-				data.metadata.license || 
-				data.metadata.copyright ||
-				data.metadata.publisher;
-			
+			const hasNonRedundantMetadata =
+				data.metadata.license || data.metadata.copyright || data.metadata.publisher;
+
 			if (hasNonRedundantMetadata) {
 				text += '\n---\n';
 				if (data.metadata.license) {
@@ -353,6 +351,68 @@ export function formatTranslationHelpsResponse(
 }
 
 /**
+ * Format an OBS story response (issue #32): title/frames/frontMatter shape
+ * from /api/fetch-obs. Frames are image + paragraph pairs; front-matter
+ * responses carry raw markdown in `frontMatter`.
+ */
+export function formatOBSStoryResponse(data: any, options: FormatterOptions): string | object {
+	const { format, includeMetadata = true } = options;
+
+	if (format === 'json') {
+		return data;
+	}
+
+	// Front matter is already markdown — return it directly for md, strip
+	// nothing for text (it reads fine as plain text too).
+	if (typeof data.frontMatter === 'string') {
+		return data.frontMatter;
+	}
+
+	const frames = Array.isArray(data.frames) ? data.frames : [];
+
+	if (format === 'md') {
+		let markdown = '';
+		if (data.title) {
+			markdown += `# ${data.story ? `${data.story}. ` : ''}${data.title}\n\n`;
+		}
+		if (includeMetadata && data.reference) {
+			markdown += `**Reference**: ${data.reference}\n\n`;
+		}
+		for (const frame of frames) {
+			markdown += `## Frame ${data.story}:${frame.frame}\n\n`;
+			if (frame.imageUrl) {
+				markdown += `![OBS Image](${frame.imageUrl})\n\n`;
+			}
+			markdown += `${frame.text}\n\n`;
+		}
+		if (data.bibleReference) {
+			markdown += `_${data.bibleReference}_\n\n`;
+		}
+		if (includeMetadata && data.metadata?.license) {
+			markdown += `---\n\n**License**: ${data.metadata.license}\n`;
+		}
+		return markdown;
+	}
+
+	if (format === 'text') {
+		let text = '';
+		if (data.title) {
+			const title = `${data.story ? `${data.story}. ` : ''}${data.title}`;
+			text += `${title}\n${'='.repeat(title.length)}\n\n`;
+		}
+		for (const frame of frames) {
+			text += `[${data.story}:${frame.frame}] ${frame.text}\n\n`;
+		}
+		if (data.bibleReference) {
+			text += `${data.bibleReference}\n`;
+		}
+		return text;
+	}
+
+	return data;
+}
+
+/**
  * Format list response (languages, books, resources)
  */
 export function formatListResponse(data: any, options: FormatterOptions): string | object {
@@ -464,6 +524,12 @@ export function formatResponse(data: any, options: FormatterOptions): string | o
 	// Determine response type and delegate
 	if (data.scripture || (Array.isArray(data) && data[0]?.text)) {
 		return formatScriptureResponse(data, options);
+	}
+
+	// OBS story responses (issue #32): title/frames or frontMatter shape.
+	// Checked before the generic branches — stories have no `items` array.
+	if (data.frames || data.frontMatter || data.metadata?.resourceType === 'obs') {
+		return formatOBSStoryResponse(data, options);
 	}
 
 	// If a single translation word-like object has raw markdown content, return it directly for md

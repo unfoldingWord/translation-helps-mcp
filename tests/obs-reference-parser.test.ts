@@ -12,6 +12,7 @@ import { describe, it, expect } from "vitest";
 import {
   parseOBSReference,
   formatOBSReference,
+  resolveOBSReferenceArg,
   obsStoryFileName,
   OBS_MAX_STORY,
 } from "../src/functions/obs-reference-parser.js";
@@ -118,6 +119,41 @@ describe("formatOBSReference", () => {
     for (const ref of ["1:1", "1:0", "1:1-8", "12", "front"]) {
       expect(formatOBSReference(parseOBSReference(ref))).toBe(ref);
     }
+  });
+});
+
+describe("resolveOBSReferenceArg", () => {
+  it("prefers a non-blank reference", () => {
+    expect(resolveOBSReferenceArg({ reference: "1:1", story: 9 })).toBe("1:1");
+  });
+
+  it("assembles the advertised story/frame/endFrame fallbacks (PR #33 review)", () => {
+    // The schema advertises these fields; BOTH transports must accept them —
+    // the stdio dispatch has no UnifiedMCPHandler normalization.
+    expect(resolveOBSReferenceArg({ story: 1, frame: 2 })).toBe("1:2");
+    expect(resolveOBSReferenceArg({ story: "1" })).toBe("1");
+    expect(resolveOBSReferenceArg({ story: 1, frame: 1, endFrame: 8 })).toBe(
+      "1:1-8",
+    );
+    expect(resolveOBSReferenceArg({ story: 1, frame: 0 })).toBe("1:0");
+  });
+
+  it("returns undefined when neither reference nor story is usable", () => {
+    expect(resolveOBSReferenceArg({})).toBeUndefined();
+    expect(resolveOBSReferenceArg({ reference: "  " })).toBeUndefined();
+    expect(resolveOBSReferenceArg({ frame: 2 })).toBeUndefined();
+    expect(resolveOBSReferenceArg(null)).toBeUndefined();
+    expect(resolveOBSReferenceArg(undefined)).toBeUndefined();
+  });
+
+  it("round-trips through the parser", () => {
+    const ref = resolveOBSReferenceArg({ story: 3, frame: 4, endFrame: 6 })!;
+    expect(parseOBSReference(ref)).toEqual({
+      story: 3,
+      frame: 4,
+      endFrame: 6,
+      isFront: false,
+    });
   });
 });
 

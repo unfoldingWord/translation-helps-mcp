@@ -103,6 +103,32 @@ export function parseOBSReference(input: string): ParsedOBSReference {
   return parsed;
 }
 
+/**
+ * Resolve the OBS reference from tool-call arguments, honoring the decomposed
+ * `story`/`frame`/`endFrame` fallback fields the MCP schemas advertise
+ * (issue #24 convention). Shared by BOTH transports: the stdio handlers call
+ * this directly, and it mirrors the HTTP path's UnifiedMCPHandler assembly —
+ * so a schema-compliant `{story: 1, frame: 2}` call works everywhere.
+ * Returns undefined when neither `reference` nor `story` is present.
+ */
+export function resolveOBSReferenceArg(
+  args: Record<string, unknown> | null | undefined,
+): string | undefined {
+  if (!args || typeof args !== "object") return undefined;
+  const present = (v: unknown): boolean =>
+    v !== undefined && v !== null && String(v).trim() !== "";
+
+  if (present(args.reference)) return String(args.reference);
+  if (!present(args.story)) return undefined;
+
+  let ref = String(args.story).trim();
+  if (present(args.frame)) {
+    ref += `:${String(args.frame).trim()}`;
+    if (present(args.endFrame)) ref += `-${String(args.endFrame).trim()}`;
+  }
+  return ref;
+}
+
 /** Canonical string form of a parsed OBS reference (e.g. "1:1", "1:1-8", "front", "12"). */
 export function formatOBSReference(ref: ParsedOBSReference): string {
   if (ref.isFront) return "front";

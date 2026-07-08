@@ -11,6 +11,7 @@ import {
   buildResourceUnavailableResult,
 } from "../utils/mcp-error-handler.js";
 import { fetchOBSStory } from "../functions/obs-service.js";
+import { resolveOBSReferenceArg } from "../functions/obs-reference-parser.js";
 import { toZodObject, PARAMETER_GROUPS } from "../config/parameters/index.js";
 
 // Input schema - generated from unified parameter definitions
@@ -25,8 +26,13 @@ export async function handleFetchObs(args: FetchObsArgs) {
   try {
     logger.info("Fetching OBS story", args);
 
+    // Honor the advertised story/frame fallback fields on this transport too
+    // (the HTTP path normalizes them in UnifiedMCPHandler). An empty string
+    // falls through to the parser's descriptive invalid-reference error.
+    const reference =
+      resolveOBSReferenceArg(args as Record<string, unknown>) ?? "";
     const result = await fetchOBSStory({
-      reference: args.reference as string,
+      reference,
       language: (args.language as string) || "en",
     });
 
