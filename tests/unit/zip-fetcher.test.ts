@@ -1,45 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { ZipResourceFetcher2 } from "../../src/core/resources/ZipResourceFetcher2.js";
+import { zipSync } from "fflate";
 
-// Create a minimal valid ZIP in memory for testing extractFileFromZip
+/** Create a valid ZIP using fflate (matches what the fetcher now uses for extraction). */
 function makeMinimalZip(fileName: string, content: string): Uint8Array {
-  const nameBytes = new TextEncoder().encode(fileName);
-  const dataBytes = new TextEncoder().encode(content);
-
-  // Local file header
-  const header = new Uint8Array(30 + nameBytes.length);
-  const hv = new DataView(header.buffer);
-  hv.setUint32(0, 0x04034b50, true); // signature
-  hv.setUint16(6, 0, true); // flags
-  hv.setUint16(8, 0, true); // compression: stored
-  hv.setUint32(18, dataBytes.length, true); // compressed size
-  hv.setUint32(22, dataBytes.length, true); // uncompressed size
-  hv.setUint16(26, nameBytes.length, true); // file name length
-  header.set(nameBytes, 30);
-
-  // Central directory (minimal — points past the data)
-  const centralDir = new Uint8Array(46 + nameBytes.length);
-  const cv = new DataView(centralDir.buffer);
-  cv.setUint32(0, 0x02014b50, true);
-  cv.setUint16(28, nameBytes.length, true);
-  centralDir.set(nameBytes, 46);
-
-  // End of central directory
-  const eocd = new Uint8Array(22);
-  const ev = new DataView(eocd.buffer);
-  ev.setUint32(0, 0x06054b50, true);
-  ev.setUint16(8, 1, true); // total entries
-  ev.setUint32(12, centralDir.length, true); // central dir size
-  ev.setUint32(16, header.length + dataBytes.length, true); // central dir offset
-
-  const total = new Uint8Array(
-    header.length + dataBytes.length + centralDir.length + eocd.length,
-  );
-  total.set(header, 0);
-  total.set(dataBytes, header.length);
-  total.set(centralDir, header.length + dataBytes.length);
-  total.set(eocd, header.length + dataBytes.length + centralDir.length);
-  return total;
+  const enc = new TextEncoder();
+  const files: Record<string, Uint8Array> = {};
+  files[fileName] = enc.encode(content);
+  return zipSync(files, { level: 0 }); // store (no compression)
 }
 
 describe("ZipResourceFetcher2", () => {

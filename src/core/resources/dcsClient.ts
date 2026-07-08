@@ -25,6 +25,11 @@ const CATALOG_CACHE_TTL_S = 3600;
 /** In-process cache for catalog search results (survives across tool invocations). */
 const CATALOG_PROCESS_CACHE = new Map<string, CatalogEntry[]>();
 
+/** Clear the process-level catalog cache. Used in tests to prevent cross-test pollution. */
+export function clearCatalogProcessCache(): void {
+  CATALOG_PROCESS_CACHE.clear();
+}
+
 // ---------------------------------------------------------------------------
 // Language-variant resolution cache (zero-cost on happy path)
 // ---------------------------------------------------------------------------
@@ -68,8 +73,8 @@ export interface CatalogKVCache {
 
 /** DCS subject strings → repo-name suffix (e.g. "en_tn"). */
 const SUBJECT_TO_SUFFIX: Record<string, string> = {
-  "Aligned Bible": "ult",           // also covers glt
-  "Simplified Bible": "ust",        // also covers gst — legacy label
+  "Aligned Bible": "ult", // also covers glt
+  "Simplified Bible": "ust", // also covers gst — legacy label
   "Translation Notes": "tn",
   "TSV Translation Notes": "tn",
   "Translation Words": "tw",
@@ -97,17 +102,72 @@ const ABBREV_TO_SUBJECT: Record<string, string> = {
 
 /** Standard USFM book codes → two-digit prefix (fallback only). */
 const BOOK_FILE_NUMBERS: Record<string, string> = {
-  GEN:"01",EXO:"02",LEV:"03",NUM:"04",DEU:"05",JOS:"06",JDG:"07",RUT:"08",
-  "1SA":"09","2SA":"10","1KI":"11","2KI":"12","1CH":"13","2CH":"14",
-  EZR:"15",NEH:"16",EST:"17",JOB:"18",PSA:"19",PRO:"20",ECC:"21",
-  SNG:"22",ISA:"23",JER:"24",LAM:"25",EZK:"26",DAN:"27",HOS:"28",
-  JOL:"29",AMO:"30",OBA:"31",JON:"32",MIC:"33",NAM:"34",HAB:"35",
-  ZEP:"36",HAG:"37",ZEC:"38",MAL:"39",
-  MAT:"41",MRK:"42",LUK:"43",JHN:"44",ACT:"45",ROM:"46",
-  "1CO":"47","2CO":"48",GAL:"49",EPH:"50",PHP:"51",COL:"52",
-  "1TH":"53","2TH":"54","1TI":"55","2TI":"56",TIT:"57",PHM:"58",
-  HEB:"59",JAS:"60","1PE":"61","2PE":"62","1JN":"63","2JN":"64",
-  "3JN":"65",JUD:"66",REV:"67",
+  GEN: "01",
+  EXO: "02",
+  LEV: "03",
+  NUM: "04",
+  DEU: "05",
+  JOS: "06",
+  JDG: "07",
+  RUT: "08",
+  "1SA": "09",
+  "2SA": "10",
+  "1KI": "11",
+  "2KI": "12",
+  "1CH": "13",
+  "2CH": "14",
+  EZR: "15",
+  NEH: "16",
+  EST: "17",
+  JOB: "18",
+  PSA: "19",
+  PRO: "20",
+  ECC: "21",
+  SNG: "22",
+  ISA: "23",
+  JER: "24",
+  LAM: "25",
+  EZK: "26",
+  DAN: "27",
+  HOS: "28",
+  JOL: "29",
+  AMO: "30",
+  OBA: "31",
+  JON: "32",
+  MIC: "33",
+  NAM: "34",
+  HAB: "35",
+  ZEP: "36",
+  HAG: "37",
+  ZEC: "38",
+  MAL: "39",
+  MAT: "41",
+  MRK: "42",
+  LUK: "43",
+  JHN: "44",
+  ACT: "45",
+  ROM: "46",
+  "1CO": "47",
+  "2CO": "48",
+  GAL: "49",
+  EPH: "50",
+  PHP: "51",
+  COL: "52",
+  "1TH": "53",
+  "2TH": "54",
+  "1TI": "55",
+  "2TI": "56",
+  TIT: "57",
+  PHM: "58",
+  HEB: "59",
+  JAS: "60",
+  "1PE": "61",
+  "2PE": "62",
+  "1JN": "63",
+  "2JN": "64",
+  "3JN": "65",
+  JUD: "66",
+  REV: "67",
 };
 
 // ---------------------------------------------------------------------------
@@ -306,7 +366,12 @@ export async function catalogSearch(
   let resp: CatalogSearchResponse;
   try {
     resp = await apiFetch<CatalogSearchResponse>(url);
-  } catch {
+  } catch (err) {
+    // Re-throw server errors so callers can distinguish DCS outages from empty results.
+    // Only swallow client-side / network errors (non-HTTP failures).
+    if (err instanceof Error && err.message.startsWith("HTTP 5")) {
+      throw err;
+    }
     return [];
   }
 
@@ -353,15 +418,12 @@ async function buildEntryViaGitea(
 ): Promise<{ zipUrl: string; entry: CatalogEntry } | null> {
   let repo: GiteaRepo;
   try {
-    const res = await fetch(
-      `${GITEA_API}/repos/${organization}/${repoName}`,
-      {
-        headers: {
-          "User-Agent": "translation-helps-mcp/2.0",
-          Accept: "application/json",
-        },
+    const res = await fetch(`${GITEA_API}/repos/${organization}/${repoName}`, {
+      headers: {
+        "User-Agent": "translation-helps-mcp/2.0",
+        Accept: "application/json",
       },
-    );
+    });
     if (!res.ok) return null;
     repo = (await res.json()) as GiteaRepo;
   } catch {
@@ -454,11 +516,18 @@ export async function listLanguages(
   try {
     const resp = await apiFetch<CatalogListResponse>(url);
     const raw = (resp.data ?? []) as Array<Record<string, unknown>>;
-    const entries: LanguageEntry[] = raw.map((item) => ({
-      code: String(item["lang"] ?? item["lc"] ?? ""),
-      name: String(item["language_title"] ?? item["ln"] ?? item["lang"] ?? ""),
-      direction: (item["ld"] ?? item["direction"]) === "rtl" ? "rtl" : ("ltr" as "ltr" | "rtl"),
-    })).filter((e) => e.code);
+    const entries: LanguageEntry[] = raw
+      .map((item) => ({
+        code: String(item["lang"] ?? item["lc"] ?? ""),
+        name: String(
+          item["language_title"] ?? item["ln"] ?? item["lang"] ?? "",
+        ),
+        direction:
+          (item["ld"] ?? item["direction"]) === "rtl"
+            ? "rtl"
+            : ("ltr" as "ltr" | "rtl"),
+      }))
+      .filter((e) => e.code);
     await kvPut(kv, cacheKey, JSON.stringify(entries));
     return entries;
   } catch {
@@ -488,7 +557,8 @@ export async function listSubjects(
     const subjects = raw
       .map((item) => String(item["subject"] ?? ""))
       .filter(Boolean);
-    const result = subjects.length > 0 ? subjects : Object.keys(SUBJECT_TO_SUFFIX);
+    const result =
+      subjects.length > 0 ? subjects : Object.keys(SUBJECT_TO_SUFFIX);
     await kvPut(kv, cacheKey, JSON.stringify(result));
     return result;
   } catch {
@@ -592,19 +662,25 @@ export async function resolveCatalogLanguage(
   }
 
   // Single-flight: share one discovery among concurrent callers for the same key
-  const inflight = VARIANT_INFLIGHT(memoKey, async () => {
-    const variants = await findLanguageVariants(lang, kv);
-    for (const v of variants) {
-      const vEntries = await catalogSearch({ lang: v, subject, kv });
-      if (vEntries.length > 0) return v;
-    }
-    return lang; // no variant found — callers will receive empty entries
-  }, kv, kvKey);
+  const inflight = VARIANT_INFLIGHT(
+    memoKey,
+    async () => {
+      const variants = await findLanguageVariants(lang, kv);
+      for (const v of variants) {
+        const vEntries = await catalogSearch({ lang: v, subject, kv });
+        if (vEntries.length > 0) return v;
+      }
+      return lang; // no variant found — callers will receive empty entries
+    },
+    kv,
+    kvKey,
+  );
 
   const resolved = await inflight;
-  const resolvedEntries = resolved !== lang
-    ? await catalogSearch({ lang: resolved, subject, kv })
-    : [];
+  const resolvedEntries =
+    resolved !== lang
+      ? await catalogSearch({ lang: resolved, subject, kv })
+      : [];
   return { language: resolved, entries: resolvedEntries };
 }
 
@@ -618,16 +694,18 @@ function VARIANT_INFLIGHT(
   const existing = VARIANT_RESOLVE_INFLIGHT.get(memoKey);
   if (existing) return existing;
 
-  const p = factory().then((resolved) => {
-    VARIANT_RESOLVE_CACHE.set(memoKey, resolved);
-    VARIANT_RESOLVE_INFLIGHT.delete(memoKey);
-    // Best-effort KV persist (don't await — never block the response)
-    void kvPut(kv, kvKey, resolved, VARIANT_CACHE_TTL_S);
-    return resolved;
-  }).catch(() => {
-    VARIANT_RESOLVE_INFLIGHT.delete(memoKey);
-    return memoKey.split(":")[0]; // return original base on error
-  });
+  const p = factory()
+    .then((resolved) => {
+      VARIANT_RESOLVE_CACHE.set(memoKey, resolved);
+      VARIANT_RESOLVE_INFLIGHT.delete(memoKey);
+      // Best-effort KV persist (don't await — never block the response)
+      void kvPut(kv, kvKey, resolved, VARIANT_CACHE_TTL_S);
+      return resolved;
+    })
+    .catch(() => {
+      VARIANT_RESOLVE_INFLIGHT.delete(memoKey);
+      return memoKey.split(":")[0]; // return original base on error
+    });
 
   VARIANT_RESOLVE_INFLIGHT.set(memoKey, p);
   return p;
@@ -646,35 +724,51 @@ function VARIANT_INFLIGHT(
 export async function getResourceZipUrl(
   languageCode: string,
   subject: string,
-  _organization = "unfoldingWord",
+  organization = "unfoldingWord",
   _stage: "prod" | "preprod" | "latest" = "prod",
   kv?: CatalogKVCache | null,
 ): Promise<{ zipUrl: string; entry: CatalogEntry } | null> {
   // Derive abbreviation from subject for precise disambiguation
   const abbreviation = SUBJECT_TO_SUFFIX[subject];
 
+  /** Filter results by organization (case-insensitive). */
+  const matchOrg = (results: CatalogEntry[]): CatalogEntry | undefined =>
+    organization
+      ? results.find(
+          (r) => r.owner.toLowerCase() === organization.toLowerCase(),
+        )
+      : results[0];
+
   // 1. Try Catalog by abbreviation (most precise — avoids ULT/UST confusion)
   if (abbreviation) {
-    const results = await catalogSearch({ lang: languageCode, abbreviation, kv });
-    const entry = results[0];
+    const results = await catalogSearch({
+      lang: languageCode,
+      abbreviation,
+      kv,
+    });
+    const entry = matchOrg(results);
     if (entry) {
       const zipUrl =
         entry.catalog?.prod?.zipball_url ??
         `${GITEA_BASE}/${entry.owner}/${entry.repo}/archive/${entry.catalog?.prod?.branch_or_tag_name ?? "master"}.zip`;
       return { zipUrl, entry };
     }
+    // If org was specified but no match, don't fall through to arbitrary org content
+    if (organization && results.length > 0) return null;
   }
 
   // 2. Try Catalog by subject (broader match)
   if (subject) {
     const results = await catalogSearch({ lang: languageCode, subject, kv });
-    const entry = results[0];
+    const entry = matchOrg(results);
     if (entry) {
       const zipUrl =
         entry.catalog?.prod?.zipball_url ??
         `${GITEA_BASE}/${entry.owner}/${entry.repo}/archive/${entry.catalog?.prod?.branch_or_tag_name ?? "master"}.zip`;
       return { zipUrl, entry };
     }
+    // If org was specified but no match, don't fall through to arbitrary org content
+    if (organization && results.length > 0) return null;
   }
 
   // 3. Language-variant fallback (e.g. "es" → "es-419").
@@ -683,7 +777,13 @@ export async function getResourceZipUrl(
   if (!languageCode.includes("-")) {
     const variants = await findLanguageVariants(languageCode, kv);
     for (const v of variants) {
-      const variantResult = await getResourceZipUrl(v, subject, _organization, "prod", kv);
+      const variantResult = await getResourceZipUrl(
+        v,
+        subject,
+        organization,
+        "prod",
+        kv,
+      );
       if (variantResult) return variantResult;
     }
   }

@@ -9,6 +9,7 @@ import {
   listSubjects,
   getResourceZipUrl,
   getResourceZipUrlByAbbreviation,
+  clearCatalogProcessCache,
   type CatalogEntry,
 } from "../../src/core/resources/dcsClient.js";
 
@@ -32,6 +33,7 @@ function mockFetch(responses: Record<string, unknown>) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  clearCatalogProcessCache(); // prevent cross-test cache pollution
 });
 
 afterEach(() => {
@@ -54,10 +56,9 @@ describe("catalogSearch always includes topic=tc-ready", () => {
             subject: "Aligned Bible",
             abbreviation: "ult",
             branch_or_tag_name: "v88",
-            zipball_url: "https://git.door43.org/unfoldingWord/en_ult/archive/v88.zip",
-            ingredients: [
-              { identifier: "jhn", path: "./44-JHN.usfm" },
-            ],
+            zipball_url:
+              "https://git.door43.org/unfoldingWord/en_ult/archive/v88.zip",
+            ingredients: [{ identifier: "jhn", path: "./44-JHN.usfm" }],
           },
         ],
       },
@@ -69,7 +70,8 @@ describe("catalogSearch always includes topic=tc-ready", () => {
     expect(results[0].repo).toBe("en_ult");
     expect(results[0].catalog?.prod?.branch_or_tag_name).toBe("v88");
 
-    const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock
+      .calls[0];
     const calledUrl = fetchCall[0] as string;
     expect(calledUrl).toContain("topic=tc-ready");
     expect(calledUrl).toContain("stage=prod");
@@ -84,7 +86,9 @@ describe("catalogSearch always includes topic=tc-ready", () => {
   });
 
   it("returns empty array on network error", async () => {
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error("Network error")) as unknown as typeof fetch;
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValue(new Error("Network error")) as unknown as typeof fetch;
     const results = await catalogSearch({ lang: "en" });
     expect(results).toEqual([]);
   });
@@ -108,7 +112,11 @@ describe("listLanguages", () => {
 
     const langs = await listLanguages();
     expect(langs).toHaveLength(2);
-    expect(langs[0]).toMatchObject({ code: "en", name: "English", direction: "ltr" });
+    expect(langs[0]).toMatchObject({
+      code: "en",
+      name: "English",
+      direction: "ltr",
+    });
     expect(langs[1]).toMatchObject({ code: "es", name: "Español" });
   });
 
@@ -123,14 +131,19 @@ describe("listLanguages", () => {
     };
 
     mockFetch({
-      "catalog/list/languages": { ok: true, data: [{ lang: "en", language_title: "English" }] },
+      "catalog/list/languages": {
+        ok: true,
+        data: [{ lang: "en", language_title: "English" }],
+      },
     });
 
     await listLanguages(kvStore);
     await listLanguages(kvStore);
 
     // fetch should only be called once (second call hits KV)
-    expect((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length).toBe(1);
+    expect(
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length,
+    ).toBe(1);
   });
 });
 
@@ -152,7 +165,9 @@ describe("listSubjects", () => {
   });
 
   it("falls back to hardcoded list on error", async () => {
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error("Network error")) as unknown as typeof fetch;
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValue(new Error("Network error")) as unknown as typeof fetch;
     const subjects = await listSubjects();
     expect(subjects.length).toBeGreaterThan(0);
   });
@@ -174,7 +189,8 @@ describe("getResourceZipUrl", () => {
             subject: "TSV Translation Notes",
             abbreviation: "tn",
             branch_or_tag_name: "v44",
-            zipball_url: "https://git.door43.org/unfoldingWord/en_tn/archive/v44.zip",
+            zipball_url:
+              "https://git.door43.org/unfoldingWord/en_tn/archive/v44.zip",
             ingredients: [],
           },
         ],
@@ -204,7 +220,8 @@ describe("getResourceZipUrlByAbbreviation", () => {
             subject: "Aligned Bible",
             abbreviation: "ult",
             branch_or_tag_name: "v88",
-            zipball_url: "https://git.door43.org/unfoldingWord/en_ult/archive/v88.zip",
+            zipball_url:
+              "https://git.door43.org/unfoldingWord/en_ult/archive/v88.zip",
             ingredients: [],
           },
         ],
@@ -217,7 +234,9 @@ describe("getResourceZipUrlByAbbreviation", () => {
     expect(result!.entry.repo).toBe("en_ult");
 
     // Verify abbreviation was passed to catalog
-    const calledUrl = ((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string])[0];
+    const calledUrl = (
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string]
+    )[0];
     expect(calledUrl).toContain("abbreviation=ult");
   });
 
@@ -232,7 +251,8 @@ describe("getResourceZipUrlByAbbreviation", () => {
             subject: "Aligned Bible",
             abbreviation: "ust",
             branch_or_tag_name: "v88",
-            zipball_url: "https://git.door43.org/unfoldingWord/en_ust/archive/v88.zip",
+            zipball_url:
+              "https://git.door43.org/unfoldingWord/en_ust/archive/v88.zip",
             ingredients: [],
           },
         ],
@@ -244,7 +264,9 @@ describe("getResourceZipUrlByAbbreviation", () => {
     expect(result!.entry.repo).toBe("en_ust");
     expect(result!.entry.abbreviation).toBe("ust");
 
-    const calledUrl = ((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string])[0];
+    const calledUrl = (
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string]
+    )[0];
     expect(calledUrl).toContain("abbreviation=ust");
     // Should NOT contain "ult"
     expect(calledUrl).not.toContain("abbreviation=ult");

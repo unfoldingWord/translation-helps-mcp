@@ -185,7 +185,7 @@ describe("extractNextBatchFromHistory", () => {
       {
         role: "assistant",
         content:
-          "Here is the chapter overview...\n\n---\n*Say \"next\" for JHN 3:1-4 to begin verse-by-verse.*",
+          'Here is the chapter overview...\n\n---\n*Say "next" for JHN 3:1-4 to begin verse-by-verse.*',
       },
     ];
     const next = extractNextBatchFromHistory(history);
@@ -198,7 +198,7 @@ describe("extractNextBatchFromHistory", () => {
       {
         role: "assistant",
         content:
-          "Detailed notes for JHN 3:1-4...\n\n---\n*Batch: JHN 3:1-4 | Say \"next\" for JHN 3:5-8*",
+          'Detailed notes for JHN 3:1-4...\n\n---\n*Batch: JHN 3:1-4 | Say "next" for JHN 3:5-8*',
       },
     ];
     const next = extractNextBatchFromHistory(history);
@@ -218,7 +218,8 @@ describe("extractNextBatchFromHistory", () => {
     const history: ConversationMessage[] = [
       {
         role: "assistant",
-        content: 'older response *Say "next" for JHN 3:1-4 to begin verse-by-verse.*',
+        content:
+          'older response *Say "next" for JHN 3:1-4 to begin verse-by-verse.*',
       },
       {
         role: "assistant",
@@ -241,7 +242,7 @@ describe("classifyIntent with history — continuation", () => {
     {
       role: "assistant",
       content:
-        "Overview of John 3...\n\n---\n*Say \"next\" for JHN 3:1-4 to begin verse-by-verse.*",
+        'Overview of John 3...\n\n---\n*Say "next" for JHN 3:1-4 to begin verse-by-verse.*',
     },
   ];
 
@@ -273,7 +274,7 @@ describe("classifyIntent with history — continuation", () => {
       {
         role: "assistant",
         content:
-          "Notes for JHN 3:1-4...\n\n---\n*Batch: JHN 3:1-4 | Say \"next\" for JHN 3:5-8*",
+          'Notes for JHN 3:1-4...\n\n---\n*Batch: JHN 3:1-4 | Say "next" for JHN 3:5-8*',
       },
     ];
     const r = classifyIntent("next", batchHistory);
@@ -326,7 +327,7 @@ describe("extractSessionContext — checklist vs batch discrimination", () => {
     {
       role: "assistant",
       content:
-        "John 3 overview...\n☐ 1. Passage structure\n☐ 2. Born again\n☐ 3. Key terms\n\n---\n*[Step 1/3] — Say **\"next\"** when ready to continue.*",
+        'John 3 overview...\n☐ 1. Passage structure\n☐ 2. Born again\n☐ 3. Key terms\n\n---\n*[Step 1/3] — Say **"next"** when ready to continue.*',
     },
   ];
 
@@ -356,7 +357,8 @@ describe("extractSessionContext — checklist vs batch discrimination", () => {
     const batchHistory: ConversationMessage[] = [
       {
         role: "assistant",
-        content: "Notes...\n\n---\n*Batch: JHN 3:1-4 | Say \"next\" for JHN 3:5-8*",
+        content:
+          'Notes...\n\n---\n*Batch: JHN 3:1-4 | Say "next" for JHN 3:5-8*',
       },
     ];
     const ctx = extractSessionContext(batchHistory);
@@ -365,7 +367,12 @@ describe("extractSessionContext — checklist vs batch discrimination", () => {
 
   it("checklist_step selectResources returns empty plan (no fetches)", () => {
     const plan = selectResources(
-      { intent: "checklist_step", nextStep: 2, totalSteps: 5, confidence: "high" },
+      {
+        intent: "checklist_step",
+        nextStep: 2,
+        totalSteps: 5,
+        confidence: "high",
+      },
       "en",
     );
     expect(plan.intent).toBe("checklist_step");
@@ -406,10 +413,12 @@ describe("phrase_drill detection", () => {
     expect(r.challengePhrase).toBe("eternal life");
   });
 
-  it("classifyIntent returns phrase_drill for phrase match in annotated session", () => {
+  it("non-numeric phrase match defers to LLM (classifyIntent returns open_ended)", () => {
+    // Text phrase matching (e.g. 'eternal life') is resolved by the LLM in ContextHarness
+    // via resolvePhraseDrillIntent, not synchronously in classifyIntent.
+    // classifyIntent returns open_ended so the harness can route to the LLM.
     const r = classifyIntent("eternal life", annotatedHistory);
-    expect(r.intent).toBe("phrase_drill");
-    expect(r.challengeIndex).toBe(2);
+    expect(r.intent).toBe("open_ended");
   });
 
   it("phrase_drill detection takes priority over passage reference", () => {

@@ -96,22 +96,29 @@ describe("parseObsStoryMarkdown", () => {
     expect(story.story).toBe(1);
   });
 
-  it("extracts two frames", () => {
+  it("extracts two frames (plus synthetic title frame at index 0)", () => {
     const story = parseObsStoryMarkdown(1, SAMPLE_OBS_MARKDOWN);
-    expect(story.frames).toHaveLength(2);
-    expect(story.frames[0].index).toBe(1);
-    expect(story.frames[1].index).toBe(2);
+    // frames[0] is the synthetic title frame (index 0, no imageUrl)
+    // frames[1] and frames[2] are the real content frames
+    expect(story.frames).toHaveLength(3);
+    expect(story.frames[0].index).toBe(0); // synthetic title frame
+    expect(story.frames[1].index).toBe(1);
+    expect(story.frames[2].index).toBe(2);
   });
 
   it("extracts image URLs", () => {
     const story = parseObsStoryMarkdown(1, SAMPLE_OBS_MARKDOWN);
-    expect(story.frames[0].imageUrl).toContain("obs-en-01-01.jpg");
+    // Real frames start at index 1 in the array (after synthetic title frame)
+    expect(story.frames[1].imageUrl).toContain("obs-en-01-01.jpg");
+    // Synthetic title frame has no imageUrl
+    expect(story.frames[0].imageUrl).toBeNull();
   });
 
   it("extracts frame text", () => {
     const story = parseObsStoryMarkdown(1, SAMPLE_OBS_MARKDOWN);
-    expect(story.frames[0].text).toContain("God created the heavens");
-    expect(story.frames[1].text).toContain("without form and void");
+    // frames[1] is first real frame, frames[2] is second real frame
+    expect(story.frames[1].text).toContain("God created the heavens");
+    expect(story.frames[2].text).toContain("without form and void");
   });
 
   it("extracts attribution line", () => {
