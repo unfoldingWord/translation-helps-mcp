@@ -224,10 +224,30 @@ export const LIMIT_PARAM: UnifiedParameterDef<number> = {
 };
 
 /**
+ * OBS reference parameter (issue #32): Open Bible Stories uses a story:frame
+ * scheme, NOT the Bible book chapter:verse scheme — a completely separate
+ * parameter from REFERENCE_PARAM so the two grammars never mix.
+ */
+export const OBS_REFERENCE_PARAM: UnifiedParameterDef<string> = {
+  name: "reference",
+  type: "string",
+  default: "1:1",
+  required: true,
+  description:
+    'OBS story:frame reference. Stories run 1-50; frame 0 is the story title. Examples: "1:1" (story 1, frame 1), ' +
+    '"1:0" (story title), "1" (whole story), "1:1-8" (frame range), "front" (front matter). ' +
+    'An optional "OBS" prefix is accepted ("OBS 1:1"). This is NOT a Bible book chapter:verse reference.',
+  example: "1:1",
+  pattern:
+    "^(?:obs[\\s:]*)?(?:front(?:[\\s:]+intro)?|intro|\\d{1,2}(?::\\d{1,3}(?:\\s*-\\s*\\d{1,3})?)?)$",
+};
+
+/**
  * All common parameters as a map
  */
 export const COMMON_PARAMS = {
   reference: REFERENCE_PARAM,
+  obsReference: OBS_REFERENCE_PARAM,
   language: LANGUAGE_PARAM,
   topic: TOPIC_PARAM,
   format: FORMAT_PARAM,

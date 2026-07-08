@@ -55,6 +55,34 @@ function classifyRefPart(nk: string): RefPart | null {
 	return null;
 }
 
+type ObsRefPart = 'story' | 'frame' | 'endFrame';
+
+/**
+ * Classify an arg key as a decomposed OBS-reference part (issue #32),
+ * STRUCTURALLY like classifyRefPart. Only ever applied to fetch_obs* tools —
+ * OBS references use story:frame, and these keys must never influence the
+ * Bible-reference tools. `nk` is normKey(key).
+ */
+function classifyObsRefPart(nk: string): ObsRefPart | null {
+	if (nk.startsWith('endframe') || nk === 'frameend') return 'endFrame';
+	if (nk.startsWith('story')) return 'story';
+	if (nk.startsWith('frame') || nk === 'f') return 'frame';
+	return null;
+}
+
+/**
+ * Assemble an OBS `reference` string ("1:1", "1:1-8", "1") from decomposed
+ * story/frame parts (issue #32) — the OBS analog of assembleReference().
+ */
+function assembleObsReference(parts: Partial<Record<ObsRefPart, unknown>>): string {
+	let ref = String(parts.story).trim();
+	if (!isBlank(parts.frame)) {
+		ref += `:${String(parts.frame).trim()}`;
+		if (!isBlank(parts.endFrame)) ref += `-${String(parts.endFrame).trim()}`;
+	}
+	return ref;
+}
+
 /** Canonical bare-`path` synonyms (issue #24 Class B). `topic` is excluded — it
  *  is a legitimate filter on these tools, handled only as a last-resort fallback. */
 const PATH_SYNONYMS = new Set([
@@ -224,6 +252,35 @@ export class UnifiedMCPHandler {
 			// leftovers so they don't leak into the query string.
 			if (!isBlank(args.reference)) {
 				for (const k of consumedKeys) delete args[k];
+			}
+
+			// OBS tools only (issue #32): assemble story/frame keys into an OBS
+			// story:frame reference. GATED on the tool name so these keys can
+			// never affect the Bible-reference tools. (A decomposed
+			// {book:"obs", chapter, verse} call is already handled above — the
+			// OBS reference parser accepts the assembled "obs 1:1" form.)
+			if (toolName.startsWith('fetch_obs')) {
+				const obsParts: Partial<Record<ObsRefPart, unknown>> = {};
+				const obsKeys: string[] = [];
+				for (const k of Object.keys(args)) {
+					if (k === 'reference') continue;
+					const part = classifyObsRefPart(normKey(k));
+					if (!part) continue;
+					obsKeys.push(k);
+					if (obsParts[part] === undefined && !isBlank(args[k])) {
+						obsParts[part] = args[k];
+					}
+				}
+				if (isBlank(args.reference) && !isBlank(obsParts.story)) {
+					args.reference = assembleObsReference(obsParts);
+					console.log(
+						`[UNIFIED HANDLER] Assembled OBS reference for ${toolName} from story/frame args:`,
+						args.reference
+					);
+				}
+				if (!isBlank(args.reference)) {
+					for (const k of obsKeys) delete args[k];
+				}
 			}
 		}
 

@@ -59,6 +59,9 @@ export const ToolFormatters = {
           note.text || note.note || note.Note || note.content || "";
         const quote = note.quote || note.Quote;
         const _entryLink = note.entryLink || note.link || note.SupportReference;
+        // The endpoint attaches externalReference per note; without this
+        // declaration the reference below threw at runtime (undeclared).
+        const externalReference = note.externalReference;
         let formattedNote = `**${index + 1}.**`;
         if (quote && quote.trim()) {
           formattedNote += ` **${quote}**:`;
@@ -128,6 +131,25 @@ export const ToolFormatters = {
     // Plain markdown body from fetch (UnifiedMCPHandler wraps non-JSON as { text, raw })
     if (data?.raw && typeof data.raw === "string") return data.raw;
     return "No translation words found";
+  },
+
+  obsStory: (data: any): string => {
+    // Handle pre-formatted string (from format=md response)
+    if (typeof data === "string") return data;
+    if (data?.frontMatter) return data.frontMatter;
+
+    let output = "";
+    if (data?.title) {
+      output += `# ${data.story ? `${data.story}. ` : ""}${data.title}\n\n`;
+    }
+    for (const frame of data?.frames || []) {
+      output += `**Frame ${data.story}:${frame.frame}**\n\n`;
+      if (frame.imageUrl) output += `![OBS Image](${frame.imageUrl})\n\n`;
+      output += `${frame.text}\n\n`;
+    }
+    if (data?.bibleReference) output += `_${data.bibleReference}_\n`;
+    if (data?.raw && typeof data.raw === "string") return data.raw;
+    return output.trim() || "No OBS content found";
   },
 
   academy: (data: any): string => {
@@ -359,6 +381,117 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
         parameters: { path: "translate/figs-activepassive", language: "en" },
         expectedResponse:
           "Translation Academy module about active and passive voice",
+      },
+    ],
+  },
+
+  // ============================================================
+  // OPEN BIBLE STORIES (issue #32)
+  // OBS uses story:frame references ("1:1", "1:0" = title, "front",
+  // "1:1-8"), NOT the Bible book chapter:verse scheme.
+  // ============================================================
+  {
+    mcpName: "fetch_obs",
+    displayName: "Fetch Open Bible Stories",
+    endpoint: "fetch-obs",
+    description:
+      'Fetch Open Bible Stories (OBS) story text: title and illustrated frames. Uses OBS story:frame references ("1:1", "1:0" for a story title, "1" for a whole story, "front" for front matter) — NOT Bible book chapter:verse. All Door43 organizations are searched automatically.',
+    category: "Open Bible Stories",
+    parameters: PARAMETER_GROUPS.obs.parameters,
+    requiredParams: ["reference"],
+    formatter: ToolFormatters.obsStory,
+    examples: [
+      {
+        title: "One frame",
+        parameters: { reference: "1:1", language: "en" },
+        expectedResponse: "Story 1, frame 1: image + paragraph text",
+      },
+      {
+        title: "Story title",
+        parameters: { reference: "1:0", language: "en" },
+        expectedResponse: 'The title of story 1 ("The Creation")',
+      },
+      {
+        title: "Whole story",
+        parameters: { reference: "1", language: "en" },
+        expectedResponse: "All 16 frames of story 1",
+      },
+    ],
+  },
+
+  {
+    mcpName: "fetch_obs_translation_notes",
+    displayName: "Fetch OBS Translation Notes",
+    endpoint: "fetch-obs-translation-notes",
+    description:
+      'Fetch translator notes for an Open Bible Stories reference (story:frame, e.g. "1:1"; "1:0" for a story title). All Door43 organizations are searched automatically.',
+    category: "Open Bible Stories",
+    parameters: PARAMETER_GROUPS.obs.parameters,
+    requiredParams: ["reference"],
+    formatter: ToolFormatters.notes,
+    examples: [
+      {
+        title: "Notes for a frame",
+        parameters: { reference: "1:1", language: "en" },
+        expectedResponse: "OBS translation notes for story 1, frame 1",
+      },
+    ],
+  },
+
+  {
+    mcpName: "fetch_obs_translation_questions",
+    displayName: "Fetch OBS Translation Questions",
+    endpoint: "fetch-obs-translation-questions",
+    description:
+      'Fetch comprehension questions with answers for an Open Bible Stories reference (story:frame, e.g. "1:1"). All Door43 organizations are searched automatically.',
+    category: "Open Bible Stories",
+    parameters: PARAMETER_GROUPS.obs.parameters,
+    requiredParams: ["reference"],
+    formatter: ToolFormatters.questions,
+    examples: [
+      {
+        title: "Questions for a frame",
+        parameters: { reference: "1:1", language: "en" },
+        expectedResponse: "OBS translation questions for story 1, frame 1",
+      },
+    ],
+  },
+
+  {
+    mcpName: "fetch_obs_study_notes",
+    displayName: "Fetch OBS Study Notes",
+    endpoint: "fetch-obs-study-notes",
+    description:
+      'Fetch study notes for an Open Bible Stories reference (story:frame, e.g. "1:1"). All Door43 organizations are searched automatically.',
+    category: "Open Bible Stories",
+    parameters: PARAMETER_GROUPS.obs.parameters,
+    requiredParams: ["reference"],
+    formatter: ToolFormatters.notes,
+    examples: [
+      {
+        title: "Study notes for a frame",
+        parameters: { reference: "1:1", language: "en" },
+        expectedResponse: "OBS study notes for story 1, frame 1",
+      },
+    ],
+  },
+
+  {
+    mcpName: "fetch_obs_study_questions",
+    displayName: "Fetch OBS Study Questions",
+    endpoint: "fetch-obs-study-questions",
+    description:
+      'Fetch study/discussion questions for an Open Bible Stories reference. Rows may cover frame RANGES (e.g. "1:1-8") and front matter ("front"). All Door43 organizations are searched automatically.',
+    category: "Open Bible Stories",
+    parameters: PARAMETER_GROUPS.obs.parameters,
+    requiredParams: ["reference"],
+    formatter: ToolFormatters.questions,
+    examples: [
+      {
+        title: "Study questions for a frame",
+        parameters: { reference: "1:3", language: "en" },
+        expectedResponse:
+          "OBS study questions whose frame range covers story 1, frame 3",
       },
     ],
   },

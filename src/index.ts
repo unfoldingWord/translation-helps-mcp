@@ -28,6 +28,11 @@ import { handleGetTranslationWord } from "./tools/getTranslationWord.js";
 import { handleListLanguages } from "./tools/listLanguages.js";
 import { handleListSubjects } from "./tools/listSubjects.js";
 import { handleListResourcesForLanguage } from "./tools/listResourcesForLanguage.js";
+import { handleFetchObs, type FetchObsArgs } from "./tools/fetchObs.js";
+import {
+  handleFetchObsHelps,
+  type FetchObsHelpsArgs,
+} from "./tools/fetchObsHelps.js";
 import { logger } from "./utils/logger.js";
 import { getVersion } from "./version.js";
 
@@ -104,6 +109,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           args as z.infer<typeof FetchTranslationAcademyArgs>,
         );
 
+      case "fetch_obs":
+        return await handleFetchObs(args as FetchObsArgs);
+
+      case "fetch_obs_translation_notes":
+        return await handleFetchObsHelps("tn", args as FetchObsHelpsArgs);
+
+      case "fetch_obs_translation_questions":
+        return await handleFetchObsHelps("tq", args as FetchObsHelpsArgs);
+
+      case "fetch_obs_study_notes":
+        return await handleFetchObsHelps("sn", args as FetchObsHelpsArgs);
+
+      case "fetch_obs_study_questions":
+        return await handleFetchObsHelps("sq", args as FetchObsHelpsArgs);
+
       case "list_languages":
         return await handleListLanguages(
           args as z.infer<typeof ListLanguagesArgs>,
@@ -144,18 +164,6 @@ server.setRequestHandler(ListPromptsRequestSchema, async () => {
     })),
   };
 });
-
-// Import tool definitions from shared registry (single source of truth)
-import { getMCPToolDefinitions } from "./mcp/tools-registry.js";
-
-// Import prompt definitions from shared registry (single source of truth)
-import { MCP_PROMPTS, getPromptTemplate } from "./mcp/prompts-registry.js";
-
-// Get tools from shared registry
-const tools = getMCPToolDefinitions();
-
-// Get prompts from shared registry
-const prompts = MCP_PROMPTS;
 
 // Get prompt handler
 server.setRequestHandler(GetPromptRequestSchema, async (request) => {
