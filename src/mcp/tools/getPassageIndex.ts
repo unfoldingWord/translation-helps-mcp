@@ -19,12 +19,22 @@
  */
 
 import { z } from "zod";
-import { referenceParam, languageParam, ok, type ToolModule } from "./shared.js";
+import {
+  referenceParam,
+  languageParam,
+  ok,
+  type ToolModule,
+} from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
 import { resolveTitleFromPath } from "../../core/resources/articleTitles.js";
-import { formatQuoteDisplay } from "../../api/routes/alignmentHelper.js";
-import type { NoteIndexEntry, WordIndexEntry, RollupEntry, PassageIndex } from "../../core/contracts/index.js";
+import { formatQuoteDisplay } from "../../core/alignment/index.js";
+import type {
+  NoteIndexEntry,
+  WordIndexEntry,
+  RollupEntry,
+  PassageIndex,
+} from "../../core/contracts/index.js";
 
 const inputSchema = z.object({
   reference: referenceParam,
@@ -52,8 +62,14 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
     const { reference, language } = params;
 
     const [notesRes, wordLinksRes] = await Promise.allSettled([
-      client.get<{ notes: Array<Record<string, unknown>> }>("/api/v1/notes", { reference, language }),
-      client.get<{ wordLinks: Array<Record<string, unknown>> }>("/api/v1/word-links", { reference, language }),
+      client.get<{ notes: Array<Record<string, unknown>> }>("/api/v1/notes", {
+        reference,
+        language,
+      }),
+      client.get<{ wordLinks: Array<Record<string, unknown>> }>(
+        "/api/v1/word-links",
+        { reference, language },
+      ),
     ]);
 
     const rawNotes: Array<Record<string, unknown>> =
@@ -67,8 +83,12 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
       .filter((n) => n["verse"] !== "intro" && n["verse"] !== "front")
       .map((n) => {
         const sr = String(n["supportReference"] ?? "");
-        const title = String(n["supportReferenceTitle"] ?? resolveTitleFromPath(sr) ?? "");
-        const gq = n["gatewayQuote"] as { original?: string; aligned?: string } | undefined;
+        const title = String(
+          n["supportReferenceTitle"] ?? resolveTitleFromPath(sr) ?? "",
+        );
+        const gq = n["gatewayQuote"] as
+          | { original?: string; aligned?: string }
+          | undefined;
 
         const rawQuote = String(n["quote"] ?? "");
         return {
@@ -80,9 +100,7 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
           },
           occurrence: String(n["occurrence"] ?? "1"),
           tags: sr,
-          taArticle: sr
-            ? { path: slugFromRc(sr), title }
-            : null,
+          taArticle: sr ? { path: slugFromRc(sr), title } : null,
         } satisfies NoteIndexEntry;
       });
 
@@ -90,7 +108,9 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
     const words: WordIndexEntry[] = rawWords.map((w) => {
       const twLink = String(w["wordPath"] ?? w["twLink"] ?? "");
       const title = String(w["twTitle"] ?? resolveTitleFromPath(twLink) ?? "");
-      const gq = w["gatewayQuote"] as { original?: string; aligned?: string } | undefined;
+      const gq = w["gatewayQuote"] as
+        | { original?: string; aligned?: string }
+        | undefined;
       const category = String(w["category"] ?? "other");
 
       const rawOrigWords = String(w["origWords"] ?? "");
@@ -101,20 +121,35 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
           aligned: gq?.aligned ?? "",
         },
         occurrence: String(w["occurrence"] ?? "1"),
-        twArticle: twLink
-          ? { path: twLink, category, title }
-          : null,
+        twArticle: twLink ? { path: twLink, category, title } : null,
       } satisfies WordIndexEntry;
     });
 
     // --- Dedup rollups ---
-    const issues = buildRollup(notes.map((n) => n.taArticle).filter(Boolean) as { path: string; title: string }[]);
+    const issues = buildRollup(
+      notes.map((n) => n.taArticle).filter(Boolean) as {
+        path: string;
+        title: string;
+      }[],
+    );
     const keyTerms = buildRollup(
-      words.map((w) => w.twArticle ? { path: w.twArticle.path, title: w.twArticle.title } : null)
+      words
+        .map((w) =>
+          w.twArticle
+            ? { path: w.twArticle.path, title: w.twArticle.title }
+            : null,
+        )
         .filter(Boolean) as { path: string; title: string }[],
     );
 
-    const index: PassageIndex = { reference, language, notes, words, issues, keyTerms };
+    const index: PassageIndex = {
+      reference,
+      language,
+      notes,
+      words,
+      issues,
+      keyTerms,
+    };
 
     return ok(
       index,

@@ -16,8 +16,15 @@
 import type { Env } from "../worker.js";
 import { makeFetcher, buildBookPaths, zipUrlFromEntry } from "./helpers.js";
 import { catalogSearch } from "../../core/resources/dcsClient.js";
-import { tokenizeUsfm, QuoteMatcher } from "../../core/alignment/index.js";
-import type { QuoteReference, OptimizedToken } from "../../core/alignment/index.js";
+import {
+  tokenizeUsfm,
+  QuoteMatcher,
+  formatQuoteDisplay as formatQuoteDisplayCore,
+} from "../../core/alignment/index.js";
+import type {
+  QuoteReference,
+  OptimizedToken,
+} from "../../core/alignment/index.js";
 
 // ---------------------------------------------------------------------------
 // Public helpers for quote display
@@ -68,21 +75,39 @@ export function joinAlignedTokens(tokens: OptimizedToken[]): string {
  * The raw value (with `&`) is kept for `QuoteMatcher` and alignment-key
  * purposes — only the display copy shown in `gatewayQuote.original` changes.
  */
-export function formatQuoteDisplay(raw: string): string {
-  if (!raw) return raw;
-  return raw
-    .split("&")
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .join(" … ");
-}
+/** Re-exported from core/alignment for backward-compat; prefer importing from core directly. */
+export const formatQuoteDisplay = formatQuoteDisplayCore;
 
 // ---------------------------------------------------------------------------
 
 const NT_BOOKS = new Set([
-  "MAT","MRK","LUK","JHN","ACT","ROM","1CO","2CO","GAL","EPH","PHP","COL",
-  "1TH","2TH","1TI","2TI","TIT","PHM","HEB","JAS","1PE","2PE","1JN","2JN",
-  "3JN","JUD","REV",
+  "MAT",
+  "MRK",
+  "LUK",
+  "JHN",
+  "ACT",
+  "ROM",
+  "1CO",
+  "2CO",
+  "GAL",
+  "EPH",
+  "PHP",
+  "COL",
+  "1TH",
+  "2TH",
+  "1TI",
+  "2TI",
+  "TIT",
+  "PHM",
+  "HEB",
+  "JAS",
+  "1PE",
+  "2PE",
+  "1JN",
+  "2JN",
+  "3JN",
+  "JUD",
+  "REV",
 ]);
 
 function isNtBook(book: string): boolean {
@@ -92,7 +117,7 @@ function isNtBook(book: string): boolean {
 export interface AlignmentRow {
   chapter: string;
   verse: string;
-  quote: string;     // original language quote (from TN `quote` or TWL `origWords`)
+  quote: string; // original language quote (from TN `quote` or TWL `origWords`)
   occurrence: string;
 }
 
@@ -114,7 +139,9 @@ export async function batchGatewayQuotes(
   const result = new Map<string, string>();
 
   // Only rows with a non-trivial quote
-  const active = rows.filter((r) => r.quote && r.quote.trim().length > 0 && r.verse !== "intro");
+  const active = rows.filter(
+    (r) => r.quote && r.quote.trim().length > 0 && r.verse !== "intro",
+  );
   if (active.length === 0) return result;
 
   const fetcher = makeFetcher(env);
@@ -165,7 +192,9 @@ export async function batchGatewayQuotes(
     if (alignedEntries.length === 0) return result;
 
     const alignedEntry = alignedEntries[0];
-    const alignedZip = await fetcher.getOrDownloadZip(zipUrlFromEntry(alignedEntry));
+    const alignedZip = await fetcher.getOrDownloadZip(
+      zipUrlFromEntry(alignedEntry),
+    );
     const alignedPaths = buildBookPaths(alignedEntry, upperBook, "", ".usfm");
 
     let alignedUsfm: string | null = null;
@@ -199,11 +228,21 @@ export async function batchGatewayQuotes(
     };
 
     try {
-      const origResult = matcher.findOriginalTokens(origChapters, row.quote, occ, qRef);
+      const origResult = matcher.findOriginalTokens(
+        origChapters,
+        row.quote,
+        occ,
+        qRef,
+      );
       if (!origResult.success || origResult.totalTokens.length === 0) continue;
 
-      const alignResult = matcher.findAlignedTokens(origResult.totalTokens, alignedChapters, qRef);
-      if (!alignResult.success || alignResult.totalAlignedTokens.length === 0) continue;
+      const alignResult = matcher.findAlignedTokens(
+        origResult.totalTokens,
+        alignedChapters,
+        qRef,
+      );
+      if (!alignResult.success || alignResult.totalAlignedTokens.length === 0)
+        continue;
 
       const aligned = joinAlignedTokens(alignResult.totalAlignedTokens);
       const key = `${row.chapter}:${row.verse}:${row.quote}:${row.occurrence}`;

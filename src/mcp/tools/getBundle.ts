@@ -24,7 +24,11 @@ import type { Env } from "../agent.js";
 import { fetchScriptureTool } from "./fetchScripture.js";
 import { fetchTranslationNotesTool } from "./fetchTranslationNotes.js";
 import { fetchTranslationWordLinksTool } from "./fetchTranslationWordLinks.js";
-import { BundleCache, type Bundle, type ScriptureVersion } from "../../core/rag/BundleCache.js";
+import {
+  BundleCache,
+  type Bundle,
+  type ScriptureVersion,
+} from "../../core/rag/BundleCache.js";
 import { CFKVStore } from "../../core/rag/CFKVStore.js";
 import { parseRcUri } from "../../core/rag/linkNormalizer.js";
 
@@ -70,9 +74,7 @@ const outputSchema = {
         z.object({
           id: z.string(),
           text: z.string(),
-          externalReference: z
-            .object({ path: z.string() })
-            .optional(),
+          externalReference: z.object({ path: z.string() }).optional(),
         }),
       )
       .optional(),
@@ -91,8 +93,14 @@ const outputSchema = {
 const bundleCache = new BundleCache();
 
 /** Extract the typed payload from a ToolResult via structuredContent (primary) or text JSON (fallback). */
-function parseToolResult<T>(result: { structuredContent?: Record<string, unknown>; content: Array<{ type: "text"; text: string }> }): T | null {
-  if (result.structuredContent && Object.keys(result.structuredContent).length > 0) {
+function parseToolResult<T>(result: {
+  structuredContent?: Record<string, unknown>;
+  content: Array<{ type: "text"; text: string }>;
+}): T | null {
+  if (
+    result.structuredContent &&
+    Object.keys(result.structuredContent).length > 0
+  ) {
     return result.structuredContent as unknown as T;
   }
   // Fallback: parse the first JSON-looking text entry
@@ -121,51 +129,90 @@ export const getBundleTool: ToolModule<typeof inputSchema> = {
   annotations: { readOnlyHint: true, title: "Get Translation Bundle" },
 
   async handler(params: GetBundleParams, env: Env, requestId: string) {
-    const { reference, language, includeScripture, includeNotes, includeWords } = params;
+    const {
+      reference,
+      language,
+      includeScripture,
+      includeNotes,
+      includeWords,
+    } = params;
 
     const kvStore = new CFKVStore(env.TRANSLATION_HELPS_CACHE);
 
+    // Build a flags suffix so that bundles assembled with different include flags
+    // don't collide in the cache (a bundle without scripture is not suitable for
+    // a request that wants scripture).
+    const flagsSuffix = `s${includeScripture ? 1 : 0}n${includeNotes ? 1 : 0}w${includeWords ? 1 : 0}`;
+    const cacheRef = `${reference}::${flagsSuffix}`;
+
     // L1 cache check
-    const l1 = bundleCache.get(language, reference);
+    const l1 = bundleCache.get(language, cacheRef);
     if (l1) {
-      return ok({ reference, language, bundle: shapedBundle(l1, params), requestId },
-        `Bundle for ${reference} (${language}) [memory]`);
+      return ok(
+        { reference, language, bundle: shapedBundle(l1, params), requestId },
+        `Bundle for ${reference} (${language}) [memory]`,
+      );
     }
 
     // L2 KV cache check
-    const l2 = await bundleCache.getFromKv(kvStore, language, reference);
+    const l2 = await bundleCache.getFromKv(kvStore, language, cacheRef);
     if (l2) {
-      bundleCache.set(language, reference, l2);
-      return ok({ reference, language, bundle: shapedBundle(l2, params), requestId },
-        `Bundle for ${reference} (${language}) [edge]`);
+      bundleCache.set(language, cacheRef, l2);
+      return ok(
+        { reference, language, bundle: shapedBundle(l2, params), requestId },
+        `Bundle for ${reference} (${language}) [edge]`,
+      );
     }
 
     // Assemble bundle from deterministic fetch tools
     const [scriptureResult, notesResult, twlResult] = await Promise.allSettled([
       includeScripture
-        ? fetchScriptureTool.handler({ reference, language, format: "text" }, env, requestId)
+        ? fetchScriptureTool.handler(
+            { reference, language, format: "text" },
+            env,
+            requestId,
+          )
         : Promise.resolve(null),
       includeNotes || includeWords
-        ? fetchTranslationNotesTool.handler({ reference, language }, env, requestId)
+        ? fetchTranslationNotesTool.handler(
+            { reference, language },
+            env,
+            requestId,
+          )
         : Promise.resolve(null),
       includeWords
-        ? fetchTranslationWordLinksTool.handler({ reference, language }, env, requestId)
+        ? fetchTranslationWordLinksTool.handler(
+            { reference, language },
+            env,
+            requestId,
+          )
         : Promise.resolve(null),
     ]);
 
     // Scripture — collect all available versions from fetch_scripture's versions[] array
     let scripture: Bundle["scripture"] = { versions: [], format: "plain" };
     if (scriptureResult.status === "fulfilled" && scriptureResult.value) {
-      const sd = parseToolResult<{ versions?: ScriptureVersion[] }>(scriptureResult.value);
+      const sd = parseToolResult<{ versions?: ScriptureVersion[] }>(
+        scriptureResult.value,
+      );
       if (sd?.versions?.length) {
         scripture = { versions: sd.versions, format: "plain" };
       }
     }
 
     // Notes + TA link extraction
-    const rawNotes: Array<{ id: string; supportReference: string; note: string; book: string; chapter: string; verse: string }> = [];
+    const rawNotes: Array<{
+      id: string;
+      supportReference: string;
+      note: string;
+      book: string;
+      chapter: string;
+      verse: string;
+    }> = [];
     if (notesResult.status === "fulfilled" && notesResult.value) {
-      const nd = parseToolResult<{ notes?: typeof rawNotes }>(notesResult.value);
+      const nd = parseToolResult<{ notes?: typeof rawNotes }>(
+        notesResult.value,
+      );
       if (nd?.notes) rawNotes.push(...nd.notes);
     }
 
@@ -173,23 +220,32 @@ export const getBundleTool: ToolModule<typeof inputSchema> = {
       id: n.id || `${n.chapter}:${n.verse}`,
       text: n.note,
       ...(n.supportReference && n.supportReference.startsWith("rc://")
-        ? { externalReference: { path: parseRcUri(n.supportReference)?.path ?? n.supportReference } }
+        ? {
+            externalReference: {
+              path: parseRcUri(n.supportReference)?.path ?? n.supportReference,
+            },
+          }
         : {}),
     }));
 
     // TW articles from word links
     const twArticles: Bundle["tw"] = [];
     if (twlResult.status === "fulfilled" && twlResult.value) {
-      const wd = parseToolResult<{ wordLinks?: Array<{ twId: string; wordPath: string; origWords?: string }> }>(
-        twlResult.value,
-      );
+      const wd = parseToolResult<{
+        wordLinks?: Array<{
+          twId: string;
+          wordPath: string;
+          origWords?: string;
+        }>;
+      }>(twlResult.value);
       const seen = new Set<string>();
       for (const link of wd?.wordLinks ?? []) {
         if (!link.wordPath || seen.has(link.wordPath)) continue;
         seen.add(link.wordPath);
         twArticles.push({
           id: link.twId || link.wordPath,
-          title: link.origWords || link.wordPath.split("/").pop() || link.wordPath,
+          title:
+            link.origWords || link.wordPath.split("/").pop() || link.wordPath,
           path: link.wordPath,
         });
       }
@@ -207,7 +263,8 @@ export const getBundleTool: ToolModule<typeof inputSchema> = {
           .filter((s) => s.startsWith("rc://"));
         for (const rc of rcLinks) {
           const parsed = parseRcUri(rc);
-          if (!parsed || parsed.type !== "ta" || seenTa.has(parsed.path)) continue;
+          if (!parsed || parsed.type !== "ta" || seenTa.has(parsed.path))
+            continue;
           seenTa.add(parsed.path);
           taArticles.push({
             id: parsed.path,
@@ -232,9 +289,9 @@ export const getBundleTool: ToolModule<typeof inputSchema> = {
       },
     };
 
-    // Persist to L1 + L2
-    bundleCache.set(language, reference, bundle);
-    bundleCache.setToKv(kvStore, language, reference, bundle).catch(() => {});
+    // Persist to L1 + L2 (using flags-aware cache key)
+    bundleCache.set(language, cacheRef, bundle);
+    bundleCache.setToKv(kvStore, language, cacheRef, bundle).catch(() => {});
 
     return ok(
       { reference, language, bundle: shapedBundle(bundle, params), requestId },
@@ -249,7 +306,10 @@ export const getBundleTool: ToolModule<typeof inputSchema> = {
  */
 function shapedBundle(
   bundle: Bundle,
-  params: Pick<GetBundleParams, "includeScripture" | "includeNotes" | "includeWords">,
+  params: Pick<
+    GetBundleParams,
+    "includeScripture" | "includeNotes" | "includeWords"
+  >,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = { metadata: bundle.metadata };
   if (params.includeScripture) out["scripture"] = bundle.scripture;

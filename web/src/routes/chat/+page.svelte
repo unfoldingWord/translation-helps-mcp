@@ -153,12 +153,6 @@
 	})();
 
 	$: hasWorkbenchContent = workbenchComponents.length > 0;
-	$: if (typeof window !== 'undefined')
-		console.log(
-			'[WORKBENCH] components count:',
-			workbenchComponents.length,
-			workbenchComponents.map((c) => c.type)
-		);
 
 	/** Explored set for the latest annotated_passage message. */
 	$: latestAnnotatedIdx = [...messages].reduceRight(

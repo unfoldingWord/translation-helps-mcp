@@ -500,7 +500,7 @@ export async function answerStream(
 			const { pendingRef, pendingIntent } = intentResult;
 
 			// Fetch language list to resolve the user's reply
-			emit.status('Resolving language…');
+			emit.status(getStatusText(effectiveLang, 'searching'));
 			let langList: LanguageOption[] = [];
 			try {
 				const raw = (await callTool('list_languages', {})) as
@@ -559,7 +559,7 @@ export async function answerStream(
 			// Name already captured by resolveContextual above (no regex needed)
 
 			// Language now known — run the harness directly.
-			emit.status('Loading passage resources…');
+			emit.status(getStatusText(effectiveLang, 'loading'));
 			{
 				const harness = new ContextHarness(llm, callTool);
 				// Strip the lang-gate assistant turn from history before calling the harness.
@@ -881,7 +881,7 @@ export async function answerStream(
 		// -----------------------------------------------------------------------
 		// Path F: Full pipeline (no gate needed or non-passage intent)
 		// -----------------------------------------------------------------------
-		emit.status('Processing your request…');
+		emit.status(getStatusText(effectiveLang, 'thinking'));
 		const harness = new ContextHarness(llm, callTool);
 		const result = await harness.run(message, {
 			language: resolvedLang,

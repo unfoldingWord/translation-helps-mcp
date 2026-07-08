@@ -23,7 +23,7 @@ import {
 	type UserProfile
 } from '$lib/server/skillChat.js';
 
-export const POST: RequestHandler = async ({ request, platform }) => {
+export const POST: RequestHandler = async ({ request, platform, url }) => {
 	let body: {
 		messages?: { role: string; content: string }[];
 		language?: string;
@@ -70,11 +70,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	}
 
 	// Build skill context — pass url.origin so MCP_BASE_URL fallback is a proper absolute URL
-	const { url } = request;
-	const requestOrigin = url ? new URL(url).origin : undefined;
+	const requestOrigin = url.origin;
 	const skillCtx = createSkill(
 		{ OPENAI_API_KEY: openaiKey, MCP_BASE_URL: mcpBaseUrl },
-		requestOrigin ?? '',
+		requestOrigin,
 		model
 	);
 

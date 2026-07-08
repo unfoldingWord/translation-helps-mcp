@@ -67,6 +67,9 @@ web/.svelte-kit/
 web/build/
 web/playwright-report/
 
+# JS SDK build output
+packages/js-sdk/dist/
+
 # Windows reserved device name (cannot be a real file)
 nul
 
