@@ -143,6 +143,40 @@ describe("MCP Tools Schema Validation", () => {
     }
   });
 
+  it("should expose the five OBS tools with story:frame reference schemas (issue #32)", () => {
+    const tools = getMCPToolsList();
+    const toolMap = new Map(tools.map((t) => [t.name, t]));
+
+    const obsTools = [
+      "fetch_obs",
+      "fetch_obs_translation_notes",
+      "fetch_obs_translation_questions",
+      "fetch_obs_study_notes",
+      "fetch_obs_study_questions",
+    ];
+
+    for (const toolName of obsTools) {
+      const tool = toolMap.get(toolName);
+      expect(tool, `Tool "${toolName}" should exist`).toBeDefined();
+
+      const props = tool!.inputSchema?.properties as Record<string, any>;
+      expect(props, toolName).toBeDefined();
+
+      // Canonical field plus the advertised decomposed fallbacks (story/frame),
+      // mirroring the Bible tools' book/chapter/verse tolerance (issue #24).
+      expect(props, toolName).toHaveProperty("reference");
+      expect(props, toolName).toHaveProperty("story");
+      expect(props, toolName).toHaveProperty("frame");
+      expect(props.reference.description).toContain("story:frame");
+
+      // OBS descriptions must warn away from Bible references.
+      expect(tool!.description).toContain("NOT Bible book chapter:verse");
+
+      // Tolerated extra args must not be blocked (passthrough).
+      expect(tool!.inputSchema.additionalProperties, toolName).not.toBe(false);
+    }
+  });
+
   it('should have "reference" parameter in scripture/notes/questions tools', () => {
     const tools = getMCPToolsList();
     const toolMap = new Map(tools.map((t) => [t.name, t]));

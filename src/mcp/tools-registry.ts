@@ -16,6 +16,8 @@ import { FetchTranslationQuestionsArgs } from "../tools/fetchTranslationQuestion
 import { FetchTranslationWordLinksArgs } from "../tools/fetchTranslationWordLinks.js";
 import { FetchTranslationAcademyArgs } from "../tools/fetchTranslationAcademy.js";
 import { GetTranslationWordArgs } from "../tools/getTranslationWord.js";
+import { FetchObsArgs } from "../tools/fetchObs.js";
+import { FetchObsHelpsArgs } from "../tools/fetchObsHelps.js";
 import { ListLanguagesArgs } from "../tools/listLanguages.js";
 import { ListSubjectsArgs } from "../tools/listSubjects.js";
 import { ListResourcesForLanguageArgs } from "../tools/listResourcesForLanguage.js";
@@ -84,6 +86,34 @@ const REFERENCE_TOLERANCE_FIELDS = {
   endVerse: intOrString()
     .optional()
     .describe(`End verse for a range. ${FALLBACK_DECOMPOSED_NOTE}`),
+  ...LANGUAGE_ALIAS_FIELDS,
+};
+
+/**
+ * OBS tools (issue #32): `reference` uses the story:frame scheme, NOT the
+ * Bible book chapter:verse scheme. Decomposed `story`/`frame` fields are a
+ * tolerated fallback (assembled server-side in UnifiedMCPHandler, gated to
+ * fetch_obs* tools only), mirroring the Bible tools' book/chapter/verse
+ * tolerance (issue #24).
+ */
+const OBS_REFERENCE_INPUT_DESCRIPTION =
+  "REQUIRED. OBS story:frame reference as ONE string. Stories run 1-50; frame 0 is the story title. " +
+  'Valid examples: "1:1" (story 1, frame 1), "OBS 1:1", "1:0" (story title), "1" (whole story), ' +
+  '"1:1-8" (frame range), "front" (front matter). This is NOT a Bible book chapter:verse reference.';
+
+const OBS_FALLBACK_NOTE =
+  "Fallback only — prefer sending the whole story:frame reference in `reference`. If present, this is reassembled into a single `reference` server-side.";
+const OBS_REFERENCE_TOLERANCE_FIELDS = {
+  reference: z.string().optional().describe(OBS_REFERENCE_INPUT_DESCRIPTION),
+  story: intOrString()
+    .optional()
+    .describe(`Story number (1-50). ${OBS_FALLBACK_NOTE}`),
+  frame: intOrString()
+    .optional()
+    .describe(`Frame number (0 = story title). ${OBS_FALLBACK_NOTE}`),
+  endFrame: intOrString()
+    .optional()
+    .describe(`End frame for a range. ${OBS_FALLBACK_NOTE}`),
   ...LANGUAGE_ALIAS_FIELDS,
 };
 
@@ -186,6 +216,57 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
         ...PATH_TOLERANCE_FIELDS,
         ...LANGUAGE_ALIAS_FIELDS,
       }).passthrough(),
+    },
+    {
+      name: "fetch_obs",
+      description:
+        "Fetch Open Bible Stories (OBS) story text: title and illustrated frames (image + paragraph pairs). " +
+        "OBS references use story:frame — e.g. 1:1, OBS 1:1, 1:0 (story title), 1 (whole story), front (front matter) — " +
+        "NOT Bible book chapter:verse. Stories run 1-50. All Door43 organizations are searched automatically.",
+      inputSchema: FetchObsArgs.omit({ reference: true })
+        .extend(OBS_REFERENCE_TOLERANCE_FIELDS)
+        .passthrough(),
+    },
+    {
+      name: "fetch_obs_translation_notes",
+      description:
+        "Fetch translator notes for an Open Bible Stories (OBS) reference. " +
+        "Pass `reference` in the OBS story:frame scheme (e.g. 1:1; 1:0 for a story title; front for front matter), " +
+        "NOT Bible book chapter:verse. All Door43 organizations are searched automatically.",
+      inputSchema: FetchObsHelpsArgs.omit({ reference: true })
+        .extend(OBS_REFERENCE_TOLERANCE_FIELDS)
+        .passthrough(),
+    },
+    {
+      name: "fetch_obs_translation_questions",
+      description:
+        "Fetch comprehension questions with answers for an Open Bible Stories (OBS) reference. " +
+        "Pass `reference` in the OBS story:frame scheme (e.g. 1:1), NOT Bible book chapter:verse. " +
+        "All Door43 organizations are searched automatically.",
+      inputSchema: FetchObsHelpsArgs.omit({ reference: true })
+        .extend(OBS_REFERENCE_TOLERANCE_FIELDS)
+        .passthrough(),
+    },
+    {
+      name: "fetch_obs_study_notes",
+      description:
+        "Fetch study notes for an Open Bible Stories (OBS) reference. " +
+        "Pass `reference` in the OBS story:frame scheme (e.g. 1:1), NOT Bible book chapter:verse. " +
+        "All Door43 organizations are searched automatically.",
+      inputSchema: FetchObsHelpsArgs.omit({ reference: true })
+        .extend(OBS_REFERENCE_TOLERANCE_FIELDS)
+        .passthrough(),
+    },
+    {
+      name: "fetch_obs_study_questions",
+      description:
+        "Fetch study/discussion questions for an Open Bible Stories (OBS) reference. " +
+        "Rows may cover frame ranges (e.g. 1:1-8) and front matter (front). " +
+        "Pass `reference` in the OBS story:frame scheme, NOT Bible book chapter:verse. " +
+        "All Door43 organizations are searched automatically.",
+      inputSchema: FetchObsHelpsArgs.omit({ reference: true })
+        .extend(OBS_REFERENCE_TOLERANCE_FIELDS)
+        .passthrough(),
     },
     {
       name: "list_tools",

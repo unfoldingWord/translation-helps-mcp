@@ -102,6 +102,18 @@ export const TRANSLATION_ACADEMY_PARAMS = createParameterGroup(
 );
 
 /**
+ * Parameters for Open Bible Stories tools (issue #32)
+ *
+ * OBS uses story:frame references (obsReference), never the Bible
+ * book chapter:verse reference.
+ */
+export const OBS_PARAMS = createParameterGroup(
+  "Open Bible Stories Parameters",
+  "Parameters for fetching OBS stories and their helps. All Door43 organizations are searched.",
+  [COMMON_PARAMS.obsReference, COMMON_PARAMS.language, COMMON_PARAMS.format],
+);
+
+/**
  * Parameters for listing tools
  */
 export const LIST_TOOLS_PARAMS = createParameterGroup(
@@ -153,6 +165,7 @@ export const PARAMETER_GROUPS = {
   translationWordLinks: TRANSLATION_WORD_LINKS_PARAMS,
   translationWord: TRANSLATION_WORD_PARAMS,
   translationAcademy: TRANSLATION_ACADEMY_PARAMS,
+  obs: OBS_PARAMS,
   listTools: LIST_TOOLS_PARAMS,
   listLanguages: LIST_LANGUAGES_PARAMS,
   listSubjects: LIST_SUBJECTS_PARAMS,

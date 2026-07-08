@@ -1481,6 +1481,237 @@ export class ZipResourceFetcher2 {
   }
 
   /**
+   * OBS resource types → DCS catalog subjects (issue #32).
+   * OBS repos do NOT carry the `tc-ready` topic, so OBS catalog searches must
+   * omit the topic filter getTSVData applies to Bible TSVs.
+   */
+  private static readonly OBS_SUBJECTS: Record<string, string> = {
+    obs: "Open Bible Stories",
+    tn: "TSV OBS Translation Notes",
+    tq: "TSV OBS Translation Questions",
+    sn: "TSV OBS Study Notes",
+    sq: "TSV OBS Study Questions",
+  };
+
+  /**
+   * Catalog lookup for an OBS subject (KV-cached like getTSVData, but with no
+   * `topic` filter — see OBS_SUBJECTS).
+   */
+  private async getOBSCatalogResources(
+    subject: string,
+    language: string,
+    organization: string,
+  ): Promise<CatalogResource[]> {
+    const baseCatalog = `https://git.door43.org/api/v1/catalog/search`;
+    const params = new URLSearchParams();
+    params.set("lang", language);
+    if (organization && organization !== "all")
+      params.set("owner", organization);
+    params.set("stage", "prod");
+    params.set("subject", subject);
+    params.set("metadataType", "rc");
+    params.set("includeMetadata", "true");
+    const catalogUrl = `${baseCatalog}?${params.toString()}`;
+
+    const catalogCacheKey = catalogUrl; // exact URL as KV key (same as getTSVData)
+    const cachedCatalog = await this.kvCache.get(catalogCacheKey);
+    if (cachedCatalog) {
+      try {
+        const json =
+          typeof cachedCatalog === "string"
+            ? cachedCatalog
+            : new TextDecoder().decode(cachedCatalog as ArrayBuffer);
+        const parsed = JSON.parse(json) as { data?: CatalogResource[] };
+        if (parsed.data && parsed.data.length > 0) return parsed.data;
+      } catch {
+        // fall through to network
+      }
+    }
+
+    const networkRes = await trackedFetch(this.tracer, catalogUrl, {
+      headers: this.getClientHeaders(),
+    });
+    if (!networkRes.ok) return [];
+    try {
+      const parsed = JSON.parse(await networkRes.text()) as {
+        data?: CatalogResource[];
+      };
+      const validationResult = validateCacheableData(parsed, catalogCacheKey);
+      if (validationResult.cacheable) {
+        await this.kvCache.set(catalogCacheKey, JSON.stringify(parsed), 3600);
+      }
+      return parsed.data || [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Fetch one file from an OBS resource's ZIP: R2-cached extracted file first,
+   * then ZIP download + extraction (same flow as getTSVData's fetch/fallback).
+   */
+  private async getOBSFileFromResource(
+    resource: CatalogResource,
+    innerPath: string,
+  ): Promise<string | null> {
+    const { refTag, zipballUrl } = this.resolveRefAndZip(resource as unknown);
+    const zipUrl =
+      zipballUrl ||
+      `https://git.door43.org/${resource.owner}/${resource.name}/archive/${encodeURIComponent(refTag || "master")}.zip`;
+    const { key: r2Key } = r2KeyFromUrl(zipUrl);
+    const cleanInner = innerPath.replace(/^(\.\/|\/)+/, "");
+    const fileKey = `${r2Key}/files/${cleanInner}`;
+
+    try {
+      const { bucket, caches } = getR2Env();
+      const r2 = new R2Storage(bucket as any, caches as any);
+      const {
+        data: content,
+        source,
+        durationMs,
+        size,
+      } = await r2.getFileWithInfo(fileKey, "text/plain; charset=utf-8");
+      if (content) {
+        try {
+          this.tracer.addApiCall({
+            url: `internal://${source}/file/${fileKey}`,
+            duration: durationMs,
+            status: 200,
+            size,
+            cached: true,
+          });
+        } catch {
+          // ignore tracer issues
+        }
+        return content;
+      }
+    } catch (error) {
+      logger.debug(`OBS file not in cache, falling back to ZIP`, {
+        fileKey,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    const zipData = await this.getOrDownloadZip(
+      resource.owner || "unfoldingWord",
+      resource.name,
+      refTag,
+      zipballUrl,
+    );
+    if (!zipData) return null;
+    return this.extractFileFromZip(zipData, cleanInner, resource.name, r2Key);
+  }
+
+  /**
+   * Get raw OBS story markdown (issue #32).
+   *  - story N → content/NN.md (title + implicit image/paragraph frames)
+   *  - front matter → content/front/intro.md
+   * Returns the raw markdown; parsing lives in src/functions/obs-story-parser.ts.
+   */
+  async getOBSStoryMarkdown(
+    target: { story: number } | { front: true },
+    language: string,
+    organization: string,
+  ): Promise<{
+    content: string | null;
+    subject?: string;
+    version?: string;
+    organization?: string;
+    resourceName?: string;
+  }> {
+    const resources = await this.getOBSCatalogResources(
+      ZipResourceFetcher2.OBS_SUBJECTS.obs,
+      language,
+      organization,
+    );
+    if (resources.length === 0) return { content: null };
+
+    const fileName =
+      "front" in target
+        ? "front/intro.md"
+        : `${String(target.story).padStart(2, "0")}.md`;
+
+    for (const resource of resources) {
+      // The OBS RC manifest has one project (identifier "obs", path "./content");
+      // story files live under that directory.
+      const contentIngredient = (resource.ingredients || []).find(
+        (ing) =>
+          ing.identifier?.toLowerCase() === "obs" ||
+          (ing.path || "").toLowerCase().includes("content"),
+      );
+      const contentDir = (contentIngredient?.path || "./content").replace(
+        /^(\.\/|\/)+|\/+$/g,
+        "",
+      );
+
+      const content = await this.getOBSFileFromResource(
+        resource,
+        `${contentDir}/${fileName}`,
+      );
+      if (content) {
+        const { refTag } = this.resolveRefAndZip(resource as unknown);
+        return {
+          content,
+          subject: resource.subject,
+          version: refTag || undefined,
+          organization: resource.owner,
+          resourceName: resource.name,
+        };
+      }
+    }
+    return { content: null, subject: resources[0]?.subject };
+  }
+
+  /**
+   * Get the raw single-file OBS helps TSV (issue #32): tn_OBS.tsv / tq_OBS.tsv /
+   * sn_OBS.tsv / sq_OBS.tsv. Unlike Bible helps there is ONE TSV per language,
+   * so this returns the whole file; reference filtering lives in
+   * src/functions/obs-tsv-filter.ts.
+   */
+  async getOBSTSVContent(
+    resourceType: "tn" | "tq" | "sn" | "sq",
+    language: string,
+    organization: string,
+  ): Promise<{
+    content: string | null;
+    subject?: string;
+    version?: string;
+    organization?: string;
+    resourceName?: string;
+  }> {
+    const subject = ZipResourceFetcher2.OBS_SUBJECTS[resourceType];
+    const resources = await this.getOBSCatalogResources(
+      subject,
+      language,
+      organization,
+    );
+    if (resources.length === 0) return { content: null };
+
+    for (const resource of resources) {
+      const tsvIngredient = (resource.ingredients || []).find((ing) =>
+        (ing.path || "").toLowerCase().endsWith(".tsv"),
+      );
+      if (!tsvIngredient) continue;
+
+      const content = await this.getOBSFileFromResource(
+        resource,
+        tsvIngredient.path,
+      );
+      if (content) {
+        const { refTag } = this.resolveRefAndZip(resource as unknown);
+        return {
+          content,
+          subject: resource.subject,
+          version: refTag || undefined,
+          organization: resource.owner,
+          resourceName: resource.name,
+        };
+      }
+    }
+    return { content: null, subject: resources[0]?.subject };
+  }
+
+  /**
    * Get markdown content for Translation Words (tw) and Translation Academy (ta)
    * - tw: requires a term; returns { articles: [{ term, markdown, path }] }
    * - ta: if moduleId provided returns { modules: [{ id, markdown, path }] }

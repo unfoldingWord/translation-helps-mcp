@@ -103,6 +103,22 @@ export function isValidSubject(value: string): boolean {
 }
 
 /**
+ * OBS references use the story:frame scheme (issue #32), NOT the Bible
+ * book chapter:verse scheme — so OBS endpoints must NOT use
+ * COMMON_PARAMS.reference (its validator would reject "1:1"/"front").
+ *
+ * The validator is deliberately just a non-blank check: the OBS reference
+ * parser (src/functions/obs-reference-parser.ts) does the real validation and
+ * throws an "Invalid OBS reference" error with story:frame guidance, which
+ * the endpoints map to a 400.
+ */
+export const OBS_REFERENCE_PARAM = {
+	name: 'reference',
+	required: true,
+	validate: (value: unknown) => typeof value === 'string' && value.trim() !== ''
+};
+
+/**
  * Common parameter schemas for reuse
  */
 export const COMMON_PARAMS = {
