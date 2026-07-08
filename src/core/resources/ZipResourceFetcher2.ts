@@ -2,20 +2,22 @@
  * ZipResourceFetcher2 — v2 clean implementation.
  *
  * Fetches ZIP archives from Door43 catalog URLs and extracts files from them.
- * Supports optional KV + R2 caching when Cloudflare bindings are available.
+ * Supports optional R2 caching when Cloudflare bindings are available.
+ * KV is NOT used for zip storage (not suited for multi-MB binary blobs).
  *
  * Minimal surface intentionally: only the two methods actually used by
  * ResourceIndexer are exposed (getOrDownloadZip, extractFileFromZip).
  */
 
+import { unzipSync } from "fflate";
+
 export interface ZipEnv {
-  /** Optional Cloudflare KV namespace for caching zip buffers by URL. */
-  KV?: KVNamespace;
   /** Optional Cloudflare R2 bucket for persisting zip files. */
   R2?: R2Bucket;
+  /** KV is kept in interface for metadata/catalog caching by other modules. */
+  KV?: KVNamespace;
 }
 
-const KV_TTL_SECONDS = 3600; // 1 hour
 const R2_KEY_PREFIX = "zips/";
 
 // ---------------------------------------------------------------------------
@@ -23,15 +25,31 @@ const R2_KEY_PREFIX = "zips/";
 //
 // These survive across multiple tool handler invocations within the same
 // Node.js / Workers process lifetime. They are the fastest layer (no I/O)
-// and work even when KV/R2 bindings are unavailable (e.g. vite dev).
+// and work even when R2 bindings are unavailable (e.g. vite dev).
 //
 // Key: ZIP URL   Value: raw bytes
 const ZIP_PROCESS_CACHE = new Map<string, Uint8Array>();
 // Key: `${url}::${filePath}`   Value: extracted text
 const TEXT_PROCESS_CACHE = new Map<string, string>();
-// Max entries before the oldest is evicted (prevents unbounded memory growth)
-const PROCESS_CACHE_MAX_ZIPS = 20;
+
+// Byte-based memory cap (~60 MB) for the zip process cache.
+const ZIP_CACHE_MAX_BYTES = 60_000_000;
+let totalCachedZipBytes = 0;
+
 const PROCESS_CACHE_MAX_TEXTS = 200;
+
+function evictOldestZip() {
+  while (
+    totalCachedZipBytes > ZIP_CACHE_MAX_BYTES &&
+    ZIP_PROCESS_CACHE.size > 0
+  ) {
+    const firstKey = ZIP_PROCESS_CACHE.keys().next().value;
+    if (firstKey === undefined) break;
+    const buf = ZIP_PROCESS_CACHE.get(firstKey);
+    ZIP_PROCESS_CACHE.delete(firstKey);
+    if (buf) totalCachedZipBytes -= buf.byteLength;
+  }
+}
 
 function evictIfNeeded<V>(map: Map<string, V>, max: number) {
   if (map.size >= max) {
@@ -40,19 +58,13 @@ function evictIfNeeded<V>(map: Map<string, V>, max: number) {
   }
 }
 
-/** Encode a Uint8Array to base64 without blowing the call stack on large buffers. */
-function uint8ToBase64(buf: Uint8Array): string {
-  let binary = "";
-  const chunk = 8192;
-  for (let i = 0; i < buf.length; i += chunk) {
-    binary += String.fromCharCode(...buf.subarray(i, i + chunk));
-  }
-  return btoa(binary);
-}
-
 function r2KeyFromUrl(url: string): string {
   return R2_KEY_PREFIX + url.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 512);
 }
+
+// Map from buffer reference back to source URL (enables URL-keyed text cache
+// without changing the public extractFileFromZip signature).
+const bufferUrlMap = new Map<Uint8Array, string>();
 
 export class ZipResourceFetcher2 {
   private env?: ZipEnv;
@@ -63,46 +75,28 @@ export class ZipResourceFetcher2 {
 
   /**
    * Fetch a zip from the given URL.
-   * Cache chain: in-process Map → KV → R2 → network.
+   * Cache chain: in-process Map → R2 → network.
    * Returns the raw zip bytes as a Uint8Array.
+   * KV is NOT used for zip storage (not suited for multi-MB binary blobs).
    */
   async getOrDownloadZip(url: string): Promise<Uint8Array> {
-    // L0: in-process cache (works even without KV/R2, survives across tool calls)
+    // L0: in-process cache
     const processHit = ZIP_PROCESS_CACHE.get(url);
     if (processHit) return processHit;
 
-    const kv = this.env?.KV;
     const r2 = this.env?.R2;
     const r2Key = r2KeyFromUrl(url);
 
-    // L1: KV cache (fast, 1 h TTL, stores as base64)
-    if (kv) {
-      try {
-        const cached = await kv.get(r2Key, "text");
-        if (cached) {
-          const buf = Uint8Array.from(atob(cached), (c) => c.charCodeAt(0));
-          evictIfNeeded(ZIP_PROCESS_CACHE, PROCESS_CACHE_MAX_ZIPS);
-          ZIP_PROCESS_CACHE.set(url, buf);
-          return buf;
-        }
-      } catch {
-        // KV miss or error — fall through
-      }
-    }
-
-    // L2: R2 durable store
+    // L1: R2 durable store
     if (r2) {
       try {
         const obj = await r2.get(r2Key);
         if (obj) {
           const buf = new Uint8Array(await obj.arrayBuffer());
-          // Warm KV and process cache on R2 hit
-          if (kv) {
-            const b64 = uint8ToBase64(buf);
-            kv.put(r2Key, b64, { expirationTtl: KV_TTL_SECONDS }).catch(() => {});
-          }
-          evictIfNeeded(ZIP_PROCESS_CACHE, PROCESS_CACHE_MAX_ZIPS);
+          totalCachedZipBytes += buf.byteLength;
+          evictOldestZip();
           ZIP_PROCESS_CACHE.set(url, buf);
+          bufferUrlMap.set(buf, url);
           return buf;
         }
       } catch {
@@ -110,7 +104,7 @@ export class ZipResourceFetcher2 {
       }
     }
 
-    // L3: Network fetch
+    // L2: Network fetch
     const response = await fetch(url, {
       headers: { "User-Agent": "translation-helps-mcp/2.0" },
     });
@@ -119,23 +113,33 @@ export class ZipResourceFetcher2 {
     }
     const buf = new Uint8Array(await response.arrayBuffer());
 
-    // Populate all cache layers
+    // Persist to R2 only
     if (r2) r2.put(r2Key, buf).catch(() => {});
-    if (kv) {
-      const b64 = uint8ToBase64(buf);
-      kv.put(r2Key, b64, { expirationTtl: KV_TTL_SECONDS }).catch(() => {});
-    }
-    evictIfNeeded(ZIP_PROCESS_CACHE, PROCESS_CACHE_MAX_ZIPS);
+
+    totalCachedZipBytes += buf.byteLength;
+    evictOldestZip();
     ZIP_PROCESS_CACHE.set(url, buf);
+    bufferUrlMap.set(buf, url);
 
     return buf;
   }
 
   /**
    * List all entry names in a ZIP buffer without extracting content.
-   * Walks the local file headers and returns every stored filename.
+   * Uses fflate's unzipSync to correctly read the central directory,
+   * which handles both streaming-mode and standard zips.
    */
   listZipEntries(zipBuffer: Uint8Array): string[] {
+    try {
+      const files = unzipSync(zipBuffer);
+      return Object.keys(files);
+    } catch {
+      // Fallback: walk local file headers
+      return this._listViaLocalHeaders(zipBuffer);
+    }
+  }
+
+  private _listViaLocalHeaders(zipBuffer: Uint8Array): string[] {
     const view = new DataView(
       zipBuffer.buffer,
       zipBuffer.byteOffset,
@@ -151,7 +155,10 @@ export class ZipResourceFetcher2 {
       const compressedSize = view.getUint32(offset + 18, true);
       const fileNameLen = view.getUint16(offset + 26, true);
       const extraLen = view.getUint16(offset + 28, true);
-      const fileNameBytes = zipBuffer.slice(offset + 30, offset + 30 + fileNameLen);
+      const fileNameBytes = zipBuffer.slice(
+        offset + 30,
+        offset + 30 + fileNameLen,
+      );
       const entryName = new TextDecoder().decode(fileNameBytes);
       entries.push(entryName);
 
@@ -163,27 +170,70 @@ export class ZipResourceFetcher2 {
 
   /**
    * Extract a single file from an in-memory ZIP buffer.
-   * Caches extracted text in the module-level process cache (keyed by buffer
-   * identity + filePath) to avoid redundant decompression on repeated calls.
-   * Uses the Web Streams / DecompressionStream API available in Workers / modern runtimes.
+   * Caches extracted text in the module-level process cache (keyed by
+   * source URL + filePath) to avoid redundant decompression on repeated calls.
+   * Uses fflate's unzipSync which handles the central directory automatically,
+   * making it robust to Go/streaming-mode zips.
    * Returns the file's raw text content, or null if not found.
    */
   async extractFileFromZip(
     zipBuffer: Uint8Array,
     filePath: string,
   ): Promise<string | null> {
-    // Use buffer byte-length + offset as a cheap identity key (good enough for our use)
-    const cacheKey = `${zipBuffer.byteOffset}:${zipBuffer.byteLength}::${filePath}`;
+    // Resolve source URL from buffer reference for a stable cache key
+    const zipUrl = bufferUrlMap.get(zipBuffer) ?? `buf:${zipBuffer.byteLength}`;
+    const cacheKey = `${zipUrl}::${filePath}`;
+
     const textHit = TEXT_PROCESS_CACHE.get(cacheKey);
     if (textHit !== undefined) return textHit || null;
-    // Locate the file in the central directory.
+
+    const normalizedPath = filePath.replace(/^\//, "");
+
+    try {
+      // Use fflate to parse the central directory — handles Go/streaming zips
+      const files = unzipSync(zipBuffer);
+
+      // Try exact match first, then trailing-segment match
+      let matchedData: Uint8Array | undefined;
+      for (const entryName of Object.keys(files)) {
+        if (
+          entryName === normalizedPath ||
+          entryName.endsWith("/" + normalizedPath) ||
+          entryName === normalizedPath.replace(/^.*?\//, "")
+        ) {
+          matchedData = files[entryName];
+          break;
+        }
+      }
+
+      if (matchedData !== undefined) {
+        const text = new TextDecoder().decode(matchedData);
+        evictIfNeeded(TEXT_PROCESS_CACHE, PROCESS_CACHE_MAX_TEXTS);
+        TEXT_PROCESS_CACHE.set(cacheKey, text);
+        return text;
+      }
+    } catch {
+      // fflate failed — fall back to manual local-header walk
+      return this._extractViaLocalHeaders(zipBuffer, normalizedPath, cacheKey);
+    }
+
+    // Cache the miss
+    evictIfNeeded(TEXT_PROCESS_CACHE, PROCESS_CACHE_MAX_TEXTS);
+    TEXT_PROCESS_CACHE.set(cacheKey, "");
+    return null;
+  }
+
+  private async _extractViaLocalHeaders(
+    zipBuffer: Uint8Array,
+    normalizedPath: string,
+    cacheKey: string,
+  ): Promise<string | null> {
     const view = new DataView(
       zipBuffer.buffer,
       zipBuffer.byteOffset,
       zipBuffer.byteLength,
     );
 
-    // Walk local file headers (signature 0x04034b50 = PK\x03\x04).
     let offset = 0;
     while (offset < zipBuffer.length - 4) {
       const sig = view.getUint32(offset, true);
@@ -191,7 +241,6 @@ export class ZipResourceFetcher2 {
 
       const compression = view.getUint16(offset + 8, true);
       const compressedSize = view.getUint32(offset + 18, true);
-      const uncompressedSize = view.getUint32(offset + 22, true);
       const fileNameLen = view.getUint16(offset + 26, true);
       const extraLen = view.getUint16(offset + 28, true);
       const fileNameBytes = zipBuffer.slice(
@@ -202,8 +251,6 @@ export class ZipResourceFetcher2 {
 
       const dataOffset = offset + 30 + fileNameLen + extraLen;
 
-      // Match on exact path or trailing segment match (zip entries often start with repo-name/).
-      const normalizedPath = filePath.replace(/^\//, "");
       const entryMatches =
         entryName === normalizedPath ||
         entryName.endsWith("/" + normalizedPath) ||
@@ -217,10 +264,8 @@ export class ZipResourceFetcher2 {
 
         let text: string;
         if (compression === 0) {
-          // Stored (no compression)
           text = new TextDecoder().decode(compressed);
         } else if (compression === 8) {
-          // Deflate — use DecompressionStream (Workers + modern browsers)
           const ds = new DecompressionStream("deflate-raw");
           const writer = ds.writable.getWriter();
           const reader = ds.readable.getReader();
@@ -256,9 +301,8 @@ export class ZipResourceFetcher2 {
       offset = dataOffset + compressedSize;
     }
 
-    // Cache the miss so we don't re-scan this ZIP for the same path
     evictIfNeeded(TEXT_PROCESS_CACHE, PROCESS_CACHE_MAX_TEXTS);
-    TEXT_PROCESS_CACHE.set(cacheKey, ""); // empty string = not found sentinel
+    TEXT_PROCESS_CACHE.set(cacheKey, "");
     return null;
   }
 }
