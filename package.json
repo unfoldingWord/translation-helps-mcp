@@ -30,10 +30,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.15.1",
-    "@upstash/redis": "^1.28.0",
     "agents": "^0.0.97",
     "fflate": "^0.8.3",
-    "lru-cache": "^11.5.1",
     "zod": "^3.22.4"
   },
   "devDependencies": {

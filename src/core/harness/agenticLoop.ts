@@ -229,17 +229,6 @@ interface OpenAIToolCall {
   function: { name: string; arguments: string };
 }
 
-interface OpenAIResponse {
-  choices: Array<{
-    message: {
-      role: "assistant";
-      content: string | null;
-      tool_calls?: OpenAIToolCall[];
-    };
-    finish_reason: string;
-  }>;
-}
-
 // ---------------------------------------------------------------------------
 // Agentic loop
 // ---------------------------------------------------------------------------

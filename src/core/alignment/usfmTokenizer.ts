@@ -71,7 +71,10 @@ export function normalizeTokenText(text: string): string {
     return text
       .replace(/־/g, " ")
       .replace(/[׃׀]/g, "")
-      .replace(/[\u0591-\u05AF\u05BD\u05BF\u05C1-\u05C2\u05C4-\u05C5\u05C7]/g, "")
+      .replace(
+        /[\u0591-\u05AF\u05BD\u05BF\u05C1-\u05C2\u05C4-\u05C5\u05C7]/g,
+        "",
+      )
       .replace(/[\u05B0\u05B1\u05B4\u05B5\u05B8\u05B9\u05BB\u05BC]/g, "")
       .replace(/⁠/g, "")
       .replace(/\s+/g, " ")
@@ -185,17 +188,15 @@ function parseAlignedVerseTokens(
   // Current stack of alignment semantic IDs (handles nested \zaln)
   const alignStack: number[][] = [];
 
-  // Patterns
-  const zalnStartRe = /\\zaln-s\s*\|([^\\]*)\\\*/;
-  const zalnEndRe = /\\zaln-e\\\*/;
-  const wordRe = /\\w\s+([^|\\]+)(?:\|([^\\]*))?\\w\*/;
-
   while (i < verseUsfm.length) {
     // --- \zaln-s ---
-    const zalnStartMatch = verseUsfm.slice(i).match(/^\\zaln-s\s*\|([^\\]*)\\\*/);
+    const zalnStartMatch = verseUsfm
+      .slice(i)
+      .match(/^\\zaln-s\s*\|([^\\]*)\\\*/);
     if (zalnStartMatch) {
       const markup = zalnStartMatch[1];
-      const content = attr(markup, "lemma") || attr(markup, "morph").split(",")[0] || "";
+      const content =
+        attr(markup, "lemma") || attr(markup, "morph").split(",")[0] || "";
       const occurrence = parseInt(attr(markup, "occurrence") || "1", 10);
       const origWord = content; // use lemma as the canonical form
       const semanticId = generateSemanticId(
@@ -204,7 +205,10 @@ function parseAlignedVerseTokens(
         occurrence,
       );
       // Start a new alignment group with this semantic ID
-      alignStack.push([...(alignStack[alignStack.length - 1] ?? []), semanticId]);
+      alignStack.push([
+        ...(alignStack[alignStack.length - 1] ?? []),
+        semanticId,
+      ]);
       i += zalnStartMatch[0].length;
       continue;
     }
@@ -218,7 +222,9 @@ function parseAlignedVerseTokens(
     }
 
     // --- \w word|attrs\w* ---
-    const wordMatch = verseUsfm.slice(i).match(/^\\w\s+([^|\\]+)(?:\|([^\\]*))?\\w\*/);
+    const wordMatch = verseUsfm
+      .slice(i)
+      .match(/^\\w\s+([^|\\]+)(?:\|([^\\]*))?\\w\*/);
     if (wordMatch) {
       const wordText = wordMatch[1].trim();
       const currentAlignIds = alignStack[alignStack.length - 1] ?? [];
@@ -266,7 +272,7 @@ function detectDocType(usfm: string): DocType {
 export function tokenizeUsfm(
   usfm: string,
   book: string,
-  language = "",
+  _language = "",
 ): OptimizedChapter[] {
   const docType = detectDocType(usfm);
   const chapterMap = splitIntoChapters(usfm);

@@ -3,17 +3,26 @@
  *
  * Common utilities for REST route handlers.
  */
-import type { RouteContext, Env } from "../worker.js";
+import type { Env } from "../worker.js";
 import { ZipResourceFetcher2 } from "../../core/resources/ZipResourceFetcher2.js";
 import {
   catalogSearch,
   getResourceZipUrl,
   resolveCatalogLanguage,
 } from "../../core/resources/dcsClient.js";
-import type { CatalogEntry, CatalogKVCache } from "../../core/resources/dcsClient.js";
+import type {
+  CatalogEntry,
+  CatalogKVCache,
+} from "../../core/resources/dcsClient.js";
 import { parseReferenceForTool } from "../../core/resources/referenceParser.js";
 
-export { ZipResourceFetcher2, catalogSearch, getResourceZipUrl, resolveCatalogLanguage, parseReferenceForTool };
+export {
+  ZipResourceFetcher2,
+  catalogSearch,
+  getResourceZipUrl,
+  resolveCatalogLanguage,
+  parseReferenceForTool,
+};
 export type { CatalogEntry, CatalogKVCache };
 
 /**

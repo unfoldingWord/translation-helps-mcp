@@ -7,7 +7,10 @@
  */
 import type { RouteContext } from "../worker.js";
 import { json, apiError } from "../worker.js";
-import { catalogSearch, resolveCatalogLanguage } from "../../core/resources/dcsClient.js";
+import {
+  catalogSearch,
+  resolveCatalogLanguage,
+} from "../../core/resources/dcsClient.js";
 import { resolveScriptureVersionRole } from "../../core/resources/scriptureRoles.js";
 
 const ALL_SUBJECTS = [
@@ -19,16 +22,11 @@ const ALL_SUBJECTS = [
   { subject: "TSV Translation Questions", type: "questions" as const },
 ];
 
-const NT_BOOKS = new Set([
-  "MAT","MRK","LUK","JHN","ACT","ROM","1CO","2CO","GAL","EPH","PHP","COL",
-  "1TH","2TH","1TI","2TI","TIT","PHM","HEB","JAS","1PE","2PE","1JN","2JN",
-  "3JN","JUD","REV",
-]);
-
 export async function handleResources(ctx: RouteContext): Promise<Response> {
   const { url, env } = ctx;
   const requestedLanguage = url.searchParams.get("language");
-  if (!requestedLanguage) return apiError("BAD_REQUEST", "Missing required param: language", 400);
+  if (!requestedLanguage)
+    return apiError("BAD_REQUEST", "Missing required param: language", 400);
 
   // Resolve effective language (variant fallback, e.g. "es" → "es-419").
   // Use the primary scripture subject for the initial resolution so the check
@@ -62,9 +60,7 @@ export async function handleResources(ctx: RouteContext): Promise<Response> {
     for (const entry of entries) {
       const abbrev = entry.abbreviation ?? entry.repo.replace(/^[a-z]+_/, "");
       const role =
-        type === "scripture"
-          ? resolveScriptureVersionRole(abbrev)
-          : type;
+        type === "scripture" ? resolveScriptureVersionRole(abbrev) : type;
       available.push({
         type,
         subject: entry.subject ?? "",
@@ -75,7 +71,6 @@ export async function handleResources(ctx: RouteContext): Promise<Response> {
   }
 
   // Also check if original languages exist (for alignment support)
-  const hasNt = NT_BOOKS.size > 0; // always true; we check per-request in /scripture
   const originalLangs = [
     { lang: "el-x-koine", subject: "Greek New Testament", label: "ugnt" },
     { lang: "hbo", subject: "Hebrew Old Testament", label: "uhb" },
@@ -88,7 +83,12 @@ export async function handleResources(ctx: RouteContext): Promise<Response> {
       kv: env.TRANSLATION_HELPS_CACHE,
     });
     if (entries.length > 0) {
-      available.push({ type: "scripture", subject, abbreviation: label, role: "original" });
+      available.push({
+        type: "scripture",
+        subject,
+        abbreviation: label,
+        role: "original",
+      });
     }
   }
 

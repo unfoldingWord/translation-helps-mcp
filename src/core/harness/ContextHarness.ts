@@ -21,7 +21,6 @@ import {
   extractChallengesFromHistory,
   type ConversationMessage,
   type IntentResult,
-  firstBatchRef,
   nextBatchRef,
 } from "./intent.js";
 import { selectResources, type ToolCallSpec } from "./resourceSelector.js";
@@ -1205,13 +1204,8 @@ function emitBundleComponents(
 ): void {
   if (!emit.ui) return;
 
-  console.log(
-    `[HARNESS] emitBundleComponents: scriptures=${bundle.scriptures.length} notes=${bundle.notes.length} tw=${bundle.tw.length} tq=${bundle.tq?.length ?? 0} skipNotes=${opts.skipNotes}`,
-  );
-
   // scripture_text — tabbed scripture panel with RTL support
   if (bundle.scriptures.length > 0) {
-    console.log("[HARNESS] emitting scripture_text");
     emit.ui({
       type: "scripture_text",
       reference,
@@ -1242,9 +1236,7 @@ function emitBundleComponents(
 
   // translation_words — key terms (include even without articles for basic listing)
   const wordsToEmit = bundle.tw.filter((t) => t.title);
-  console.log(`[HARNESS] wordsToEmit=${wordsToEmit.length}`);
   if (wordsToEmit.length > 0) {
-    console.log("[HARNESS] emitting translation_words");
     emit.ui({
       type: "translation_words",
       reference,

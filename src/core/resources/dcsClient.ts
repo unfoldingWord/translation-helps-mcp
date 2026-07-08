@@ -86,90 +86,6 @@ const SUBJECT_TO_SUFFIX: Record<string, string> = {
   "Open Bible Stories": "obs",
 };
 
-/** Abbreviation → subject string (for catalog searches that need subject). */
-const ABBREV_TO_SUBJECT: Record<string, string> = {
-  ult: "Aligned Bible",
-  glt: "Aligned Bible",
-  ust: "Simplified Bible",
-  gst: "Simplified Bible",
-  tn: "TSV Translation Notes",
-  tw: "Translation Words",
-  ta: "Translation Academy",
-  tq: "TSV Translation Questions",
-  twl: "TSV Translation Words Links",
-  obs: "Open Bible Stories",
-};
-
-/** Standard USFM book codes → two-digit prefix (fallback only). */
-const BOOK_FILE_NUMBERS: Record<string, string> = {
-  GEN: "01",
-  EXO: "02",
-  LEV: "03",
-  NUM: "04",
-  DEU: "05",
-  JOS: "06",
-  JDG: "07",
-  RUT: "08",
-  "1SA": "09",
-  "2SA": "10",
-  "1KI": "11",
-  "2KI": "12",
-  "1CH": "13",
-  "2CH": "14",
-  EZR: "15",
-  NEH: "16",
-  EST: "17",
-  JOB: "18",
-  PSA: "19",
-  PRO: "20",
-  ECC: "21",
-  SNG: "22",
-  ISA: "23",
-  JER: "24",
-  LAM: "25",
-  EZK: "26",
-  DAN: "27",
-  HOS: "28",
-  JOL: "29",
-  AMO: "30",
-  OBA: "31",
-  JON: "32",
-  MIC: "33",
-  NAM: "34",
-  HAB: "35",
-  ZEP: "36",
-  HAG: "37",
-  ZEC: "38",
-  MAL: "39",
-  MAT: "41",
-  MRK: "42",
-  LUK: "43",
-  JHN: "44",
-  ACT: "45",
-  ROM: "46",
-  "1CO": "47",
-  "2CO": "48",
-  GAL: "49",
-  EPH: "50",
-  PHP: "51",
-  COL: "52",
-  "1TH": "53",
-  "2TH": "54",
-  "1TI": "55",
-  "2TI": "56",
-  TIT: "57",
-  PHM: "58",
-  HEB: "59",
-  JAS: "60",
-  "1PE": "61",
-  "2PE": "62",
-  "1JN": "63",
-  "2JN": "64",
-  "3JN": "65",
-  JUD: "66",
-  REV: "67",
-};
-
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
@@ -199,24 +115,8 @@ export interface LanguageEntry {
 }
 
 // ---------------------------------------------------------------------------
-// Internal Gitea / Catalog API shapes
+// Internal Catalog API shapes
 // ---------------------------------------------------------------------------
-
-interface GiteaRepo {
-  name: string;
-  default_branch: string;
-  owner: { login: string };
-  description?: string;
-}
-
-interface GiteaTreeEntry {
-  path: string;
-  type: "blob" | "tree";
-}
-
-interface GiteaOrgSearchResult {
-  data: GiteaRepo[];
-}
 
 /** Raw CatalogEntry as returned by the DCS Catalog API. */
 interface CatalogApiEntry {
@@ -403,89 +303,6 @@ function mapApiEntry(raw: CatalogApiEntry): CatalogEntry {
             zipball_url: raw.zipball_url,
           }
         : undefined,
-    },
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Gitea fallback (used when catalog returns nothing)
-// ---------------------------------------------------------------------------
-
-async function buildEntryViaGitea(
-  organization: string,
-  repoName: string,
-  subject: string,
-): Promise<{ zipUrl: string; entry: CatalogEntry } | null> {
-  let repo: GiteaRepo;
-  try {
-    const res = await fetch(`${GITEA_API}/repos/${organization}/${repoName}`, {
-      headers: {
-        "User-Agent": "translation-helps-mcp/2.0",
-        Accept: "application/json",
-      },
-    });
-    if (!res.ok) return null;
-    repo = (await res.json()) as GiteaRepo;
-  } catch {
-    return null;
-  }
-
-  const branch = repo.default_branch || "master";
-  const zipUrl = `${GITEA_BASE}/${organization}/${repoName}/archive/${branch}.zip`;
-
-  const ingredients: CatalogEntry["ingredients"] = [];
-  try {
-    const treeRes = await fetch(
-      `${GITEA_API}/repos/${organization}/${repoName}/git/trees/${branch}?recursive=false`,
-      {
-        headers: {
-          "User-Agent": "translation-helps-mcp/2.0",
-          Accept: "application/json",
-        },
-      },
-    );
-    if (treeRes.ok) {
-      const tree = (await treeRes.json()) as { tree?: GiteaTreeEntry[] };
-      for (const item of tree.tree ?? []) {
-        if (item.type !== "blob") continue;
-        const usfmMatch = item.path.match(/^(\d+)-([A-Z0-9]+)\.usfm$/i);
-        if (usfmMatch) {
-          ingredients.push({
-            identifier: usfmMatch[2].toUpperCase(),
-            path: item.path,
-          });
-          continue;
-        }
-        const tsvMatch = item.path.match(/^(?:tn|tq|twl)_([A-Z0-9]+)\.tsv$/i);
-        if (tsvMatch) {
-          ingredients.push({
-            identifier: tsvMatch[1].toUpperCase(),
-            path: item.path,
-          });
-        }
-      }
-    }
-  } catch {
-    // Continue with empty ingredients.
-  }
-
-  if (ingredients.length === 0) {
-    for (const [book, num] of Object.entries(BOOK_FILE_NUMBERS)) {
-      ingredients.push({ identifier: book, path: `${num}-${book}.usfm` });
-    }
-  }
-
-  return {
-    zipUrl,
-    entry: {
-      owner: organization,
-      repo: repoName,
-      name: repoName,
-      subject,
-      ingredients,
-      catalog: {
-        prod: { zipball_url: zipUrl, branch_or_tag_name: branch },
-      },
     },
   };
 }

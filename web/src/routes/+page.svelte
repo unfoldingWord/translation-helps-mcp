@@ -1,37 +1,33 @@
 <script lang="ts">
 	const TOOLS = [
-		{ name: 'fetch_scripture', emoji: '📖', desc: 'Bible text (ULT / UST) for any reference' },
+		{ name: 'list_languages', emoji: '🌍', desc: 'All available language codes' },
+		{ name: 'get_passage', emoji: '📖', desc: 'Bible text in all versions for a reference' },
 		{
-			name: 'fetch_translation_notes',
+			name: 'get_passage_context',
 			emoji: '📝',
-			desc: 'Exegetical notes explaining difficult phrases'
+			desc: 'Notes, Translation Words, and questions for a passage'
 		},
 		{
-			name: 'fetch_translation_word_links',
-			emoji: '🔗',
-			desc: 'Translation Words at a specific reference'
+			name: 'get_passage_index',
+			emoji: '📋',
+			desc: 'Chapter-level index of available notes'
 		},
-		{ name: 'fetch_translation_word', emoji: '📚', desc: 'Full dictionary article for a word' },
+		{ name: 'get_note', emoji: '🔖', desc: 'Single exegetical note by reference + quote' },
 		{
-			name: 'fetch_translation_academy',
+			name: 'get_academy_article',
 			emoji: '🎓',
-			desc: 'Translation Academy articles by path'
+			desc: 'Translation Academy article by path'
 		},
+		{ name: 'get_word_article', emoji: '📚', desc: 'Translation Words dictionary entry by path' },
 		{
-			name: 'fetch_translation_questions',
+			name: 'get_questions',
 			emoji: '❓',
 			desc: 'Comprehension questions for a passage'
 		},
-		{ name: 'list_languages', emoji: '🌍', desc: 'All available language codes' },
-		{
-			name: 'list_resources_for_language',
-			emoji: '📋',
-			desc: 'Resources available for a language'
-		},
-		{ name: 'list_translation_academy', emoji: '📚', desc: 'Browse all Translation Academy articles' },
-		{ name: 'list_translation_words', emoji: '🔑', desc: 'Browse all Translation Words articles' },
 		{ name: 'search_articles', emoji: '🔍', desc: 'Lexical search over TA/TW catalogs' },
-		{ name: 'get_bundle', emoji: '📦', desc: 'All helps for a passage in one call' }
+		{ name: 'get_obs_story', emoji: '📖', desc: 'Open Bible Stories story text by number' },
+		{ name: 'get_obs_notes', emoji: '📝', desc: 'Translation notes for an OBS story' },
+		{ name: 'get_obs_questions', emoji: '❓', desc: 'Discussion questions for an OBS story' }
 	];
 
 	const CONNECT_EXAMPLES = [
@@ -41,7 +37,7 @@
   "mcpServers": {
     "translation-helps": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "https://translation-helps-mcp.workers.dev/mcp"]
+      "args": ["-y", "mcp-remote", "https://translation-helps-mcp-v2.workers.dev/mcp"]
     }
   }
 }`
@@ -51,14 +47,14 @@
 			code: `{
   "mcpServers": {
     "translation-helps": {
-      "url": "https://translation-helps-mcp.workers.dev/mcp"
+      "url": "https://translation-helps-mcp-v2.workers.dev/mcp"
     }
   }
 }`
 		},
 		{
 			label: 'Direct HTTP (Streamable MCP)',
-			code: `POST https://translation-helps-mcp.workers.dev/mcp
+			code: `POST https://translation-helps-mcp-v2.workers.dev/mcp
 Content-Type: application/json
 
 {"jsonrpc":"2.0","id":1,"method":"tools/list"}`
@@ -100,7 +96,8 @@ Content-Type: application/json
 			</a>
 		</div>
 		<p class="mt-6 text-sm text-gray-500">
-			Streamable HTTP + SSE · McpAgent on Cloudflare Workers · Structured outputs · Lexical Article Search
+			Streamable HTTP + SSE · McpAgent on Cloudflare Workers · Structured outputs · Lexical Article
+			Search
 		</p>
 	</div>
 </section>

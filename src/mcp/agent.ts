@@ -37,10 +37,7 @@ export interface Env {
   API?: Fetcher;
   /** Base URL for the REST Data API worker (local dev when service binding is absent). */
   API_BASE_URL?: string;
-  ADMIN_TOKEN?: string;
   OPENAI_API_KEY?: string;
-  UPSTASH_REDIS_REST_URL?: string;
-  UPSTASH_REDIS_REST_TOKEN?: string;
 }
 
 /**

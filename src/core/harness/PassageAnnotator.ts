@@ -225,8 +225,6 @@ function getI18n(language: string): I18nStrings {
   return I18N[base] ?? I18N["en"];
 }
 
-const CATEGORY_BADGE: Record<ChallengeCategory, string> = I18N["en"].badges;
-
 // ---------------------------------------------------------------------------
 // Annotator LLM prompt
 // ---------------------------------------------------------------------------
@@ -538,12 +536,6 @@ function parseAnnotatorResponse(
 // ---------------------------------------------------------------------------
 // Formatting helpers (used by ContextHarness to render the response)
 // ---------------------------------------------------------------------------
-
-/** Source-type labels shown in the challenge list */
-const SOURCE_LABEL: Record<ChallengeSource, string> = {
-  tn: "Note",
-  tw: "Key term",
-};
 
 /**
  * Strip residual USFM inline markup from scripture text so it renders cleanly.
