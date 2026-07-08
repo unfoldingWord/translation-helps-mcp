@@ -31,7 +31,11 @@ export type WorkflowToolName =
   | "get_academy_article"
   | "get_word_article"
   | "get_questions"
-  | "search_articles";
+  | "search_articles"
+  // OBS tools
+  | "get_obs_story"
+  | "get_obs_notes"
+  | "get_obs_questions";
 
 /** Legacy tool names kept for ContextHarness / backward compatibility */
 export type LegacyToolName =
@@ -173,6 +177,41 @@ export interface SearchArticlesOptions {
   resourceTypes?: Array<"ta" | "tw">;
   /** Max results (default: 5) */
   topK?: number;
+}
+
+// ---------------------------------------------------------------------------
+// OBS tool option types
+// ---------------------------------------------------------------------------
+
+export interface GetObsStoryOptions {
+  /**
+   * OBS story:frame reference, e.g. "1:1" (story 1, frame 1),
+   * "1:0" (story 1 title), "front" (front matter).
+   * Story numbers run from 1 to 50.
+   */
+  reference: string;
+  /** BCP-47 language code (default: "en") */
+  language?: string;
+}
+
+export interface GetObsNotesOptions {
+  /**
+   * OBS story:frame reference, e.g. "1:1".
+   * Omit the frame to get all notes for a story (e.g. "1").
+   */
+  reference: string;
+  /** BCP-47 language code (default: "en") */
+  language?: string;
+}
+
+export interface GetObsQuestionsOptions {
+  /**
+   * OBS story:frame reference, e.g. "1:1".
+   * Omit the frame to get all questions for a story (e.g. "1").
+   */
+  reference: string;
+  /** BCP-47 language code (default: "en") */
+  language?: string;
 }
 
 // ---------------------------------------------------------------------------

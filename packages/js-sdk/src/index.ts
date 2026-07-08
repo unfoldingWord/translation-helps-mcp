@@ -16,5 +16,8 @@ export type {
   ListTranslationAcademyOptions,
   ListTranslationWordsOptions,
   SearchArticlesOptions,
+  GetObsStoryOptions,
+  GetObsNotesOptions,
+  GetObsQuestionsOptions,
 } from "./types.js";
 export { parseResult } from "./types.js";

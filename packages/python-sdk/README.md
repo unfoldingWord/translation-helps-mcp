@@ -107,51 +107,59 @@ TranslationHelpsClient(
 
 #### Step 1 — Orient
 
-| Method | Required | Optional | Description |
-| ------ | -------- | -------- | ----------- |
-| `list_languages(opts?)` | — | `filter` | Discover valid BCP-47 language codes |
-| `get_passage(opts)` | `reference` | `language` | Scripture text — all versions (literal, simplified, original UGNT/UHB). Cheap and repeatable. |
+| Method                      | Required    | Optional                   | Description                                                                                        |
+| --------------------------- | ----------- | -------------------------- | -------------------------------------------------------------------------------------------------- |
+| `list_languages(opts?)`     | —           | `filter`                   | Discover valid BCP-47 language codes                                                               |
+| `get_passage(opts)`         | `reference` | `language`                 | Scripture text — all versions (literal, simplified, original UGNT/UHB). Cheap and repeatable.      |
 | `get_passage_context(opts)` | `reference` | `language`, `organization` | Book/chapter intro notes + resource availability. Does NOT include verse text (use `get_passage`). |
 
 #### Step 2 — Survey
 
-| Method | Required | Optional | Description |
-| ------ | -------- | -------- | ----------- |
+| Method                    | Required    | Optional                   | Description                                                                                                       |
+| ------------------------- | ----------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `get_passage_index(opts)` | `reference` | `language`, `organization` | Compact index: note IDs + quotes + TA/TW paths (no article bodies). Includes `issues[]` and `keyTerms[]` rollups. |
 
 #### Step 3 — Drill
 
-| Method | Required | Optional | Description |
-| ------ | -------- | -------- | ----------- |
-| `get_note(opts)` | `reference` | `id`, `language`, `organization` | Full note body. Omit `id` to get all notes for the reference. |
-| `get_academy_article(opts)` | `path` | `language`, `organization` | Full TA article markdown. Use `path` from index `taArticle.path`. |
-| `get_word_article(opts)` | `path` | `language`, `organization` | Full TW article markdown. Use `path` from index `twArticle.path`. |
+| Method                      | Required    | Optional                         | Description                                                       |
+| --------------------------- | ----------- | -------------------------------- | ----------------------------------------------------------------- |
+| `get_note(opts)`            | `reference` | `id`, `language`, `organization` | Full note body. Omit `id` to get all notes for the reference.     |
+| `get_academy_article(opts)` | `path`      | `language`, `organization`       | Full TA article markdown. Use `path` from index `taArticle.path`. |
+| `get_word_article(opts)`    | `path`      | `language`, `organization`       | Full TW article markdown. Use `path` from index `twArticle.path`. |
 
 #### Step 4 — Check
 
-| Method | Required | Optional | Description |
-| ------ | -------- | -------- | ----------- |
+| Method                | Required    | Optional                   | Description                            |
+| --------------------- | ----------- | -------------------------- | -------------------------------------- |
 | `get_questions(opts)` | `reference` | `language`, `organization` | Comprehension questions for a passage. |
 
 #### Lateral Discovery
 
-| Method | Required | Optional | Description |
-| ------ | -------- | -------- | ----------- |
-| `search_articles(opts)` | `query` | `language`, `resourceTypes`, `topK` | Lexical search over TA + TW article catalogs. Returns ranked paths. |
+| Method                  | Required | Optional                            | Description                                                         |
+| ----------------------- | -------- | ----------------------------------- | ------------------------------------------------------------------- |
+| `search_articles(opts)` | `query`  | `language`, `resourceTypes`, `topK` | Lexical search over TA + TW article catalogs. Returns ranked paths. |
+
+#### Open Bible Stories (OBS)
+
+| Method                    | Required    | Optional   | Description                                                               |
+| ------------------------- | ----------- | ---------- | ------------------------------------------------------------------------- |
+| `get_obs_story(opts)`     | `reference` | `language` | Fetch OBS story text and frames for a story:frame reference (e.g. "1:1"). |
+| `get_obs_notes(opts)`     | `reference` | `language` | Fetch OBS Translation Notes for a story:frame reference.                  |
+| `get_obs_questions(opts)` | `reference` | `language` | Fetch OBS Translation Questions for a story:frame reference.              |
 
 ### Legacy Methods (deprecated)
 
 These remain for backward compatibility but should be migrated to the workflow methods above.
 
-| Legacy Method | Use Instead |
-| ------------- | ----------- |
-| `fetch_scripture(opts)` | `get_passage` |
-| `fetch_translation_notes(opts)` | `get_note` |
-| `fetch_translation_questions(opts)` | `get_questions` |
-| `fetch_translation_word_links(opts)` | `get_passage_index` |
-| `fetch_translation_word(opts)` | `get_word_article` |
-| `fetch_translation_academy(opts)` | `get_academy_article` |
-| `get_bundle(opts)` | `get_passage_context` + `get_passage_index` |
+| Legacy Method                        | Use Instead                                 |
+| ------------------------------------ | ------------------------------------------- |
+| `fetch_scripture(opts)`              | `get_passage`                               |
+| `fetch_translation_notes(opts)`      | `get_note`                                  |
+| `fetch_translation_questions(opts)`  | `get_questions`                             |
+| `fetch_translation_word_links(opts)` | `get_passage_index`                         |
+| `fetch_translation_word(opts)`       | `get_word_article`                          |
+| `fetch_translation_academy(opts)`    | `get_academy_article`                       |
+| `get_bundle(opts)`                   | `get_passage_context` + `get_passage_index` |
 
 ### Parsing Results
 

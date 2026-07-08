@@ -28,6 +28,10 @@ import type {
   GetWordArticleOptions,
   GetQuestionsOptions,
   SearchArticlesOptions,
+  // OBS tools
+  GetObsStoryOptions,
+  GetObsNotesOptions,
+  GetObsQuestionsOptions,
   // Legacy tools
   FetchScriptureOptions,
   FetchTranslationNotesOptions,
@@ -143,7 +147,10 @@ export class TranslationHelpsClient {
    * const result = await client.listLanguages({ filter: "es" });
    */
   async listLanguages(opts?: ListLanguagesOptions): Promise<MCPToolResult> {
-    return this.callTool("list_languages", (opts ?? {}) as unknown as Record<string, unknown>);
+    return this.callTool(
+      "list_languages",
+      (opts ?? {}) as unknown as Record<string, unknown>,
+    );
   }
 
   /**
@@ -159,7 +166,10 @@ export class TranslationHelpsClient {
    * });
    */
   async getPassage(opts: GetPassageOptions): Promise<MCPToolResult> {
-    return this.callTool("get_passage", opts as unknown as Record<string, unknown>);
+    return this.callTool(
+      "get_passage",
+      opts as unknown as Record<string, unknown>,
+    );
   }
 
   /**
@@ -173,8 +183,13 @@ export class TranslationHelpsClient {
    *   language: "en",
    * });
    */
-  async getPassageContext(opts: GetPassageContextOptions): Promise<MCPToolResult> {
-    return this.callTool("get_passage_context", opts as unknown as Record<string, unknown>);
+  async getPassageContext(
+    opts: GetPassageContextOptions,
+  ): Promise<MCPToolResult> {
+    return this.callTool(
+      "get_passage_context",
+      opts as unknown as Record<string, unknown>,
+    );
   }
 
   /**
@@ -189,7 +204,10 @@ export class TranslationHelpsClient {
    * });
    */
   async getPassageIndex(opts: GetPassageIndexOptions): Promise<MCPToolResult> {
-    return this.callTool("get_passage_index", opts as unknown as Record<string, unknown>);
+    return this.callTool(
+      "get_passage_index",
+      opts as unknown as Record<string, unknown>,
+    );
   }
 
   /**
@@ -204,7 +222,10 @@ export class TranslationHelpsClient {
    * });
    */
   async getNote(opts: GetNoteOptions): Promise<MCPToolResult> {
-    return this.callTool("get_note", opts as unknown as Record<string, unknown>);
+    return this.callTool(
+      "get_note",
+      opts as unknown as Record<string, unknown>,
+    );
   }
 
   /**
@@ -217,8 +238,13 @@ export class TranslationHelpsClient {
    *   language: "en",
    * });
    */
-  async getAcademyArticle(opts: GetAcademyArticleOptions): Promise<MCPToolResult> {
-    return this.callTool("get_academy_article", opts as unknown as Record<string, unknown>);
+  async getAcademyArticle(
+    opts: GetAcademyArticleOptions,
+  ): Promise<MCPToolResult> {
+    return this.callTool(
+      "get_academy_article",
+      opts as unknown as Record<string, unknown>,
+    );
   }
 
   /**
@@ -232,7 +258,10 @@ export class TranslationHelpsClient {
    * });
    */
   async getWordArticle(opts: GetWordArticleOptions): Promise<MCPToolResult> {
-    return this.callTool("get_word_article", opts as unknown as Record<string, unknown>);
+    return this.callTool(
+      "get_word_article",
+      opts as unknown as Record<string, unknown>,
+    );
   }
 
   /**
@@ -246,7 +275,10 @@ export class TranslationHelpsClient {
    * });
    */
   async getQuestions(opts: GetQuestionsOptions): Promise<MCPToolResult> {
-    return this.callTool("get_questions", opts as unknown as Record<string, unknown>);
+    return this.callTool(
+      "get_questions",
+      opts as unknown as Record<string, unknown>,
+    );
   }
 
   /**
@@ -262,7 +294,58 @@ export class TranslationHelpsClient {
    * });
    */
   async searchArticles(opts: SearchArticlesOptions): Promise<MCPToolResult> {
-    return this.callTool("search_articles", opts as unknown as Record<string, unknown>);
+    return this.callTool(
+      "search_articles",
+      opts as unknown as Record<string, unknown>,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // OBS methods (Open Bible Stories)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Fetch Open Bible Stories text for a story:frame reference.
+   * OBS is a set of 50 illustrated Bible stories for communities
+   * without written Scripture.
+   *
+   * @example
+   * const result = await client.getObsStory({ reference: "1:1", language: "en" });
+   * // Returns story title + frame text and image URL for story 1, frame 1
+   */
+  async getObsStory(opts: GetObsStoryOptions): Promise<MCPToolResult> {
+    return this.callTool(
+      "get_obs_story",
+      opts as unknown as Record<string, unknown>,
+    );
+  }
+
+  /**
+   * Fetch OBS Translation Notes for a story:frame reference.
+   * Notes explain difficult words, cultural context, and translation strategies.
+   *
+   * @example
+   * const result = await client.getObsNotes({ reference: "1:1", language: "en" });
+   */
+  async getObsNotes(opts: GetObsNotesOptions): Promise<MCPToolResult> {
+    return this.callTool(
+      "get_obs_notes",
+      opts as unknown as Record<string, unknown>,
+    );
+  }
+
+  /**
+   * Fetch OBS Translation Questions for a story:frame reference.
+   * Use after drafting a translation to verify comprehension.
+   *
+   * @example
+   * const result = await client.getObsQuestions({ reference: "1:1", language: "en" });
+   */
+  async getObsQuestions(opts: GetObsQuestionsOptions): Promise<MCPToolResult> {
+    return this.callTool(
+      "get_obs_questions",
+      opts as unknown as Record<string, unknown>,
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -271,52 +354,98 @@ export class TranslationHelpsClient {
 
   /** @deprecated Use getPassage instead */
   async fetchScripture(opts: FetchScriptureOptions): Promise<MCPToolResult> {
-    return this.callTool("fetch_scripture", opts as unknown as Record<string, unknown>);
+    return this.callTool(
+      "fetch_scripture",
+      opts as unknown as Record<string, unknown>,
+    );
   }
 
   /** @deprecated Use getNote instead */
-  async fetchTranslationNotes(opts: FetchTranslationNotesOptions): Promise<MCPToolResult> {
-    return this.callTool("fetch_translation_notes", opts as unknown as Record<string, unknown>);
+  async fetchTranslationNotes(
+    opts: FetchTranslationNotesOptions,
+  ): Promise<MCPToolResult> {
+    return this.callTool(
+      "fetch_translation_notes",
+      opts as unknown as Record<string, unknown>,
+    );
   }
 
   /** @deprecated Use getQuestions instead */
-  async fetchTranslationQuestions(opts: FetchTranslationQuestionsOptions): Promise<MCPToolResult> {
-    return this.callTool("fetch_translation_questions", opts as unknown as Record<string, unknown>);
+  async fetchTranslationQuestions(
+    opts: FetchTranslationQuestionsOptions,
+  ): Promise<MCPToolResult> {
+    return this.callTool(
+      "fetch_translation_questions",
+      opts as unknown as Record<string, unknown>,
+    );
   }
 
   /** @deprecated Use getPassageIndex instead */
-  async fetchTranslationWordLinks(opts: FetchTranslationWordLinksOptions): Promise<MCPToolResult> {
-    return this.callTool("fetch_translation_word_links", opts as unknown as Record<string, unknown>);
+  async fetchTranslationWordLinks(
+    opts: FetchTranslationWordLinksOptions,
+  ): Promise<MCPToolResult> {
+    return this.callTool(
+      "fetch_translation_word_links",
+      opts as unknown as Record<string, unknown>,
+    );
   }
 
   /** @deprecated Use getWordArticle instead */
-  async fetchTranslationWord(opts: FetchTranslationWordOptions): Promise<MCPToolResult> {
-    return this.callTool("fetch_translation_word", opts as unknown as Record<string, unknown>);
+  async fetchTranslationWord(
+    opts: FetchTranslationWordOptions,
+  ): Promise<MCPToolResult> {
+    return this.callTool(
+      "fetch_translation_word",
+      opts as unknown as Record<string, unknown>,
+    );
   }
 
   /** @deprecated Use getAcademyArticle instead */
-  async fetchTranslationAcademy(opts: FetchTranslationAcademyOptions): Promise<MCPToolResult> {
-    return this.callTool("fetch_translation_academy", opts as unknown as Record<string, unknown>);
+  async fetchTranslationAcademy(
+    opts: FetchTranslationAcademyOptions,
+  ): Promise<MCPToolResult> {
+    return this.callTool(
+      "fetch_translation_academy",
+      opts as unknown as Record<string, unknown>,
+    );
   }
 
   async listSubjects(): Promise<MCPToolResult> {
     return this.callTool("list_subjects", {});
   }
 
-  async listResourcesForLanguage(opts: ListResourcesForLanguageOptions): Promise<MCPToolResult> {
-    return this.callTool("list_resources_for_language", opts as unknown as Record<string, unknown>);
+  async listResourcesForLanguage(
+    opts: ListResourcesForLanguageOptions,
+  ): Promise<MCPToolResult> {
+    return this.callTool(
+      "list_resources_for_language",
+      opts as unknown as Record<string, unknown>,
+    );
   }
 
   /** @deprecated Use getPassageContext + getPassageIndex instead */
   async getBundle(opts: GetBundleOptions): Promise<MCPToolResult> {
-    return this.callTool("get_bundle", opts as unknown as Record<string, unknown>);
+    return this.callTool(
+      "get_bundle",
+      opts as unknown as Record<string, unknown>,
+    );
   }
 
-  async listTranslationAcademy(opts: ListTranslationAcademyOptions = {}): Promise<MCPToolResult> {
-    return this.callTool("list_translation_academy", opts as unknown as Record<string, unknown>);
+  async listTranslationAcademy(
+    opts: ListTranslationAcademyOptions = {},
+  ): Promise<MCPToolResult> {
+    return this.callTool(
+      "list_translation_academy",
+      opts as unknown as Record<string, unknown>,
+    );
   }
 
-  async listTranslationWords(opts: ListTranslationWordsOptions = {}): Promise<MCPToolResult> {
-    return this.callTool("list_translation_words", opts as unknown as Record<string, unknown>);
+  async listTranslationWords(
+    opts: ListTranslationWordsOptions = {},
+  ): Promise<MCPToolResult> {
+    return this.callTool(
+      "list_translation_words",
+      opts as unknown as Record<string, unknown>,
+    );
   }
 }

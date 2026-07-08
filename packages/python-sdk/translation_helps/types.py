@@ -81,6 +81,28 @@ class SearchArticlesOptions(TypedDict, total=False):
 
 
 # ---------------------------------------------------------------------------
+# OBS option types
+# ---------------------------------------------------------------------------
+
+class GetObsStoryOptions(TypedDict, total=False):
+    """Options for get_obs_story — fetch Open Bible Stories text."""
+    reference: str             # Required — OBS story:frame, e.g. "1:1", "1:0", "front"
+    language: Optional[str]    # BCP-47 code (default "en")
+
+
+class GetObsNotesOptions(TypedDict, total=False):
+    """Options for get_obs_notes — fetch OBS Translation Notes."""
+    reference: str             # Required — OBS story:frame, e.g. "1:1"
+    language: Optional[str]    # BCP-47 code (default "en")
+
+
+class GetObsQuestionsOptions(TypedDict, total=False):
+    """Options for get_obs_questions — fetch OBS Translation Questions."""
+    reference: str             # Required — OBS story:frame, e.g. "1:1"
+    language: Optional[str]    # BCP-47 code (default "en")
+
+
+# ---------------------------------------------------------------------------
 # Legacy option types — kept for backward compatibility
 # ---------------------------------------------------------------------------
 

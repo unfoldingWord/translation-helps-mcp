@@ -28,6 +28,9 @@ from .types import (
     ListTranslationAcademyOptions,
     ListTranslationWordsOptions,
     SearchArticlesOptions,
+    GetObsStoryOptions,
+    GetObsNotesOptions,
+    GetObsQuestionsOptions,
 )
 
 __version__ = "2.0.0"
@@ -49,4 +52,7 @@ __all__ = [
     "ListTranslationAcademyOptions",
     "ListTranslationWordsOptions",
     "SearchArticlesOptions",
+    "GetObsStoryOptions",
+    "GetObsNotesOptions",
+    "GetObsQuestionsOptions",
 ]

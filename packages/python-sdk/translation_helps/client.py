@@ -288,6 +288,52 @@ class TranslationHelpsClient:
         """
         return self.call_tool("search_articles", options)
 
+    def get_obs_story(self, options: "GetObsStoryOptions") -> Dict[str, Any]:
+        """
+        Fetch Open Bible Stories text for a story:frame reference.
+
+        Args:
+            options: Dict with ``reference`` (required, e.g. "1:1" or "OBS 1:1"),
+                     ``language`` (optional, default "en").
+
+        Returns:
+            Dictionary with story title, frames (imageUrl, text), and attribution.
+
+        Example::
+            story = client.get_obs_story({"reference": "1:1", "language": "en"})
+        """
+        return self.call_tool("get_obs_story", options)
+
+    def get_obs_notes(self, options: "GetObsNotesOptions") -> Dict[str, Any]:
+        """
+        Fetch OBS Translation Notes for a story:frame reference.
+
+        Args:
+            options: Dict with ``reference`` (required), ``language`` (optional, default "en").
+
+        Returns:
+            Dictionary with notes list for the requested OBS frame.
+
+        Example::
+            notes = client.get_obs_notes({"reference": "1:1", "language": "en"})
+        """
+        return self.call_tool("get_obs_notes", options)
+
+    def get_obs_questions(self, options: "GetObsQuestionsOptions") -> Dict[str, Any]:
+        """
+        Fetch OBS Translation Questions for a story:frame reference.
+
+        Args:
+            options: Dict with ``reference`` (required), ``language`` (optional, default "en").
+
+        Returns:
+            Dictionary with questions list for the requested OBS frame.
+
+        Example::
+            questions = client.get_obs_questions({"reference": "1:1", "language": "en"})
+        """
+        return self.call_tool("get_obs_questions", options)
+
     # ---------------------------------------------------------------------------
     # Legacy methods — kept for ContextHarness / backward compatibility
     # ---------------------------------------------------------------------------
@@ -491,6 +537,51 @@ class AsyncTranslationHelpsClient:
         Required: query. Optional: language, resourceTypes, topK.
         """
         return await self.call_tool("search_articles", options)
+
+    async def get_obs_story(self, options: "GetObsStoryOptions") -> Dict[str, Any]:
+        """
+        Fetch Open Bible Stories text for a story:frame reference.
+
+        Args:
+            options: reference (required, e.g. "1:1" or "OBS 1:1"), language (optional, default "en")
+
+        Returns:
+            Dictionary with story title, frames (imageUrl, text), and attribution
+
+        Example:
+            story = await client.get_obs_story({"reference": "1:1", "language": "en"})
+        """
+        return await self.call_tool("get_obs_story", options)
+
+    async def get_obs_notes(self, options: "GetObsNotesOptions") -> Dict[str, Any]:
+        """
+        Fetch OBS Translation Notes for a story:frame reference.
+
+        Args:
+            options: reference (required), language (optional, default "en")
+
+        Returns:
+            Dictionary with notes list for the requested OBS frame
+
+        Example:
+            notes = await client.get_obs_notes({"reference": "1:1", "language": "en"})
+        """
+        return await self.call_tool("get_obs_notes", options)
+
+    async def get_obs_questions(self, options: "GetObsQuestionsOptions") -> Dict[str, Any]:
+        """
+        Fetch OBS Translation Questions for a story:frame reference.
+
+        Args:
+            options: reference (required), language (optional, default "en")
+
+        Returns:
+            Dictionary with questions list for the requested OBS frame
+
+        Example:
+            questions = await client.get_obs_questions({"reference": "1:1", "language": "en"})
+        """
+        return await self.call_tool("get_obs_questions", options)
 
     # ---------------------------------------------------------------------------
     # Legacy methods
