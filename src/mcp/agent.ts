@@ -22,21 +22,8 @@ import { SERVER_INSTRUCTIONS } from "./instructions.js";
 import { normalizeToolArgs } from "./normalizeToolArgs.js";
 import { ApiClientError } from "./apiClient.js";
 
-// Workflow tool modules (new progressive-disclosure surface)
-import { getPassageTool } from "./tools/getPassage.js";
-import { getPassageContextTool } from "./tools/getPassageContext.js";
-import { getPassageIndexTool } from "./tools/getPassageIndex.js";
-import { getNoteTool } from "./tools/getNote.js";
-import { getAcademyArticleTool } from "./tools/getAcademyArticle.js";
-import { getWordArticleTool } from "./tools/getWordArticle.js";
-import { getPassageQuestionsTool } from "./tools/getPassageQuestions.js";
-import { searchArticlesWorkflowTool } from "./tools/searchArticlesWorkflow.js";
-import { listLanguagesTool } from "./tools/listLanguages.js";
-
-// OBS tools
-import { getObsStoryTool } from "./tools/getObsStory.js";
-import { getObsNotesTool } from "./tools/getObsNotes.js";
-import { getObsQuestionsTool } from "./tools/getObsQuestions.js";
+// Tool registry — single source of truth for MCP tools
+import { MCP_TOOLS } from "./toolRegistry.js";
 
 // Prompt modules
 import { PROMPTS } from "./prompts/index.js";
@@ -58,28 +45,11 @@ export interface Env {
 
 /**
  * Progressive-disclosure workflow tools (in canonical flow order).
- * Retired: get_bundle, fetch_scripture, fetch_translation_notes,
- *          fetch_translation_questions, fetch_translation_word,
- *          fetch_translation_academy, fetch_translation_word_links.
- * Their parsing logic is preserved in src/core/ and the REST API.
+ * Sourced from the shared toolRegistry to avoid duplication.
  */
-const ALL_TOOLS = [
-  listLanguagesTool, // orient: discover valid language codes
-  getPassageTool, // orient/draft: scripture text (all versions) — cheap, repeatable
-  getPassageContextTool, // orient: book/chapter intros + resource availability
-  getPassageIndexTool, // survey: compact index of issues + key terms (no bodies)
-  getNoteTool, // drill: full note body by id
-  getAcademyArticleTool, // drill: full TA article by path
-  getWordArticleTool, // drill: full TW article by path
-  getPassageQuestionsTool, // check: comprehension questions for a passage
-  searchArticlesWorkflowTool, // lateral: concept -> article path
-  // OBS tools
-  getObsStoryTool, // obs: OBS story text by story:frame
-  getObsNotesTool, // obs: OBS translation notes
-  getObsQuestionsTool, // obs: OBS comprehension questions
-] as const;
+const ALL_TOOLS = MCP_TOOLS;
 
-export type ToolName = (typeof ALL_TOOLS)[number]["name"];
+export type ToolName = string;
 
 /** MCP-standard error response helper. */
 function mcpError(err: TranslationHelpsError): {

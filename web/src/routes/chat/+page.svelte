@@ -2,10 +2,14 @@
 	import { tick, onMount } from 'svelte';
 	import { renderMarkdown } from '$lib/renderMarkdown.js';
 	import ResourceWorkbench from '$lib/components/ui/ResourceWorkbench.svelte';
+	import type { UIComponent } from '$core/harness/uiComponents.js';
 
 	// ---------------------------------------------------------------------------
 	// Types
 	// ---------------------------------------------------------------------------
+
+	/** Alias for the canonical UIComponent type from core. */
+	type UIComponentData = UIComponent;
 
 	interface ChallengeItem {
 		index: number;
@@ -20,57 +24,7 @@
 		at?: string;
 	}
 
-	/** Generative-UI component data emitted via the `ui` SSE event. */
-	type UIComponentData =
-		| { type: 'challenge_cards'; challenges: ChallengeItem[] }
-		| {
-				type: 'scripture_panel';
-				verses: { label: string; text: string }[];
-				highlightPhrase?: string;
-		  }
-		| {
-				type: 'scripture_text';
-				reference: string;
-				versions: Array<{
-					label: string;
-					text: string;
-					direction?: 'ltr' | 'rtl';
-					resourceType?: string;
-				}>;
-				highlightPhrase?: string;
-		  }
-		| {
-				type: 'translation_notes';
-				reference: string;
-				notes: Array<{
-					id: string;
-					quote?: string;
-					noteText: string;
-					supportReference?: string;
-					category?: string;
-					verse?: string;
-				}>;
-		  }
-		| {
-				type: 'translation_words';
-				reference: string;
-				words: Array<{
-					id: string;
-					term: string;
-					definition?: string;
-					verse?: string;
-					origWords?: string;
-					wordPath?: string;
-				}>;
-		  }
-		| {
-				type: 'translation_questions';
-				reference: string;
-				questions: Array<{ id: string; question: string; response?: string; verse?: string }>;
-		  }
-		| { type: 'phrase_drill'; challenge: ChallengeItem; noteText: string; atSuggestion?: string }
-		| { type: 'progress_tracker'; total: number; explored: number[] }
-		| { type: 'ta_article_preview'; reference: string; title: string; excerpt: string };
+	// UIComponentData is now an alias for UIComponent (imported above).
 
 	interface ToolCallTrace {
 		tool: string;

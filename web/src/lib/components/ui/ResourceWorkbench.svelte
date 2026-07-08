@@ -15,8 +15,12 @@
 	import TranslationWordsPanel from './TranslationWordsPanel.svelte';
 	import ChallengeCards from './ChallengeCards.svelte';
 	import PhraseDrillCard from './PhraseDrillCard.svelte';
+	import type { UIComponent } from '$core/harness/uiComponents.js';
 
-	// ── UIComponent type (mirrors uiComponents.ts) ──────────────────────────
+	// ── UIComponent type — use canonical type from core ──────────────────────
+
+	// Alias to avoid renaming all template references
+	type UIComponentData = UIComponent;
 
 	interface ChallengeItem {
 		index: number;
@@ -27,57 +31,6 @@
 		sourceType?: 'tn' | 'tw';
 		at?: string;
 	}
-
-	type UIComponentData =
-		| {
-				type: 'scripture_panel';
-				verses: { label: string; text: string }[];
-				highlightPhrase?: string;
-		  }
-		| {
-				type: 'scripture_text';
-				reference: string;
-				versions: Array<{
-					label: string;
-					text: string;
-					direction?: 'ltr' | 'rtl';
-					resourceType?: string;
-				}>;
-				highlightPhrase?: string;
-		  }
-		| {
-				type: 'translation_notes';
-				reference: string;
-				notes: Array<{
-					id: string;
-					quote?: string;
-					noteText: string;
-					supportReference?: string;
-					category?: string;
-					verse?: string;
-				}>;
-		  }
-		| {
-				type: 'translation_words';
-				reference: string;
-				words: Array<{
-					id: string;
-					term: string;
-					definition?: string;
-					verse?: string;
-					origWords?: string;
-					wordPath?: string;
-				}>;
-		  }
-		| {
-				type: 'translation_questions';
-				reference: string;
-				questions: Array<{ id: string; question: string; response?: string; verse?: string }>;
-		  }
-		| { type: 'challenge_cards'; challenges: ChallengeItem[] }
-		| { type: 'phrase_drill'; challenge: ChallengeItem; noteText: string; atSuggestion?: string }
-		| { type: 'progress_tracker'; total: number; explored: number[] }
-		| { type: 'ta_article_preview'; reference: string; title: string; excerpt: string };
 
 	// ── Props ────────────────────────────────────────────────────────────────
 
