@@ -1,4 +1,4 @@
-name = "translation-helps-api"
+name = "translation-helps-api-v2"
 main = "src/api/worker.ts"
 compatibility_date = "2025-05-01"
 compatibility_flags = ["nodejs_compat"]

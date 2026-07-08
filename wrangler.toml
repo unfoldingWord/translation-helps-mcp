@@ -1,4 +1,4 @@
-name = "translation-helps-mcp"
+name = "translation-helps-mcp-v2"
 main = "src/worker.ts"
 compatibility_date = "2025-05-01"
 compatibility_flags = ["nodejs_compat"]
@@ -43,7 +43,7 @@ new_sqlite_classes = ["TranslationHelpsMCP"]
 # Service binding to the REST Data API worker (zero-latency same-DC call)
 [[services]]
 binding = "API"
-service = "translation-helps-api"
+service = "translation-helps-api-v2"
 
 # ---------------------------------------------------------------------------
 # Top-level vars (used in local wrangler dev; overridden by service binding in prod)
@@ -78,7 +78,7 @@ class_name = "TranslationHelpsMCP"
 
 [[env.production.services]]
 binding = "API"
-service = "translation-helps-api"
+service = "translation-helps-api-v2"
 
 [env.preview]
 vars = { NODE_ENV = "development" }
@@ -102,4 +102,4 @@ class_name = "TranslationHelpsMCP"
 
 [[env.preview.services]]
 binding = "API"
-service = "translation-helps-api"
+service = "translation-helps-api-v2"

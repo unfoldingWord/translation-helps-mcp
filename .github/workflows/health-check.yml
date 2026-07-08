@@ -15,7 +15,7 @@ jobs:
       - name: Check MCP endpoint
         id: check
         run: |
-          WORKER_URL="${{ vars.WORKER_URL || 'https://translation-helps-mcp.workers.dev' }}"
+          WORKER_URL="${{ vars.WORKER_URL || 'https://translation-helps-mcp-v2.workers.dev' }}"
           echo "Checking $WORKER_URL/mcp"
 
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$WORKER_URL/mcp" \
