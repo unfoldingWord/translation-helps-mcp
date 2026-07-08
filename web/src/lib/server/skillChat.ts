@@ -12,24 +12,22 @@ import { SkillService } from '$core/skill/SkillService.js';
 import type { Challenge } from '$core/harness/PassageAnnotator.js';
 import type { ToolCallTrace } from '$core/harness/ContextHarness.js';
 import {
-	shouldOfferWarmup,
-	buildWarmupMarker,
 	buildLangMarker,
 	buildPendingMarkers,
 	buildNameInvitedMarker,
 	hasNameInvited,
 	extractLang,
-	extractWarmup,
 	resolveLanguage,
-	type LanguageOption,
+	type LanguageOption
 } from '$core/harness/warmup.js';
 import {
 	classifyIntent,
 	extractReferenceInfo,
 	extractSessionContext,
 	type IntentResult,
-	type IntentType,
+	type IntentType
 } from '$core/harness/intent.js';
+import type { UIComponent } from '$core/harness/uiComponents.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -47,7 +45,7 @@ import {
 async function resolveContextual(
 	llm: OpenAILLMProvider,
 	message: string,
-	history: ConversationTurn[],
+	history: ConversationTurn[]
 ): Promise<{ isAffirmative: boolean; isContinuation: boolean; extractedName: string | null }> {
 	const empty = { isAffirmative: false, isContinuation: false, extractedName: null };
 
@@ -55,12 +53,13 @@ async function resolveContextual(
 	if (message.trim().length > 120 || extractReferenceInfo(message)) return empty;
 
 	// Give the LLM the last assistant turn for context (strip hidden markers)
-	const lastAssistant = [...history]
-		.reverse()
-		.find((m) => m.role === 'assistant')
-		?.content?.replace(/<!--[\s\S]*?-->/g, '')
-		.trim()
-		.slice(0, 300) ?? '';
+	const lastAssistant =
+		[...history]
+			.reverse()
+			.find((m) => m.role === 'assistant')
+			?.content?.replace(/<!--[\s\S]*?-->/g, '')
+			.trim()
+			.slice(0, 300) ?? '';
 
 	const system = `You are a conversation classifier for a Bible translation assistant.
 
@@ -76,7 +75,10 @@ Reply ONLY with valid JSON on one line, for example: {"isAffirmative":false,"isC
 
 	try {
 		const raw = await llm.generate(
-			[{ role: 'system', content: system }, { role: 'user', content: message }],
+			[
+				{ role: 'system', content: system },
+				{ role: 'user', content: message }
+			],
 			{ maxTokens: 40 }
 		);
 		const match = raw.match(/\{[\s\S]*?\}/);
@@ -85,9 +87,10 @@ Reply ONLY with valid JSON on one line, for example: {"isAffirmative":false,"isC
 		return {
 			isAffirmative: Boolean(parsed.isAffirmative),
 			isContinuation: Boolean(parsed.isContinuation),
-			extractedName: typeof parsed.extractedName === 'string' && parsed.extractedName !== 'null'
-				? parsed.extractedName
-				: null,
+			extractedName:
+				typeof parsed.extractedName === 'string' && parsed.extractedName !== 'null'
+					? parsed.extractedName
+					: null
 		};
 	} catch {
 		return empty;
@@ -117,8 +120,8 @@ function hasActivePassageSession(history: ConversationTurn[]): boolean {
 		if (/\[Step \d+\/\d+\]/i.test(content)) return true;
 		// Any USFM reference pattern (e.g. "TIT 2:12", "JHN 3:16")
 		if (/\b[A-Z0-9]{2,3}\s+\d+:\d+\b/.test(content)) return true;
-		// Passage fetched marker in assistant system content
-		if (/extractReferenceInfo|<!-- LANG:|<!-- WARM/.test(content)) return true;
+		// Language confirmed marker in assistant content
+		if (/extractReferenceInfo|<!-- LANG:/.test(content)) return true;
 	}
 
 	// Also check if any user message in the last 4 turns contained a reference
@@ -177,17 +180,20 @@ export interface StreamEmit {
 	thinking(label: string, state: 'working' | 'done'): void;
 	/** Send structured metadata (language, name, flags) */
 	meta(data: StreamMeta): void;
+	/** Emit a structured UI component for generative-UI rendering */
+	ui(component: UIComponent): void;
 	/** Signal end of stream */
 	done(data?: Partial<ChatAnswer>): void;
 	/** Signal an error */
 	error(message: string): void;
 }
 
+export type { UIComponent };
+
 export interface StreamMeta {
 	setLanguage?: string;
 	setName?: string;
 	awaitingLanguage?: boolean;
-	awaitingConfirmation?: boolean;
 	reference?: string;
 	intent?: string;
 	citations?: { path: string; title?: string }[];
@@ -262,7 +268,10 @@ async function resolveLanguageLLM(
 		return null;
 	}
 
-	const candidate = raw.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+	const candidate = raw
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9-]/g, '');
 	if (!candidate || candidate === 'none') return null;
 
 	// Validate: exact match in catalog
@@ -294,12 +303,11 @@ function immediateAck(emit: StreamEmit, intent: string, ref?: string): void {
 	const refLabel = ref ? `**${ref}**` : 'this passage';
 	const acks: Record<string, string> = {
 		annotated_passage: `Reading ${refLabel} and gathering translation resources\u2026`,
-		passage_overview:  `Preparing a full overview of ${refLabel} \u2014 this may take a moment\u2026`,
-		phrase_drill:      `Exploring that phrase from ${refLabel}\u2026`,
-		word_study:        `Looking up that term\u2026`,
-		open_ended:        `Let me look that up for you\u2026`,
-		language_answer:   `Updating your language preference\u2026`,
-		warm_confirm:      `Great! Let me get started\u2026`,
+		passage_overview: `Preparing a full overview of ${refLabel} \u2014 this may take a moment\u2026`,
+		phrase_drill: `Exploring that phrase from ${refLabel}\u2026`,
+		word_study: `Looking up that term\u2026`,
+		open_ended: `Let me look that up for you\u2026`,
+		language_answer: `Updating your language preference\u2026`
 	};
 	emit.status(acks[intent] ?? `Working on your request\u2026`);
 }
@@ -405,7 +413,7 @@ export async function answer(
 const DEFAULT_LANGUAGE = 'en';
 
 /**
- * Stream an answer through the language-gate → warm-gate → full pipeline.
+ * Stream an answer through the language-gate → full pipeline.
  *
  * Emitter callbacks are called synchronously from within this async function.
  * The caller is responsible for buffering / encoding SSE frames.
@@ -428,14 +436,17 @@ export async function answerStream(
 	waitUntil?: (p: Promise<unknown>) => void
 ): Promise<void> {
 	try {
-		// Resolve effective language: profile > dropdown > default
-		const effectiveLang = profile?.language ?? language ?? DEFAULT_LANGUAGE;
-		const historyForClassify = history as Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+		// UI dropdown always wins; profile.language is a fallback only when language is absent/empty.
+		// profile.language may be stale from a previous session (e.g. "gof") and must never
+		// override a live selection the user can see in the dropdown.
+		const effectiveLang = language?.trim() || profile?.language || DEFAULT_LANGUAGE;
+		const historyForClassify = history as Array<{
+			role: 'user' | 'assistant' | 'system';
+			content: string;
+		}>;
 
 		// Build name-aware system snippet
-		const nameSnippet = profile?.name
-			? `Address the user as ${profile.name} when natural.`
-			: '';
+		const nameSnippet = profile?.name ? `Address the user as ${profile.name} when natural.` : '';
 
 		// 1. Fast rule-based intent classification (synchronous, no LLM)
 		let intentResult: IntentResult = classifyIntent(message, historyForClassify);
@@ -447,20 +458,6 @@ export async function answerStream(
 		if (!intentResult.reference && message.trim().length <= 120) {
 			ctx = await resolveContextual(llm, message, history);
 
-			// Override: warm-gate confirmation
-			if (ctx.isAffirmative && !intentResult.warmConfirmed) {
-				const warmup = extractWarmup(historyForClassify);
-				if (warmup) {
-					intentResult = {
-						...intentResult,
-						intent: warmup.intent as IntentType,
-						reference: warmup.ref,
-						warmConfirmed: true,
-						confidence: 'high',
-					};
-				}
-			}
-
 			// Override: batch / checklist continuation
 			if (ctx.isContinuation && !intentResult.continuationRef) {
 				const session = extractSessionContext(historyForClassify);
@@ -470,7 +467,7 @@ export async function answerStream(
 						intent: 'passage_help',
 						reference: session.nextRef,
 						continuationRef: session.nextRef,
-						confidence: 'high',
+						confidence: 'high'
 					};
 				} else if (session?.type === 'checklist') {
 					const nextStep = session.currentStep + 1;
@@ -480,7 +477,7 @@ export async function answerStream(
 							intent: 'checklist_step',
 							nextStep,
 							totalSteps: session.totalSteps,
-							confidence: 'high',
+							confidence: 'high'
 						};
 					}
 				}
@@ -492,8 +489,7 @@ export async function answerStream(
 			}
 		}
 
-		// 1a. Immediate acknowledgment — after contextual enrichment so it uses the
-		//     correct intent (e.g. "warm_confirm" → "Great! Let me get started…").
+		// 1a. Immediate acknowledgment — after contextual enrichment so it uses the correct intent.
 		immediateAck(emit, intentResult.intent, intentResult.reference);
 
 		// -----------------------------------------------------------------------
@@ -506,154 +502,123 @@ export async function answerStream(
 			emit.status('Resolving language…');
 			let langList: LanguageOption[] = [];
 			try {
-				const raw = await callTool('list_languages', {}) as { languages?: LanguageOption[] } | LanguageOption[];
-				langList = Array.isArray(raw) ? raw : (raw as { languages?: LanguageOption[] }).languages ?? [];
+				const raw = (await callTool('list_languages', {})) as
+					| { languages?: LanguageOption[] }
+					| LanguageOption[];
+				langList = Array.isArray(raw)
+					? raw
+					: ((raw as { languages?: LanguageOption[] }).languages ?? []);
 			} catch {
 				// Continue with empty list — we'll still try to match
 			}
 
-		// Resolve order: exact heuristic → LLM → affirmative-default fallback
-		let resolvedCode =
-			resolveLanguage(message, langList) ??
-			(await resolveLanguageLLM(llm, message, langList));
+			// Resolve order: exact heuristic → LLM → affirmative-default fallback
+			let resolvedCode =
+				resolveLanguage(message, langList) ?? (await resolveLanguageLLM(llm, message, langList));
 
-	if (!resolvedCode) {
-		// Last resort: if LLM classified this as an affirmative and we have a
-		// suggested default (profile or dropdown), treat it as "go with what you have".
-		// Do NOT guard on suggestedDefault !== DEFAULT_LANGUAGE — if the system told
-		// the user "I suggest en, just say adelante" they should get "en" back too.
-		const suggestedDefault = profile?.language ?? language;
-		if (ctx.isAffirmative && suggestedDefault) {
-			resolvedCode = suggestedDefault;
-		}
-	}
+			if (!resolvedCode) {
+				// Last resort: if LLM classified this as an affirmative and we have a
+				// suggested default (profile or dropdown), treat it as "go with what you have".
+				// Do NOT guard on suggestedDefault !== DEFAULT_LANGUAGE — if the system told
+				// the user "I suggest en, just say adelante" they should get "en" back too.
+				const suggestedDefault = profile?.language ?? language;
+				if (ctx.isAffirmative && suggestedDefault) {
+					resolvedCode = suggestedDefault;
+				}
+			}
 
-		if (!resolvedCode) {
-			// Could not resolve — re-ask
-			const clarifyText = `I wasn't sure which language that is. Could you type the language name (like "Spanish") or its code (like "es" or "es-419")?`;
-			emit.token(clarifyText);
-			// Keep AWAITING_LANG + PENDING_PASSAGE markers alive
-			const markers = buildPendingMarkers(pendingRef, pendingIntent ?? 'annotated_passage');
-			emit.done({
-				response: clarifyText + '\n' + markers,
-				citations: [],
-				mode: 'compose',
-				latencyMs: 0
-			});
-			return;
-		}
+			if (!resolvedCode) {
+				// Could not resolve — re-ask
+				const clarifyText = `I wasn't sure which language that is. Could you type the language name (like "Spanish") or its code (like "es" or "es-419")?`;
+				emit.token(clarifyText);
+				// Keep AWAITING_LANG + PENDING_PASSAGE markers alive
+				const markers = buildPendingMarkers(pendingRef, pendingIntent ?? 'annotated_passage');
+				emit.done({
+					response: clarifyText + '\n' + markers,
+					citations: [],
+					mode: 'compose',
+					latencyMs: 0
+				});
+				return;
+			}
 
 			// Resolve variant upfront: if the code is a base (no hyphen) and a known
-		// variant exists in the language list, upgrade it now so every subsequent
-		// tool call passes the exact variant (e.g. "es" → "es-419") and the
-		// server-side fallback is never needed during this session.
-		if (!resolvedCode.includes('-') && langList.length > 0) {
-			const prefix = resolvedCode + '-';
-			const variant = langList.find((l) => (l.code ?? '').startsWith(prefix))?.code;
-			if (variant) resolvedCode = variant;
-		}
-
-		// Language resolved — emit meta so UI dropdown updates
-		emit.meta({ setLanguage: resolvedCode });
-
-		// Name already captured by resolveContextual above (no regex needed)
-
-		// The user already stated their intent (they asked about a passage) AND
-		// answered the language gate.  Firing _handleWarmGate here would produce a
-		// third confirmation question ("¿Te gustaría…?") that the user hasn't asked
-		// for.  Skip the warm gate and run the harness directly, just like Path C.
-	emit.status('Loading passage resources…');
-	{
-		const harness = new ContextHarness(llm, callTool);
-		// Strip the lang-gate assistant turn from history before calling the harness.
-		// That turn contains <!-- AWAITING_LANG --> which would make classifyIntent
-		// return 'language_answer' for pendingRef, causing selectResources to return
-		// an empty initialFetches plan and the response to come from training-only.
-		const harnessHistory = (history as Array<{ role: 'user' | 'assistant' | 'system'; content: string }>)
-			.filter((m) => !(m.role === 'assistant' && m.content.includes('<!-- AWAITING_LANG -->')));
-		// Use pendingRef as the synthetic message so the harness classifies it
-		// as an annotated_passage / passage intent with the correct reference.
-		const result = await harness.run(pendingRef, {
-			language: resolvedCode,
-			conversationHistory: harnessHistory,
-				emit: {
-					status: (s) => emit.status(s),
-					token: (d) => emit.token(d),
-					thinking: (l, s) => emit.thinking(l, s),
-				}
-			});
-
-			if (result.effectiveLanguage && result.effectiveLanguage !== resolvedCode) {
-				emit.meta({ setLanguage: result.effectiveLanguage });
+			// variant exists in the language list, upgrade it now so every subsequent
+			// tool call passes the exact variant (e.g. "es" → "es-419") and the
+			// server-side fallback is never needed during this session.
+			if (!resolvedCode.includes('-') && langList.length > 0) {
+				const prefix = resolvedCode + '-';
+				const variant = langList.find((l) => (l.code ?? '').startsWith(prefix))?.code;
+				if (variant) resolvedCode = variant;
 			}
 
-			emit.done({
-				response: result.response,
-				citations: result.citations,
-				reference: result.reference,
-				mode: result.mode,
-				dataWarning: result.dataWarning,
-				intent: result.intent,
-				nextBatch: result.nextBatch,
-				challenges: result.challenges,
-				drillIndex: result.drillIndex,
-				totalChallenges: result.totalChallenges,
-				toolCalls: result.toolCalls,
-				latencyMs: 0
-			});
-		}
-		return;
-	}
+			// Language resolved — emit meta so UI dropdown updates
+			emit.meta({ setLanguage: resolvedCode });
 
-		// -----------------------------------------------------------------------
-		// (Name extraction handled by resolveContextual above — no regex needed)
-		// -----------------------------------------------------------------------
-		// Path C: Warm confirmation — user said "yes" to a warm-gate offer
-		// -----------------------------------------------------------------------
-		if (intentResult.warmConfirmed && intentResult.reference) {
-			// Run the full harness — caches should already be warm
+			// Name already captured by resolveContextual above (no regex needed)
+
+			// Language now known — run the harness directly.
 			emit.status('Loading passage resources…');
-			const harness = new ContextHarness(llm, callTool);
-			const result = await harness.run(message, {
-				language: effectiveLang,
-				conversationHistory: history as Array<{ role: 'user' | 'assistant' | 'system'; content: string }>,
-				emit: {
-					status: (s) => emit.status(s),
-					token: (d) => emit.token(d),
-					thinking: (l, s) => emit.thinking(l, s),
+			{
+				const harness = new ContextHarness(llm, callTool);
+				// Strip the lang-gate assistant turn from history before calling the harness.
+				// That turn contains <!-- AWAITING_LANG --> which would make classifyIntent
+				// return 'language_answer' for pendingRef, causing selectResources to return
+				// an empty initialFetches plan and the response to come from training-only.
+				const harnessHistory = (
+					history as Array<{ role: 'user' | 'assistant' | 'system'; content: string }>
+				).filter((m) => !(m.role === 'assistant' && m.content.includes('<!-- AWAITING_LANG -->')));
+				// Use pendingRef as the synthetic message so the harness classifies it
+				// as an annotated_passage / passage intent with the correct reference.
+				const result = await harness.run(pendingRef, {
+					language: resolvedCode,
+					conversationHistory: harnessHistory,
+					emit: {
+						status: (s) => emit.status(s),
+						token: (d) => emit.token(d),
+						thinking: (l, s) => emit.thinking(l, s),
+						ui: (c) => emit.ui(c)
+					}
+				});
+
+				if (result.effectiveLanguage && result.effectiveLanguage !== resolvedCode) {
+					emit.meta({ setLanguage: result.effectiveLanguage });
 				}
-			});
 
-			// Surface variant upgrade (e.g. "es" → "es-419") to the UI
-			if (result.effectiveLanguage && result.effectiveLanguage !== effectiveLang) {
-				emit.meta({ setLanguage: result.effectiveLanguage });
+				emit.done({
+					response: result.response,
+					citations: result.citations,
+					reference: result.reference,
+					mode: result.mode,
+					dataWarning: result.dataWarning,
+					intent: result.intent,
+					nextBatch: result.nextBatch,
+					challenges: result.challenges,
+					drillIndex: result.drillIndex,
+					totalChallenges: result.totalChallenges,
+					toolCalls: result.toolCalls,
+					latencyMs: 0
+				});
 			}
-
-			emit.done({
-				response: result.response,
-				citations: result.citations,
-				reference: result.reference,
-				mode: result.mode,
-				dataWarning: result.dataWarning,
-				intent: result.intent,
-				nextBatch: result.nextBatch,
-				challenges: result.challenges,
-				drillIndex: result.drillIndex,
-				totalChallenges: result.totalChallenges,
-				toolCalls: result.toolCalls,
-				latencyMs: 0
-			});
 			return;
 		}
 
 		// -----------------------------------------------------------------------
 		// Path D: Language gate — ask for language before warming
 		// -----------------------------------------------------------------------
-		const langInHistory = extractLang(history as Array<{ role: 'user' | 'assistant' | 'system'; content: string }>);
-		// Language is "known" (gate skipped) only when a LANG marker was confirmed
-		// during THIS conversation. Stored profile/dropdown values are ignored here
-		// so the gate fires once per new conversation.
-		const langKnown = !!langInHistory;
+		const langInHistory = extractLang(
+			history as Array<{ role: 'user' | 'assistant' | 'system'; content: string }>
+		);
+		// Language is "known" when any of these apply:
+		//   a) a <!-- LANG:code --> marker was confirmed during THIS conversation
+		//   b) the user's profile already has a language set (from a prior session)
+		//   c) the UI dropdown has ANY non-empty selection, including the default 'en'
+		//      (English is a perfectly valid working language — no need to ask)
+		// We intentionally no longer require the language to be non-default:
+		// if the user starts asking about a passage without changing the dropdown,
+		// we assume the current selection (even 'en') and proceed immediately.
+		const langPreset = language.trim().length > 0;
+		const langKnown = !!langInHistory || !!profile?.language || langPreset;
 
 		// Fire the language gate for ANY message that contains a passage reference,
 		// regardless of intent. This covers both passage-specific intents AND
@@ -664,9 +629,15 @@ export async function answerStream(
 			// Language list is not fetched here — the user knows their own language.
 			// (list_languages is still called in Path A when the user answers, to validate.)
 
-			const suggestedDefault = profile?.language ?? (language !== DEFAULT_LANGUAGE ? language : null);
+			// Use the explicit dropdown language as the suggestion hint.
+			// profile.language is intentionally NOT used here: it may be stale from a
+			// previous session and not visible in the UI dropdown, which would cause the
+			// LLM to suggest a code (e.g. "te") that contradicts what the user sees.
+			const suggestedDefault = language;
+			// Do NOT instruct "say go ahead" — that creates a clunky two-step confirmation.
+			// Just let the user name any language and we resolve it automatically.
 			const defaultHint = suggestedDefault
-				? ` If they have no preference, suggest **${suggestedDefault}** as the default and say they can just say "go ahead" to use it.`
+				? ` If they seem unsure, mention ${suggestedDefault} as a common choice.`
 				: '';
 
 			// Let the LLM ask the question in whatever language the user is using.
@@ -676,7 +647,7 @@ export async function answerStream(
 				`You need to know which strategic language (e.g. Spanish, English, French) they want to use as the SOURCE or BASE for their translation work — not the target language they are translating into.`,
 				`Ask them which strategic language they want to use as the base, in a single short sentence (max 20 words).`,
 				defaultHint,
-				`Match the language of the user's last message. No markdown.`,
+				`Match the language of the user's last message. No markdown.`
 			].join(' ');
 
 			const langGateChunks: string[] = [];
@@ -708,10 +679,13 @@ export async function answerStream(
 			const langGateText = langGateChunks.join('');
 
 			// Name invite is handled separately in a later turn — don't bundle it here.
-			const nameMarker = !hasNameInvited(history as Array<{ role: 'user' | 'assistant' | 'system'; content: string }>)
+			const nameMarker = !hasNameInvited(
+				history as Array<{ role: 'user' | 'assistant' | 'system'; content: string }>
+			)
 				? '\n' + buildNameInvitedMarker()
 				: '';
-			const pendingMarkers = '\n' + buildPendingMarkers(intentResult.reference, intentResult.intent);
+			const pendingMarkers =
+				'\n' + buildPendingMarkers(intentResult.reference, intentResult.intent);
 
 			emit.meta({ awaitingLanguage: true });
 			emit.done({
@@ -723,30 +697,16 @@ export async function answerStream(
 			return;
 		}
 
-		// -----------------------------------------------------------------------
-		// Path E: Warm gate — offer confirmation while background-warming
-		// -----------------------------------------------------------------------
 		const resolvedLang = langInHistory ?? effectiveLang;
 
-		if (
-			shouldOfferWarmup(
-				{ ...intentResult } as Parameters<typeof shouldOfferWarmup>[0],
-				history as Array<{ role: 'user' | 'assistant' | 'system'; content: string }>
-			) &&
-			intentResult.reference
-		) {
-			await _handleWarmGate(
-				{ callTool, llm },
-				intentResult.reference,
-				intentResult.intent,
-				resolvedLang,
-				history,
-				emit,
-				nameSnippet,
-				waitUntil,
-				profile
-			);
-			return;
+		// Background cache-warming: fire-and-forget get_passage so caches are warm
+		// before the full pipeline fetches the same data. No confirmation asked.
+		if (intentResult.reference) {
+			const warmPromise = callTool('get_passage', {
+				reference: intentResult.reference,
+				language: resolvedLang
+			}).catch(() => {});
+			if (waitUntil) waitUntil(warmPromise);
 		}
 
 		// -----------------------------------------------------------------------
@@ -768,7 +728,7 @@ export async function answerStream(
 				`You are Ezer — a friendly Bible translation helper. Your name means "helper" in Hebrew, fitting for your role guiding people through translating scripture passages.`,
 				nameCtx,
 				`Reply in 2–3 short sentences max. Do not use markdown.`,
-				`If the user asks what you do, explain you help walk translators through any Bible passage in their target language.`,
+				`If the user asks what you do, explain you help walk translators through any Bible passage in their target language.`
 			].join(' ');
 
 			const chunks: string[] = [];
@@ -824,8 +784,15 @@ export async function answerStream(
 			// For messages > 120 chars ctx defaults to {false, false, null} so they
 			// always hit the harness — appropriate since long messages are virtually
 			// always substantive questions or requests, not brief social replies.
+			//
+			// Knowledge-seeking intents (word_study, methodology, open_ended, checking)
+			// always route through the harness regardless of affirmative/continuation
+			// signals — the LLM classifier in resolveContextual can misfire for these
+			// (e.g. "What does grace mean?" could be miscategorised as affirmative).
+			const KNOWLEDGE_INTENTS = new Set(['word_study', 'methodology', 'open_ended', 'checking']);
 			const msgTrimmed = message.trim();
 			const isQuestion =
+				KNOWLEDGE_INTENTS.has(intentResult.intent) ||
 				msgTrimmed.includes('?') ||
 				msgTrimmed.includes('¿') ||
 				(!ctx.isAffirmative && !ctx.isContinuation);
@@ -837,11 +804,15 @@ export async function answerStream(
 				const harness = new ContextHarness(llm, callTool);
 				const result = await harness.run(message, {
 					language: resolvedLang,
-					conversationHistory: history as Array<{ role: 'user' | 'assistant' | 'system'; content: string }>,
+					conversationHistory: history as Array<{
+						role: 'user' | 'assistant' | 'system';
+						content: string;
+					}>,
 					emit: {
 						status: (s) => emit.status(s),
 						token: (d) => emit.token(d),
 						thinking: (l, s) => emit.thinking(l, s),
+						ui: (c) => emit.ui(c)
 					}
 				});
 				if (result.effectiveLanguage && result.effectiveLanguage !== effectiveLang) {
@@ -871,8 +842,10 @@ export async function answerStream(
 				`Read the conversation history to understand what was last discussed and continue naturally.`,
 				`Do NOT greet the user, do NOT start a new topic, do NOT ask what passage they want.`,
 				`If the user affirmed something, continue the topic. If they thanked you, acknowledge briefly.`,
-				`Reply concisely in the user's language.`,
-			].filter(Boolean).join(' ');
+				`Reply concisely in the user's language.`
+			]
+				.filter(Boolean)
+				.join(' ');
 
 			const chunks: string[] = [];
 			if (llm.generateStream) {
@@ -911,11 +884,15 @@ export async function answerStream(
 		const harness = new ContextHarness(llm, callTool);
 		const result = await harness.run(message, {
 			language: resolvedLang,
-			conversationHistory: history as Array<{ role: 'user' | 'assistant' | 'system'; content: string }>,
+			conversationHistory: history as Array<{
+				role: 'user' | 'assistant' | 'system';
+				content: string;
+			}>,
 			emit: {
 				status: (s) => emit.status(s),
 				token: (d) => emit.token(d),
 				thinking: (l, s) => emit.thinking(l, s),
+				ui: (c) => emit.ui(c)
 			}
 		});
 
@@ -941,68 +918,4 @@ export async function answerStream(
 	} catch (err) {
 		emit.error(err instanceof Error ? err.message : String(err));
 	}
-}
-
-// ---------------------------------------------------------------------------
-// Warm-gate helper
-// ---------------------------------------------------------------------------
-
-async function _handleWarmGate(
-	{ callTool, llm }: { callTool: CallTool; llm: OpenAILLMProvider },
-	ref: string,
-	intent: string,
-	language: string,
-	history: ConversationTurn[],
-	emit: StreamEmit,
-	nameSnippet: string,
-	waitUntil: ((p: Promise<unknown>) => void) | undefined,
-	profile: UserProfile | undefined
-): Promise<void> {
-	emit.status(`Loading ${ref}…`);
-
-	// Fire background warm — fire-and-forget
-	const warmPromise = callTool('get_passage', { reference: ref, language }).catch(() => {});
-	if (waitUntil) {
-		waitUntil(warmPromise);
-	}
-
-	// Stream a short polite confirmation question via LLM.
-	// Include recent conversation history so the LLM matches the user's language.
-	const nameContext = nameSnippet ? `${nameSnippet}\n` : '';
-	const systemMsg = `${nameContext}You are a friendly Bible translation assistant. The user just asked about ${ref}. Write a single short sentence (max 20 words) asking if they'd like you to walk them through it for translation. Do NOT say "I found it" — you haven't fetched it yet. Match the language of the conversation. No markdown.`;
-
-	const recentHistory = history
-		.filter((m) => m.role === 'user' || m.role === 'assistant')
-		.slice(-4) as Array<{ role: 'user' | 'assistant'; content: string }>;
-
-	const confirmText: string[] = [];
-	if (llm.generateStream) {
-		for await (const delta of llm.generateStream(
-			[{ role: 'system', content: systemMsg }, ...recentHistory],
-			{ maxTokens: 60 }
-		)) {
-			emit.token(delta);
-			confirmText.push(delta);
-		}
-	} else {
-		const text = await llm.generate(
-			[{ role: 'system', content: systemMsg }, ...recentHistory],
-			{ maxTokens: 60 }
-		);
-		emit.token(text);
-		confirmText.push(text);
-	}
-
-	const fullConfirm = confirmText.join('');
-	const langMarker = buildLangMarker(language);
-	const warmupMarker = buildWarmupMarker(ref, intent);
-	const response = `${fullConfirm}\n${langMarker}\n${warmupMarker}`;
-
-	emit.meta({ awaitingConfirmation: true, reference: ref, intent });
-	emit.done({
-		response,
-		citations: [],
-		mode: 'compose',
-		latencyMs: 0
-	});
 }

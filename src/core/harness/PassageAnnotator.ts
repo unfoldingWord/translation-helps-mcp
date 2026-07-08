@@ -85,7 +85,9 @@ export interface AnnotatedPassageResult {
 // Category inference (no LLM — pure slug mapping)
 // ---------------------------------------------------------------------------
 
-function inferCategory(supportReference: string | undefined): ChallengeCategory {
+function inferCategory(
+  supportReference: string | undefined,
+): ChallengeCategory {
   if (!supportReference) return "other";
   const ref = supportReference.toLowerCase();
 
@@ -94,7 +96,8 @@ function inferCategory(supportReference: string | undefined): ChallengeCategory 
   if (ref.includes("figs-")) return "figure-of-speech";
   if (ref.includes("grammar-")) return "grammar";
   if (ref.includes("translate-names")) return "name";
-  if (ref.includes("translate-unknown") || ref.includes("translate-terms")) return "key-term";
+  if (ref.includes("translate-unknown") || ref.includes("translate-terms"))
+    return "key-term";
   if (ref.includes("tw/dict")) return "key-term";
   if (ref.includes("culture")) return "cultural";
   return "other";
@@ -117,96 +120,102 @@ const I18N: Record<string, I18nStrings> = {
     translationNotes: "📝 **Translation Notes**",
     keyTerms: "📖 **Key Terms**",
     contextHeader: "📖 Book / Chapter Context",
-    whichPhrase: (n) => `Which phrase do you want to explore? **Type a number** (1–${n}) or **click a button below**`,
+    whichPhrase: (n) =>
+      `Which phrase do you want to explore? **Type a number** (1–${n}) or **click a button below**`,
     badges: {
       "figure-of-speech": "🌀 Figure",
-      "double-meaning":   "🔀 Double meaning",
-      "idiom":            "💬 Idiom",
-      "grammar":          "✏️ Grammar",
-      "key-term":         "📚 Key term",
-      "name":             "📛 Name",
-      "cultural":         "🏛 Cultural",
-      "other":            "⚠️ Note",
+      "double-meaning": "🔀 Double meaning",
+      idiom: "💬 Idiom",
+      grammar: "✏️ Grammar",
+      "key-term": "📚 Key term",
+      name: "📛 Name",
+      cultural: "🏛 Cultural",
+      other: "⚠️ Note",
     },
   },
   es: {
     translationNotes: "📝 **Notas de Traducción**",
     keyTerms: "📖 **Términos Clave**",
     contextHeader: "📖 Contexto del libro/capítulo",
-    whichPhrase: (n) => `¿Qué frase deseas explorar? **Escribe un número** (1–${n}) o **haz clic en un botón abajo**`,
+    whichPhrase: (n) =>
+      `¿Qué frase deseas explorar? **Escribe un número** (1–${n}) o **haz clic en un botón abajo**`,
     badges: {
       "figure-of-speech": "🌀 Figura retórica",
-      "double-meaning":   "🔀 Doble sentido",
-      "idiom":            "💬 Modismo",
-      "grammar":          "✏️ Gramática",
-      "key-term":         "📚 Término clave",
-      "name":             "📛 Nombre",
-      "cultural":         "🏛 Cultural",
-      "other":            "⚠️ Nota",
+      "double-meaning": "🔀 Doble sentido",
+      idiom: "💬 Modismo",
+      grammar: "✏️ Gramática",
+      "key-term": "📚 Término clave",
+      name: "📛 Nombre",
+      cultural: "🏛 Cultural",
+      other: "⚠️ Nota",
     },
   },
   pt: {
     translationNotes: "📝 **Notas de Tradução**",
     keyTerms: "📖 **Termos-Chave**",
     contextHeader: "📖 Contexto do livro/capítulo",
-    whichPhrase: (n) => `Qual frase você quer explorar? **Digite um número** (1–${n}) ou **clique em um botão abaixo**`,
+    whichPhrase: (n) =>
+      `Qual frase você quer explorar? **Digite um número** (1–${n}) ou **clique em um botão abaixo**`,
     badges: {
       "figure-of-speech": "🌀 Figura de linguagem",
-      "double-meaning":   "🔀 Duplo sentido",
-      "idiom":            "💬 Expressão idiomática",
-      "grammar":          "✏️ Gramática",
-      "key-term":         "📚 Termo-chave",
-      "name":             "📛 Nome",
-      "cultural":         "🏛 Cultural",
-      "other":            "⚠️ Nota",
+      "double-meaning": "🔀 Duplo sentido",
+      idiom: "💬 Expressão idiomática",
+      grammar: "✏️ Gramática",
+      "key-term": "📚 Termo-chave",
+      name: "📛 Nome",
+      cultural: "🏛 Cultural",
+      other: "⚠️ Nota",
     },
   },
   fr: {
     translationNotes: "📝 **Notes de Traduction**",
     keyTerms: "📖 **Termes Clés**",
     contextHeader: "📖 Contexte du livre/chapitre",
-    whichPhrase: (n) => `Quelle expression souhaitez-vous explorer ? **Tapez un numéro** (1–${n}) ou **cliquez sur un bouton ci-dessous**`,
+    whichPhrase: (n) =>
+      `Quelle expression souhaitez-vous explorer ? **Tapez un numéro** (1–${n}) ou **cliquez sur un bouton ci-dessous**`,
     badges: {
       "figure-of-speech": "🌀 Figure de style",
-      "double-meaning":   "🔀 Double sens",
-      "idiom":            "💬 Expression idiomatique",
-      "grammar":          "✏️ Grammaire",
-      "key-term":         "📚 Terme clé",
-      "name":             "📛 Nom",
-      "cultural":         "🏛 Culturel",
-      "other":            "⚠️ Note",
+      "double-meaning": "🔀 Double sens",
+      idiom: "💬 Expression idiomatique",
+      grammar: "✏️ Grammaire",
+      "key-term": "📚 Terme clé",
+      name: "📛 Nom",
+      cultural: "🏛 Culturel",
+      other: "⚠️ Note",
     },
   },
   id: {
     translationNotes: "📝 **Catatan Penerjemahan**",
     keyTerms: "📖 **Istilah Kunci**",
     contextHeader: "📖 Konteks buku/pasal",
-    whichPhrase: (n) => `Frasa mana yang ingin Anda jelajahi? **Ketik angka** (1–${n}) atau **klik tombol di bawah**`,
+    whichPhrase: (n) =>
+      `Frasa mana yang ingin Anda jelajahi? **Ketik angka** (1–${n}) atau **klik tombol di bawah**`,
     badges: {
       "figure-of-speech": "🌀 Kiasan",
-      "double-meaning":   "🔀 Makna ganda",
-      "idiom":            "💬 Ungkapan",
-      "grammar":          "✏️ Tata bahasa",
-      "key-term":         "📚 Istilah kunci",
-      "name":             "📛 Nama",
-      "cultural":         "🏛 Budaya",
-      "other":            "⚠️ Catatan",
+      "double-meaning": "🔀 Makna ganda",
+      idiom: "💬 Ungkapan",
+      grammar: "✏️ Tata bahasa",
+      "key-term": "📚 Istilah kunci",
+      name: "📛 Nama",
+      cultural: "🏛 Budaya",
+      other: "⚠️ Catatan",
     },
   },
   sw: {
     translationNotes: "📝 **Maelezo ya Tafsiri**",
     keyTerms: "📖 **Maneno Muhimu**",
     contextHeader: "📖 Muktadha wa kitabu/sura",
-    whichPhrase: (n) => `Unataka kuchunguza neno gani? **Andika nambari** (1–${n}) au **bonyeza kitufe hapa chini**`,
+    whichPhrase: (n) =>
+      `Unataka kuchunguza neno gani? **Andika nambari** (1–${n}) au **bonyeza kitufe hapa chini**`,
     badges: {
       "figure-of-speech": "🌀 Sitiari",
-      "double-meaning":   "🔀 Maana mbili",
-      "idiom":            "💬 Msemo",
-      "grammar":          "✏️ Sarufi",
-      "key-term":         "📚 Neno muhimu",
-      "name":             "📛 Jina",
-      "cultural":         "🏛 Utamaduni",
-      "other":            "⚠️ Maelezo",
+      "double-meaning": "🔀 Maana mbili",
+      idiom: "💬 Msemo",
+      grammar: "✏️ Sarufi",
+      "key-term": "📚 Neno muhimu",
+      name: "📛 Jina",
+      cultural: "🏛 Utamaduni",
+      other: "⚠️ Maelezo",
     },
   },
 };
@@ -224,9 +233,10 @@ const CATEGORY_BADGE: Record<ChallengeCategory, string> = I18N["en"].badges;
 
 function buildAnnotatorSystem(language: string): string {
   const baseLang = language.split("-")[0].toLowerCase();
-  const langNote = baseLang !== "en"
-    ? `\n- The "summary" field MUST be written in ${language}, not in English. Translate technical terms naturally.`
-    : "";
+  const langNote =
+    baseLang !== "en"
+      ? `\n- The "summary" field MUST be written in ${language}, not in English. Translate technical terms naturally.`
+      : "";
 
   return `You are a Bible translation assistant annotating a scripture passage.
 
@@ -277,11 +287,13 @@ export async function runAnnotator(
     bundle.scriptures.find((s) => s.resourceType === "ult") ??
     bundle.scriptures[0];
 
-  const rawScriptureText = primary?.text ?? bundle.scripture.versions?.[0]?.text ?? "";
+  const rawScriptureText =
+    primary?.text ?? bundle.scripture.versions?.[0]?.text ?? "";
   // Strip any residual USFM alignment markup that the fetcher might have left in
   const scriptureText = stripUsfmMarkup(rawScriptureText);
   // Short label shown in the response header, e.g. "ULT" from "ULT (Literal)"
-  const sourceLabel = primary?.label?.split(" ")[0] ?? primary?.label ?? undefined;
+  const sourceLabel =
+    primary?.label?.split(" ")[0] ?? primary?.label ?? undefined;
 
   if (!scriptureText || (bundle.notes.length === 0 && bundle.tw.length === 0)) {
     return {
@@ -328,7 +340,9 @@ export async function runAnnotator(
     // Extract AT from full note text before truncating so the LLM always has the
     // full AT suggestion even when the note body is cut by the slice below.
     const atMatch = note.text.match(/\bAT:\s*(.+?)(?:\s*(?:RC:|$))/s);
-    const atHint = atMatch ? ` AT_HINT:"${atMatch[1].trim().slice(0, 120)}"` : "";
+    const atHint = atMatch
+      ? ` AT_HINT:"${atMatch[1].trim().slice(0, 120)}"`
+      : "";
     noteLines.push(
       `${n}. [TN v.${note.verse ?? "?"}] quote="${note.quote ?? ""}" note="${note.text.slice(0, 300)}"${atHint} supportRef="${note.supportReference ?? ""}"`,
     );
@@ -391,8 +405,17 @@ Annotate the passage and return a CHALLENGES array with exactly ${noteLines.leng
       text: stripUsfmMarkup(s.text),
     }));
 
-  const result = parseAnnotatorResponse(raw, inputMeta, reference, scriptureText);
-  return { ...result, sourceLabel, otherScriptures: otherScriptures.length > 0 ? otherScriptures : undefined };
+  const result = parseAnnotatorResponse(
+    raw,
+    inputMeta,
+    reference,
+    scriptureText,
+  );
+  return {
+    ...result,
+    sourceLabel,
+    otherScriptures: otherScriptures.length > 0 ? otherScriptures : undefined,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -405,8 +428,8 @@ Annotate the passage and return a CHALLENGES array with exactly ${noteLines.leng
  */
 function normalizeForDedup(phrase: string): string {
   return phrase
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
 }
@@ -463,7 +486,8 @@ function parseAnnotatorResponse(
     displayIndex++;
 
     // Look up metadata by the echoed line number (1-based), fall back to position
-    const metaIdx = (item.n != null && item.n >= 1) ? item.n - 1 : displayIndex - 1;
+    const metaIdx =
+      item.n != null && item.n >= 1 ? item.n - 1 : displayIndex - 1;
     const meta = inputMeta[metaIdx] ?? inputMeta[displayIndex - 1];
 
     const sourceType: ChallengeSource = meta?.sourceType ?? "tn";
@@ -503,7 +527,10 @@ function parseAnnotatorResponse(
     dedupedChallenges.push(c);
   }
   // Re-number surviving entries with sequential 1-based indices.
-  const finalChallenges = dedupedChallenges.map((c, i) => ({ ...c, index: i + 1 }));
+  const finalChallenges = dedupedChallenges.map((c, i) => ({
+    ...c,
+    index: i + 1,
+  }));
 
   return { passage, challenges: finalChallenges };
 }
@@ -524,24 +551,26 @@ const SOURCE_LABEL: Record<ChallengeSource, string> = {
  * verse/chapter markers, and other backslash tags.
  */
 function stripUsfmMarkup(text: string): string {
-  return text
-    // Remove zaln alignment markers (with or without attributes)
-    .replace(/\\zaln-[se][^\\]*\\\*/g, "")
-    .replace(/\\zaln-[se]\s*\\\*/g, "")
-    // Strip \w word|attrs\w*  → keep just the word
-    .replace(/\\w\s+(.*?)\|[^\\]+\\w\*/g, "$1")
-    // Strip bare \w word\w*  → keep just the word
-    .replace(/\\w\s+(.*?)\\w\*/g, "$1")
-    // Remove verse markers \v 16 (already handled as superscripts by some tools)
-    .replace(/\\v\s+\d+\s*/g, "")
-    // Remove chapter markers
-    .replace(/\\c\s+\d+\s*/g, "")
-    // Remove paragraph/section markers (\p, \q1, \s, \m, etc.)
-    .replace(/\\[a-zA-Z0-9]+\*?\s*/g, "")
-    // Collapse multiple spaces / blank lines
-    .replace(/\n{3,}/g, "\n\n")
-    .replace(/[ \t]{2,}/g, " ")
-    .trim();
+  return (
+    text
+      // Remove zaln alignment markers (with or without attributes)
+      .replace(/\\zaln-[se][^\\]*\\\*/g, "")
+      .replace(/\\zaln-[se]\s*\\\*/g, "")
+      // Strip \w word|attrs\w*  → keep just the word
+      .replace(/\\w\s+(.*?)\|[^\\]+\\w\*/g, "$1")
+      // Strip bare \w word\w*  → keep just the word
+      .replace(/\\w\s+(.*?)\\w\*/g, "$1")
+      // Remove verse markers \v 16 (already handled as superscripts by some tools)
+      .replace(/\\v\s+\d+\s*/g, "")
+      // Remove chapter markers
+      .replace(/\\c\s+\d+\s*/g, "")
+      // Remove paragraph/section markers (\p, \q1, \s, \m, etc.)
+      .replace(/\\[a-zA-Z0-9]+\*?\s*/g, "")
+      // Collapse multiple spaces / blank lines
+      .replace(/\n{3,}/g, "\n\n")
+      .replace(/[ \t]{2,}/g, " ")
+      .trim()
+  );
 }
 
 /**
@@ -557,21 +586,58 @@ function stripUsfmMarkup(text: string): string {
  *   ──────────────────────────────────────────────────────
  *   Call to action
  */
+/**
+ * Render the annotated passage response as markdown.
+ *
+ * When `useUIComponents` is true the numbered challenge list is omitted from
+ * the text because the frontend will render an interactive `ChallengeCards`
+ * component via the `ui` SSE event instead.  A brief invitation line replaces
+ * the full list so the response still reads naturally.
+ */
 export function formatAnnotatedResponse(
   result: AnnotatedPassageResult,
   reference: string,
   language = "en",
-  passageContext?: Array<{ scope: "book" | "chapter"; title: string; body: string }>,
+  passageContext?: Array<{
+    scope: "book" | "chapter";
+    title: string;
+    body: string;
+  }>,
+  useUIComponents = false,
 ): string {
   const { passage, challenges } = result;
   const i18n = getI18n(language);
 
   if (challenges.length === 0) {
+    if (useUIComponents) {
+      // Scripture and helps are displayed in the workbench panel — no need to repeat
+      // them in the chat message.
+      return `**${reference}** — No specific translation challenges were identified.\n\nThe passage and available helps are shown in the panel.`;
+    }
     return `**${reference}**\n\n${passage}\n\n*No specific translation challenges found.*`;
   }
 
   const tnChallenges = challenges.filter((c) => c.sourceType === "tn");
   const twChallenges = challenges.filter((c) => c.sourceType === "tw");
+
+  if (useUIComponents) {
+    // When the workbench is active the scripture text, notes, and key terms are
+    // all rendered in the right panel.  Keep the chat message concise: just a
+    // brief count + invitation to explore.
+    const tnCount = tnChallenges.length;
+    const twCount = twChallenges.length;
+    const summaryParts: string[] = [];
+    if (tnCount > 0)
+      summaryParts.push(
+        `${tnCount} translation note${tnCount !== 1 ? "s" : ""}`,
+      );
+    if (twCount > 0)
+      summaryParts.push(`${twCount} key term${twCount !== 1 ? "s" : ""}`);
+    const summary = summaryParts.join(" and ");
+    return `I found **${summary}** for **${reference}**. Tap a challenge card in the panel to explore each one.`;
+  }
+
+  // ── Full text mode (no workbench) ─────────────────────────────────────────
 
   // ── Primary scripture ─────────────────────────────────────────────────────
   const primaryLabel = result.sourceLabel ?? "ULT";
@@ -590,11 +656,13 @@ export function formatAnnotatedResponse(
   let contextBlock = "";
   if (passageContext && passageContext.length > 0) {
     const contextItems = passageContext.map((item) => {
+      const body = item.body ?? "";
+      const title = item.title ?? "";
       const truncated =
-        item.body.length > MAX_CONTEXT_CHARS
-          ? item.body.slice(0, MAX_CONTEXT_CHARS) + "…"
-          : item.body;
-      return `**${item.title}**\n${truncated}`;
+        body.length > MAX_CONTEXT_CHARS
+          ? body.slice(0, MAX_CONTEXT_CHARS) + "…"
+          : body;
+      return `**${title}**\n${truncated}`;
     });
     contextBlock =
       `<details>\n<summary>${i18n.contextHeader}</summary>\n\n` +
@@ -602,34 +670,38 @@ export function formatAnnotatedResponse(
       `\n\n</details>`;
   }
 
-  // ── Challenge sections ────────────────────────────────────────────────────
-  const challengeSections: string[] = [];
-
-  if (tnChallenges.length > 0) {
-    const noteItems = tnChallenges.map((c) => {
-      const badge = i18n.badges[c.category] ?? i18n.badges["other"];
-      const at = c.at ? `\n   → *"${c.at}"*` : "";
-      return `**${c.index}.** ${badge} — **"${c.phrase}"**\n   ${c.noteText}${at}`;
-    });
-    challengeSections.push(`${i18n.translationNotes}\n\n${noteItems.join("\n\n")}`);
-  }
-
-  if (twChallenges.length > 0) {
-    const twItems = twChallenges.map((c) => {
-      return `**${c.index}.** 🔑 **"${c.phrase}"** — ${c.noteText}`;
-    });
-    challengeSections.push(`${i18n.keyTerms}\n\n${twItems.join("\n\n")}`);
-  }
-
-  const lastIndex = challenges[challenges.length - 1].index;
-
   const parts: string[] = [primaryBlock];
   if (supportingBlocks) parts.push(supportingBlocks);
   if (contextBlock) parts.push(contextBlock);
   parts.push("---");
-  parts.push(challengeSections.join("\n\n---\n\n"));
-  parts.push("---");
-  parts.push(i18n.whichPhrase(lastIndex));
+
+  {
+    // ── Challenge sections (full text mode) ──────────────────────────────────
+    const challengeSections: string[] = [];
+
+    if (tnChallenges.length > 0) {
+      const noteItems = tnChallenges.map((c) => {
+        const badge = i18n.badges[c.category] ?? i18n.badges["other"];
+        const at = c.at ? `\n   → *"${c.at}"*` : "";
+        return `**${c.index}.** ${badge} — **"${c.phrase}"**\n   ${c.noteText}${at}`;
+      });
+      challengeSections.push(
+        `${i18n.translationNotes}\n\n${noteItems.join("\n\n")}`,
+      );
+    }
+
+    if (twChallenges.length > 0) {
+      const twItems = twChallenges.map((c) => {
+        return `**${c.index}.** 🔑 **"${c.phrase}"** — ${c.noteText}`;
+      });
+      challengeSections.push(`${i18n.keyTerms}\n\n${twItems.join("\n\n")}`);
+    }
+
+    const lastIndex = challenges[challenges.length - 1].index;
+    parts.push(challengeSections.join("\n\n---\n\n"));
+    parts.push("---");
+    parts.push(i18n.whichPhrase(lastIndex));
+  }
 
   return parts.join("\n\n");
 }
@@ -638,24 +710,29 @@ export function formatAnnotatedResponse(
  * Build the system prompt for a phrase-drill LLM call.
  * Grounds the response in the exact resources provided — no improvisation.
  */
-export function formatDrillSystem(challenge: Challenge, language = "en"): string {
+export function formatDrillSystem(
+  challenge: Challenge,
+  language = "en",
+): string {
   const isKeyTerm = challenge.sourceType === "tw";
 
   const citationInstructions = isKeyTerm
-    ? `- Open with: **"${challenge.phrase}"** — [one-line description from the TW definition]
-- Cite the Translation Word definition directly: "According to the Translation Words, this term means…"
-- Explain why a precise translation matters for this specific passage.
-- If the Simplified Text (UST/GST) rendering is provided, show how it handles the term: "Notice that the Simplified Text renders this as '…'"
-- Close with the suggested rendering or a translation question.`
-    : `- Open with: **"${challenge.phrase}"** — [one-line description that matches the note's own language]
-- Quote the Translation Note directly: "The Translation Notes state that…" then give the VERBATIM NOTE TEXT provided in the context. Do NOT paraphrase it.
-- If a Simplified Text (UST/GST) rendering is provided, compare: "Notice how the Simplified Text renders v.${challenge.verse} as '…' — this shows the meaning…"
-- If a Translation Academy article is provided, cite its core principle: "The Translation Academy explains that…"
-- End with the Alternate Translation if provided, plus ONE follow-up question.`;
+    ? `- Lead with a direct answer to the user's question in 1–2 sentences — do not bury the answer at the end.
+- Write conversationally, as an expert colleague talking to a translator. Do NOT use markdown headers (no ###, no bold **section titles**) — use flowing prose with inline citations instead.
+- Draw on the Translation Word definition to explain what the term means and why precision matters for this passage, woven naturally into prose. If a Simplified Text (UST/GST) rendering is available, mention how it handles the term in passing.
+- Aim for ~120 words. Simple definitional questions deserve 2–3 sentences with inline evidence; do not write a structured essay.
+- If relevant, end with one brief follow-up question for the translator.`
+    : `- Lead with a direct answer to the user's question in 1–2 sentences — do not bury the answer at the end.
+- Write conversationally, as an expert colleague talking to a translator. Do NOT use markdown headers (no ###, no bold **section titles** like **"What is X?"**) — use flowing prose with inline citations instead.
+- Use TN, Simplified Text (UST/GST), and TA only when each is genuinely relevant — you don't need to use all three. When citing the Translation Note, quote it verbatim inline (e.g. "The note says '…'"). When the simplified rendering clarifies meaning, weave it in naturally. When a TA principle applies, state it briefly in prose.
+- If an Alternate Translation is provided, include it naturally in the prose.
+- Aim for ~120 words. Simple definitional questions: 2–3 sentences with inline evidence. Complex multi-part questions: a short paragraph. Do NOT write a structured 4-paragraph essay.
+- If relevant, end with one brief follow-up question for the translator.`;
 
-  const langNote = language !== "en"
-    ? `\n\nCRITICAL: Respond entirely in ${language}. Do NOT switch to English for any reason.`
-    : "";
+  const langNote =
+    language !== "en"
+      ? `\n\nCRITICAL: Respond entirely in ${language}. Do NOT switch to English for any reason.`
+      : "";
 
   return `You are a Bible translation coach explaining one specific translation challenge.
 
@@ -671,5 +748,5 @@ GROUNDING RULES — you MUST follow these:
 3. If the original-language quote is provided, mention it once to help the translator connect the strategic-language phrase to the source: "This phrase translates the original '…'"
 4. Do NOT invent alternate translations beyond what the AT suggestion provides.
 5. Keep your response focused and practical — the translator needs to know what to DO.
-6. **Direct answer last**: After presenting the evidence, close with a short paragraph (1–2 sentences) that directly and explicitly answers the user's original question using the information already provided. Then, if relevant, add one brief follow-up question for the translator.${langNote}`;
+6. **Lead with the answer**: Begin your response with 1–2 sentences that directly address the user's question. Then weave in supporting evidence from the provided resources. If relevant, close with one brief follow-up question for the translator.${langNote}`;
 }

@@ -30,8 +30,14 @@ const TOOL_SPECS: OpenAITool[] = [
       parameters: {
         type: "object",
         properties: {
-          reference: { type: "string", description: "USFM reference, e.g. 'JHN 3:16'" },
-          language: { type: "string", description: "BCP-47 language code, e.g. 'en'" },
+          reference: {
+            type: "string",
+            description: "USFM reference, e.g. 'JHN 3:16'",
+          },
+          language: {
+            type: "string",
+            description: "BCP-47 language code, e.g. 'en'",
+          },
         },
         required: ["reference", "language"],
       },
@@ -48,8 +54,14 @@ const TOOL_SPECS: OpenAITool[] = [
       parameters: {
         type: "object",
         properties: {
-          reference: { type: "string", description: "USFM reference, e.g. 'JHN 3:16'" },
-          language: { type: "string", description: "BCP-47 language code, e.g. 'en'" },
+          reference: {
+            type: "string",
+            description: "USFM reference, e.g. 'JHN 3:16'",
+          },
+          language: {
+            type: "string",
+            description: "BCP-47 language code, e.g. 'en'",
+          },
         },
         required: ["reference", "language"],
       },
@@ -66,9 +78,15 @@ const TOOL_SPECS: OpenAITool[] = [
       parameters: {
         type: "object",
         properties: {
-          reference: { type: "string", description: "USFM reference, e.g. 'JHN 3:16'" },
+          reference: {
+            type: "string",
+            description: "USFM reference, e.g. 'JHN 3:16'",
+          },
           language: { type: "string", description: "BCP-47 language code" },
-          id: { type: "string", description: "Optional: specific note ID to fetch (e.g. 'vg6z')" },
+          id: {
+            type: "string",
+            description: "Optional: specific note ID to fetch (e.g. 'vg6z')",
+          },
         },
         required: ["reference", "language"],
       },
@@ -86,7 +104,10 @@ const TOOL_SPECS: OpenAITool[] = [
       parameters: {
         type: "object",
         properties: {
-          reference: { type: "string", description: "USFM reference, e.g. 'JHN 3:16'" },
+          reference: {
+            type: "string",
+            description: "USFM reference, e.g. 'JHN 3:16'",
+          },
           language: { type: "string", description: "BCP-47 language code" },
         },
         required: ["reference", "language"],
@@ -104,7 +125,10 @@ const TOOL_SPECS: OpenAITool[] = [
       parameters: {
         type: "object",
         properties: {
-          path: { type: "string", description: "Word path, e.g. 'bible/kt/grace'" },
+          path: {
+            type: "string",
+            description: "Word path, e.g. 'bible/kt/grace'",
+          },
           language: { type: "string", description: "BCP-47 language code" },
         },
         required: ["path", "language"],
@@ -161,7 +185,10 @@ const TOOL_SPECS: OpenAITool[] = [
       parameters: {
         type: "object",
         properties: {
-          query: { type: "string", description: "Natural language search query" },
+          query: {
+            type: "string",
+            description: "Natural language search query",
+          },
           language: { type: "string", description: "BCP-47 language code" },
           resourceTypes: {
             type: "array",
@@ -219,7 +246,19 @@ interface OpenAIResponse {
 
 const MAX_ITERATIONS = 4;
 
-type ConversationMessage = { role: "user" | "assistant" | "system"; content: string };
+const CONVERSATIONAL_STYLE = `
+
+RESPONSE STYLE — follow these rules strictly:
+- Respond conversationally in flowing prose. Do NOT use markdown headers (##, ###) or structured bullet-point lists unless the user explicitly asks for a structured explanation or list.
+- When you retrieve an article or resource, use it as a reference to inform your answer — do not reformat or copy its structure. Synthesize the key insight in 3–5 sentences and cite the source inline.
+- Lead with the most direct answer to the user's question, then add supporting detail.
+- Keep total response length proportional to question complexity: simple questions get 2–4 sentences, complex ones get a short paragraph.
+- TRANSLATION ACADEMY FIDELITY: When citing a Translation Academy article, quote the exact strategy names and descriptions from the article — do NOT rewrite, reorder, or generate new strategies that are not present in the source. Use the article's own wording for every strategy listed. If the article describes 2 strategies, present exactly those 2 strategies in the article's own words.`;
+
+type ConversationMessage = {
+  role: "user" | "assistant" | "system";
+  content: string;
+};
 
 export async function runAgenticLoop(
   userMessage: string,
@@ -235,7 +274,9 @@ export async function runAgenticLoop(
     const response = await llm.generate([
       {
         role: "system",
-        content: SYSTEM_BASE +
+        content:
+          SYSTEM_BASE +
+          CONVERSATIONAL_STYLE +
           "\n\nNote: You do not have live access to translation resources for this open-ended query. Answer from your training knowledge and note the limitation.",
       },
       { role: "user", content: userMessage },
@@ -265,6 +306,7 @@ export async function runAgenticLoop(
       role: "system",
       content:
         SYSTEM_BASE +
+        CONVERSATIONAL_STYLE +
         `\n\nYou have access to MCP tools to fetch translation resources. ` +
         `Use them to answer the question with real data. ` +
         `Typical workflow: get_passage (scripture text) + get_passage_context (book/chapter background) → get_note / get_passage_index → get_academy_article / get_word_article. ` +
@@ -278,7 +320,8 @@ export async function runAgenticLoop(
     { role: "user", content: userMessage },
   ];
 
-  const toolCallLog: Array<{ tool: string; params: unknown; result: unknown }> = [];
+  const toolCallLog: Array<{ tool: string; params: unknown; result: unknown }> =
+    [];
   let iterations = 0;
 
   while (iterations < MAX_ITERATIONS) {
@@ -311,11 +354,18 @@ export async function runAgenticLoop(
     for (const tc of result.tool_calls) {
       let toolResult: unknown;
       try {
-        const args = JSON.parse(tc.function.arguments) as Record<string, unknown>;
+        const args = JSON.parse(tc.function.arguments) as Record<
+          string,
+          unknown
+        >;
         // Always inject language if missing
         if (!args["language"]) args["language"] = language;
         toolResult = await callTool(tc.function.name, args);
-        toolCallLog.push({ tool: tc.function.name, params: args, result: toolResult });
+        toolCallLog.push({
+          tool: tc.function.name,
+          params: args,
+          result: toolResult,
+        });
       } catch (err) {
         toolResult = { error: String(err) };
       }
@@ -357,7 +407,11 @@ interface OpenAILLMWithTools {
   generateWithTools(
     messages: OpenAIMessage[],
     tools: OpenAITool[],
-  ): Promise<{ content: string | null; tool_calls?: OpenAIToolCall[]; finish_reason: string }>;
+  ): Promise<{
+    content: string | null;
+    tool_calls?: OpenAIToolCall[];
+    finish_reason: string;
+  }>;
 }
 
 function buildCitationsFromLog(
@@ -366,7 +420,10 @@ function buildCitationsFromLog(
   const citations: Array<{ path: string; title?: string }> = [];
   for (const entry of log) {
     const p = entry.params as Record<string, unknown>;
-    if (entry.tool === "get_academy_article" || entry.tool === "get_word_article") {
+    if (
+      entry.tool === "get_academy_article" ||
+      entry.tool === "get_word_article"
+    ) {
       const path = String(p["path"] ?? "");
       if (path) citations.push({ path, title: path.split("/").pop() });
     } else if (

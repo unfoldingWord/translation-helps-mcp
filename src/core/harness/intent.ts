@@ -39,16 +39,16 @@ import {
 
 export type IntentType =
   | "passage_overview"
-  | "annotated_passage"   // short verse range → annotated text + challenge buttons
+  | "annotated_passage" // short verse range → annotated text + challenge buttons
   | "passage_help"
-  | "phrase_drill"        // user selected a specific challenge to explore
-  | "checklist_step"      // advancing through a guided checklist session
+  | "phrase_drill" // user selected a specific challenge to explore
+  | "checklist_step" // advancing through a guided checklist session
   | "word_study"
   | "methodology"
   | "checking"
   | "discovery"
   | "open_ended"
-  | "language_answer";    // user is replying to the language-gate prompt
+  | "language_answer"; // user is replying to the language-gate prompt
 
 export interface ConversationMessage {
   role: "user" | "assistant" | "system";
@@ -101,13 +101,72 @@ export const BATCH_SIZE = 4;
 // ---------------------------------------------------------------------------
 
 export const VALID_USFM_BOOKS = new Set([
-  "GEN","EXO","LEV","NUM","DEU","JOS","JDG","RUT","1SA","2SA",
-  "1KI","2KI","1CH","2CH","EZR","NEH","EST","JOB","PSA","PRO",
-  "ECC","SNG","ISA","JER","LAM","EZK","DAN","HOS","JOL","AMO",
-  "OBA","JON","MIC","NAM","HAB","ZEP","HAG","ZEC","MAL",
-  "MAT","MRK","LUK","JHN","ACT","ROM","1CO","2CO","GAL","EPH",
-  "PHP","COL","1TH","2TH","1TI","2TI","TIT","PHM","HEB","JAS",
-  "1PE","2PE","1JN","2JN","3JN","JUD","REV",
+  "GEN",
+  "EXO",
+  "LEV",
+  "NUM",
+  "DEU",
+  "JOS",
+  "JDG",
+  "RUT",
+  "1SA",
+  "2SA",
+  "1KI",
+  "2KI",
+  "1CH",
+  "2CH",
+  "EZR",
+  "NEH",
+  "EST",
+  "JOB",
+  "PSA",
+  "PRO",
+  "ECC",
+  "SNG",
+  "ISA",
+  "JER",
+  "LAM",
+  "EZK",
+  "DAN",
+  "HOS",
+  "JOL",
+  "AMO",
+  "OBA",
+  "JON",
+  "MIC",
+  "NAM",
+  "HAB",
+  "ZEP",
+  "HAG",
+  "ZEC",
+  "MAL",
+  "MAT",
+  "MRK",
+  "LUK",
+  "JHN",
+  "ACT",
+  "ROM",
+  "1CO",
+  "2CO",
+  "GAL",
+  "EPH",
+  "PHP",
+  "COL",
+  "1TH",
+  "2TH",
+  "1TI",
+  "2TI",
+  "TIT",
+  "PHM",
+  "HEB",
+  "JAS",
+  "1PE",
+  "2PE",
+  "1JN",
+  "2JN",
+  "3JN",
+  "JUD",
+  "REV",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -123,35 +182,70 @@ export const VALID_USFM_BOOKS = new Set([
 // resolveContextual() call or adding a dedicated intent-classify LLM call in a future pass
 // once it can run in parallel with the first status emit.
 const WORD_STUDY_KEYWORDS = [
-  "what does", "meaning of", "define", "definition",
-  "what is", "word for", "term", "translate the word",
-  "how to translate", "biblical term", "word study",
+  "what does",
+  "meaning of",
+  "define",
+  "definition",
+  "what is",
+  "word for",
+  "term",
+  "translate the word",
+  "how to translate",
+  "biblical term",
+  "word study",
 ];
 
 // TODO(llm-intent): Same concern as WORD_STUDY_KEYWORDS — keyword list on free-form text.
 // Kept on sync path for now to avoid blocking first token.
 const METHODOLOGY_KEYWORDS = [
-  "figure of speech", "figures of speech", "metaphor", "simile",
-  "how do i translate", "how should i translate", "how to handle",
-  "translation strategy", "translation strategies", "academy",
-  "passive voice", "rhetorical question", "pronoun", "idiom",
-  "hyperbole", "metonymy", "euphemism", "abstraction",
-  "inclusive language", "unknown", "culture", "cultural",
+  "figure of speech",
+  "figures of speech",
+  "metaphor",
+  "simile",
+  "how do i translate",
+  "how should i translate",
+  "how to handle",
+  "translation strategy",
+  "translation strategies",
+  "academy",
+  "passive voice",
+  "rhetorical question",
+  "pronoun",
+  "idiom",
+  "hyperbole",
+  "metonymy",
+  "euphemism",
+  "abstraction",
+  "inclusive language",
+  "unknown",
+  "culture",
+  "cultural",
 ];
 
 // TODO(llm-intent): Same concern as WORD_STUDY_KEYWORDS — keyword list on free-form text.
 // Kept on sync path for now to avoid blocking first token.
 const CHECKING_KEYWORDS = [
-  "check", "verify", "comprehension question", "translation question",
-  "is my translation", "did i get it right", "accurate",
+  "check",
+  "verify",
+  "comprehension question",
+  "translation question",
+  "is my translation",
+  "did i get it right",
+  "accurate",
 ];
 
 // TODO(llm-intent): Same concern as WORD_STUDY_KEYWORDS — keyword list on free-form text.
 // Kept on sync path for now to avoid blocking first token.
 const DISCOVERY_KEYWORDS = [
-  "available languages", "list languages", "what languages",
-  "available resources", "list resources", "what resources",
-  "which languages", "which resources", "does it support",
+  "available languages",
+  "list languages",
+  "what languages",
+  "available resources",
+  "list resources",
+  "what resources",
+  "which languages",
+  "which resources",
+  "does it support",
   "is there a resource",
 ];
 
@@ -170,20 +264,20 @@ const CONTINUATION_PATTERN =
   /^(next|continue|go on|keep going|yes|ok|proceed|move on|next verses|next section|carry on|more|go ahead|yes please|let'?s continue|s[ií]|adelante|siguiente|continuar|continúa|sigue|vamos|dale|por favor|s[ií] por favor|sim|próximo|pode|vamos lá|oui|suivant|continuer|allez|ja|weiter|nächste|ya|lanjut|teruskan)\s*\.?$/i;
 
 const METHODOLOGY_SLUG_MAP: Array<[RegExp, string]> = [
-  [/metaphor/i,               "translate/figs-metaphor"],
-  [/simile/i,                 "translate/figs-simile"],
-  [/passive\s+voice/i,        "translate/figs-activepassive"],
-  [/rhetorical\s+question/i,  "translate/figs-rquestion"],
-  [/euphemism/i,              "translate/figs-euphemism"],
-  [/hyperbole/i,              "translate/figs-hyperbole"],
-  [/metonymy/i,               "translate/figs-metonymy"],
-  [/synecdoche/i,             "translate/figs-synecdoche"],
-  [/abstract/i,               "translate/figs-abstractnouns"],
-  [/pronoun/i,                "translate/figs-pronouns"],
-  [/translation\s+notes/i,    "intro/translation-notes-intro"],
-  [/check.*accurac/i,         "checking/accuracy"],
-  [/unknown/i,                "translate/translate-unknown"],
-  [/names?/i,                 "translate/translate-names"],
+  [/metaphor/i, "translate/figs-metaphor"],
+  [/simile/i, "translate/figs-simile"],
+  [/passive\s+voice/i, "translate/figs-activepassive"],
+  [/rhetorical\s+question/i, "translate/figs-rquestion"],
+  [/euphemism/i, "translate/figs-euphemism"],
+  [/hyperbole/i, "translate/figs-hyperbole"],
+  [/metonymy/i, "translate/figs-metonymy"],
+  [/synecdoche/i, "translate/figs-synecdoche"],
+  [/abstract/i, "translate/figs-abstractnouns"],
+  [/pronoun/i, "translate/figs-pronouns"],
+  [/translation\s+notes/i, "intro/translation-notes-intro"],
+  [/check.*accurac/i, "checking/accuracy"],
+  [/unknown/i, "translate/translate-unknown"],
+  [/names?/i, "translate/translate-names"],
 ];
 
 // ---------------------------------------------------------------------------
@@ -201,13 +295,18 @@ export interface ExtractedReference {
  * Scan a message for a Bible reference.
  * Returns structured info including whether it's a large range, or null.
  */
-export function extractReferenceInfo(message: string): ExtractedReference | null {
+export function extractReferenceInfo(
+  message: string,
+): ExtractedReference | null {
   const words = message.split(/\s+/);
 
   for (let i = 0; i < words.length - 1; i++) {
     for (const len of [2, 3]) {
       // Strip trailing punctuation so "Titus 2:12?" or "John 3:16." are recognised
-      const candidate = words.slice(i, i + len).join(" ").replace(/[.!?,;:]+$/, "");
+      const candidate = words
+        .slice(i, i + len)
+        .join(" ")
+        .replace(/[.!?,;:]+$/, "");
       const parsed = parseReferenceForTool(candidate);
       if (!parsed || !VALID_USFM_BOOKS.has(parsed.book)) continue;
 
@@ -227,7 +326,8 @@ export function extractReferenceInfo(message: string): ExtractedReference | null
       const wideVerseRange =
         parsed.verseStart &&
         parsed.verseEnd &&
-        parseInt(parsed.verseEnd) - parseInt(parsed.verseStart) + 1 >= LARGE_RANGE_THRESHOLD;
+        parseInt(parsed.verseEnd) - parseInt(parsed.verseStart) + 1 >=
+          LARGE_RANGE_THRESHOLD;
 
       return { ref, isLargeRange: !!(wholeChapter || wideVerseRange) };
     }
@@ -387,7 +487,7 @@ function extractTerm(message: string): string | null {
   const quotedMatch = message.match(/["']([^"']+)["']/);
   if (quotedMatch) return quotedMatch[1].trim().toLowerCase();
   const phraseMatch = message.match(
-    /\b(?:meaning\s+of|define|definition\s+of|word\s+for|the\s+word)\s+(\w+)/i,
+    /\b(?:meaning\s+of|define|definition\s+of|word\s+for|the\s+word|what\s+(?:does|is|are)\s+(?:the\s+)?(?:word\s+)?)\s*(\w+)/i,
   );
   if (phraseMatch) return phraseMatch[1].toLowerCase();
   return null;
@@ -418,7 +518,10 @@ export async function resolvePhraseDrillIntent(
 ): Promise<ChallengeEntry | null> {
   // Build a compact numbered list of challenges (phrase + brief description).
   const challengeList = challenges
-    .map((c) => `${c.index}. "${c.phrase}" — ${c.noteText.slice(0, 80)}`)
+    .map(
+      (c) =>
+        `${c.index}. "${c.phrase ?? ""}" — ${(c.noteText ?? "").slice(0, 80)}`,
+    )
     .join("\n");
 
   // Include the last 1–2 assistant + user turns as context, stripping hidden
@@ -428,7 +531,7 @@ export async function resolvePhraseDrillIntent(
     .filter((m) => m.role === "user" || m.role === "assistant")
     .map(
       (m) =>
-        `${m.role.toUpperCase()}: ${m.content
+        `${m.role.toUpperCase()}: ${(m.content ?? "")
           .replace(/<!--[\s\S]*?-->/g, "")
           .trim()
           .slice(0, 300)}`,

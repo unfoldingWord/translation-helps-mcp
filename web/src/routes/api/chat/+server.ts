@@ -8,7 +8,7 @@
  *   event: status    data: {"text":"…"}
  *   event: token     data: {"delta":"…"}
  *   event: thinking  data: {"label":"…","state":"working"|"done"}
- *   event: meta      data: { setLanguage?, setName?, awaitingLanguage?, awaitingConfirmation?, … }
+ *   event: meta      data: { setLanguage?, setName?, awaitingLanguage?, … }
  *   event: done      data: { response, citations, intent, reference, challenges, … }
  *   event: error     data: {"message":"…"}
  */
@@ -97,13 +97,14 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 				return `event: ${event}\ndata: ${json}\n\n`;
 			};
 
-			const enqueue = (frame: string) =>
-				controller.enqueue(new TextEncoder().encode(frame));
+			const enqueue = (frame: string) => controller.enqueue(new TextEncoder().encode(frame));
 
 			// Track the last time any event was emitted so the heartbeat knows
 			// whether it needs to fire.
 			let lastEmitAt = Date.now();
-			const touch = () => { lastEmitAt = Date.now(); };
+			const touch = () => {
+				lastEmitAt = Date.now();
+			};
 
 			// Keepalive heartbeat — emits a status frame every 3 s when the
 			// pipeline is silent, preventing the browser from treating a live
@@ -133,6 +134,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 				meta(data) {
 					touch();
 					enqueue(encode('meta', data));
+				},
+				ui(component) {
+					touch();
+					enqueue(encode('ui', component));
 				},
 				done(data) {
 					stopHeartbeat();

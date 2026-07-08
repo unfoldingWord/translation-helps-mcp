@@ -27,7 +27,11 @@ import {
 import { selectResources, type ToolCallSpec } from "./resourceSelector.js";
 import { applyBudget, type EnrichedBundle } from "./budgeter.js";
 import { extractTaPathsFromNotes } from "../resources/rcLinks.js";
-import { SYSTEM_BASE, renderEnrichedBundle, intentSystemFragment } from "../rag/PromptFormatter.js";
+import {
+  SYSTEM_BASE,
+  renderEnrichedBundle,
+  intentSystemFragment,
+} from "../rag/PromptFormatter.js";
 import { parseReferenceForTool } from "../resources/referenceParser.js";
 import { runOverviewPipeline } from "./PassageOverviewAgents.js";
 import {
@@ -36,6 +40,7 @@ import {
   formatDrillSystem,
   type Challenge,
 } from "./PassageAnnotator.js";
+import type { UIComponent } from "./uiComponents.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,7 +59,9 @@ export interface HarnessEmit {
   /** Send a token delta for the in-progress assistant message. */
   token(delta: string): void;
   /** Send a named sub-agent progress update (for the thinking panel in the UI). */
-  thinking?(label: string, state: 'working' | 'done'): void;
+  thinking?(label: string, state: "working" | "done"): void;
+  /** Emit a structured UI component for the frontend to render. */
+  ui?(component: UIComponent): void;
 }
 
 export interface HarnessOptions {
@@ -163,7 +170,9 @@ export class ContextHarness {
     //     This replaces the brittle regex/fuzzy match and correctly handles
     //     connector words ("So why is 'world' a metonymy?").
     if (intentResult.intent !== "phrase_drill" && opts.conversationHistory) {
-      const activeChallenges = extractChallengesFromHistory(opts.conversationHistory);
+      const activeChallenges = extractChallengesFromHistory(
+        opts.conversationHistory,
+      );
       if (activeChallenges && activeChallenges.length > 0) {
         const resolved = await resolvePhraseDrillIntent(
           message,
@@ -192,7 +201,10 @@ export class ContextHarness {
     const maxTw = isOverview ? 15 : (opts.maxTwExpansion ?? 4);
 
     // 3a. Checklist step continuation — no resource fetches, just advance the session
-    if (plan.intent === "checklist_step" && intentResult.nextStep !== undefined) {
+    if (
+      plan.intent === "checklist_step" &&
+      intentResult.nextStep !== undefined
+    ) {
       return this.handleChecklistStep(
         intentResult.nextStep,
         intentResult.totalSteps ?? intentResult.nextStep,
@@ -201,7 +213,10 @@ export class ContextHarness {
     }
 
     // 3b. Phrase drill — user selected a challenge from an annotated passage
-    if (plan.intent === "phrase_drill" && intentResult.challengeIndex !== undefined) {
+    if (
+      plan.intent === "phrase_drill" &&
+      intentResult.challengeIndex !== undefined
+    ) {
       return this.handlePhraseDrill(
         intentResult.challengeIndex,
         intentResult.challengePhrase,
@@ -253,6 +268,42 @@ export class ContextHarness {
 
     // 6. Build initial EnrichedBundle from fetch results
     const bundle = assembleBundle(fetchResults, plan.initialFetches, language);
+
+    // 6b. Auto-retry get_passage with "en" when the selected language has no scripture.
+    //     This prevents an empty/error response when a stale or unsupported language code
+    //     was used. The retry only re-fetches the scripture; notes and other resources
+    //     remain in the original language (they have their own server-side fallbacks).
+    if (language !== "en" && bundle.scriptures.length === 0) {
+      const passageSpec = plan.initialFetches.find(
+        (s) => s.tool === "get_passage",
+      );
+      if (passageSpec) {
+        opts.emit?.status(
+          "No scripture found for selected language, trying English…",
+        );
+        const fallbackSpec: ToolCallSpec = {
+          ...passageSpec,
+          params: {
+            ...(passageSpec.params as Record<string, unknown>),
+            language: "en",
+          },
+        };
+        const [fallbackResult] = await this.parallelFetch([fallbackSpec]);
+        const fallbackBundle = assembleBundle(
+          [fallbackResult],
+          [fallbackSpec],
+          "en",
+        );
+        if (fallbackBundle.scriptures.length > 0) {
+          bundle.scripture = fallbackBundle.scripture;
+          bundle.scriptures = fallbackBundle.scriptures;
+          bundle.metadata.effectiveLanguage = "en";
+          bundle.dataWarning =
+            `No scripture translation found for language "${language}". ` +
+            `Showing English (en) as fallback.`;
+        }
+      }
+    }
 
     // 7. RC-link expansion
     if (plan.rcExpansion.includes("tn_to_ta")) {
@@ -325,7 +376,39 @@ export class ContextHarness {
       ]);
 
       const passageContext = extractPassageContext(contextRaw);
-      const responseText = formatAnnotatedResponse(annotated, intentResult.reference, language, passageContext);
+      // When the frontend supports UI components, skip the numbered list in the text —
+      // the challenge_cards component will render it interactively instead.
+      const hasUiSupport = typeof opts.emit?.ui === "function";
+      const responseText = formatAnnotatedResponse(
+        annotated,
+        intentResult.reference,
+        language,
+        passageContext,
+        hasUiSupport,
+      );
+
+      // Emit structured UI components FIRST so the workbench populates immediately
+      // while the text is still streaming.  We ALWAYS emit bundle components when
+      // UI support is present — even when the annotator produced zero challenges —
+      // so the workbench always shows the scripture text, words, and questions.
+      // challenge_cards is only added when there is at least one challenge.
+      if (hasUiSupport) {
+        // 1. Emit scripture_text + translation_words + translation_questions via helper.
+        //    skipNotes: skip raw notes when challenge_cards are present — they provide
+        //    a richer interactive view of the same data.
+        emitBundleComponents(bundle, intentResult.reference, opts.emit!, {
+          skipNotes: annotated.challenges.length > 0,
+          highlightPhrase: annotated.challenges[0]?.phrase,
+        });
+
+        // 2. Challenge cards — only when the annotator surfaced at least one challenge.
+        if (annotated.challenges.length > 0) {
+          opts.emit!.ui!({
+            type: "challenge_cards",
+            challenges: annotated.challenges,
+          });
+        }
+      }
 
       // Stream the formatted response word-by-word so the user sees progressive
       // output rather than waiting for the full annotated passage to appear at once.
@@ -355,7 +438,13 @@ export class ContextHarness {
     // 8b. passage_overview → sub-agent pipeline (no budget caps; each agent owns its domain)
     if (isOverview && intentResult.reference) {
       const { response: overviewResponse, citations: overviewCitations } =
-        await runOverviewPipeline(bundle, intentResult.reference, language, this.llm, opts.emit);
+        await runOverviewPipeline(
+          bundle,
+          intentResult.reference,
+          language,
+          this.llm,
+          opts.emit,
+        );
 
       // Count the total steps in the checklist so the footer can show Step 1/N.
       // The orchestrator always emits "☐ N." markers; count them.
@@ -366,7 +455,8 @@ export class ContextHarness {
       const hasFooter = /\[Step \d+\/\d+\]/i.test(overviewResponse);
       const response = hasFooter
         ? overviewResponse
-        : overviewResponse + `\n\n---\n*[Step 1/${stepCount}] — Say **"next"** when ready to continue.*`;
+        : overviewResponse +
+          `\n\n---\n*[Step 1/${stepCount}] — Say **"next"** when ready to continue.*`;
 
       return {
         response,
@@ -378,12 +468,23 @@ export class ContextHarness {
       };
     }
 
-    // 9. Apply budget caps (passage_help and all other intents)
+    // 9. Emit structured UI components for the workbench before LLM generation.
+    //    This populates the right panel while the explanation streams in the left panel.
+    if (opts.emit?.ui && intentResult.reference) {
+      emitBundleComponents(bundle, intentResult.reference, opts.emit);
+    }
+
+    // 10. Apply budget caps (passage_help and all other intents)
     const budgeted = applyBudget(bundle);
 
-    // 10. Compose prompt (intent-specific) and generate
+    // 11. Compose prompt (intent-specific) and generate
     opts.emit?.status("Composing answer…");
-    const systemPrompt = buildSystemPrompt(budgeted, intentResult);
+    const hasUiSupportHere = typeof opts.emit?.ui === "function";
+    const systemPrompt = buildSystemPrompt(
+      budgeted,
+      intentResult,
+      hasUiSupportHere,
+    );
     let response: string;
     if (opts.emit && this.llm.generateStream) {
       const chunks: string[] = [];
@@ -408,7 +509,7 @@ export class ContextHarness {
         ? "compose"
         : "training-only";
 
-    // 11. Append batch-progress footer (deterministic — not generated by LLM)
+    // 12. Append batch-progress footer (deterministic — not generated by LLM)
     let nextBatch: string | undefined;
     if (plan.intent === "passage_help" && intentResult.reference) {
       const parsed = parseReferenceForTool(intentResult.reference);
@@ -453,7 +554,10 @@ export class ContextHarness {
       language,
       this.llm,
       this.callTool,
-      this.conversationHistory as Array<{ role: "user" | "assistant" | "system"; content: string }>,
+      this.conversationHistory as Array<{
+        role: "user" | "assistant" | "system";
+        content: string;
+      }>,
     );
     return {
       ...result,
@@ -490,10 +594,11 @@ Rules:
 - Update the checklist display: mark steps 1–${nextStep - 1} as ✅, show **☐ ${nextStep}.** as bold/active, leave ☐ ${nextStep + 1}${nextStep + 1 <= totalSteps ? "–" + totalSteps : ""} as is.
 - End your response with ONE short question or engagement prompt for the translator.
 - After that, add: ---
-  ${isLastStep
+  ${
+    isLastStep
       ? "*✅ All steps complete! Ask me anything about this passage.*"
       : `*[Step ${nextStep}/${totalSteps}] — Say **"next"** when ready to continue.*`
-    }
+  }
 
 Do NOT repeat the step content from earlier turns. Present only this step's material.
 Keep it SHORT. Quality over quantity.`;
@@ -534,7 +639,9 @@ Keep it SHORT. Quality over quantity.`;
     // Read challenges from history.
     // Cast to Challenge since ChallengeEntry and Challenge are structurally equivalent
     // at runtime — the only difference is that ChallengeEntry.category is typed as string.
-    const challenges = extractChallengesFromHistory(history) as Challenge[] | null;
+    const challenges = extractChallengesFromHistory(history) as
+      | Challenge[]
+      | null;
     const challenge = challenges?.find((c) => c.index === challengeIndex);
 
     if (!challenge) {
@@ -558,11 +665,16 @@ Keep it SHORT. Quality over quantity.`;
       fetches.push(this.safeCallTool("get_word_article", { path, language }));
       fetchLabels.push("tw");
     }
-    if (challenge.supportReference && challenge.supportReference.includes("ta/man")) {
+    if (
+      challenge.supportReference &&
+      challenge.supportReference.includes("ta/man")
+    ) {
       const taPath = challenge.supportReference
         .replace(/^rc:\/\/\*\/ta\/man\//, "")
         .replace(/^rc:\/\/[^/]+\/ta\/man\//, "");
-      fetches.push(this.safeCallTool("get_academy_article", { path: taPath, language }));
+      fetches.push(
+        this.safeCallTool("get_academy_article", { path: taPath, language }),
+      );
       fetchLabels.push("ta");
     }
 
@@ -593,30 +705,42 @@ Keep it SHORT. Quality over quantity.`;
 
     // 2. Verbatim Translation Note (highest authority — cite this directly)
     if (challenge.rawNoteText) {
-      const quoteLine = challenge.rawQuote ? `\nOriginal-language quote this note covers: "${challenge.rawQuote}"` : "";
-      contextParts.push(`TRANSLATION NOTE (verbatim):\n${challenge.rawNoteText}${quoteLine}`);
+      const quoteLine = challenge.rawQuote
+        ? `\nOriginal-language quote this note covers: "${challenge.rawQuote}"`
+        : "";
+      contextParts.push(
+        `TRANSLATION NOTE (verbatim):\n${challenge.rawNoteText}${quoteLine}`,
+      );
     } else if (challenge.noteText) {
       contextParts.push(`TRANSLATION NOTE SUMMARY:\n${challenge.noteText}`);
     }
 
     // 3. Alternate Translation suggested by the note
     if (challenge.at) {
-      contextParts.push(`ALTERNATE TRANSLATION suggested by the note: "${challenge.at}"`);
+      contextParts.push(
+        `ALTERNATE TRANSLATION suggested by the note: "${challenge.at}"`,
+      );
     }
 
     // 4. Simplified Text (UST/GST) rendering of the same verse — shows the meaning shift
     if (ustVerseText) {
-      contextParts.push(`SIMPLIFIED TEXT (UST/GST) rendering of v.${challenge.verse}:\n${ustVerseText}`);
+      contextParts.push(
+        `SIMPLIFIED TEXT (UST/GST) rendering of v.${challenge.verse}:\n${ustVerseText}`,
+      );
     }
 
     // 5. Translation Word definition article (key-term drills)
     if (twArticle) {
-      contextParts.push(`TRANSLATION WORD DEFINITION:\n${twArticle.slice(0, 1200)}`);
+      contextParts.push(
+        `TRANSLATION WORD DEFINITION:\n${twArticle.slice(0, 1200)}`,
+      );
     }
 
     // 6. Translation Academy principle article (strategy/figure-of-speech drills)
     if (taArticle) {
-      contextParts.push(`TRANSLATION ACADEMY ARTICLE:\n${taArticle.slice(0, 1500)}`);
+      contextParts.push(
+        `TRANSLATION ACADEMY ARTICLE:\n${taArticle.slice(0, 1500)}`,
+      );
     }
 
     const systemPrompt = formatDrillSystem(challenge, language);
@@ -624,7 +748,10 @@ Keep it SHORT. Quality over quantity.`;
 
     // Include the recent conversation so the LLM can see the annotated passage
     // (with GLT/UST texts) and continue the thread naturally.
-    const recentHistory = history.slice(-6) as Array<{ role: "user" | "assistant" | "system"; content: string }>;
+    const recentHistory = history.slice(-6) as Array<{
+      role: "user" | "assistant" | "system";
+      content: string;
+    }>;
 
     const response = await this.llm.generate([
       { role: "system", content: systemPrompt },
@@ -633,8 +760,10 @@ Keep it SHORT. Quality over quantity.`;
     ]);
 
     const citations: Array<{ path: string; title?: string }> = [];
-    if (challenge.wordPath) citations.push({ path: challenge.wordPath, title: challenge.phrase });
-    if (challenge.supportReference) citations.push({ path: challenge.supportReference });
+    if (challenge.wordPath)
+      citations.push({ path: challenge.wordPath, title: challenge.phrase });
+    if (challenge.supportReference)
+      citations.push({ path: challenge.supportReference });
 
     // Append a hidden marker so the next turn can detect the active phrase-drill
     // session even after the original CHALLENGES comment has scrolled beyond
@@ -685,7 +814,9 @@ Keep it SHORT. Quality over quantity.`;
 
   private async parallelFetch(specs: ToolCallSpec[]): Promise<unknown[]> {
     const results = await Promise.allSettled(
-      specs.map((s) => this.safeCallTool(s.tool, s.params as Record<string, unknown>)),
+      specs.map((s) =>
+        this.safeCallTool(s.tool, s.params as Record<string, unknown>),
+      ),
     );
     return results.map((r) => (r.status === "fulfilled" ? r.value : null));
   }
@@ -722,7 +853,11 @@ function extractUstVerseFromHistory(
       "i",
     );
     const m = content.match(versePattern);
-    if (m?.[1]) return m[1].trim().replace(/<!--.*?-->/gs, "").trim();
+    if (m?.[1])
+      return m[1]
+        .trim()
+        .replace(/<!--.*?-->/gs, "")
+        .trim();
   }
   return undefined;
 }
@@ -784,13 +919,20 @@ function assembleBundle(
       case "get_passage": {
         // Returns: { reference, language, versions[] } — scripture text only
         const r = data as Record<string, unknown>;
-        const versions = (r["versions"] as Array<{
-          resourceType: string; role: string; text: string; source?: string;
-        }>) ?? [];
+        const versions =
+          (r["versions"] as Array<{
+            resourceType: string;
+            role: string;
+            text: string;
+            source?: string;
+          }>) ?? [];
         if (versions.length > 0) {
-          bundle.metadata.reference = String((spec.params as Record<string, unknown>).reference ?? "");
+          bundle.metadata.reference = String(
+            (spec.params as Record<string, unknown>).reference ?? "",
+          );
           // Capture effective language in case the server resolved a variant
-          if (r["language"]) bundle.metadata.effectiveLanguage = String(r["language"]);
+          if (r["language"])
+            bundle.metadata.effectiveLanguage = String(r["language"]);
           bundle.scripture = { versions: versions as never, format: "plain" };
 
           // Defense-in-depth: if every version is the original language (Greek/Hebrew),
@@ -804,10 +946,13 @@ function assembleBundle(
           }
 
           for (const v of versions) {
-            if (!bundle.scriptures.some((s) => s.resourceType === v.resourceType)) {
+            if (
+              !bundle.scriptures.some((s) => s.resourceType === v.resourceType)
+            ) {
               bundle.scriptures.push({
                 resourceType: v.resourceType,
-                label: SCRIPTURE_LABELS[v.resourceType] ??
+                label:
+                  SCRIPTURE_LABELS[v.resourceType] ??
                   ROLE_LABELS[v.role] ??
                   v.resourceType.toUpperCase(),
                 text: v.text,
@@ -823,10 +968,18 @@ function assembleBundle(
         // Returns: { reference, notes[] } — full note bodies (same shape as fetch_translation_notes)
         const r = data as Record<string, unknown>;
         const notes = (r["notes"] as unknown[]) ?? [];
-        bundle.metadata.reference = String(r["reference"] ?? (spec.params as Record<string, unknown>).reference ?? "");
+        bundle.metadata.reference = String(
+          r["reference"] ??
+            (spec.params as Record<string, unknown>).reference ??
+            "",
+        );
         for (const n of notes) {
           const note = n as Record<string, unknown>;
-          if (!bundle.notes.some((existing) => existing.id === String(note["id"] ?? ""))) {
+          if (
+            !bundle.notes.some(
+              (existing) => existing.id === String(note["id"] ?? ""),
+            )
+          ) {
             bundle.notes.push({
               id: String(note["id"] ?? ""),
               text: String(note["note"] ?? ""),
@@ -872,11 +1025,14 @@ function assembleBundle(
       case "get_word_article": {
         // Returns: { path, language, article }
         const r = data as Record<string, unknown>;
-        const path = String(r["path"] ?? (spec.params as Record<string, unknown>).path ?? "")
-          .replace(/\/[^/]+\.md$/, ""); // strip .md suffix if present
+        const path = String(
+          r["path"] ?? (spec.params as Record<string, unknown>).path ?? "",
+        ).replace(/\/[^/]+\.md$/, ""); // strip .md suffix if present
         const article = String(r["article"] ?? "");
         if (article && path) {
-          const existing = bundle.tw.find((t) => t.path === path || path.includes(t.path));
+          const existing = bundle.tw.find(
+            (t) => t.path === path || path.includes(t.path),
+          );
           if (existing) {
             existing.article = article;
           } else {
@@ -894,8 +1050,9 @@ function assembleBundle(
       case "get_academy_article": {
         // Returns: { path, language, article }
         const r = data as Record<string, unknown>;
-        const path = String(r["path"] ?? (spec.params as Record<string, unknown>).path ?? "")
-          .replace(/\/[^/]+\.md$/, "");
+        const path = String(
+          r["path"] ?? (spec.params as Record<string, unknown>).path ?? "",
+        ).replace(/\/[^/]+\.md$/, "");
         const article = String(r["article"] ?? "");
         if (article && path) {
           bundle.ta.push({
@@ -924,7 +1081,6 @@ function assembleBundle(
         }
         break;
       }
-
     }
   }
 
@@ -971,14 +1127,20 @@ function extractPayload(raw: unknown): Record<string, unknown> | null {
 /** Extract the context array from a get_passage_context response. */
 function extractPassageContext(
   raw: unknown,
-): Array<{ scope: "book" | "chapter"; title: string; body: string }> | undefined {
+):
+  | Array<{ scope: "book" | "chapter"; title: string; body: string }>
+  | undefined {
   const data = extractPayload(raw);
   if (!data) return undefined;
   const context = data["context"] as
     | Array<{ scope: string; title: string; body: string }>
     | undefined;
   if (!Array.isArray(context) || context.length === 0) return undefined;
-  return context as Array<{ scope: "book" | "chapter"; title: string; body: string }>;
+  return context as Array<{
+    scope: "book" | "chapter";
+    title: string;
+    body: string;
+  }>;
 }
 
 function extractArticleText(raw: unknown): string | null {
@@ -994,31 +1156,154 @@ function extractArticleKeys(
 ): ToolCallSpec[] {
   if (!searchResult || typeof searchResult !== "object") return [];
   const r = searchResult as Record<string, unknown>;
-  const results = r["results"] as Array<{ path: string; resourceType: "ta" | "tw"; title: string }> | undefined;
+  const results = r["results"] as
+    | Array<{ path: string; resourceType: "ta" | "tw"; title: string }>
+    | undefined;
   if (!results?.length) return [];
 
   const specs: ToolCallSpec[] = [];
   for (const hit of results.slice(0, 3)) {
     if (hit.resourceType === "ta" || intent === "methodology") {
-      specs.push({ tool: "get_academy_article", params: { path: hit.path, language: String(r["language"] ?? "en") } });
+      specs.push({
+        tool: "get_academy_article",
+        params: { path: hit.path, language: String(r["language"] ?? "en") },
+      });
     } else if (hit.resourceType === "tw" || intent === "word_study") {
-      specs.push({ tool: "get_word_article", params: { path: hit.path, language: String(r["language"] ?? "en") } });
+      specs.push({
+        tool: "get_word_article",
+        params: { path: hit.path, language: String(r["language"] ?? "en") },
+      });
     }
   }
   return specs;
 }
 
 // ---------------------------------------------------------------------------
+// UI component emission helper
+// ---------------------------------------------------------------------------
+
+/** Original-language scripture resource labels (rendered RTL, distinct styling). */
+const ORIGINAL_SCRIPTURE_LABELS = new Set(["UGNT", "UHB"]);
+
+/**
+ * Emit structured UIComponents for the resource workbench from an assembled bundle.
+ *
+ * Emits:
+ *   - `scripture_text`        — rich tabbed scripture viewer (all fetched versions)
+ *   - `translation_notes`     — TN entries with quotes, categories, TA links (skippable)
+ *   - `translation_words`     — TW key-term definitions
+ *   - `translation_questions` — TQ comprehension questions
+ *
+ * Called before LLM generation so the right-panel workbench populates while the
+ * explanation text is still streaming in the left panel.
+ */
+function emitBundleComponents(
+  bundle: EnrichedBundle,
+  reference: string,
+  emit: HarnessEmit,
+  opts: { skipNotes?: boolean; highlightPhrase?: string } = {},
+): void {
+  if (!emit.ui) return;
+
+  console.log(
+    `[HARNESS] emitBundleComponents: scriptures=${bundle.scriptures.length} notes=${bundle.notes.length} tw=${bundle.tw.length} tq=${bundle.tq?.length ?? 0} skipNotes=${opts.skipNotes}`,
+  );
+
+  // scripture_text — tabbed scripture panel with RTL support
+  if (bundle.scriptures.length > 0) {
+    console.log("[HARNESS] emitting scripture_text");
+    emit.ui({
+      type: "scripture_text",
+      reference,
+      versions: bundle.scriptures.map((s) => ({
+        label: s.label,
+        text: s.text,
+        direction: ORIGINAL_SCRIPTURE_LABELS.has(s.label) ? "rtl" : "ltr",
+        resourceType: s.resourceType,
+      })),
+      highlightPhrase: opts.highlightPhrase,
+    });
+  }
+
+  // translation_notes — skip when challenge_cards covers them (annotated_passage)
+  if (!opts.skipNotes && bundle.notes.length > 0) {
+    emit.ui({
+      type: "translation_notes",
+      reference,
+      notes: bundle.notes.map((n) => ({
+        id: n.id,
+        quote: n.quote,
+        noteText: n.text,
+        supportReference: n.supportReference,
+        verse: n.verse,
+      })),
+    });
+  }
+
+  // translation_words — key terms (include even without articles for basic listing)
+  const wordsToEmit = bundle.tw.filter((t) => t.title);
+  console.log(`[HARNESS] wordsToEmit=${wordsToEmit.length}`);
+  if (wordsToEmit.length > 0) {
+    console.log("[HARNESS] emitting translation_words");
+    emit.ui({
+      type: "translation_words",
+      reference,
+      words: wordsToEmit.map((w) => ({
+        id: w.id,
+        term: w.title,
+        definition: w.article ? w.article.slice(0, 500) : undefined,
+        verse: w.verse,
+        origWords: w.origWords,
+        wordPath: w.wordPath,
+      })),
+    });
+  }
+
+  // translation_questions — comprehension checks
+  if (bundle.tq && bundle.tq.length > 0) {
+    emit.ui({
+      type: "translation_questions",
+      reference,
+      questions: bundle.tq.map((q) => ({
+        id: q.id,
+        question: q.question,
+        response: q.response,
+        verse: q.verse,
+      })),
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Prompt composition
 // ---------------------------------------------------------------------------
 
-function buildSystemPrompt(bundle: EnrichedBundle, intentResult: IntentResult): string {
+function buildSystemPrompt(
+  bundle: EnrichedBundle,
+  intentResult: IntentResult,
+  hasUiSupport = false,
+): string {
   const context = renderEnrichedBundle(bundle);
   const intentBlock = intentSystemFragment(intentResult.intent);
-  return `${SYSTEM_BASE}\n\n${intentBlock}\n\n${context}`;
+
+  // When the workbench panel is active the frontend already displays the
+  // scripture text, translation notes, and key terms as structured cards.
+  // Instruct the LLM not to quote the full passage or repeat raw note/TW
+  // content — only provide explanation and commentary.
+  const workbenchHint = hasUiSupport
+    ? `\n\n## Important — Workbench is active
+The user's screen shows the scripture passage and translation resources in a dedicated panel on the right.
+Do NOT quote or reproduce the scripture text in your response.
+Do NOT list out translation notes or key term definitions verbatim.
+Instead, provide concise commentary, explain the translation challenge, and reference specific phrases by name only.`
+    : "";
+
+  return `${SYSTEM_BASE}${workbenchHint}\n\n${intentBlock}\n\n${context}`;
 }
 
-function collectCitations(bundle: EnrichedBundle): Array<{ path: string; title?: string }> {
+function collectCitations(
+  bundle: EnrichedBundle,
+): Array<{ path: string; title?: string }> {
   const citations: Array<{ path: string; title?: string }> = [];
 
   // Cite each fetched scripture translation
@@ -1029,10 +1314,16 @@ function collectCitations(bundle: EnrichedBundle): Array<{ path: string; title?:
     });
   }
   if (citations.length === 0 && bundle.scripture.versions?.length) {
-    citations.push({ path: `scripture/${bundle.metadata.reference}`, title: "Scripture" });
+    citations.push({
+      path: `scripture/${bundle.metadata.reference}`,
+      title: "Scripture",
+    });
   }
   for (const note of bundle.notes.slice(0, 5)) {
-    citations.push({ path: `tn/${bundle.metadata.reference}/${note.id}`, title: "Translation Note" });
+    citations.push({
+      path: `tn/${bundle.metadata.reference}/${note.id}`,
+      title: "Translation Note",
+    });
   }
   for (const tw of bundle.tw.slice(0, 3)) {
     citations.push({ path: tw.path, title: tw.title });
@@ -1055,8 +1346,12 @@ function snapshotResult(result: unknown, depth = 0): unknown {
   }
   if (typeof result !== "object") return result;
   if (Array.isArray(result)) {
-    const items = result.slice(0, 3).map((item) => snapshotResult(item, depth + 1));
-    return result.length > 3 ? [...items, `…+${result.length - 3} more`] : items;
+    const items = result
+      .slice(0, 3)
+      .map((item) => snapshotResult(item, depth + 1));
+    return result.length > 3
+      ? [...items, `…+${result.length - 3} more`]
+      : items;
   }
   if (depth > 2) return "…";
   const out: Record<string, unknown> = {};
@@ -1077,7 +1372,9 @@ function summarizeResult(tool: string, result: unknown): string | undefined {
   }
   if (tool === "get_passage_context") {
     const context = r["context"] as unknown[] | undefined;
-    return context?.length !== undefined ? `${context.length} context note(s)` : undefined;
+    return context?.length !== undefined
+      ? `${context.length} context note(s)`
+      : undefined;
   }
   if (tool === "get_note") {
     const notes = r["notes"] as unknown[] | undefined;
@@ -1099,15 +1396,21 @@ function summarizeResult(tool: string, result: unknown): string | undefined {
 
   if (tool === "search_articles") {
     const results = r["results"] as unknown[] | undefined;
-    return results?.length !== undefined ? `${results.length} result(s)` : undefined;
+    return results?.length !== undefined
+      ? `${results.length} result(s)`
+      : undefined;
   }
   if (tool === "list_languages") {
     const langs = r["languages"] as unknown[] | undefined;
-    return langs?.length !== undefined ? `${langs.length} language(s)` : undefined;
+    return langs?.length !== undefined
+      ? `${langs.length} language(s)`
+      : undefined;
   }
   if (tool === "list_resources_for_language") {
     const resources = r["resources"] as unknown[] | undefined;
-    return resources?.length !== undefined ? `${resources.length} resource(s)` : undefined;
+    return resources?.length !== undefined
+      ? `${resources.length} resource(s)`
+      : undefined;
   }
   return undefined;
 }
