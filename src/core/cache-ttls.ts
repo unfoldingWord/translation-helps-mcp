@@ -58,8 +58,20 @@ export const BUNDLE_CACHE_MAX_SIZE = Number(
 // Use these everywhere — never construct keys ad-hoc.
 // ---------------------------------------------------------------------------
 
-export function bundleCacheKey(language: string, reference: string): string {
-  return `bundle:${language}:${encodeURIComponent(reference)}`;
+export function bundleCacheKey(
+  language: string,
+  reference: string,
+  flags?: {
+    includeScripture?: boolean;
+    includeNotes?: boolean;
+    includeWords?: boolean;
+    includeWordLinks?: boolean;
+  },
+): string {
+  const f = flags
+    ? `:s${flags.includeScripture ? 1 : 0}n${flags.includeNotes ? 1 : 0}w${flags.includeWords ? 1 : 0}l${flags.includeWordLinks ? 1 : 0}`
+    : "";
+  return `bundle:${language}:${encodeURIComponent(reference)}${f}`;
 }
 
 export function bundleCoalesceKey(language: string, reference: string): string {

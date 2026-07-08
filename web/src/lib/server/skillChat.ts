@@ -7,6 +7,7 @@
  */
 
 import { OpenAILLMProvider } from '$core/rag/providers/OpenAILLMProvider.js';
+import { getStatusText } from './i18n.js';
 import { ContextHarness } from '$core/harness/ContextHarness.js';
 import { SkillService } from '$core/skill/SkillService.js';
 import type { Challenge } from '$core/harness/PassageAnnotator.js';
@@ -800,7 +801,7 @@ export async function answerStream(
 			if (isQuestion) {
 				// Route through harness so MCP tools can be called.
 				// agenticFallback now receives conversation history (fix applied above).
-				emit.status('Buscando recursos…');
+				emit.status(getStatusText(resolvedLang, 'searching'));
 				const harness = new ContextHarness(llm, callTool);
 				const result = await harness.run(message, {
 					language: resolvedLang,

@@ -8,11 +8,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-const ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID ?? '';
-const API_TOKEN = process.env.CLOUDFLARE_API_TOKEN ?? '';
 const DATASET = 'translation_helps_metrics';
 
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async ({ platform }) => {
+	const ACCOUNT_ID =
+		(platform?.env as Record<string, string | undefined> | undefined)?.CLOUDFLARE_ACCOUNT_ID ?? '';
+	const API_TOKEN =
+		(platform?.env as Record<string, string | undefined> | undefined)?.CLOUDFLARE_API_TOKEN ?? '';
 	if (!ACCOUNT_ID || !API_TOKEN) {
 		// Return empty (not stub) — the UI handles the empty state gracefully
 		return json({
