@@ -13,6 +13,10 @@ import type { RequestHandler } from './$types';
 
 const V2_FALLBACK_ORIGIN = 'https://translation-helps-mcp-v2.unfoldingword.workers.dev';
 
+// Don't normalize trailing slashes: the v2 app serves its root at /v2/ and
+// redirects /v2 → /v2/, so v1's default 308 /v2/ → /v2 would cause a loop.
+export const trailingSlash = 'ignore';
+
 const proxy: RequestHandler = async ({ request, platform }) => {
 	const binding = platform?.env?.V2;
 	if (binding) {
