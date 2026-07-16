@@ -27,6 +27,9 @@ declare global {
 		// interface PageState {}
 		interface Platform {
 			env?: {
+				// Service binding to the v2 worker (translation-helps-mcp-v2);
+				// used by the /v2/[...path] reverse proxy route.
+				V2?: { fetch(input: Request | string, init?: RequestInit): Promise<Response> };
 				// KV Namespace binding
 				TRANSLATION_HELPS_CACHE?: KVNamespace;
 				// R2 bucket for ZIPs and extracted files
