@@ -15,6 +15,13 @@
 
 import type { LLMProvider } from "../rag/providers/LLMProvider.js";
 import type { EnrichedBundle } from "./budgeter.js";
+import {
+  CHAT_WORD_BUDGETS,
+  enforceReplyBudget,
+  maxTokensForWordBudget,
+  pacingPromptInstructions,
+} from "./chatPacing.js";
+import { fallbackQuizOfferFooter } from "./QuizAgents.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -64,7 +71,7 @@ export interface Challenge {
   sourceType: ChallengeSource;
   /** rc:// or TA path for the translation principle (from TN supportReference). */
   supportReference?: string;
-  /** Clean TW path for fetch_translation_word, e.g. "bible/kt/life". */
+  /** Clean TW path for get_word_article, e.g. "bible/kt/life". */
   wordPath?: string;
   /** Alternate Translation extracted from the note text, if any. */
   at?: string;
@@ -538,6 +545,42 @@ function parseAnnotatorResponse(
 // ---------------------------------------------------------------------------
 
 /**
+ * Clean raw scripture text for readable chat display.
+ *
+ * Handles the "BOOK CH:VS N text" format produced when the API assembles
+ * verse content as plain text, e.g.:
+ *   "TIT 2:12 12 instruyéndonos, para que..."
+ *
+ * Steps:
+ *   1. Strip leading USFM reference prefix  — "TIT 2:12 " / "1CO 15:3-5 "
+ *   2. Format inline verse numbers          — "12 text" → "[12] text"
+ *   3. Wrap every line in a blockquote      — "> text"
+ */
+function formatScriptureBlock(text: string): string {
+  if (!text.trim()) return "";
+
+  // 1. Strip leading USFM book-code reference prefix
+  //    Matches patterns like "TIT 2:12 ", "1CO 15:3-5 ", "MAT 5:1 "
+  let cleaned = text.replace(/^[A-Z1-9]{2,4}\s+\d+:\d+(?:-\d+)?\s*/g, "");
+
+  // 2. Format verse numbers that appear at start of text or after a newline,
+  //    followed by a space and a letter/quote character:
+  //    "12 instruyéndonos" → "[12] instruyéndonos"
+  //    Use a broad unicode letter range to cover Latin-extended characters.
+  cleaned = cleaned.replace(
+    /(^|\n)(\d{1,3})\s+(?=[A-Za-z\u00C0-\u024F\u0400-\u04FF'"«¿¡])/g,
+    "$1[$2] ",
+  );
+
+  // 3. Wrap each line in a markdown blockquote
+  return cleaned
+    .trim()
+    .split("\n")
+    .map((line) => `> ${line}`)
+    .join("\n");
+}
+
+/**
  * Strip residual USFM inline markup from scripture text so it renders cleanly.
  * Handles alignment markers (\zaln-s, \zaln-e), word markup (\w ... \w*),
  * verse/chapter markers, and other backslash tags.
@@ -566,25 +609,175 @@ function stripUsfmMarkup(text: string): string {
 }
 
 /**
- * Render the annotated passage response as markdown.
- *
- * Layout:
- *   ── Primary (ULT) with bolded challenge phrases ──
- *   ── Supporting reads (UST etc.) as labelled blockquotes ──
- *   ── <details> Book/chapter context (if available) ──
- *   ──────────────────────────────────────────────────────
- *   📝 Translation Notes (one per line)
- *   📖 Key Terms (one per line)
- *   ──────────────────────────────────────────────────────
- *   Call to action
+ * LLM-written translation brief for the study-stream UI path.
+ * Prefer actionable guidance grounded in TN/challenges — not a resource-count blurb.
+ * Matches the user's spoken language (from recent turns) / study language.
  */
+export async function composeAnnotatedGuideReply(
+  llm: LLMProvider,
+  opts: {
+    reference: string;
+    language: string;
+    tnCount: number;
+    twCount: number;
+    /** Curated challenges / notes to ground priority decisions. */
+    challenges?: Array<{
+      verse: string;
+      phrase: string;
+      noteText: string;
+      sourceType?: string;
+      at?: string;
+    }>;
+    /** Recent user/assistant turns so the model can match spoken language. */
+    recentTurns?: Array<{ role: string; content: string }>;
+    /** Optional Study/Translate/Check prompt bias from workflow mode. */
+    workflowModeBias?: string;
+    /**
+     * When set, fold an optional secondary context-quiz offer (~N questions)
+     * into this same reply after the main consultant question (no second LLM call).
+     */
+    optionalQuizQuestions?: number;
+  },
+): Promise<string> {
+  const {
+    reference,
+    language,
+    tnCount,
+    twCount,
+    challenges = [],
+    recentTurns = [],
+    workflowModeBias = "",
+    optionalQuizQuestions,
+  } = opts;
+
+  const recent = recentTurns
+    .slice(-6)
+    .map((m) => {
+      const clean = m.content
+        .replace(/<!--[\s\S]*?-->/g, "")
+        .trim()
+        .slice(0, 240);
+      return `${m.role}: ${clean}`;
+    })
+    .filter((line) => !line.endsWith(": "))
+    .join("\n");
+
+  const challengeLines = challenges
+    .slice(0, 8)
+    .map((c, i) => {
+      const at = c.at ? ` AT: "${c.at}"` : "";
+      return `${i + 1}. [${c.verse}] "${c.phrase}" — ${c.noteText.slice(0, 160)}${at}`;
+    })
+    .join("\n");
+
+  const budget =
+    CHAT_WORD_BUDGETS.annotated_passage +
+    (optionalQuizQuestions && optionalQuizQuestions >= 3 ? 40 : 0);
+  const quizOfferInstruction =
+    optionalQuizQuestions && optionalQuizQuestions >= 3
+      ? `- After your ONE consultant question, add a short separator (\`---\`) and an *(Optional)* secondary soft offer for a brief context check of about ${optionalQuizQuestions} questions before translating. If they decline, they can continue with the note or a draft in Mi traducción. Never make the quiz the main ask.\n`
+      : `- Do NOT push a quiz as the main next step. Quiz offers (if any) are handled separately by the system.\n`;
+  const system =
+    `You are Ezer, a Bible translation consultant in a study UI where scripture and resource cards appear below your message.\n` +
+    `Guide them toward CANA quality (Consistent, Accurate, Natural, Clear) — do not lecture, dump notes, or grade unknown receptor-language form. Write a concise **translation brief**.\n` +
+    `Cover these moves in order as natural prose (hard cap ≈ ${budget} words). Do NOT print section titles, English scaffolding labels, or numbered headers like "Discourse / structure" or "Coach, then ask":\n` +
+    `- Remind them to read the text already in the resources panel (do not re-quote the full passage).\n` +
+    `- 1–2 sentences on what this passage is doing (purpose, flow).\n` +
+    `- At most **2–3** concrete translation decisions grounded ONLY in the notes/challenges below (ALWAYS paraphrase each note's point in everyday words — never stick on "abstract noun", "passive form", or other TN jargon; never invent guidance not in those notes; include verse + phrase). Save remaining decisions for later turns.\n` +
+    `- End with exactly ONE consultant question: what feels hard, which phrase to explore, or invite a draft in Mi traducción. Do NOT ask "How did you translate X?" — ever; after they draft / ask for check, ask what their chosen word means in their language instead. Never instruct them to type a keyword.\n` +
+    quizOfferInstruction +
+    `${pacingPromptInstructions(budget, { priorityDecisions: true })}\n` +
+    `Hard rules:\n` +
+    `- Use plain language a beginner understands. ALWAYS paraphrase the loaded note's point: prefer "an idea you can't touch" / "idea / cosa que no se puede tocar" over "abstract noun" / "sustantivo abstracto"; "someone does the action to them" over "passive form"; "a word picture" / "manera de hablar" over unexplained "figure of speech". Never replace the note with a generic linguistics lecture from training data. Never require linguistic/theological jargon to progress.\n` +
+    `- Do NOT answer with only counts like "5 notes and 11 terms". Counts may appear once as a brief aside, never as the whole reply.\n` +
+    `- Do NOT claim full Translation Word articles were retrieved unless an article body is in the challenge list (they usually are not — key terms may appear as panel links only).\n` +
+    `- Do NOT rewrite a model target-language translation. Never claim their wording "sounds right" in their language. Never praise or grade receptor wording they paste in chat.\n` +
+    `- Bold the passage reference once. No HTML.\n` +
+    `- Never echo prompt scaffolding labels into the reply.\n` +
+    (workflowModeBias ? `${workflowModeBias}\n` : "") +
+    `Facts:\n` +
+    `- Passage: ${reference}\n` +
+    `- Translation notes in panel: ${tnCount}\n` +
+    `- Key-term links in panel: ${twCount}\n` +
+    `- Source / conversation language code: ${language}\n` +
+    (challengeLines
+      ? `\nPriority material from Translation Notes / key terms:\n${challengeLines}\n`
+      : `\nNo curated challenge list — still give a brief structure + ask what feels hard or which verse/note to open first.\n`) +
+    `Language lock: Always reply in the source/conversation language (${language}). Target/receptor language is metadata only — never switch into it.`;
+  const userContent = recent
+    ? `Recent conversation:\n${recent}\n\nCompose the translation brief for ${reference} now.`
+    : `Compose the translation brief for ${reference}.`;
+
+  try {
+    const raw = await llm.generate(
+      [
+        { role: "system", content: system },
+        { role: "user", content: userContent },
+      ],
+      { maxTokens: maxTokensForWordBudget(budget) },
+    );
+    const text = raw?.trim() ?? "";
+    if (text) {
+      // When a quiz offer is folded in after the main question, do not append a
+      // second coaching closer (the offer block often does not end with "?").
+      let paced = enforceReplyBudget(text, {
+        budget,
+        language,
+        closerKind: "brief",
+        ensureCloser: !(optionalQuizQuestions && optionalQuizQuestions >= 3),
+      }).text;
+      if (
+        optionalQuizQuestions &&
+        optionalQuizQuestions >= 3 &&
+        !/(quiz|cuestionario|chequeo|context check|opcional|optional)/i.test(
+          paced,
+        )
+      ) {
+        paced =
+          paced.trimEnd() +
+          `\n\n---\n${fallbackQuizOfferFooter(language, optionalQuizQuestions)}`;
+      }
+      return paced;
+    }
+  } catch (err) {
+    console.error("[PassageAnnotator] composeAnnotatedGuideReply error:", err);
+  }
+
+  // Deterministic fallback — still a brief, not a count-only line.
+  const es = language.toLowerCase().startsWith("es");
+  const offerSuffix =
+    optionalQuizQuestions && optionalQuizQuestions >= 3
+      ? `\n\n---\n${fallbackQuizOfferFooter(language, optionalQuizQuestions)}`
+      : "";
+  if (challenges.length > 0) {
+    const top = challenges
+      .slice(0, 3)
+      .map(
+        (c, i) =>
+          `${i + 1}. **${c.verse}** "${c.phrase}" — ${c.noteText.slice(0, 120)}`,
+      );
+    const brief = es
+      ? `**${reference}** — lee el texto en el panel. Decisiones prioritarias:\n\n` +
+        `${top.join("\n")}\n\n` +
+        `¿Qué te resulta más difícil de «${challenges[0].phrase}», o quieres escribir un borrador en Mi traducción?`
+      : `**${reference}** — read the text in the panel. Priority decisions:\n\n` +
+        `${top.join("\n")}\n\n` +
+        `What's hardest about "${challenges[0].phrase}", or would you like to write a draft in My translation?`;
+    return brief + offerSuffix;
+  }
+  const brief = es
+    ? `**${reference}** — el texto y las notas están listos en el panel. ¿Qué parte no sabes cómo traducir todavía, o quieres escribir un borrador en Mi traducción?`
+    : `**${reference}** — the text and notes are ready in the panel. What don't you know how to translate yet, or would you like to write a draft in My translation?`;
+  return brief + offerSuffix;
+}
+
 /**
  * Render the annotated passage response as markdown.
  *
  * When `useUIComponents` is true the numbered challenge list is omitted from
  * the text because the frontend will render an interactive `ChallengeCards`
- * component via the `ui` SSE event instead.  A brief invitation line replaces
- * the full list so the response still reads naturally.
+ * component via the `ui` SSE event instead. Prefer `composeAnnotatedGuideReply`
+ * for that path; this sync formatter is for non-UI / fallback only.
  */
 export function formatAnnotatedResponse(
   result: AnnotatedPassageResult,
@@ -601,39 +794,51 @@ export function formatAnnotatedResponse(
   const i18n = getI18n(language);
 
   if (challenges.length === 0) {
+    // Format passage as a labelled blockquote for both display modes.
+    // The raw passage text may contain a "BOOK CH:VS N text" prefix that needs
+    // stripping before it is shown in the chat.
+    const formattedBlock = passage
+      ? `\n\n${formatScriptureBlock(passage)}`
+      : "";
+    const langSuffix = language && language !== "en" ? ` (${language})` : "";
+
     if (useUIComponents) {
-      // Scripture and helps are displayed in the workbench panel — no need to repeat
-      // them in the chat message.
-      return `**${reference}** — No specific translation challenges were identified.\n\nThe passage and available helps are shown in the panel.`;
+      // Prefer composeAnnotatedGuideReply when an LLM is available.
+      const es = language.toLowerCase().startsWith("es");
+      return es
+        ? `**${reference}${langSuffix}** — el texto está listo en el panel. ¿Qué parte te cuesta traducir?`
+        : `**${reference}${langSuffix}** — the text is ready in the panel. Which part is hard for you to translate?`;
     }
-    return `**${reference}**\n\n${passage}\n\n*No specific translation challenges found.*`;
+    return `**${reference}${langSuffix}**${formattedBlock}\n\n*No specific translation challenges found.*`;
   }
 
   const tnChallenges = challenges.filter((c) => c.sourceType === "tn");
   const twChallenges = challenges.filter((c) => c.sourceType === "tw");
 
   if (useUIComponents) {
-    // When the workbench is active the scripture text, notes, and key terms are
-    // all rendered in the right panel.  Keep the chat message concise: just a
-    // brief count + invitation to explore.
-    const tnCount = tnChallenges.length;
-    const twCount = twChallenges.length;
-    const summaryParts: string[] = [];
-    if (tnCount > 0)
-      summaryParts.push(
-        `${tnCount} translation note${tnCount !== 1 ? "s" : ""}`,
+    // Minimal non-LLM fallback — ContextHarness uses composeAnnotatedGuideReply.
+    const es = language.toLowerCase().startsWith("es");
+    const top = tnChallenges
+      .slice(0, 3)
+      .map(
+        (c, i) =>
+          `${i + 1}. **${c.verse}** "${c.phrase}" — ${c.noteText.slice(0, 100)}`,
       );
-    if (twCount > 0)
-      summaryParts.push(`${twCount} key term${twCount !== 1 ? "s" : ""}`);
-    const summary = summaryParts.join(" and ");
-    return `I found **${summary}** for **${reference}**. Tap a challenge card in the panel to explore each one.`;
+    if (top.length > 0) {
+      return es
+        ? `**${reference}** — decisiones prioritarias (panel):\n\n${top.join("\n")}\n\n¿Qué parte te cuesta traducir — por ejemplo "${tnChallenges[0].phrase}"?`
+        : `**${reference}** — priority decisions (panel):\n\n${top.join("\n")}\n\nWhich part is hard for you to translate — for example "${tnChallenges[0].phrase}"?`;
+    }
+    return es
+      ? `**${reference}** — notas y términos listos en el panel. ¿Qué parte te cuesta traducir?`
+      : `**${reference}** — notes and terms are ready in the panel. Which part is hard for you to translate?`;
   }
 
   // ── Full text mode (no workbench) ─────────────────────────────────────────
 
   // ── Primary scripture ─────────────────────────────────────────────────────
   const primaryLabel = result.sourceLabel ?? "ULT";
-  const primaryBlock = `**${primaryLabel}** — ${reference}\n\n${passage}`;
+  const primaryBlock = `**${primaryLabel}** — ${reference}\n\n${formatScriptureBlock(passage)}`;
 
   // ── Supporting reads ──────────────────────────────────────────────────────
   const supportingBlocks = (result.otherScriptures ?? [])
@@ -708,25 +913,25 @@ export function formatDrillSystem(
 ): string {
   const isKeyTerm = challenge.sourceType === "tw";
 
+  const drillBudget = CHAT_WORD_BUDGETS.phrase_drill;
   const citationInstructions = isKeyTerm
     ? `- Lead with a direct answer to the user's question in 1–2 sentences — do not bury the answer at the end.
 - Write conversationally, as an expert colleague talking to a translator. Do NOT use markdown headers (no ###, no bold **section titles**) — use flowing prose with inline citations instead.
 - Draw on the Translation Word definition to explain what the term means and why precision matters for this passage, woven naturally into prose. If a Simplified Text (UST/GST) rendering is available, mention how it handles the term in passing.
-- Aim for ~120 words. Simple definitional questions deserve 2–3 sentences with inline evidence; do not write a structured essay.
-- If relevant, end with one brief follow-up question for the translator.`
+- Hard cap ≈ ${drillBudget} words. Simple definitional questions deserve 2–3 sentences with inline evidence; do not write a structured essay.
+- Cover one focused consulting point; STOP with ONE consultant question: what's hard about this term, or invite a draft in Mi traducción. Do not ask "How did you translate it?" — ever; meaning-probes come after they draft.`
     : `- Lead with a direct answer to the user's question in 1–2 sentences — do not bury the answer at the end.
 - Write conversationally, as an expert colleague talking to a translator. Do NOT use markdown headers (no ###, no bold **section titles** like **"What is X?"**) — use flowing prose with inline citations instead.
-- Use TN, Simplified Text (UST/GST), and TA only when each is genuinely relevant — you don't need to use all three. When citing the Translation Note, quote it verbatim inline (e.g. "The note says '…'"). When the simplified rendering clarifies meaning, weave it in naturally. When a TA principle applies, state it briefly in prose.
-- If an Alternate Translation is provided, include it naturally in the prose.
-- Aim for ~120 words. Simple definitional questions: 2–3 sentences with inline evidence. Complex multi-part questions: a short paragraph. Do NOT write a structured 4-paragraph essay.
-- If relevant, end with one brief follow-up question for the translator.`;
+- Use TN, Simplified Text (UST/GST), and TA only when each is genuinely relevant — you don't need to use all three. When citing the Translation Note, quote it verbatim inline (e.g. "The note says '…'"). When the simplified rendering clarifies meaning, weave it in naturally. When a TA principle applies, state it briefly in prose — always paraphrased in everyday words (never stick on "abstract noun" / "passive form").
+- If an Alternate Translation is provided, include it naturally in the prose as an option — not "the correct" translation.
+- Hard cap ≈ ${drillBudget} words. Simple definitional questions: 2–3 sentences with inline evidence. Complex multi-part questions: a short paragraph. Do NOT write a structured 4-paragraph essay.
+- Cover one focused consulting point; STOP with ONE consultant question: what's hard about this phrase, or invite a draft in Mi traducción. Do not ask "How did you translate X?" — ever; meaning-probes come after they draft.`;
 
   const langNote =
-    language !== "en"
-      ? `\n\nCRITICAL: Respond entirely in ${language}. Do NOT switch to English for any reason.`
-      : "";
+    `\n\nCRITICAL — language lock: Always reply in the source/conversation language (${language}). ` +
+    `Target/receptor language is metadata only — never switch into it, and never praise or grade receptor wording the user pastes.`;
 
-  return `You are a Bible translation coach explaining one specific translation challenge.
+  return `You are a Bible translation consultant explaining one specific challenge so the translator can examine their own choice — not rewriting their draft or grading unknown receptor-language form.
 
 PHRASE: "${challenge.phrase}" (verse ${challenge.verse})
 SOURCE TYPE: ${isKeyTerm ? "Translation Word (key term)" : `Translation Note (${challenge.category})`}
@@ -735,10 +940,12 @@ YOUR JOB:
 ${citationInstructions}
 
 GROUNDING RULES — you MUST follow these:
-1. Every claim must come from the TRANSLATION NOTE, TRANSLATION WORD, or TRANSLATION ACADEMY ARTICLE provided in the context block. Do NOT add information from your training data that is not in the provided resources.
-2. When you quote a resource, say so explicitly: "The Translation Notes state that…", "According to the Translation Academy…", "The Simplified Text renders this as…"
-3. If the original-language quote is provided, mention it once to help the translator connect the strategic-language phrase to the source: "This phrase translates the original '…'"
-4. Do NOT invent alternate translations beyond what the AT suggestion provides.
-5. Keep your response focused and practical — the translator needs to know what to DO.
-6. **Lead with the answer**: Begin your response with 1–2 sentences that directly address the user's question. Then weave in supporting evidence from the provided resources. If relevant, close with one brief follow-up question for the translator.${langNote}`;
+1. Every claim must come from the TRANSLATION NOTE, TRANSLATION WORD, SIMPLIFIED TEXT (UST/GST), or TRANSLATION ACADEMY ARTICLE provided in the context block. Do NOT add information from your training data that is not in the provided resources.
+2. Prefer the note and simplified text when a Translation Word article is missing. If an academy article is only available in a different language than the conversation language, briefly paraphrase the idea in the conversation language or skip it and stay with the note/GST.
+3. When you quote a resource, say so explicitly in plain words: "The note says…", "La nota dice…", "El texto simplificado…". ALWAYS paraphrase the **loaded note's point** in everyday words — never stick on "abstract noun" / "passive form", and never replace the note with a generic linguistics lecture from training data. If the user doesn't understand a term, redefine *what the note says* simply.
+4. If the original-language quote is provided, mention it once to help the translator connect the strategic-language phrase to the source: "This phrase translates the original '…'"
+5. Do NOT invent alternate translations beyond what the AT suggestion provides.
+6. Keep your response focused and practical — the translator needs to know what to DO. Never require linguistic labels to progress.
+7. If the provided resources do not cover the user's question: say so briefly and point them to the panel / offer to load the relevant note — do not fill from training data.
+8. **Lead with the answer**: Begin your response with 1–2 sentences that directly address the user's question. Then weave in supporting evidence from the provided resources. If relevant, close with one brief follow-up question for the translator.${langNote}`;
 }

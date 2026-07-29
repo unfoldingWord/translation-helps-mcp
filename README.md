@@ -47,13 +47,15 @@ curl -X POST https://translation-helps-mcp-v2.workers.dev/mcp \
 
 ### Progressive-Disclosure Workflow Tools (on `/mcp`)
 
-These 12 tools are the primary MCP surface. They are designed for a progressive,
-conversation-style retrieval flow and accept flexible argument forms (see
-[Argument Normalization](#argument-normalization) below).
+These 13 tools are the MCP surface (also available at `POST /api/tool`). They are
+designed for a progressive, conversation-style retrieval flow and accept flexible
+argument forms (see [Argument Normalization](#argument-normalization) below).
+All tools call the REST Data API via `ApiClient`.
 
 | Tool                  | Description                                                   |
 | --------------------- | ------------------------------------------------------------- |
 | `list_languages`      | All available language codes (with optional substring filter) |
+| `list_resources`      | Availability summary of resource types for a language         |
 | `get_passage`         | Bible text in all available versions for a reference          |
 | `get_passage_context` | Notes, Translation Words, and questions for a passage         |
 | `get_passage_index`   | Chapter-level index of available notes for quick navigation   |
@@ -65,26 +67,6 @@ conversation-style retrieval flow and accept flexible argument forms (see
 | `get_obs_story`       | Open Bible Stories story text by number                       |
 | `get_obs_notes`       | Translation notes for an OBS story                            |
 | `get_obs_questions`   | Discussion questions for an OBS story                         |
-
-### Legacy Tools (on `/api/tool` — backward compatible)
-
-The following tools remain available at `POST /api/tool` for existing integrations.
-They are **not** on the `/mcp` endpoint. The SDKs route them automatically.
-
-| Tool                           | Description                                                     |
-| ------------------------------ | --------------------------------------------------------------- |
-| `get_bundle`                   | All translation helps for a passage (scripture + notes + words) |
-| `fetch_scripture`              | Bible text (ULT/UST/GLT/GST) for any reference                  |
-| `fetch_translation_notes`      | Exegetical notes for a passage                                  |
-| `fetch_translation_questions`  | Comprehension questions for a passage                           |
-| `fetch_translation_word_links` | Translation Word paths linked at a reference                    |
-| `fetch_translation_word`       | Full TW dictionary article by path                              |
-| `fetch_translation_academy`    | Translation Academy article by path                             |
-| `list_translation_academy`     | Browse all Translation Academy articles                         |
-| `list_translation_words`       | Browse all Translation Words articles                           |
-| `list_subjects`                | All available resource subject types                            |
-| `list_resources_for_language`  | Resources available for a language (with pagination)            |
-| `list_resources_by_language`   | Alias for list_resources_for_language                           |
 
 ## Argument Normalization
 

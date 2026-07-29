@@ -24,12 +24,12 @@ When modifying MCP tools, you MUST update:
 ### 1. **JavaScript/TypeScript SDK** (`packages/js-sdk/`)
 
 #### **Type Definitions** (`src/types.ts`):
-- [ ] Add/update `Options` interface for the tool (e.g., `ListResourcesForLanguageOptions`)
+- [ ] Add/update `Options` interface for the tool (e.g., `ListResourcesOptions`)
 - [ ] Include all parameters with correct types
 - [ ] Mark required vs optional parameters correctly
 
 #### **Client Methods** (`src/client.ts`):
-- [ ] Add/update convenience method (e.g., `async listResourcesForLanguage()`)
+- [ ] Add/update convenience method (e.g., `async listResources()`)
 - [ ] Import the new type from `types.ts`
 - [ ] Map all parameters correctly
 - [ ] Handle response parsing (JSON.parse if needed)
@@ -51,7 +51,7 @@ When modifying MCP tools, you MUST update:
 
 #### **Client Methods** (`translation_helps/client.py`):
 - [ ] Import new type from `types.py`
-- [ ] Add/update async method (e.g., `async def list_resources_for_language()`)
+- [ ] Add/update async method (e.g., `async def list_resources()`)
 - [ ] Use snake_case for method names
 - [ ] Add comprehensive docstring with Args, Returns, Example
 - [ ] Handle parameter conversion (string vs list, etc.)
@@ -65,72 +65,41 @@ When modifying MCP tools, you MUST update:
 
 ## 🔍 Tool Discovery Pattern
 
-For **discovery tools** (list_languages, list_subjects, list_resources_*), follow this pattern:
+For **discovery tools** (`list_languages`, `list_resources`), follow this pattern:
 
 ### JavaScript SDK:
 ```typescript
 // types.ts
-export interface ListResourcesForLanguageOptions {
+export interface ListResourcesOptions {
   language: string;  // Required
-  organization?: string;
-  stage?: string;
-  subject?: string;
-  limit?: number;
-  topic?: string;  // NEW parameters go here
 }
 
 // client.ts
-async listResourcesForLanguage(options: ListResourcesForLanguageOptions): Promise<any> {
-  const params: Record<string, any> = {
-    language: options.language,
-    stage: options.stage || "prod",
-  };
-  
-  if (options.organization !== undefined) params.organization = options.organization;
-  if (options.topic) params.topic = options.topic;  // Add new params here
-  
-  const response = await this.callTool("list_resources_for_language", params);
-  // ... parse response
+async listResources(options: ListResourcesOptions): Promise<MCPToolResult> {
+  return this.callTool("list_resources", options as unknown as Record<string, unknown>);
 }
 ```
 
 ### Python SDK:
 ```python
 # types.py
-class ListResourcesForLanguageOptions(TypedDict, total=False):
+class ListResourcesOptions(TypedDict, total=False):
     language: str  # Required (no Optional)
-    organization: Optional[str]
-    stage: Optional[str]
-    topic: Optional[str]  # NEW parameters
 
 # client.py
-async def list_resources_for_language(
-    self, options: ListResourcesForLanguageOptions
-) -> Dict[str, Any]:
+async def list_resources(self, options: Dict[str, Any]) -> Dict[str, Any]:
     """
-    List all resources for a specific language.
-    
+    List resource types available for a language.
+
     Args:
-        options: Language (required) and optional filters
-        
+        options: Dict with ``language`` (required).
+
     Returns:
-        Dictionary with resources organized by subject
+        MCP result with availability summary.
     """
     if not options.get("language"):
         raise ValueError("language parameter is required")
-    
-    params: Dict[str, Any] = {
-        "language": options["language"],
-        "stage": options.get("stage", "prod"),
-    }
-    
-    if options.get("organization") is not None:
-        params["organization"] = options["organization"]
-    if options.get("topic"):  # Add new params here
-        params["topic"] = options["topic"]
-    
-    response = await self.call_tool("list_resources_for_language", params)
-    # ... parse response
+    return await self.call_tool("list_resources", options)
 ```
 
 ## ✅ Verification Steps
@@ -161,19 +130,18 @@ After updating SDKs, verify:
 | MCP Tool Name | JS Method | Python Method | Notes |
 |--------------|-----------|---------------|-------|
 | `list_languages` | `listLanguages()` | `list_languages()` | Discovery tool |
-| `list_subjects` | `listSubjects()` | `list_subjects()` | Discovery tool |
-| `list_resources_by_language` | `listResourcesByLanguage()` | `list_resources_by_language()` | Discovery tool |
-| `list_resources_for_language` | `listResourcesForLanguage()` | `list_resources_for_language()` | Discovery tool ⭐ |
-| `list_translation_academy` | `listTranslationAcademy()` | `list_translation_academy()` | Catalog tool |
-| `list_translation_words` | `listTranslationWords()` | `list_translation_words()` | Catalog tool |
-| `search_articles` | `searchArticles()` | `search_articles()` | Lexical search (replaces rag_query) |
-| `fetch_scripture` | `fetchScripture()` | `fetch_scripture()` | Fetch tool |
-| `fetch_translation_notes` | `fetchTranslationNotes()` | `fetch_translation_notes()` | Fetch tool |
-| `fetch_translation_questions` | `fetchTranslationQuestions()` | `fetch_translation_questions()` | Fetch tool |
-| `fetch_translation_word` | `fetchTranslationWord()` | `fetch_translation_word()` | Fetch tool |
-| `fetch_translation_word_links` | `fetchTranslationWordLinks()` | `fetch_translation_word_links()` | Fetch tool |
-| `fetch_translation_academy` | `fetchTranslationAcademy()` | `fetch_translation_academy()` | Fetch tool |
-| `get_bundle` | `getBundle()` | `get_bundle()` | Bundle assembly (deterministic) |
+| `list_resources` | `listResources()` | `list_resources()` | Discovery — resource availability for a language |
+| `get_passage` | `getPassage()` | `get_passage()` | Scripture text (all versions) |
+| `get_passage_context` | `getPassageContext()` | `get_passage_context()` | Orient — intro notes + availability |
+| `get_passage_index` | `getPassageIndex()` | `get_passage_index()` | Survey — compact index |
+| `get_note` | `getNote()` | `get_note()` | Drill — full note body |
+| `get_academy_article` | `getAcademyArticle()` | `get_academy_article()` | Drill — TA article |
+| `get_word_article` | `getWordArticle()` | `get_word_article()` | Drill — TW article |
+| `get_questions` | `getQuestions()` | `get_questions()` | Check — comprehension questions |
+| `search_articles` | `searchArticles()` | `search_articles()` | Lateral — concept → article path |
+| `get_obs_story` | `getObsStory()` | `get_obs_story()` | OBS story text |
+| `get_obs_notes` | `getObsNotes()` | `get_obs_notes()` | OBS translation notes |
+| `get_obs_questions` | `getObsQuestions()` | `get_obs_questions()` | OBS comprehension questions |
 
 ## 🚀 When Adding a New Tool
 
@@ -202,14 +170,14 @@ After updating SDKs, verify:
 
 ## 📝 Example: Adding a New Parameter
 
-If you add `topic` parameter to `list_resources_for_language`:
+If you add an optional `organization` parameter to `list_resources`:
 
-1. ✅ Update tool handler (`src/tools/listResourcesForLanguage.ts`) - Add to Zod schema
-2. ✅ Update JS SDK type (`packages/js-sdk/src/types.ts`) - Add `topic?: string`
-3. ✅ Update JS SDK method (`packages/js-sdk/src/client.ts`) - Add `if (options.topic) params.topic = options.topic`
-4. ✅ Update Python SDK type (`packages/python-sdk/translation_helps/types.py`) - Add `topic: Optional[str]`
+1. ✅ Update tool handler (`src/mcp/tools/listResources.ts`) - Add to Zod schema
+2. ✅ Update JS SDK type (`packages/js-sdk/src/types.ts`) - Add `organization?: string`
+3. ✅ Update JS SDK method (`packages/js-sdk/src/client.ts`) - Pass through in `callTool` args
+4. ✅ Update Python SDK type (`packages/python-sdk/translation_helps/types.py`) - Add `organization: Optional[str]`
 5. ✅ Update Python SDK method (`packages/python-sdk/translation_helps/client.py`) - Add parameter handling
-6. ✅ Update both READMEs with examples showing `topic` usage
+6. ✅ Update both READMEs with examples showing `organization` usage
 
 ---
 

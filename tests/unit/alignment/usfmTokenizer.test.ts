@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { tokenizeUsfm } from "../../../src/core/alignment/usfmTokenizer.js";
+import { tokenizeUsfm } from "@translation-helps/door43";
 
 // ---------------------------------------------------------------------------
 // Minimal USFM fixtures

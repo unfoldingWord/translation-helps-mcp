@@ -3,7 +3,7 @@ import {
   parseReference,
   bookNameToUsfm,
   parseReferenceForTool,
-} from "../../src/core/resources/referenceParser.js";
+} from "@translation-helps/door43";
 
 describe("bookNameToUsfm", () => {
   it("maps full book names to USFM codes", () => {

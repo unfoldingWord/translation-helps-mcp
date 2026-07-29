@@ -23,7 +23,7 @@ export const BUNDLE_COLD_TTL_L2 = 300; // 5 minutes
 export const BUNDLE_COLD_TTL_L3 = 3600; // 1 hour
 
 // ---------------------------------------------------------------------------
-// Catalog metadata (list_translation_academy / list_translation_words)
+// Catalog metadata (academy / words list endpoints)
 // ---------------------------------------------------------------------------
 
 export const CATALOG_TTL_L1 = 3600; // 1 hour

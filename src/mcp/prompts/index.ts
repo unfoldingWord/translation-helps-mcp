@@ -46,10 +46,12 @@ export const PROMPTS: PromptModule[] = [
               text:
                 `Please help me translate ${reference} into ${language}.\n\n` +
                 `Follow these steps:\n` +
-                `1. Call get_bundle with reference="${reference}", language="${language}" to retrieve scripture + notes + words.\n` +
-                `2. Review the translation notes for any difficult phrases.\n` +
-                `3. Look up key translation words using fetch_translation_word if the bundle includes word paths.\n` +
-                `4. Provide a translation strategy summary.`,
+                `1. Call get_passage with reference="${reference}", language="${language}" to retrieve scripture text.\n` +
+                `2. Call get_passage_context for background notes and availability.\n` +
+                `3. Call get_passage_index to survey translation notes and key terms.\n` +
+                `4. Call get_note for full note bodies on difficult phrases.\n` +
+                `5. Look up key terms with get_word_article using paths from the index.\n` +
+                `6. Provide a translation strategy summary.`,
             },
           },
         ],
@@ -75,8 +77,8 @@ export const PROMPTS: PromptModule[] = [
               text:
                 `Explain the key translation words at ${reference} (language: ${language}).\n\n` +
                 `Steps:\n` +
-                `1. Call fetch_translation_word_links with reference="${reference}", language="${language}".\n` +
-                `2. For each returned wordLink, call fetch_translation_word with path=<wordPath>.\n` +
+                `1. Call get_passage_index with reference="${reference}", language="${language}".\n` +
+                `2. For each key term path, call get_word_article with path=<wordPath>.\n` +
                 `3. Summarize each word's definition and translation implications.`,
             },
           },
@@ -107,8 +109,8 @@ export const PROMPTS: PromptModule[] = [
               text:
                 `Find Translation Academy articles about "${topic}" (language: ${language}).\n\n` +
                 `Steps:\n` +
-                `1. Call search_articles with query="${topic}", language="${language}", resourceTypes=["ta"].\n` +
-                `2. For the top result, call fetch_translation_academy with the article path.\n` +
+                `1. Call search_articles with query="${topic}", language="${language}", types="ta".\n` +
+                `2. For the top result, call get_academy_article with the article path.\n` +
                 `3. Summarize the key translation principles.`,
             },
           },
@@ -134,7 +136,7 @@ export const PROMPTS: PromptModule[] = [
               text:
                 `Help check the translation of ${reference} (language: ${language}).\n\n` +
                 `Steps:\n` +
-                `1. Call fetch_translation_questions with reference="${reference}", language="${language}".\n` +
+                `1. Call get_questions with reference="${reference}", language="${language}".\n` +
                 `2. Present each question and its expected answer.\n` +
                 `3. Explain how to use these questions to validate a translation draft.`,
             },

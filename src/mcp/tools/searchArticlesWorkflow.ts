@@ -17,7 +17,7 @@ import { z } from "zod";
 import { languageParam, ok, type ToolModule } from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
-import type { ArticleSearchResult } from "../../core/contracts/index.js";
+import type { ArticleSearchResult } from "@translation-helps/door43";
 
 const inputSchema = z.object({
   query: z
@@ -25,7 +25,7 @@ const inputSchema = z.object({
     .min(1)
     .describe(
       'Search term or concept. E.g. "abstract nouns", "metaphor", "covenant", "grace", "righteousness". ' +
-      'Returns the most relevant TA and TW articles. Pass `path` to `get_academy_article` or `get_word_article`.',
+        "Returns the most relevant TA and TW articles. Pass `path` to `get_academy_article` or `get_word_article`.",
     ),
   language: languageParam,
   limit: z
@@ -38,7 +38,9 @@ const inputSchema = z.object({
   types: z
     .string()
     .optional()
-    .describe('Comma-separated resource types to include: "ta", "tw", or "ta,tw" (default all).'),
+    .describe(
+      'Comma-separated resource types to include: "ta", "tw", or "ta,tw" (default all).',
+    ),
 });
 
 export type SearchArticlesWorkflowParams = z.infer<typeof inputSchema>;
@@ -50,20 +52,27 @@ export const searchArticlesWorkflowTool: ToolModule<typeof inputSchema> = {
     "Use this to locate an article when you know the concept (e.g. 'metaphor', 'abstract nouns', 'covenant') but not the path, " +
     "or when no article is linked to the current passage. " +
     "Returns `{ path, title, resourceType }[]` sorted by relevance. " +
-    "Pass `path` to `get_academy_article` (resourceType:\"ta\") or `get_word_article` (resourceType:\"tw\").",
+    'Pass `path` to `get_academy_article` (resourceType:"ta") or `get_word_article` (resourceType:"tw").',
   inputSchema,
   annotations: { readOnlyHint: true, title: "Search Articles" },
 
-  async handler(params: SearchArticlesWorkflowParams, env: Env, _requestId: string) {
+  async handler(
+    params: SearchArticlesWorkflowParams,
+    env: Env,
+    _requestId: string,
+  ) {
     const client = new ApiClient(env);
     const { query, language, limit, types } = params;
 
-    const data = await client.get<{ results: ArticleSearchResult[] }>("/api/v1/search", {
-      q: query,
-      language,
-      limit,
-      types,
-    });
+    const data = await client.get<{ results: ArticleSearchResult[] }>(
+      "/api/v1/search",
+      {
+        q: query,
+        language,
+        limit,
+        types,
+      },
+    );
 
     const results = data.results ?? [];
     return ok(

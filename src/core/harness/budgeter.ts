@@ -44,6 +44,13 @@ export interface EnrichedBundle extends Bundle {
     text: string;
     /** Original-language phrase this note is about (from TN `quote` field). */
     quote?: string;
+    /**
+     * Quote resolved via word alignment (from `/api/v1/notes` enrichment):
+     * `original` is a display copy of the Greek/Hebrew quote (`&` → `…`);
+     * `aligned` is the gateway-language (GLT/ULT) equivalent, or "" when
+     * alignment data was unavailable.
+     */
+    gatewayQuote?: { original?: string; aligned?: string };
     /** Verse number string, e.g. "3". */
     verse?: string;
     externalReference?: { path: string };
@@ -77,6 +84,26 @@ export interface EnrichedBundle extends Bundle {
    * (e.g. only original-language text available, no translation found).
    */
   dataWarning?: string;
+  /**
+   * Book/chapter intro notes from get_passage_context (not verse-level TN).
+   * Emitted as a distinct `passage_context` UI component.
+   */
+  passageContext?: {
+    reference: string;
+    scope: "book" | "chapter" | "range";
+    notes: Array<{
+      id: string;
+      scope: "book" | "chapter";
+      title?: string;
+      noteText: string;
+    }>;
+    availability?: Array<{
+      type: string;
+      abbreviation?: string;
+      subject?: string;
+      role?: string;
+    }>;
+  };
 }
 
 export interface BudgetCaps {

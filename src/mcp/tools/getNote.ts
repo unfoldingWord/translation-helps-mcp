@@ -11,7 +11,12 @@
  */
 
 import { z } from "zod";
-import { referenceParam, languageParam, ok, type ToolModule } from "./shared.js";
+import {
+  referenceParam,
+  languageParam,
+  ok,
+  type ToolModule,
+} from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
 
@@ -23,17 +28,17 @@ const inputSchema = z.object({
     .optional()
     .describe(
       "The note ID from `get_passage_index` notes[].id. " +
-      "If omitted, all notes for the reference are returned (unless `phrase` is given).",
+        "If omitted, all notes for the reference are returned (unless `phrase` is given).",
     ),
   phrase: z
     .string()
     .optional()
     .describe(
       "A word or phrase from the strategic-language text (e.g. 'teaching us', 'instruyéndonos'). " +
-      "When provided, only notes whose `quote` field contains this phrase (case-insensitive) " +
-      "OR whose `note` body mentions it are returned. " +
-      "Use this to find the exact note that covers a phrase the user wants to explore — " +
-      "the `quote` field holds the original-language words the note addresses.",
+        "When provided, only notes whose `quote` field contains this phrase (case-insensitive) " +
+        "OR whose `note` body mentions it are returned. " +
+        "Use this to find the exact note that covers a phrase the user wants to explore — " +
+        "the `quote` field holds the original-language words the note addresses.",
     ),
 });
 
@@ -60,15 +65,17 @@ export const getNoteTool: ToolModule<typeof inputSchema> = {
     const client = new ApiClient(env);
     const { reference, language, id, phrase } = params;
 
-    const data = await client.get<{ notes: Array<Record<string, unknown>> }>(
-      "/api/v1/notes",
-      { reference, language },
-    );
+    const data = await client.get<{
+      notes: Array<Record<string, unknown>>;
+      meta?: { cache?: string };
+    }>("/api/v1/notes", { reference, language });
 
     let notes = data.notes ?? [];
 
     // Keep only verse-level notes (exclude intro)
-    notes = notes.filter((n) => n["verse"] !== "intro" && n["verse"] !== "front");
+    notes = notes.filter(
+      (n) => n["verse"] !== "intro" && n["verse"] !== "front",
+    );
 
     if (id) {
       notes = notes.filter((n) => n["id"] === id);
@@ -85,9 +92,17 @@ export const getNoteTool: ToolModule<typeof inputSchema> = {
       if (matched.length > 0) notes = matched;
     }
 
+    const cache = data.meta?.cache;
     return ok(
-      { reference, language, id: id ?? null, phrase: phrase ?? null, notes },
-      `${notes.length} note(s) for ${reference}${phrase ? ` matching phrase "${phrase}"` : ""}`,
+      {
+        reference,
+        language,
+        id: id ?? null,
+        phrase: phrase ?? null,
+        notes,
+        ...(cache ? { meta: { cache } } : {}),
+      },
+      `${notes.length} note(s) for ${reference}${phrase ? ` matching phrase "${phrase}"` : ""}${cache ? ` [${cache}]` : ""}`,
     );
   },
 };

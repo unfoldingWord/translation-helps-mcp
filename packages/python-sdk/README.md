@@ -29,6 +29,9 @@ client = TranslationHelpsClient()
 # 1. Discover available languages
 langs = client.list_languages({"filter": "es"})
 
+# 1b. Check which resource types exist for a language
+resources = client.list_resources({"language": "en"})
+
 # 2a. Orient — scripture text, all versions (incl. original-language UGNT/UHB)
 #     Cheap and repeatable; re-call any time you need the verse text
 passage = client.get_passage({"reference": "JHN 3:16", "language": "en"})
@@ -110,6 +113,7 @@ TranslationHelpsClient(
 | Method                      | Required    | Optional                   | Description                                                                                        |
 | --------------------------- | ----------- | -------------------------- | -------------------------------------------------------------------------------------------------- |
 | `list_languages(opts?)`     | —           | `filter`                   | Discover valid BCP-47 language codes                                                               |
+| `list_resources(opts)`      | `language`  | —                          | Resource types available for a language (presence summary from catalog)                            |
 | `get_passage(opts)`         | `reference` | `language`                 | Scripture text — all versions (literal, simplified, original UGNT/UHB). Cheap and repeatable.      |
 | `get_passage_context(opts)` | `reference` | `language`, `organization` | Book/chapter intro notes + resource availability. Does NOT include verse text (use `get_passage`). |
 
@@ -147,19 +151,22 @@ TranslationHelpsClient(
 | `get_obs_notes(opts)`     | `reference` | `language` | Fetch OBS Translation Notes for a story:frame reference.                  |
 | `get_obs_questions(opts)` | `reference` | `language` | Fetch OBS Translation Questions for a story:frame reference.              |
 
-### Legacy Methods (deprecated)
+### Migration from legacy tools
 
-These remain for backward compatibility but should be migrated to the workflow methods above.
+Legacy MCP tools (`fetch_*`, `get_bundle`, `list_subjects`, `list_resources_for_language`, etc.) have been removed from the server. Map them as follows:
 
-| Legacy Method                        | Use Instead                                 |
-| ------------------------------------ | ------------------------------------------- |
-| `fetch_scripture(opts)`              | `get_passage`                               |
-| `fetch_translation_notes(opts)`      | `get_note`                                  |
-| `fetch_translation_questions(opts)`  | `get_questions`                             |
-| `fetch_translation_word_links(opts)` | `get_passage_index`                         |
-| `fetch_translation_word(opts)`       | `get_word_article`                          |
-| `fetch_translation_academy(opts)`    | `get_academy_article`                       |
-| `get_bundle(opts)`                   | `get_passage_context` + `get_passage_index` |
+| Removed                                                      | Use instead                                           |
+| ------------------------------------------------------------ | ----------------------------------------------------- |
+| `fetch_scripture`                                            | `get_passage`                                         |
+| `fetch_translation_notes`                                    | `get_note`                                            |
+| `fetch_translation_questions`                                | `get_questions`                                       |
+| `fetch_translation_word_links`                               | `get_passage_index`                                   |
+| `fetch_translation_word`                                     | `get_word_article`                                    |
+| `fetch_translation_academy`                                  | `get_academy_article`                                 |
+| `get_bundle`                                                 | `get_passage_context` + `get_passage_index`           |
+| `list_resources_for_language` / `list_resources_by_language` | `list_resources`                                      |
+| `list_subjects`                                              | `list_resources` (availability includes subject/role) |
+| `list_translation_academy` / `list_translation_words`        | `search_articles` + drill methods                     |
 
 ### Parsing Results
 

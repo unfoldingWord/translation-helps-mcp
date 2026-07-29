@@ -2,20 +2,20 @@
  * Resource selector — maps an intent to an ordered resource plan.
  *
  * Per the retrieval policy:
- *   - passage_overview    → get_passage + get_note + get_passage_index
- *   - annotated_passage   → get_passage + get_note + get_passage_index
- *   - passage_help        → get_passage + get_note + get_passage_index + rc-link expansion
+ *   - passage_overview    → get_passage + get_passage_context + get_note + get_passage_index
+ *   - annotated_passage   → get_passage + get_passage_context + get_note + get_passage_index
+ *   - passage_help        → get_passage + get_passage_context + get_note + get_passage_index + rc expansion
  *   - phrase_drill        → no initial fetches (challenge from history); articles fetched at runtime
  *   - word_study          → get_word_article by path/term
  *   - methodology         → get_academy_article by topic slug
  *   - checking            → get_passage + get_questions
- *   - discovery           → list_languages / list_resources_for_language
+ *   - discovery           → list_languages / list_resources
  *   - open_ended          → defer to agentic loop
  *
  * Scripture text comes from get_passage (all versions in one cheap call).
- * get_passage_context (book/chapter intros + availability) is called in the
- * annotated_passage branch in parallel with the LLM annotator, after the
- * get_passage cache-warm call, and surfaced as a collapsible context block.
+ * get_passage_context (book/chapter intros + availability) is an initial fetch
+ * for overview / annotated / help intents and emitted as a `passage_context`
+ * UI component (retained in the panel across verse-range drills).
  */
 
 import type { IntentType, IntentResult } from "./intent.js";
@@ -25,18 +25,33 @@ import type { IntentType, IntentResult } from "./intent.js";
 // ---------------------------------------------------------------------------
 
 export type ToolCallSpec =
-  // New workflow tools (primary MCP surface)
   | { tool: "get_passage"; params: { reference: string; language: string } }
-  | { tool: "get_passage_context"; params: { reference: string; language: string } }
-  | { tool: "get_note"; params: { reference: string; language: string; id?: string } }
-  | { tool: "get_passage_index"; params: { reference: string; language: string } }
+  | {
+      tool: "get_passage_context";
+      params: { reference: string; language: string };
+    }
+  | {
+      tool: "get_note";
+      params: { reference: string; language: string; id?: string };
+    }
+  | {
+      tool: "get_passage_index";
+      params: { reference: string; language: string; skipNotes?: boolean };
+    }
   | { tool: "get_word_article"; params: { path: string; language: string } }
   | { tool: "get_academy_article"; params: { path: string; language: string } }
   | { tool: "get_questions"; params: { reference: string; language: string } }
-  | { tool: "search_articles"; params: { query: string; language: string; resourceTypes?: string[]; topK?: number } }
+  | {
+      tool: "search_articles";
+      params: {
+        query: string;
+        language: string;
+        resourceTypes?: string[];
+        topK?: number;
+      };
+    }
   | { tool: "list_languages"; params: { filter?: string } }
-  // Legacy tools (kept for discovery compat)
-  | { tool: "list_resources_for_language"; params: { language: string; subject?: string } };
+  | { tool: "list_resources"; params: { language: string } };
 
 export type ToolName = ToolCallSpec["tool"];
 
@@ -56,6 +71,11 @@ export interface ResourcePlan {
   articleLocate?: { query: string; resourceType?: string };
   /** Intent this plan was derived from */
   intent: IntentType;
+  /**
+   * Set by the harness when articleLocate fell back to English catalog search
+   * because the study language had no hits (e.g. TW missing for es-419).
+   */
+  twEnFallback?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -65,9 +85,16 @@ export interface ResourcePlan {
 /**
  * Build a ResourcePlan from a classified intent.
  *
- * Scripture is fetched via get_passage_context which dynamically returns all
- * available versions for the language in a single call — no per-version specs.
+ * Scripture text is fetched via get_passage (all versions in one call).
+ * Book/chapter orientation uses get_passage_context when the intent is
+ * passage-scoped.
  */
+/** True when `term` is already a TW dict path, not a surface-language word. */
+function isTwArticlePath(term: string): boolean {
+  const t = term.trim().toLowerCase();
+  return t.includes("/") || /^(bible\/)?(kt|names|other)\//.test(t);
+}
+
 export function selectResources(
   intentResult: IntentResult,
   language: string,
@@ -81,8 +108,13 @@ export function selectResources(
         intent,
         initialFetches: [
           { tool: "get_passage", params: { reference, language } },
+          { tool: "get_passage_context", params: { reference, language } },
           { tool: "get_note", params: { reference, language } },
-          { tool: "get_passage_index", params: { reference, language } },
+          // skipNotes: get_note already hits /notes; only need word-links here
+          {
+            tool: "get_passage_index",
+            params: { reference, language, skipNotes: true },
+          },
         ],
         rcExpansion: ["tn_to_ta", "twl_to_tw"],
       };
@@ -94,8 +126,13 @@ export function selectResources(
         intent,
         initialFetches: [
           { tool: "get_passage", params: { reference, language } },
+          { tool: "get_passage_context", params: { reference, language } },
           { tool: "get_note", params: { reference, language } },
-          { tool: "get_passage_index", params: { reference, language } },
+          // Words only — note bodies come from get_note (one /notes fetch)
+          {
+            tool: "get_passage_index",
+            params: { reference, language, skipNotes: true },
+          },
         ],
         rcExpansion: [],
       };
@@ -111,15 +148,22 @@ export function selectResources(
         intent,
         initialFetches: [
           { tool: "get_passage", params: { reference, language } },
+          { tool: "get_passage_context", params: { reference, language } },
           { tool: "get_note", params: { reference, language } },
-          { tool: "get_passage_index", params: { reference, language } },
+          {
+            tool: "get_passage_index",
+            params: { reference, language, skipNotes: true },
+          },
         ],
         rcExpansion: ["tn_to_ta", "twl_to_tw"],
       };
     }
 
     case "word_study": {
-      if (term) {
+      // Only treat as a direct TW path when it looks like one (e.g. "bible/kt/grace").
+      // Bare terms ("siervo", "grace") must go through search_articles first —
+      // get_word_article rejects non-path slugs and would silently miss the article.
+      if (term && isTwArticlePath(term)) {
         return {
           intent,
           initialFetches: [
@@ -130,7 +174,10 @@ export function selectResources(
       }
       return {
         intent,
-        articleLocate: { query: intentResult.term ?? "biblical term", resourceType: "tw" },
+        articleLocate: {
+          query: term ?? intentResult.term ?? "biblical term",
+          resourceType: "tw",
+        },
         initialFetches: [],
         rcExpansion: [],
       };
@@ -141,25 +188,37 @@ export function selectResources(
         return {
           intent,
           initialFetches: [
-            { tool: "get_academy_article", params: { path: taTopic, language } },
+            {
+              tool: "get_academy_article",
+              params: { path: taTopic, language },
+            },
           ],
           rcExpansion: [],
         };
       }
       return {
         intent,
-        articleLocate: { query: intentResult.taTopic ?? "translation methodology", resourceType: "ta" },
+        articleLocate: {
+          query: intentResult.taTopic ?? "translation methodology",
+          resourceType: "ta",
+        },
         initialFetches: [],
         rcExpansion: [],
       };
     }
 
     case "checking": {
+      // Draft-check coaching needs TN/TW context + TQ — not questions alone.
       if (reference) {
         return {
           intent,
           initialFetches: [
             { tool: "get_passage", params: { reference, language } },
+            { tool: "get_note", params: { reference, language } },
+            {
+              tool: "get_passage_index",
+              params: { reference, language, skipNotes: true },
+            },
             { tool: "get_questions", params: { reference, language } },
           ],
           rcExpansion: [],
@@ -171,14 +230,14 @@ export function selectResources(
     case "discovery": {
       return {
         intent,
-        initialFetches: [
-          { tool: "list_resources_for_language", params: { language } },
-        ],
+        initialFetches: [{ tool: "list_resources", params: { language } }],
         rcExpansion: [],
       };
     }
 
     case "checklist_step":
+    case "quiz_answer":
+    case "quiz_skip":
       return { intent, initialFetches: [], rcExpansion: [] };
 
     default:

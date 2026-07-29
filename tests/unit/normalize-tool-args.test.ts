@@ -60,8 +60,8 @@ describe("Class B: path synonyms", () => {
     expect(result.article_id).toBeUndefined();
   });
 
-  it("maps term_id to path for fetch_translation_word", () => {
-    const result = normalizeToolArgs("fetch_translation_word", {
+  it("maps term_id to path for get_word_article", () => {
+    const result = normalizeToolArgs("get_word_article", {
       term_id: "faith",
       language: "en",
     });

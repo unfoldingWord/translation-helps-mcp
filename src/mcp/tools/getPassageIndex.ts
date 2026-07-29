@@ -22,23 +22,31 @@ import { z } from "zod";
 import {
   referenceParam,
   languageParam,
-  ok,
+  okCached,
+  mapApiCacheStatus,
   type ToolModule,
 } from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
-import { resolveTitleFromPath } from "../../core/resources/articleTitles.js";
-import { formatQuoteDisplay } from "../../core/alignment/index.js";
+import { resolveTitleFromPath } from "@translation-helps/door43";
+import { formatQuoteDisplay } from "@translation-helps/door43";
 import type {
   NoteIndexEntry,
   WordIndexEntry,
   RollupEntry,
   PassageIndex,
-} from "../../core/contracts/index.js";
+} from "@translation-helps/door43";
 
 const inputSchema = z.object({
   reference: referenceParam,
   language: languageParam,
+  skipNotes: z
+    .boolean()
+    .optional()
+    .describe(
+      "When true, skip the /notes fetch and return empty notes[]/issues[]. " +
+        "Use when get_note is already called in the same turn — only word-links are needed.",
+    ),
 });
 
 export type GetPassageIndexParams = z.infer<typeof inputSchema>;
@@ -59,17 +67,33 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
 
   async handler(params: GetPassageIndexParams, env: Env, _requestId: string) {
     const client = new ApiClient(env);
-    const { reference, language } = params;
+    const { reference, language, skipNotes } = params;
 
-    const [notesRes, wordLinksRes] = await Promise.allSettled([
-      client.get<{ notes: Array<Record<string, unknown>> }>("/api/v1/notes", {
-        reference,
-        language,
-      }),
-      client.get<{ wordLinks: Array<Record<string, unknown>> }>(
-        "/api/v1/word-links",
-        { reference, language },
-      ),
+    const notesPromise = skipNotes
+      ? Promise.resolve({
+          status: "fulfilled" as const,
+          value: {
+            notes: [] as Array<Record<string, unknown>>,
+            meta: undefined as { cache?: string } | undefined,
+          },
+        })
+      : client
+          .get<{
+            notes: Array<Record<string, unknown>>;
+            meta?: { cache?: string };
+          }>("/api/v1/notes", { reference, language })
+          .then((value) => ({ status: "fulfilled" as const, value }))
+          .catch((reason) => ({ status: "rejected" as const, reason }));
+
+    const [notesRes, wordLinksRes] = await Promise.all([
+      notesPromise,
+      client
+        .get<{
+          wordLinks: Array<Record<string, unknown>>;
+          meta?: { cache?: string };
+        }>("/api/v1/word-links", { reference, language })
+        .then((value) => ({ status: "fulfilled" as const, value }))
+        .catch((reason) => ({ status: "rejected" as const, reason })),
     ]);
 
     const rawNotes: Array<Record<string, unknown>> =
@@ -77,6 +101,23 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
 
     const rawWords: Array<Record<string, unknown>> =
       wordLinksRes.status === "fulfilled" ? wordLinksRes.value.wordLinks : [];
+
+    const cacheSources = [
+      notesRes.status === "fulfilled" ? notesRes.value.meta?.cache : undefined,
+      wordLinksRes.status === "fulfilled"
+        ? wordLinksRes.value.meta?.cache
+        : undefined,
+    ].filter(Boolean) as string[];
+    const cache =
+      cacheSources.length === 0
+        ? undefined
+        : cacheSources.includes("network")
+          ? "network"
+          : cacheSources.includes("r2")
+            ? "r2"
+            : cacheSources.includes("kv")
+              ? "kv"
+              : cacheSources[0];
 
     // --- Shape notes (verse-level only, drop intro notes) ---
     const notes: NoteIndexEntry[] = rawNotes
@@ -151,9 +192,10 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
       keyTerms,
     };
 
-    return ok(
-      index,
-      `${notes.length} note(s), ${words.length} word link(s), ${issues.length} issue type(s), ${keyTerms.length} key term(s)`,
+    return okCached(
+      { ...index, ...(cache ? { meta: { cache } } : {}) },
+      mapApiCacheStatus(cache),
+      `${notes.length} note(s), ${words.length} word link(s), ${issues.length} issue type(s), ${keyTerms.length} key term(s)${cache ? ` [${cache}]` : ""}`,
     );
   },
 };

@@ -23,6 +23,7 @@
     "deploy:staging": "bash scripts/deploy-staging.sh",
     "deploy:api": "npx wrangler deploy --config wrangler.api.toml",
     "deploy:prod": "npm run deploy:api && npx wrangler deploy --config wrangler.toml",
+    "deploy:v2": "bash scripts/deploy-v2-production.sh",
     "changeset": "changeset",
     "version": "changeset version",
     "release": "changeset publish",
@@ -30,6 +31,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.15.1",
+    "@translation-helps/door43": "*",
     "agents": "^0.0.97",
     "fflate": "^0.8.3",
     "zod": "^3.22.4"
@@ -54,6 +56,7 @@
   },
   "workspaces": [
     "web",
+    "packages/door43",
     "packages/js-sdk",
     "packages/python-sdk"
   ],

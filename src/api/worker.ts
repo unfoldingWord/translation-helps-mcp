@@ -30,6 +30,7 @@ import { handleSearch } from "./routes/search.js";
 import { handleResources } from "./routes/resources.js";
 import { handlePrefetch } from "./routes/prefetch.js";
 import { handleObs, handleObsNotes, handleObsQuestions } from "./routes/obs.js";
+import { API_MANIFEST } from "./manifest.js";
 
 // ---------------------------------------------------------------------------
 // CORS / common headers
@@ -61,6 +62,71 @@ function apiError(
 // Router
 // ---------------------------------------------------------------------------
 
+/** Routes whose GET responses are safe to edge-cache (no auth, stable params). */
+const EDGE_CACHEABLE = new Set([
+  "/languages",
+  "/scripture",
+  "/notes",
+  "/word-links",
+  "/questions",
+  "/words",
+  "/academy",
+  "/quote",
+  "/search",
+  "/resources",
+  "/obs",
+  "/obs-notes",
+  "/obs-questions",
+]);
+
+function isEdgeCacheablePath(routePath: string): boolean {
+  if (EDGE_CACHEABLE.has(routePath)) return true;
+  if (routePath.startsWith("/words/")) return true;
+  if (routePath.startsWith("/academy/")) return true;
+  return false;
+}
+
+async function withEdgeCache(
+  request: Request,
+  execCtx: ExecutionContext,
+  handler: () => Promise<Response>,
+): Promise<Response> {
+  // Cache API is free and colo-local; sits in front of KV response caches.
+  // Cloudflare exposes caches.default; DOM lib typings omit it.
+  const cache = (caches as unknown as { default?: Cache }).default;
+  if (cache) {
+    try {
+      const hit = await cache.match(request);
+      if (hit) return hit;
+    } catch {
+      // fall through to handler
+    }
+  }
+
+  const response = await handler();
+
+  if (
+    cache &&
+    (response.status === 200 || response.status === 404) &&
+    request.method === "GET"
+  ) {
+    const maxAge = response.status === 200 ? 3600 : 300;
+    const headers = new Headers(response.headers);
+    headers.set("Cache-Control", `public, max-age=${maxAge}`);
+    const toCache = new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+    // Clone for the client — toCache body is consumed by cache.put
+    const forClient = toCache.clone();
+    execCtx.waitUntil(cache.put(request, toCache).catch(() => {}));
+    return forClient;
+  }
+
+  return response;
+}
+
 export default {
   async fetch(
     request: Request,
@@ -74,7 +140,7 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // Health check (GET only)
+    // Health check (GET only) — never edge-cache
     if (path === "/health" || path === "/api/health") {
       return json({
         status: "ok",
@@ -90,6 +156,15 @@ export default {
 
     // Prefetch accepts POST (fire-and-forget from MCP worker) or GET
     const routePath = path.slice("/api/v1".length);
+
+    // Endpoint documentation manifest (docs site + third parties)
+    if (routePath === "/_manifest") {
+      if (request.method !== "GET") {
+        return apiError("METHOD_NOT_ALLOWED", "Only GET is supported", 405);
+      }
+      return json(API_MANIFEST);
+    }
+
     if (routePath === "/prefetch") {
       if (request.method !== "GET" && request.method !== "POST") {
         return apiError(
@@ -107,66 +182,74 @@ export default {
 
     const ctx: RouteContext = { url, env, execCtx };
 
-    try {
-      // --- Languages ---
-      if (routePath === "/languages") return await handleLanguages(ctx);
+    const dispatch = async (): Promise<Response> => {
+      try {
+        // --- Languages ---
+        if (routePath === "/languages") return await handleLanguages(ctx);
 
-      // --- Scripture ---
-      if (routePath === "/scripture") return await handleScripture(ctx);
+        // --- Scripture ---
+        if (routePath === "/scripture") return await handleScripture(ctx);
 
-      // --- Notes ---
-      if (routePath === "/notes") return await handleNotes(ctx);
+        // --- Notes ---
+        if (routePath === "/notes") return await handleNotes(ctx);
 
-      // --- Word Links ---
-      if (routePath === "/word-links") return await handleWordLinks(ctx);
+        // --- Word Links ---
+        if (routePath === "/word-links") return await handleWordLinks(ctx);
 
-      // --- Questions ---
-      if (routePath === "/questions") return await handleQuestions(ctx);
+        // --- Questions ---
+        if (routePath === "/questions") return await handleQuestions(ctx);
 
-      // --- Translation Words ---
-      if (routePath === "/words") return await handleWords(ctx);
-      if (routePath.startsWith("/words/")) {
-        ctx.pathParam = routePath.slice("/words/".length);
-        return await handleWordsPath(ctx);
+        // --- Translation Words ---
+        if (routePath === "/words") return await handleWords(ctx);
+        if (routePath.startsWith("/words/")) {
+          ctx.pathParam = routePath.slice("/words/".length);
+          return await handleWordsPath(ctx);
+        }
+
+        // --- Translation Academy ---
+        if (routePath === "/academy") return await handleAcademy(ctx);
+        if (routePath.startsWith("/academy/")) {
+          ctx.pathParam = routePath.slice("/academy/".length);
+          return await handleAcademyPath(ctx);
+        }
+
+        // --- Quote alignment ---
+        if (routePath === "/quote") return await handleQuote(ctx);
+
+        // --- Article search ---
+        if (routePath === "/search") return await handleSearch(ctx);
+
+        // --- Resource availability ---
+        if (routePath === "/resources") return await handleResources(ctx);
+
+        // --- Open Bible Stories ---
+        if (routePath === "/obs") return await handleObs(ctx);
+        if (routePath === "/obs-notes") return await handleObsNotes(ctx);
+        if (routePath === "/obs-questions")
+          return await handleObsQuestions(ctx);
+
+        return apiError("NOT_FOUND", `Unknown route: ${routePath}`, 404);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const isNotFound =
+          msg.toLowerCase().includes("not found") || msg.includes("404");
+        if (isNotFound) {
+          return apiError("NOT_FOUND", msg, 404, false);
+        }
+        console.error("[api] Unhandled error:", msg);
+        return apiError(
+          "INTERNAL_ERROR",
+          "An unexpected error occurred",
+          500,
+          true,
+        );
       }
+    };
 
-      // --- Translation Academy ---
-      if (routePath === "/academy") return await handleAcademy(ctx);
-      if (routePath.startsWith("/academy/")) {
-        ctx.pathParam = routePath.slice("/academy/".length);
-        return await handleAcademyPath(ctx);
-      }
-
-      // --- Quote alignment ---
-      if (routePath === "/quote") return await handleQuote(ctx);
-
-      // --- Article search ---
-      if (routePath === "/search") return await handleSearch(ctx);
-
-      // --- Resource availability ---
-      if (routePath === "/resources") return await handleResources(ctx);
-
-      // --- Open Bible Stories ---
-      if (routePath === "/obs") return await handleObs(ctx);
-      if (routePath === "/obs-notes") return await handleObsNotes(ctx);
-      if (routePath === "/obs-questions") return await handleObsQuestions(ctx);
-
-      return apiError("NOT_FOUND", `Unknown route: ${routePath}`, 404);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      const isNotFound =
-        msg.toLowerCase().includes("not found") || msg.includes("404");
-      if (isNotFound) {
-        return apiError("NOT_FOUND", msg, 404, false);
-      }
-      console.error("[api] Unhandled error:", msg);
-      return apiError(
-        "INTERNAL_ERROR",
-        "An unexpected error occurred",
-        500,
-        true,
-      );
+    if (isEdgeCacheablePath(routePath)) {
+      return withEdgeCache(request, execCtx, dispatch);
     }
+    return dispatch();
   },
 } satisfies ExportedHandler<Env>;
 

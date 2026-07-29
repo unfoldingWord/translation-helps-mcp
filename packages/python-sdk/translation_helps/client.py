@@ -8,8 +8,9 @@ Progressive-disclosure workflow::
 
     client = TranslationHelpsClient()
 
-    # 1. Discover language codes
+    # 1. Discover language codes + resource availability
     langs = client.list_languages({"filter": "es"})
+    resources = client.list_resources({"language": "en"})
 
     # 2a. Orient: scripture text — all versions (cheap, repeatable)
     passage = client.get_passage({"reference": "JHN 3:16", "language": "en"})
@@ -142,6 +143,26 @@ class TranslationHelpsClient:
         """
         return self.call_tool("list_languages", options or {})
 
+    def list_resources(self, options: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        List which translation resource types are available for a language.
+
+        Returns an availability summary (type, abbreviation, role) from the
+        Door43 catalog — presence check only, not a full catalog with zip URLs.
+
+        Args:
+            options: Dict with ``language`` (required, BCP-47 code).
+
+        Returns:
+            MCP result with ``available`` / ``resources`` lists.
+
+        Example::
+            resources = client.list_resources({"language": "en"})
+        """
+        if not options.get("language"):
+            raise ValueError("language parameter is required")
+        return self.call_tool("list_resources", options)
+
     def get_passage(self, options: Dict[str, Any]) -> Dict[str, Any]:
         """
         Get the scripture TEXT for a passage — all versions (literal, simplified,
@@ -160,6 +181,9 @@ class TranslationHelpsClient:
         """
         Step 1 (orient): Get the background AROUND a passage — book/chapter intro
         notes (tagged scope "book"/"chapter") and a summary of which resources exist.
+
+        Also accepts a bare book reference (e.g. "TIT" or "Titus") — then returns
+        only the book overview (front:intro).
 
         Does NOT return the verse text — use ``get_passage`` for that.
         Call this once when starting to study a passage.
@@ -334,58 +358,6 @@ class TranslationHelpsClient:
         """
         return self.call_tool("get_obs_questions", options)
 
-    # ---------------------------------------------------------------------------
-    # Legacy methods — kept for ContextHarness / backward compatibility
-    # ---------------------------------------------------------------------------
-
-    def fetch_scripture(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Deprecated: use get_passage instead. Fetch Bible text."""
-        return self.call_tool("fetch_scripture", options)
-
-    def fetch_translation_notes(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Deprecated: use get_note instead. Fetch translation notes."""
-        return self.call_tool("fetch_translation_notes", options)
-
-    def fetch_translation_questions(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Deprecated: use get_questions instead. Fetch comprehension questions."""
-        return self.call_tool("fetch_translation_questions", options)
-
-    def fetch_translation_word_links(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Deprecated: use get_passage_index instead. List translation word paths."""
-        return self.call_tool("fetch_translation_word_links", options)
-
-    def fetch_translation_word(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Deprecated: use get_word_article instead. Get a translation word article."""
-        return self.call_tool("fetch_translation_word", options)
-
-    def fetch_translation_academy(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Deprecated: use get_academy_article instead. Get a Translation Academy article."""
-        return self.call_tool("fetch_translation_academy", options)
-
-    def list_subjects(self) -> Dict[str, Any]:
-        """List resource subject types."""
-        return self.call_tool("list_subjects", {})
-
-    def list_resources_for_language(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """List resources for a language. Required: language."""
-        return self.call_tool("list_resources_for_language", options)
-
-    def get_bundle(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Deprecated: use get_passage_context + get_passage_index instead."""
-        return self.call_tool("get_bundle", options)
-
-    def list_translation_academy(self, options: Dict[str, Any] = {}) -> Dict[str, Any]:
-        """List Translation Academy articles. Optional: language, category."""
-        return self.call_tool("list_translation_academy", options)
-
-    def list_translation_words(self, options: Dict[str, Any] = {}) -> Dict[str, Any]:
-        """List Translation Words articles. Optional: language, category (kt|other|names)."""
-        return self.call_tool("list_translation_words", options)
-
-    def list_resources_by_language(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Alias for list_resources_for_language. Required: language."""
-        return self.call_tool("list_resources_by_language", options)
-
     @staticmethod
     def parse_result(result: Dict[str, Any]) -> Any:
         """Extract and parse JSON from an MCP tool result."""
@@ -481,6 +453,15 @@ class AsyncTranslationHelpsClient:
     async def list_languages(self, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Discover available language codes. Optional: filter."""
         return await self.call_tool("list_languages", options or {})
+
+    async def list_resources(self, options: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        List resource types available for a language.
+        Required: language. Presence summary from catalog (not full zip listing).
+        """
+        if not options.get("language"):
+            raise ValueError("language parameter is required")
+        return await self.call_tool("list_resources", options)
 
     async def get_passage(self, options: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -582,56 +563,6 @@ class AsyncTranslationHelpsClient:
             questions = await client.get_obs_questions({"reference": "1:1", "language": "en"})
         """
         return await self.call_tool("get_obs_questions", options)
-
-    # ---------------------------------------------------------------------------
-    # Legacy methods
-    # ---------------------------------------------------------------------------
-
-    async def fetch_scripture(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Deprecated: use get_passage instead."""
-        return await self.call_tool("fetch_scripture", options)
-
-    async def fetch_translation_notes(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Deprecated: use get_note instead."""
-        return await self.call_tool("fetch_translation_notes", options)
-
-    async def fetch_translation_questions(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Deprecated: use get_questions instead."""
-        return await self.call_tool("fetch_translation_questions", options)
-
-    async def fetch_translation_word_links(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Deprecated: use get_passage_index instead."""
-        return await self.call_tool("fetch_translation_word_links", options)
-
-    async def fetch_translation_word(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Deprecated: use get_word_article instead."""
-        return await self.call_tool("fetch_translation_word", options)
-
-    async def fetch_translation_academy(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Deprecated: use get_academy_article instead."""
-        return await self.call_tool("fetch_translation_academy", options)
-
-    async def list_subjects(self) -> Dict[str, Any]:
-        return await self.call_tool("list_subjects", {})
-
-    async def list_resources_for_language(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        return await self.call_tool("list_resources_for_language", options)
-
-    async def list_resources_by_language(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Alias for list_resources_for_language."""
-        return await self.call_tool("list_resources_by_language", options)
-
-    async def get_bundle(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        """Deprecated: use get_passage_context + get_passage_index instead."""
-        return await self.call_tool("get_bundle", options)
-
-    async def list_translation_academy(self, options: Dict[str, Any] = {}) -> Dict[str, Any]:
-        """List Translation Academy articles. Optional: language, category."""
-        return await self.call_tool("list_translation_academy", options)
-
-    async def list_translation_words(self, options: Dict[str, Any] = {}) -> Dict[str, Any]:
-        """List Translation Words articles. Optional: language, category."""
-        return await self.call_tool("list_translation_words", options)
 
     @staticmethod
     def parse_result(result: Dict[str, Any]) -> Any:

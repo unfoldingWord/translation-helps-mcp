@@ -300,11 +300,24 @@ describe("selectResources — passage_overview", () => {
     // Scripture text fetched via get_passage (all versions in one cheap call)
     const tools = plan.initialFetches.map((f) => f.tool);
     expect(tools).toContain("get_passage");
+    expect(tools).toContain("get_passage_context");
     expect(tools).toContain("get_note");
     expect(tools).toContain("get_passage_index");
     // Full rc-link expansion (no budget caps on this path)
     expect(plan.rcExpansion).toContain("tn_to_ta");
     expect(plan.rcExpansion).toContain("twl_to_tw");
+  });
+
+  it("annotated_passage and passage_help plans also fetch get_passage_context", () => {
+    for (const intent of ["annotated_passage", "passage_help"] as const) {
+      const plan = selectResources(
+        { intent, reference: "TIT 1:1-4", confidence: "high" },
+        "es-419",
+      );
+      expect(plan.initialFetches.map((f) => f.tool)).toContain(
+        "get_passage_context",
+      );
+    }
   });
 
   it("passage_overview with no reference returns an empty plan (no fetches)", () => {
@@ -341,6 +354,18 @@ describe("extractSessionContext — checklist vs batch discrimination", () => {
     }
   });
 
+  it("detects a checklist session from localized [Paso N/M] footer", () => {
+    const history: ConversationMessage[] = [
+      {
+        role: "assistant",
+        content:
+          'Tito 1...\n☐ 1. Estructura\n\n---\n*[Paso 1/5] — Di **"next"** cuando estés listo para continuar.*',
+      },
+    ];
+    const ctx = extractSessionContext(history);
+    expect(ctx).toEqual({ type: "checklist", currentStep: 1, totalSteps: 5 });
+  });
+
   it("classifyIntent returns checklist_step for 'next' in a checklist session", () => {
     const r = classifyIntent("next", checklistHistory);
     expect(r.intent).toBe("checklist_step");
@@ -351,6 +376,23 @@ describe("extractSessionContext — checklist vs batch discrimination", () => {
   it("classifyIntent returns checklist_step for 'ok' in a checklist session", () => {
     const r = classifyIntent("ok", checklistHistory);
     expect(r.intent).toBe("checklist_step");
+  });
+
+  it("classifyIntent jumps to a named checklist step (paso/step N)", () => {
+    expect(classifyIntent("paso 3", checklistHistory)).toMatchObject({
+      intent: "checklist_step",
+      nextStep: 3,
+      totalSteps: 3,
+    });
+    expect(classifyIntent("step 2", checklistHistory)).toMatchObject({
+      intent: "checklist_step",
+      nextStep: 2,
+      totalSteps: 3,
+    });
+    // Out of range — fall through (not a checklist jump)
+    expect(classifyIntent("paso 9", checklistHistory).intent).not.toBe(
+      "checklist_step",
+    );
   });
 
   it("batch footer is NOT classified as checklist", () => {

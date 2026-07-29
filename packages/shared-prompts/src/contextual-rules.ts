@@ -27,11 +27,11 @@ export function getContextualRules(requestType: RequestType): string {
 - Explain Greek/Hebrew context, why it matters
 - Connect to translation concepts when relevant`,
     term: `TERM MODE:
-- Use get-translation-words-for-passage or fetch_translation_word
+- Use get_word_article (or get_passage_index to discover paths)
 - Render complete article content
 - Include all sections from MCP response`,
     concept: `CONCEPT MODE:
-- Use get-translation-academy-for-passage or fetch_translation_academy
+- Use get_academy_article (or search_articles to discover paths)
 - Render complete article content verbatim
 - Include all sections, examples, strategies`,
     default: "",

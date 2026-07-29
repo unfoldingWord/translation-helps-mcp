@@ -45,9 +45,9 @@ export function handlePrefetch(ctx: RouteContext): Response {
   }
 
   const warming = Promise.allSettled([
-    handleNotes({ url: makeUrl("/notes"), env }),
-    handleWordLinks({ url: makeUrl("/word-links"), env }),
-    handleQuestions({ url: makeUrl("/questions"), env }),
+    handleNotes({ url: makeUrl("/notes"), env, execCtx }),
+    handleWordLinks({ url: makeUrl("/word-links"), env, execCtx }),
+    handleQuestions({ url: makeUrl("/questions"), env, execCtx }),
   ]);
 
   // Keep the Worker alive until all warming completes

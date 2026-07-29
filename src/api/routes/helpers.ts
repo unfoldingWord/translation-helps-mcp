@@ -4,17 +4,14 @@
  * Common utilities for REST route handlers.
  */
 import type { Env } from "../worker.js";
-import { ZipResourceFetcher2 } from "../../core/resources/ZipResourceFetcher2.js";
+import { ZipResourceFetcher2 } from "@translation-helps/door43";
 import {
   catalogSearch,
   getResourceZipUrl,
   resolveCatalogLanguage,
-} from "../../core/resources/dcsClient.js";
-import type {
-  CatalogEntry,
-  CatalogKVCache,
-} from "../../core/resources/dcsClient.js";
-import { parseReferenceForTool } from "../../core/resources/referenceParser.js";
+} from "@translation-helps/door43";
+import type { CatalogEntry, CatalogKVCache } from "@translation-helps/door43";
+import { parseReferenceForTool } from "@translation-helps/door43";
 
 export {
   ZipResourceFetcher2,
@@ -105,11 +102,16 @@ export function buildBookPaths(
 
 /**
  * Create a ZipResourceFetcher2 with env bindings.
+ * Pass `execCtx` so R2 writes can use waitUntil and survive after the response.
  */
-export function makeFetcher(env: Env): ZipResourceFetcher2 {
+export function makeFetcher(
+  env: Env,
+  execCtx?: ExecutionContext,
+): ZipResourceFetcher2 {
   return new ZipResourceFetcher2({
     KV: env.TRANSLATION_HELPS_CACHE,
     R2: env.ZIP_FILES,
+    execCtx,
   });
 }
 
@@ -123,6 +125,22 @@ export async function tryPaths(
 ): Promise<string | null> {
   for (const p of paths) {
     const content = await fetcher.extractFileFromZip(zip, p);
+    if (content) return content;
+  }
+  return null;
+}
+
+/**
+ * Try each path against a zip URL, preferring KV-cached extracted text
+ * (skips whole-zip download on cold isolates when the book was seen before).
+ */
+export async function tryPathsFromUrl(
+  fetcher: ZipResourceFetcher2,
+  zipUrl: string,
+  paths: string[],
+): Promise<string | null> {
+  for (const p of paths) {
+    const content = await fetcher.getFileText(zipUrl, p);
     if (content) return content;
   }
   return null;

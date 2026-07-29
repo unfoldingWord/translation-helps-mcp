@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { joinAlignedTokens, formatQuoteDisplay } from "../../../src/api/routes/alignmentHelper.js";
-import type { OptimizedToken } from "../../../src/core/alignment/usfmTokenizer.js";
+import {
+  joinAlignedTokens,
+  formatQuoteDisplay,
+} from "../../../src/api/routes/alignmentHelper.js";
+import type { OptimizedToken } from "@translation-helps/door43";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -20,7 +23,11 @@ describe("joinAlignedTokens", () => {
   });
 
   it("joins contiguous tokens with spaces", () => {
-    const tokens = [makeToken(1, "God"), makeToken(2, "so"), makeToken(3, "loved")];
+    const tokens = [
+      makeToken(1, "God"),
+      makeToken(2, "so"),
+      makeToken(3, "loved"),
+    ];
     expect(joinAlignedTokens(tokens)).toBe("God so loved");
   });
 
@@ -45,11 +52,7 @@ describe("joinAlignedTokens", () => {
   });
 
   it("inserts … for each separate discontiguous span", () => {
-    const tokens = [
-      makeToken(1, "A"),
-      makeToken(3, "B"),
-      makeToken(7, "C"),
-    ];
+    const tokens = [makeToken(1, "A"), makeToken(3, "B"), makeToken(7, "C")];
     expect(joinAlignedTokens(tokens)).toBe("A … B … C");
   });
 

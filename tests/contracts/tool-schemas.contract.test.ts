@@ -11,29 +11,15 @@
 
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
+import { MCP_TOOLS, TOOL_REGISTRY } from "../../src/mcp/toolRegistry.js";
 
-// New workflow tools — matches ALL_TOOLS in src/mcp/agent.ts
-import { listLanguagesTool } from "../../src/mcp/tools/listLanguages.js";
-import { getPassageTool } from "../../src/mcp/tools/getPassage.js";
-import { getPassageContextTool } from "../../src/mcp/tools/getPassageContext.js";
-import { getPassageIndexTool } from "../../src/mcp/tools/getPassageIndex.js";
-import { getNoteTool } from "../../src/mcp/tools/getNote.js";
-import { getAcademyArticleTool } from "../../src/mcp/tools/getAcademyArticle.js";
-import { getWordArticleTool } from "../../src/mcp/tools/getWordArticle.js";
-import { getPassageQuestionsTool } from "../../src/mcp/tools/getPassageQuestions.js";
-import { searchArticlesWorkflowTool } from "../../src/mcp/tools/searchArticlesWorkflow.js";
+const ALL_TOOLS = MCP_TOOLS;
 
-const ALL_TOOLS = [
-  listLanguagesTool,
-  getPassageTool,
-  getPassageContextTool,
-  getPassageIndexTool,
-  getNoteTool,
-  getAcademyArticleTool,
-  getWordArticleTool,
-  getPassageQuestionsTool,
-  searchArticlesWorkflowTool,
-];
+function toolByName(name: string) {
+  const t = TOOL_REGISTRY[name];
+  expect(t).toBeDefined();
+  return t;
+}
 
 describe("Tool module contracts", () => {
   for (const tool of ALL_TOOLS) {
@@ -48,16 +34,14 @@ describe("Tool module contracts", () => {
         expect(tool.description.length).toBeGreaterThan(10);
       });
 
-      it("has a Zod inputSchema", () => {
-        expect(
-          tool.inputSchema instanceof z.ZodObject ||
-            tool.inputSchema instanceof z.ZodEffects,
-        ).toBe(true);
+      it("has an inputSchema with a .shape", () => {
+        expect(tool.inputSchema).toBeDefined();
+        expect(tool.inputSchema.shape).toBeDefined();
       });
 
       it("has annotations with readOnlyHint and title", () => {
         expect(tool.annotations).toBeDefined();
-        expect(typeof tool.annotations.readOnlyHint).toBe("boolean");
+        expect(tool.annotations.readOnlyHint).toBe(true);
         expect(typeof tool.annotations.title).toBe("string");
       });
 
@@ -98,46 +82,58 @@ describe("Tool annotations", () => {
 
 describe("Key param requirements", () => {
   it("get_passage requires reference", () => {
-    const shape = getPassageTool.inputSchema.shape;
+    const shape = toolByName("get_passage").inputSchema.shape;
     expect(shape.reference).toBeDefined();
     expect(shape.reference instanceof z.ZodOptional).toBe(false);
   });
 
   it("get_passage_context requires reference", () => {
-    const shape = getPassageContextTool.inputSchema.shape;
+    const shape = toolByName("get_passage_context").inputSchema.shape;
     expect(shape.reference).toBeDefined();
     expect(shape.reference instanceof z.ZodOptional).toBe(false);
   });
 
   it("get_passage_index requires reference", () => {
-    const shape = getPassageIndexTool.inputSchema.shape;
+    const shape = toolByName("get_passage_index").inputSchema.shape;
     expect(shape.reference).toBeDefined();
     expect(shape.reference instanceof z.ZodOptional).toBe(false);
   });
 
   it("search_articles requires query", () => {
-    const shape = searchArticlesWorkflowTool.inputSchema.shape;
+    const shape = toolByName("search_articles").inputSchema.shape;
     expect(shape.query).toBeDefined();
     expect(shape.query instanceof z.ZodOptional).toBe(false);
   });
 
   it("get_academy_article requires path", () => {
-    const shape = getAcademyArticleTool.inputSchema.shape;
+    const shape = toolByName("get_academy_article").inputSchema.shape;
     expect(shape.path).toBeDefined();
     expect(shape.path instanceof z.ZodOptional).toBe(false);
   });
 
   it("get_word_article requires path", () => {
-    const shape = getWordArticleTool.inputSchema.shape;
+    const shape = toolByName("get_word_article").inputSchema.shape;
     expect(shape.path).toBeDefined();
     expect(shape.path instanceof z.ZodOptional).toBe(false);
+  });
+
+  it("list_resources requires language", () => {
+    const shape = toolByName("list_resources").inputSchema.shape;
+    expect(shape.language).toBeDefined();
+    expect(shape.language instanceof z.ZodOptional).toBe(false);
   });
 });
 
 describe("Workflow tool names follow convention", () => {
   it("passage tools use get_ prefix", () => {
     const passageTools = ALL_TOOLS.filter((t) =>
-      ["get_passage", "get_passage_context", "get_passage_index", "get_note", "get_questions"].includes(t.name),
+      [
+        "get_passage",
+        "get_passage_context",
+        "get_passage_index",
+        "get_note",
+        "get_questions",
+      ].includes(t.name),
     );
     expect(passageTools.length).toBe(5);
     for (const t of passageTools) {
@@ -146,7 +142,7 @@ describe("Workflow tool names follow convention", () => {
   });
 
   it("article drill tools use get_ prefix", () => {
-    expect(getAcademyArticleTool.name).toBe("get_academy_article");
-    expect(getWordArticleTool.name).toBe("get_word_article");
+    expect(toolByName("get_academy_article").name).toBe("get_academy_article");
+    expect(toolByName("get_word_article").name).toBe("get_word_article");
   });
 });

@@ -19,27 +19,82 @@ import {
   classifyIntent,
   resolvePhraseDrillIntent,
   extractChallengesFromHistory,
+  buildChecklistMarker,
+  buildBatchMarker,
+  ensureCheckingSessionFooter,
+  hasQuizFollowOnRequest,
+  historyHasQuizCleared,
+  isExplicitQuizRequest,
+  isWordArticleRequest,
+  stripQuizOptOutPhrases,
   type ConversationMessage,
   type IntentResult,
   nextBatchRef,
 } from "./intent.js";
 import { selectResources, type ToolCallSpec } from "./resourceSelector.js";
 import { applyBudget, type EnrichedBundle } from "./budgeter.js";
-import { extractTaPathsFromNotes } from "../resources/rcLinks.js";
+import { extractTaPathsFromNotes } from "@translation-helps/door43";
 import {
   SYSTEM_BASE,
   renderEnrichedBundle,
   intentSystemFragment,
 } from "../rag/PromptFormatter.js";
-import { parseReferenceForTool } from "../resources/referenceParser.js";
+import { parseReferenceForTool } from "@translation-helps/door43";
 import { runOverviewPipeline } from "./PassageOverviewAgents.js";
 import {
   runAnnotator,
   formatAnnotatedResponse,
+  composeAnnotatedGuideReply,
   formatDrillSystem,
   type Challenge,
 } from "./PassageAnnotator.js";
-import type { UIComponent } from "./uiComponents.js";
+import {
+  CHAT_WORD_BUDGETS,
+  closerKindForIntent,
+  enforceReplyBudget,
+  maxTokensForWordBudget,
+  truncateAtFirstQuestion,
+  wordBudgetForIntent,
+} from "./chatPacing.js";
+import { stripCoachScaffoldLabels } from "./coachPedagogy.js";
+import {
+  buildCheckItemFocus,
+  buildPanelFocusResourceHint,
+  extractChecklistReference,
+  parseCheckItemFromMessage,
+  parseFocusHintFromStudyContext,
+  pinFocusedCheckItem,
+} from "../checklist/checkingChecklist.js";
+import {
+  languagePairPromptGuidance,
+  resolveLanguagePair,
+} from "./languagePair.js";
+import {
+  generateQuiz,
+  buildQuizMarker,
+  fallbackQuizOfferFooter,
+} from "./QuizAgents.js";
+import {
+  buildQuizOfferMarker,
+  quizKindMarksReadiness,
+  type QuizKind,
+} from "./onDemandQuiz.js";
+import {
+  buildQuizScopeMarker,
+  deriveReadiness,
+  isBookSettled,
+  isChapterSettled,
+  parseRefParts,
+  quizScopeForReference,
+} from "./contextReadiness.js";
+import { inferPassageContextScope, type UIComponent } from "./uiComponents.js";
+import {
+  DEFAULT_WORKFLOW_MODE,
+  parseWorkflowMode,
+  shouldOfferContextQuiz,
+  workflowModePromptBias,
+  type WorkflowMode,
+} from "./workflowMode.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -61,11 +116,23 @@ export interface HarnessEmit {
   thinking?(label: string, state: "working" | "done"): void;
   /** Emit a structured UI component for the frontend to render. */
   ui?(component: UIComponent): void;
+  /** Imperative resources-panel command (open / focus / highlight / scroll). */
+  panelAction?(action: import("./panelActions.js").PanelAction): void;
+  /** Emit a live trace event (only present when debug mode is active). */
+  trace?(ev: import("./traceEvents.js").TraceEvent): void;
 }
 
 export interface HarnessOptions {
-  /** Language code — default "en". */
+  /**
+   * Source language: Door43 fetches (ULT/UST/TN/TW/TA) AND coach conversation locale.
+   * Default "en".
+   */
   language?: string;
+  /**
+   * Target / receptor language — UX metadata only ("translating into X").
+   * Not used as coach reply locale; LLM does not read target drafts.
+   */
+  targetLanguage?: string;
   /** Max TA articles to expand per passage (rc-link expansion). */
   maxTaExpansion?: number;
   /** Max TW articles to expand per passage. */
@@ -76,6 +143,17 @@ export interface HarnessOptions {
    * the programmatic footer appended by the harness.
    */
   conversationHistory?: ConversationMessage[];
+  /**
+   * Active chat workflow mode (study | translate | check).
+   * Biases prompts and auto context-quiz offers; intents still work across modes.
+   */
+  workflowMode?: WorkflowMode | string;
+  /**
+   * Compact client study-session snapshot (loaded passage, checklist
+   * ticked/unticked lines, outline). Injected into the system prompt so the
+   * coach can prioritize unchecked checklist items and never re-ask `[x]` ones.
+   */
+  studyContext?: string;
   /**
    * Optional streaming callbacks. When present, the harness emits `status`
    * lines during fetch/expansion and uses `generateStream` for the final
@@ -128,9 +206,9 @@ export interface HarnessResult {
   /** Every MCP tool call made during this turn, in invocation order. */
   toolCalls?: ToolCallTrace[];
   /**
-   * The effective language used to fetch resources, which may differ from the
-   * requested language when a variant was resolved (e.g. "es" → "es-419").
-   * Callers should emit `setLanguage` when this differs from the input.
+   * The effective source/resource language used to fetch, which may differ from
+   * the requested source when a variant was resolved (e.g. "es" → "es-419").
+   * Callers should emit `setSourceLanguage` when this differs from the input.
    */
   effectiveLanguage?: string;
 }
@@ -145,6 +223,12 @@ export class ContextHarness {
   private traceLog: ToolCallTrace[] = [];
   /** Stored during run() so helpers (e.g. agenticFallback) can access history. */
   private conversationHistory: ConversationMessage[] = [];
+  /** Stored during run() so safeCallTool can emit trace events. */
+  private emit: HarnessEmit | undefined;
+  /** Receptor label metadata only (optional); coach always uses source `language`. */
+  private targetLanguage = "";
+  /** Active workflow mode for prompt bias + quiz gating. */
+  private workflowMode: WorkflowMode = DEFAULT_WORKFLOW_MODE;
 
   constructor(llm: LLMProvider, callTool: CallToolFn) {
     this.llm = llm;
@@ -157,10 +241,33 @@ export class ContextHarness {
   ): Promise<HarnessResult> {
     this.traceLog = []; // reset per-turn
     this.conversationHistory = opts.conversationHistory ?? [];
+    this.emit = opts.emit;
+    this.workflowMode = parseWorkflowMode(opts.workflowMode);
+    // `language` = source (resources + coach). `targetLanguage` = receptor metadata only.
     const language = opts.language ?? "en";
+    const targetLanguage = opts.targetLanguage?.trim() || language;
+    this.targetLanguage = opts.targetLanguage?.trim() || "";
+    const langPair = resolveLanguagePair({
+      sourceLanguage: language,
+      targetLanguage,
+    });
+    // Tracks whether any UI components were actually emitted this turn.
+    // Used to gate the "Workbench is active" system prompt so the LLM only
+    // references cards that genuinely exist in the user's panel.
+    let componentsEmitted = 0;
 
     // 1. Classify intent — pass history for continuation detection
     let intentResult = classifyIntent(message, opts.conversationHistory);
+
+    // 1a. Compound quiz-skip + follow-on ("omitir… y muéstrame el artículo…"):
+    //     honor the residual intent (same contract as skillChat Path Q).
+    if (
+      intentResult.intent === "quiz_skip" &&
+      hasQuizFollowOnRequest(message)
+    ) {
+      const residualMsg = stripQuizOptOutPhrases(message) || message;
+      intentResult = classifyIntent(residualMsg);
+    }
 
     // 1b. LLM-based phrase-drill disambiguation.
     //     The sync classifier handles unambiguous numeric picks ("3").
@@ -168,7 +275,16 @@ export class ContextHarness {
     //     LLM to decide whether the user is selecting a specific challenge.
     //     This replaces the brittle regex/fuzzy match and correctly handles
     //     connector words ("So why is 'world' a metonymy?").
-    if (intentResult.intent !== "phrase_drill" && opts.conversationHistory) {
+    //     Never steal explicit word/article / quiz / methodology asks.
+    const skipPhraseDrill =
+      intentResult.intent === "phrase_drill" ||
+      intentResult.intent === "word_study" ||
+      intentResult.intent === "methodology" ||
+      intentResult.intent === "quiz_skip" ||
+      intentResult.intent === "quiz_answer" ||
+      intentResult.intent === "checking" ||
+      isWordArticleRequest(message);
+    if (!skipPhraseDrill && opts.conversationHistory) {
       const activeChallenges = extractChallengesFromHistory(
         opts.conversationHistory,
       );
@@ -190,14 +306,71 @@ export class ContextHarness {
       }
     }
 
+    // 1c. Checklist-item click (CHECKITEM) — bind the checklist passage
+    //     reference from STUDY CONTEXT when the click message itself has no
+    //     parseable reference (first click of a session, before any sticky
+    //     CHECKING footer exists). Without this, the checking plan has no
+    //     reference → no initial fetches → training-only reply.
+    const checkItemMarker =
+      intentResult.intent === "checking"
+        ? parseCheckItemFromMessage(message)
+        : null;
+    if (checkItemMarker && !intentResult.reference) {
+      const checklistRef = extractChecklistReference(opts.studyContext);
+      if (checklistRef) {
+        intentResult = {
+          ...intentResult,
+          reference: checklistRef,
+          confidence: "high",
+        };
+      }
+    }
+
     // 2. Build resource plan
     const plan = selectResources(intentResult, language);
+
+    // 2b. Item-check turns must always be grounded in the focused item's
+    //     resources. get_note (whole-passage) covers clicked TN items; a
+    //     clicked TW item additionally fetches its article directly.
+    if (checkItemMarker?.kind === "tw" && plan.intent === "checking") {
+      const path = checkItemMarker.resourceId;
+      const alreadyPlanned = plan.initialFetches.some(
+        (s) =>
+          s.tool === "get_word_article" &&
+          (s.params as { path?: string }).path === path,
+      );
+      if (path.includes("/") && !alreadyPlanned) {
+        plan.initialFetches.push({
+          tool: "get_word_article",
+          params: { path, language },
+        });
+      }
+    }
+
+    // Emit plan trace after resource plan is built
+    opts.emit?.trace?.({
+      type: "plan",
+      intent: plan.intent,
+      initialFetches: plan.initialFetches.map((s) => s.tool),
+      rcExpansion: plan.rcExpansion,
+    });
 
     const isOverview = plan.intent === "passage_overview";
     // For passage_overview, sub-agents each own their full domain — no caps.
     // For all other intents, apply the configured (or default) limits.
     const maxTa = isOverview ? 20 : (opts.maxTaExpansion ?? 3);
     const maxTw = isOverview ? 15 : (opts.maxTwExpansion ?? 4);
+
+    // 3a0. Quiz turns are handled in skillChat Path Q (never fetch resources here).
+    if (plan.intent === "quiz_answer" || plan.intent === "quiz_skip") {
+      return {
+        response: "",
+        citations: [],
+        intent: plan.intent,
+        mode: "compose",
+        toolCalls: [...this.traceLog],
+      };
+    }
 
     // 3a. Checklist step continuation — no resource fetches, just advance the session
     if (
@@ -208,6 +381,7 @@ export class ContextHarness {
         intentResult.nextStep,
         intentResult.totalSteps ?? intentResult.nextStep,
         opts.conversationHistory ?? [],
+        language,
       );
     }
 
@@ -231,25 +405,84 @@ export class ContextHarness {
 
     // 4. Article-locate if needed (no explicit key available)
     if (plan.articleLocate) {
-      const searchResult = await this.safeCallTool("search_articles", {
+      opts.emit?.status("Locating article…");
+      const resourceTypes = plan.articleLocate.resourceType
+        ? [plan.articleLocate.resourceType]
+        : ["ta", "tw"];
+      let searchResult = await this.safeCallTool("search_articles", {
         query: plan.articleLocate.query,
         language,
-        resourceTypes: plan.articleLocate.resourceType
-          ? [plan.articleLocate.resourceType]
-          : ["ta", "tw"],
+        resourceTypes,
         topK: 5,
       });
-      const keys = extractArticleKeys(searchResult, plan.intent);
+      let keys = extractArticleKeys(searchResult, plan.intent, language);
+      let locatedInEnglish = false;
+      // Study-language catalog miss: for Spanish beginners, prefer staying on
+      // TN/GST with a short apology rather than dumping English TW/TA mid-flow.
+      // Other languages may still locate in English once.
+      const preferStayOnPanel =
+        plan.intent === "word_study" && language.toLowerCase().startsWith("es");
+      if (keys.length === 0 && language !== "en" && !preferStayOnPanel) {
+        opts.emit?.status(
+          "No article hits in study language; searching English…",
+        );
+        searchResult = await this.safeCallTool("search_articles", {
+          query: plan.articleLocate.query,
+          language: "en",
+          resourceTypes,
+          topK: 5,
+        });
+        keys = extractArticleKeys(searchResult, plan.intent, "en");
+        locatedInEnglish = keys.length > 0;
+      }
       for (const spec of keys) {
         plan.initialFetches.push(spec);
+      }
+      if (locatedInEnglish) {
+        plan.twEnFallback = true;
       }
     }
 
     if (plan.initialFetches.length === 0) {
-      // Nothing to fetch — fall through to training-only
+      // Word-study with no locate/fetch hits — honest miss (never training-only fabricate).
+      if (plan.intent === "word_study") {
+        const termLabel =
+          intentResult.term?.trim() || plan.articleLocate?.query || "that term";
+        const honest = language.toLowerCase().startsWith("es")
+          ? `No hay un artículo de palabras clave (Translation Words) en \`${language}\` para **${termLabel}**. ` +
+            `Sigamos con la nota y el texto simplificado (GST) en el panel — ahí puedes ver el sentido sin cambiar al inglés. ` +
+            `¿Qué parte de esa palabra o nota te cuesta traducir?`
+          : `I couldn't retrieve a Translation Words article for **${termLabel}**. ` +
+            (language !== "en"
+              ? `No TW catalog entry was found for \`${language}\`. `
+              : "") +
+            `Let's stay with the note and simplified text in the panel. What about this term feels hard to translate?`;
+        if (opts.emit?.token) {
+          for (const word of honest.split(/(\s+)/)) opts.emit.token(word);
+        }
+        return {
+          response: honest,
+          citations: [],
+          intent: plan.intent,
+          mode: "compose",
+          dataWarning: `No TW article retrieved for "${termLabel}".`,
+          toolCalls: [...this.traceLog],
+        };
+      }
+      // Nothing to fetch — fall through to training-only.
+      // Keep recent history so prior passage/notes context is still available.
+      const recentHistory = this.conversationHistory
+        .slice(-8)
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content.replace(/<!--[\s\S]*?-->/g, "").trim(),
+        }))
+        .filter((m) => m.content.length > 0);
       return {
         response: await this.llm.generate([
           { role: "system", content: SYSTEM_BASE },
+          ...recentHistory,
           { role: "user", content: message },
         ]),
         citations: [],
@@ -285,7 +518,7 @@ export class ContextHarness {
           params: {
             ...(passageSpec.params as Record<string, unknown>),
             language: "en",
-          },
+          } as (typeof passageSpec)["params"],
         };
         const [fallbackResult] = await this.parallelFetch([fallbackSpec]);
         const fallbackBundle = assembleBundle(
@@ -300,6 +533,97 @@ export class ContextHarness {
           bundle.dataWarning =
             `No scripture translation found for language "${language}". ` +
             `Showing English (en) as fallback.`;
+        }
+      }
+    }
+
+    // 6c. Auto-retry get_note (and get_passage_index) when the selected language has
+    //     no translation notes. First try the effectiveLanguage from get_passage (e.g.
+    //     "es-419" when "es" was requested) — this is the expected variant, not a
+    //     degradation. Only fall back to English if the variant also yields nothing.
+    if (language !== "en" && bundle.notes.length === 0) {
+      const noteSpec = plan.initialFetches.find((s) => s.tool === "get_note");
+      const indexSpec = plan.initialFetches.find(
+        (s) => s.tool === "get_passage_index",
+      );
+      if (noteSpec || indexSpec) {
+        // Step 1: try the variant language resolved by get_passage (e.g. "es-419")
+        const variantLang = (bundle.metadata as Record<string, unknown>)
+          ?.effectiveLanguage as string | undefined;
+
+        let variantSucceeded = false;
+        if (variantLang && variantLang !== language) {
+          const variantSpecs: ToolCallSpec[] = [];
+          if (noteSpec) {
+            variantSpecs.push({
+              ...noteSpec,
+              params: {
+                ...(noteSpec.params as Record<string, unknown>),
+                language: variantLang,
+              } as (typeof noteSpec)["params"],
+            });
+          }
+          if (indexSpec) {
+            variantSpecs.push({
+              ...indexSpec,
+              params: {
+                ...(indexSpec.params as Record<string, unknown>),
+                language: variantLang,
+              } as (typeof indexSpec)["params"],
+            });
+          }
+          const variantResults = await this.parallelFetch(variantSpecs);
+          const variantBundle = assembleBundle(
+            variantResults,
+            variantSpecs,
+            variantLang,
+          );
+          if (variantBundle.notes.length > 0) {
+            bundle.notes = variantBundle.notes;
+            variantSucceeded = true;
+            // Variant is the expected resolved language — no degradation warning.
+          }
+        }
+
+        // Step 2: only try English if variant also yielded nothing
+        if (!variantSucceeded) {
+          opts.emit?.status(
+            "No notes found for selected language, checking English notes…",
+          );
+          const fallbackSpecs: ToolCallSpec[] = [];
+          if (noteSpec) {
+            fallbackSpecs.push({
+              ...noteSpec,
+              params: {
+                ...(noteSpec.params as Record<string, unknown>),
+                language: "en",
+              } as (typeof noteSpec)["params"],
+            });
+          }
+          if (indexSpec) {
+            fallbackSpecs.push({
+              ...indexSpec,
+              params: {
+                ...(indexSpec.params as Record<string, unknown>),
+                language: "en",
+              } as (typeof indexSpec)["params"],
+            });
+          }
+          const fallbackResults = await this.parallelFetch(fallbackSpecs);
+          const fallbackBundle = assembleBundle(
+            fallbackResults,
+            fallbackSpecs,
+            "en",
+          );
+          if (fallbackBundle.notes.length > 0) {
+            bundle.notes = fallbackBundle.notes;
+            // Don't override effectiveLanguage — scripture stays in selected lang.
+            // Append to dataWarning so it's visible in the UI.
+            const noteWarning = `Translation notes not available in language "${language}". Showing English notes.`;
+            bundle.dataWarning = bundle.dataWarning
+              ? `${bundle.dataWarning} ${noteWarning}`
+              : noteWarning;
+          }
         }
       }
     }
@@ -362,43 +686,133 @@ export class ContextHarness {
     if (plan.intent === "annotated_passage" && intentResult.reference) {
       opts.emit?.status(`Annotating ${intentResult.reference}\u2026`);
 
-      // Fire get_passage_context in parallel with the LLM annotator call.
-      // By this point get_passage has already been called (cache is warm).
-      const contextPromise = this.safeCallTool("get_passage_context", {
-        reference: intentResult.reference,
+      // get_passage_context is already in the initial fetch plan (book/chapter
+      // intros live on bundle.passageContext and emit as passage_context UI).
+      // Annotator + coach brief use source/conversation language (same as resources).
+      const annotated = await runAnnotator(
+        bundle,
+        intentResult.reference,
         language,
-      });
+        this.llm,
+      );
 
-      const [annotated, contextRaw] = await Promise.all([
-        runAnnotator(bundle, intentResult.reference, language, this.llm),
-        contextPromise,
-      ]);
-
-      const passageContext = extractPassageContext(contextRaw);
+      const passageContextForText = bundle.passageContext?.notes.map((n) => ({
+        scope: n.scope,
+        title: n.title ?? (n.scope === "book" ? "Book intro" : "Chapter intro"),
+        body: n.noteText,
+      }));
       // When the frontend supports UI components, skip the numbered list in the text —
       // the challenge_cards component will render it interactively instead.
       const hasUiSupport = typeof opts.emit?.ui === "function";
-      const responseText = formatAnnotatedResponse(
-        annotated,
-        intentResult.reference,
-        language,
-        passageContext,
-        hasUiSupport,
-      );
+      const tnCount = hasUiSupport
+        ? bundle.notes.length
+        : annotated.challenges.filter((c) => c.sourceType === "tn").length;
+      const twCount = hasUiSupport
+        ? bundle.tw.filter((t) => t.title).length
+        : annotated.challenges.filter((c) => c.sourceType === "tw").length;
+
+      // Opt-in context / practice quiz — generate BEFORE the coach brief so the
+      // optional offer can be folded into the same LLM reply (no second call).
+      // When readiness is already settled, offer as practice (no READY / QUIZSCOPE).
+      // Pacing: suppress after a recent QUIZ:cleared unless the user asks again.
+      let quizQuestions: Awaited<ReturnType<typeof generateQuiz>> = [];
+      const modeBlocksQuiz =
+        !shouldOfferContextQuiz(this.workflowMode) &&
+        !isExplicitQuizRequest(message);
+      const readinessScope = quizScopeForReference(intentResult.reference);
+      const readinessState = deriveReadiness(this.conversationHistory);
+      const readinessSettled = readinessScope
+        ? readinessScope.level === "book"
+          ? isBookSettled(readinessState, readinessScope.book)
+          : isChapterSettled(
+              readinessState,
+              readinessScope.book,
+              readinessScope.chapter!,
+            )
+        : false;
+      const refParts = parseRefParts(intentResult.reference);
+      const isVerseScoped = Boolean(refParts?.verseStart);
+      // Settled → practice/passage (on-demand); unsettled verse → context
+      // (chapter readiness); unsettled book/chapter → context.
+      const offerKind: QuizKind = readinessSettled
+        ? isVerseScoped
+          ? "passage"
+          : "practice"
+        : "context";
+      const suppressQuizOffer =
+        modeBlocksQuiz ||
+        (historyHasQuizCleared(this.conversationHistory) &&
+          !isExplicitQuizRequest(message));
+      if (!suppressQuizOffer) {
+        try {
+          opts.emit?.thinking?.("Context quiz", "working");
+          quizQuestions = await generateQuiz(
+            bundle,
+            intentResult.reference,
+            language,
+            this.llm,
+          );
+          opts.emit?.thinking?.("Context quiz", "done");
+        } catch {
+          opts.emit?.thinking?.("Context quiz", "done");
+          quizQuestions = [];
+        }
+      } else {
+        opts.emit?.status(
+          modeBlocksQuiz
+            ? "Skipping context quiz offer (Check mode)…"
+            : "Skipping context quiz offer (previously cleared)…",
+        );
+      }
+      const optionalQuizQuestions =
+        quizQuestions.length >= 3 ? quizQuestions.length : undefined;
+
+      const responseText = hasUiSupport
+        ? await composeAnnotatedGuideReply(this.llm, {
+            reference: intentResult.reference,
+            language,
+            tnCount,
+            twCount,
+            challenges: annotated.challenges,
+            recentTurns: [
+              ...this.conversationHistory.slice(-5),
+              { role: "user", content: message },
+            ],
+            workflowModeBias: workflowModePromptBias(this.workflowMode),
+            optionalQuizQuestions,
+          })
+        : (() => {
+            const brief = formatAnnotatedResponse(
+              annotated,
+              intentResult.reference,
+              language,
+              passageContextForText,
+              false,
+            );
+            // Non-UI path has no brief LLM call to fold into — use named fallback.
+            return optionalQuizQuestions
+              ? `${brief}\n\n---\n${fallbackQuizOfferFooter(language, optionalQuizQuestions)}`
+              : brief;
+          })();
 
       // Emit structured UI components FIRST so the workbench populates immediately
       // while the text is still streaming.  We ALWAYS emit bundle components when
       // UI support is present — even when the annotator produced zero challenges —
-      // so the workbench always shows the scripture text, words, and questions.
+      // so the workbench always shows the scripture text, words, questions, and context.
       // challenge_cards is only added when there is at least one challenge.
       if (hasUiSupport) {
-        // 1. Emit scripture_text + translation_words + translation_questions via helper.
-        //    skipNotes: skip raw notes when challenge_cards are present — they provide
-        //    a richer interactive view of the same data.
-        emitBundleComponents(bundle, intentResult.reference, opts.emit!, {
-          skipNotes: annotated.challenges.length > 0,
-          highlightPhrase: annotated.challenges[0]?.phrase,
-        });
+        // 1. Emit scripture_text + context + notes + words + questions via helper.
+        //    Always emit notes alongside challenge_cards so the study stream can
+        //    show the full resource set (challenges are a curated entry point).
+        componentsEmitted += emitBundleComponents(
+          bundle,
+          intentResult.reference,
+          opts.emit!,
+          {
+            skipNotes: false,
+            highlightPhrase: annotated.challenges[0]?.phrase,
+          },
+        );
 
         // 2. Challenge cards — only when the annotator surfaced at least one challenge.
         if (annotated.challenges.length > 0) {
@@ -406,6 +820,11 @@ export class ContextHarness {
             type: "challenge_cards",
             challenges: annotated.challenges,
           });
+          opts.emit!.trace?.({
+            type: "ui_emit",
+            componentType: "challenge_cards",
+          });
+          componentsEmitted++;
         }
       }
 
@@ -422,8 +841,23 @@ export class ContextHarness {
       const challengeJson = JSON.stringify(annotated.challenges);
       const hidden = `\n<!-- CHALLENGES:${annotated.challenges.length} ${challengeJson} -->`;
 
+      // Markers only — offer wording is already in responseText (folded or fallback).
+      // QUIZSCOPE only for readiness-eligible context quizzes; practice/passage
+      // get a QUIZOFFER companion so an affirmative can regenerate if needed.
+      const quizSuffix =
+        quizQuestions.length >= 3
+          ? buildQuizMarker(0, quizQuestions, offerKind) +
+            (readinessScope && quizKindMarksReadiness(offerKind)
+              ? buildQuizScopeMarker(readinessScope)
+              : buildQuizOfferMarker(
+                  offerKind,
+                  intentResult.reference,
+                  isVerseScoped ? "passage" : "context",
+                ))
+          : "";
+
       return {
-        response: responseText + hidden,
+        response: responseText + hidden + quizSuffix,
         challenges: annotated.challenges,
         citations: [],
         intent: plan.intent,
@@ -436,6 +870,16 @@ export class ContextHarness {
 
     // 8b. passage_overview → sub-agent pipeline (no budget caps; each agent owns its domain)
     if (isOverview && intentResult.reference) {
+      // Emit bundle components (scripture + notes + words) before kicking off the
+      // multi-agent pipeline so the workbench is populated while text streams.
+      if (opts.emit?.ui) {
+        componentsEmitted += emitBundleComponents(
+          bundle,
+          intentResult.reference,
+          opts.emit,
+        );
+      }
+
       const { response: overviewResponse, citations: overviewCitations } =
         await runOverviewPipeline(
           bundle,
@@ -443,19 +887,27 @@ export class ContextHarness {
           language,
           this.llm,
           opts.emit,
+          // Study mode reframes the checklist as a panel-first study path.
+          this.workflowMode,
         );
 
-      // Count the total steps in the checklist so the footer can show Step 1/N.
-      // The orchestrator always emits "☐ N." markers; count them.
+      // Count the total steps in the checklist (orchestrator emits "☐ N." markers).
       const stepCount = (overviewResponse.match(/☐ \d+\./g) ?? []).length || 5;
 
-      // Ensure the response already contains the [Step 1/N] footer from the
-      // orchestrator. If not (LLM didn't follow format exactly), append it.
-      const hasFooter = /\[Step \d+\/\d+\]/i.test(overviewResponse);
-      const response = hasFooter
-        ? overviewResponse
-        : overviewResponse +
-          `\n\n---\n*[Step 1/${stepCount}] — Say **"next"** when ready to continue.*`;
+      // Strip any visible [Step N/M] footers the LLM may have emitted and inject
+      // a hidden CHECKLIST marker + a natural closing question instead.
+      const normalized = normalizeChecklistFooter(
+        overviewResponse,
+        1,
+        stepCount,
+      );
+      const hasNaturalClose = /[¿?]\s*$/.test(normalized.trim());
+      const response =
+        (hasNaturalClose
+          ? normalized
+          : normalized.replace(/\s+$/, "") +
+            `\n\n${checklistContinuePhrase(language)}`) +
+        `\n${buildChecklistMarker(1, stepCount)}`;
 
       return {
         response,
@@ -469,23 +921,204 @@ export class ContextHarness {
 
     // 9. Emit structured UI components for the workbench before LLM generation.
     //    This populates the right panel while the explanation streams in the left panel.
-    if (opts.emit?.ui && intentResult.reference) {
-      emitBundleComponents(bundle, intentResult.reference, opts.emit);
+    //    word_study / methodology may have articles with no passage reference — still surface them.
+    if (opts.emit?.ui) {
+      if (intentResult.reference) {
+        componentsEmitted += emitBundleComponents(
+          bundle,
+          intentResult.reference,
+          opts.emit,
+        );
+      } else {
+        componentsEmitted += emitArticleOnlyComponents(bundle, opts.emit);
+      }
     }
 
-    // 10. Apply budget caps (passage_help and all other intents)
-    const budgeted = applyBudget(bundle);
+    // 9a2. Disclose EN locate fallback when search ran against English catalog.
+    if (
+      plan.intent === "word_study" &&
+      plan.twEnFallback &&
+      bundle.tw.some((t) => Boolean(t.article?.trim()))
+    ) {
+      const disclosure = language.toLowerCase().startsWith("es")
+        ? `No hay Translation Words en \`${language}\`; usando EN.`
+        : `No Translation Words catalog for "${language}"; using English.`;
+      bundle.dataWarning = bundle.dataWarning
+        ? `${bundle.dataWarning} ${disclosure}`
+        : disclosure;
+    }
+
+    // 9b. Word-study: if study-language TW fetch missed, retry English once —
+    //     except Spanish study languages, where we prefer TN/GST + apology.
+    if (
+      plan.intent === "word_study" &&
+      language !== "en" &&
+      !language.toLowerCase().startsWith("es") &&
+      !bundle.tw.some((t) => Boolean(t.article?.trim()))
+    ) {
+      const twSpecs = plan.initialFetches.filter(
+        (s) => s.tool === "get_word_article",
+      );
+      if (twSpecs.length > 0) {
+        opts.emit?.status("Retrying word article in English…");
+        const enSpecs = twSpecs.map((s) => ({
+          ...s,
+          params: {
+            ...(s.params as Record<string, unknown>),
+            language: "en",
+          } as (typeof s)["params"],
+        }));
+        const enResults = await this.parallelFetch(enSpecs);
+        const enBundle = assembleBundle(enResults, enSpecs, "en");
+        for (const tw of enBundle.tw) {
+          if (!tw.article?.trim()) continue;
+          const existing = bundle.tw.find((t) => t.path === tw.path);
+          if (existing) existing.article = tw.article;
+          else bundle.tw.push(tw);
+        }
+        if (bundle.tw.some((t) => t.article?.trim())) {
+          const disclosure = `Translation Words article not available in "${language}"; showing English.`;
+          bundle.dataWarning = bundle.dataWarning
+            ? `${bundle.dataWarning} ${disclosure}`
+            : disclosure;
+          // Re-emit UI now that we have article bodies.
+          if (opts.emit?.ui && !intentResult.reference) {
+            componentsEmitted += emitArticleOnlyComponents(bundle, opts.emit);
+          }
+        }
+      }
+    }
+
+    // 9c. Word-study miss: article locate/fetch returned nothing — answer honestly
+    //     instead of letting the LLM invent a dictionary entry.
+    if (
+      plan.intent === "word_study" &&
+      !bundle.tw.some((t) => Boolean(t.article?.trim()))
+    ) {
+      const termLabel = intentResult.term?.trim() || "that term";
+      const honest = language.toLowerCase().startsWith("es")
+        ? `No hay un artículo de palabras clave (Translation Words) en \`${language}\` para **${termLabel}**. ` +
+          `Sigamos con la nota y el texto simplificado (GST) en el panel. ` +
+          `¿Qué parte de esa palabra te cuesta traducir?`
+        : `I couldn't retrieve a Translation Words article for **${termLabel}**. ` +
+          `It may be filed under a different catalog name, or unavailable in this language. ` +
+          `Let's stay with the note and simplified text in the panel. What feels hard about this term?`;
+      if (opts.emit?.token) {
+        for (const word of honest.split(/(\s+)/)) opts.emit.token(word);
+      }
+      return {
+        response: honest,
+        citations: [],
+        intent: plan.intent,
+        mode: "compose",
+        dataWarning: `No TW article retrieved for "${termLabel}".`,
+        toolCalls: [...this.traceLog],
+      };
+    }
+
+    // 10. Apply budget caps (passage_help and all other intents).
+    //     Pin a clicked checklist item (or PANEL STATE focusHint) first so its
+    //     body survives the cap and stays available for grounding.
+    const panelFocusHint =
+      plan.intent === "checking" && !checkItemMarker
+        ? parseFocusHintFromStudyContext(opts.studyContext)
+        : null;
+    const pinKind = checkItemMarker?.kind ?? panelFocusHint?.kind;
+    const pinId = checkItemMarker?.resourceId ?? panelFocusHint?.id;
+    const focusedForBudget =
+      plan.intent === "checking" && pinKind && pinId
+        ? pinFocusedCheckItem(bundle, pinKind, pinId)
+        : bundle;
+    const budgetBefore =
+      focusedForBudget.notes.length +
+      focusedForBudget.tw.length +
+      focusedForBudget.ta.length +
+      (focusedForBudget.tq?.length ?? 0);
+    const budgeted = applyBudget(focusedForBudget);
+    const budgetAfter =
+      budgeted.notes.length +
+      budgeted.tw.length +
+      budgeted.ta.length +
+      (budgeted.tq?.length ?? 0);
+    opts.emit?.trace?.({
+      type: "budget",
+      before: budgetBefore,
+      after: budgetAfter,
+      dropped: budgetBefore - budgetAfter,
+    });
 
     // 11. Compose prompt (intent-specific) and generate
     opts.emit?.status("Composing answer…");
-    const hasUiSupportHere = typeof opts.emit?.ui === "function";
+    // Only tell the LLM the workbench is active when components were actually
+    // emitted this turn — prevents the LLM from referencing non-existent cards.
+    // Checklist-item click: focus the checking prompt on exactly that item
+    // (semantic-range probing; revisit acknowledgment for completed items)
+    // and inject the focused note/TW/TQ body so coaching cannot invent beyond it.
+    // Soft fallback: PANEL STATE focusHint body when there is no CHECKITEM click.
+    const checkItemFocus =
+      plan.intent === "checking"
+        ? buildCheckItemFocus(message, opts.studyContext, budgeted) ||
+          buildPanelFocusResourceHint(opts.studyContext, budgeted)
+        : "";
     const systemPrompt = buildSystemPrompt(
       budgeted,
       intentResult,
-      hasUiSupportHere,
+      componentsEmitted > 0,
+      langPair,
+      this.workflowMode,
+      opts.studyContext,
+      checkItemFocus,
     );
+    // Deterministic EN-TW disclosure prefix (do not rely solely on the LLM).
+    const twEnPrefix =
+      plan.intent === "word_study" &&
+      bundle.dataWarning &&
+      /usando|English|showing English|using English/i.test(bundle.dataWarning)
+        ? language.toLowerCase().startsWith("es")
+          ? `> ${bundle.dataWarning}\n\n`
+          : `> ${bundle.dataWarning}\n\n`
+        : "";
+    const pacedBudget = wordBudgetForIntent(plan.intent);
+    const genOpts =
+      pacedBudget != null
+        ? { maxTokens: maxTokensForWordBudget(pacedBudget) }
+        : undefined;
+
+    // For paced (long-help) intents: generate fully → enforce word budget →
+    // then emit tokens. Matches annotated_passage so the user never sees a
+    // multi-page dump that is later truncated.
     let response: string;
-    if (opts.emit && this.llm.generateStream) {
+    if (pacedBudget != null) {
+      const raw = await this.llm.generate(
+        [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: message },
+        ],
+        genOpts,
+      );
+      const paced = enforceReplyBudget(raw, {
+        budget: pacedBudget,
+        language,
+        closerKind: closerKindForIntent(plan.intent),
+      });
+      response = twEnPrefix + paced.text;
+      if (opts.emit?.token) {
+        for (const word of response.split(/(\s+)/)) opts.emit.token(word);
+      }
+    } else if (plan.intent === "checking") {
+      // Checking pedagogy: exactly ONE probe question per turn. Prompt-only
+      // rules don't hold, so generate fully → keep only up to the first
+      // question → then emit tokens (never stream a reply that gets cut).
+      const raw = await this.llm.generate([
+        { role: "system", content: systemPrompt },
+        { role: "user", content: message },
+      ]);
+      response = twEnPrefix + truncateAtFirstQuestion(raw).text;
+      if (opts.emit?.token) {
+        for (const word of response.split(/(\s+)/)) opts.emit.token(word);
+      }
+    } else if (opts.emit && this.llm.generateStream) {
+      if (twEnPrefix) opts.emit.token(twEnPrefix);
       const chunks: string[] = [];
       for await (const delta of this.llm.generateStream([
         { role: "system", content: systemPrompt },
@@ -494,12 +1127,22 @@ export class ContextHarness {
         opts.emit.token(delta);
         chunks.push(delta);
       }
-      response = chunks.join("");
+      response = twEnPrefix + chunks.join("");
     } else {
-      response = await this.llm.generate([
-        { role: "system", content: systemPrompt },
-        { role: "user", content: message },
-      ]);
+      if (twEnPrefix && opts.emit?.token) opts.emit.token(twEnPrefix);
+      response =
+        twEnPrefix +
+        (await this.llm.generate([
+          { role: "system", content: systemPrompt },
+          { role: "user", content: message },
+        ]));
+    }
+
+    // Non-paced streaming paths skip enforceReplyBudget — still drop English
+    // prompt scaffolding that models sometimes echo. (Checking replies were
+    // already stripped + first-question-truncated above.)
+    if (pacedBudget == null && plan.intent !== "checking") {
+      response = stripCoachScaffoldLabels(response);
     }
 
     const citations = collectCitations(budgeted);
@@ -508,18 +1151,25 @@ export class ContextHarness {
         ? "compose"
         : "training-only";
 
-    // 12. Append batch-progress footer (deterministic — not generated by LLM)
+    // 12. Append batch-progress marker + natural closing question
     let nextBatch: string | undefined;
     if (plan.intent === "passage_help" && intentResult.reference) {
       const parsed = parseReferenceForTool(intentResult.reference);
       if (parsed?.verseEnd) {
-        // Only add footer when we are working through a verse range (batch mode)
+        // Only when we are working through a verse range (batch mode)
         const next = nextBatchRef(intentResult.reference);
         if (next) {
           nextBatch = next;
-          response += `\n\n---\n*Batch: ${intentResult.reference} | Say "next" for ${next}*`;
+          response +=
+            `\n\n${batchContinuePhrase(language, next)}` +
+            `\n${buildBatchMarker(next)}`;
         }
       }
+    }
+
+    // Sticky checking session footer so validation replies stay on Path checking.
+    if (plan.intent === "checking" && intentResult.reference) {
+      response = ensureCheckingSessionFooter(response, intentResult.reference);
     }
 
     return {
@@ -548,19 +1198,24 @@ export class ContextHarness {
     const { runAgenticLoop } = await import("./agenticLoop.js");
     // Pass conversation history so the LLM can see the active passage/drill context
     // and call the right tools (e.g. get_academy_article for "what is personification?")
+    // Wrap callTool so every agentic tool invocation emits X-ray tool_call traces.
+    const tracedCallTool: CallToolFn = (tool, params) =>
+      this.safeCallTool(tool, params);
     const result = await runAgenticLoop(
       message,
       language,
       this.llm,
-      this.callTool,
+      tracedCallTool,
       this.conversationHistory as Array<{
         role: "user" | "assistant" | "system";
         content: string;
       }>,
+      this.targetLanguage || undefined,
     );
     return {
       ...result,
       intent: intentResult.intent,
+      toolCalls: [...this.traceLog],
     };
   }
 
@@ -579,38 +1234,61 @@ export class ContextHarness {
     nextStep: number,
     totalSteps: number,
     history: ConversationMessage[],
+    language: string,
   ): Promise<HarnessResult> {
     const isLastStep = nextStep >= totalSteps;
+    const lang = language?.trim() || "en";
 
-    const systemPrompt = `You are a Bible translation coach leading a structured lesson.
+    const systemPrompt = `You are a Bible translation consultant leading a structured lesson — consult with CANA questions, don't lecture or grade unknown receptor-language form.
 
 The conversation history contains a checklist of ${totalSteps} steps and the full analysis.
 Your job is to present **Step ${nextStep}** now.
 
+LANGUAGE: Write ALL human-readable text in the user's study language (${lang}).
+Keep these checklist tokens EXACTLY as written (parsed by the app): ☐ N.  ✅
+Do NOT write [Step N/M] footers, "say next", "di next", or any keyword instructions.
+
 Rules:
 - Find the ☐ ${nextStep}. item in the checklist.
-- Present it fully in **80–120 words** — direct, actionable, concrete.
+- Present it fully in **80–120 words** — direct, actionable, concrete — in ${lang}.
+- Point to panel resources when relevant; do not re-dump the full passage or all notes.
 - Update the checklist display: mark steps 1–${nextStep - 1} as ✅, show **☐ ${nextStep}.** as bold/active, leave ☐ ${nextStep + 1}${nextStep + 1 <= totalSteps ? "–" + totalSteps : ""} as is.
-- End your response with ONE short question or engagement prompt for the translator.
-- After that, add: ---
+- End with exactly ONE consultant question — in ${lang}:
   ${
     isLastStep
-      ? "*✅ All steps complete! Ask me anything about this passage.*"
-      : `*[Step ${nextStep}/${totalSteps}] — Say **"next"** when ready to continue.*`
+      ? `- Ask how they would render a key source item, what feels hard, invite a draft in Mi traducción, or pick a section/verse (no keyword).`
+      : `- Name what comes next (e.g. the title of step ${nextStep + 1}), or ask what's hard / how they'd translate a flagged phrase / invite a draft, so they can reply naturally ("ok", "vamos", "la sección 2", etc.).`
   }
 
 Do NOT repeat the step content from earlier turns. Present only this step's material.
+Do NOT rewrite a full model translation unless they explicitly ask.
 Keep it SHORT. Quality over quantity.`;
 
     const messages: ConversationMessage[] = [
       ...history,
-      { role: "user", content: "next" },
+      { role: "user", content: `Continue with step ${nextStep}` },
     ];
 
-    const response = await this.llm.generate([
+    let response = await this.llm.generate([
       { role: "system", content: systemPrompt },
       ...messages,
     ]);
+
+    // Strip any legacy visible footers the model may still emit; inject hidden marker.
+    response = normalizeChecklistFooter(response, nextStep, totalSteps);
+    if (!/<!-- CHECKLIST:\d+\/\d+ -->/.test(response)) {
+      response =
+        response.replace(/\s+$/, "") +
+        `\n${buildChecklistMarker(nextStep, totalSteps)}`;
+    }
+    if (
+      isLastStep &&
+      !/[¿?]\s*$/.test(response.replace(/<!--[\s\S]*?-->/g, "").trim())
+    ) {
+      response =
+        response.replace(/<!-- CHECKLIST:[\s\S]*?-->/, "").replace(/\s+$/, "") +
+        `\n\n${checklistCompletePhrase(lang)}\n${buildChecklistMarker(nextStep, totalSteps)}`;
+    }
 
     return {
       response,
@@ -752,11 +1430,20 @@ Keep it SHORT. Quality over quantity.`;
       content: string;
     }>;
 
-    const response = await this.llm.generate([
-      { role: "system", content: systemPrompt },
-      ...recentHistory,
-      { role: "user", content: userMessage },
-    ]);
+    const drillBudget = CHAT_WORD_BUDGETS.phrase_drill;
+    const rawResponse = await this.llm.generate(
+      [
+        { role: "system", content: systemPrompt },
+        ...recentHistory,
+        { role: "user", content: userMessage },
+      ],
+      { maxTokens: maxTokensForWordBudget(drillBudget) },
+    );
+    const paced = enforceReplyBudget(rawResponse, {
+      budget: drillBudget,
+      language,
+      closerKind: "drill",
+    });
 
     const citations: Array<{ path: string; title?: string }> = [];
     if (challenge.wordPath)
@@ -769,8 +1456,23 @@ Keep it SHORT. Quality over quantity.`;
     // the hasActivePassageSession look-back window.
     const drillMarker = `\n<!-- PHRASE_DRILL:${challengeIndex}/${challenges?.length ?? 0} -->`;
 
+    // Emit phrase_drill UI component so the workbench shows the focused drill card.
+    if (this.emit?.ui && challenge) {
+      this.emit.ui({
+        type: "phrase_drill",
+        challenge,
+        noteText: challenge.rawNoteText ?? challenge.noteText ?? "",
+        atSuggestion: challenge.at,
+      });
+      this.emit.trace?.({ type: "ui_emit", componentType: "phrase_drill" });
+    }
+
+    if (this.emit?.token) {
+      for (const word of paced.text.split(/(\s+)/)) this.emit.token(word);
+    }
+
     return {
-      response: response + drillMarker,
+      response: paced.text + drillMarker,
       citations,
       intent: "phrase_drill",
       mode: "compose",
@@ -790,22 +1492,44 @@ Keep it SHORT. Quality over quantity.`;
     const start = Date.now();
     try {
       const result = await this.callTool(tool, params);
+      const ms = Date.now() - start;
+      const summary = summarizeResult(tool, result);
+      const resultSnapshot = snapshotResult(result);
       this.traceLog.push({
         tool,
         params,
-        latencyMs: Date.now() - start,
+        latencyMs: ms,
         ok: true,
-        summary: summarizeResult(tool, result),
-        resultSnapshot: snapshotResult(result),
+        summary,
+        resultSnapshot,
+      });
+      this.emit?.trace?.({
+        type: "tool_call",
+        name: tool,
+        params,
+        summary,
+        resultSnapshot,
+        ms,
+        ok: true,
       });
       return result;
     } catch (e) {
+      const ms = Date.now() - start;
+      const error = e instanceof Error ? e.message : String(e);
       this.traceLog.push({
         tool,
         params,
-        latencyMs: Date.now() - start,
+        latencyMs: ms,
         ok: false,
-        error: e instanceof Error ? e.message : String(e),
+        error,
+      });
+      this.emit?.trace?.({
+        type: "tool_call",
+        name: tool,
+        params,
+        ms,
+        ok: false,
+        error,
       });
       return null;
     }
@@ -935,28 +1659,34 @@ function assembleBundle(
           bundle.scripture = { versions: versions as never, format: "plain" };
 
           // Defense-in-depth: if every version is the original language (Greek/Hebrew),
-          // the requested language has no translation. Set a warning rather than silently
-          // presenting original-language text as if it were a translation.
+          // the requested language has no translation available.
+          // Leave bundle.scriptures EMPTY in that case so the English fallback at
+          // step 6b (bundle.scriptures.length === 0) can fire. Without this guard,
+          // original-language versions would populate bundle.scriptures and the
+          // fallback would never trigger, leaving the user with only Greek/Hebrew.
           const allOriginal = versions.every((v) => v.role === "original");
-          if (allOriginal && versions.length > 0) {
+          if (allOriginal) {
             bundle.dataWarning =
               "No scripture translation found for the selected language. " +
               "Showing original language text (Greek/Hebrew) only.";
-          }
-
-          for (const v of versions) {
-            if (
-              !bundle.scriptures.some((s) => s.resourceType === v.resourceType)
-            ) {
-              bundle.scriptures.push({
-                resourceType: v.resourceType,
-                label:
-                  SCRIPTURE_LABELS[v.resourceType] ??
-                  ROLE_LABELS[v.role] ??
-                  v.resourceType.toUpperCase(),
-                text: v.text,
-                format: "plain",
-              });
+            // bundle.scriptures intentionally left empty — fallback will populate it.
+          } else {
+            for (const v of versions) {
+              if (
+                !bundle.scriptures.some(
+                  (s) => s.resourceType === v.resourceType,
+                )
+              ) {
+                bundle.scriptures.push({
+                  resourceType: v.resourceType,
+                  label:
+                    SCRIPTURE_LABELS[v.resourceType] ??
+                    ROLE_LABELS[v.role] ??
+                    v.resourceType.toUpperCase(),
+                  text: v.text,
+                  format: "plain",
+                });
+              }
             }
           }
         }
@@ -983,6 +1713,7 @@ function assembleBundle(
               id: String(note["id"] ?? ""),
               text: String(note["note"] ?? ""),
               quote: note["quote"] ? String(note["quote"]) : undefined,
+              gatewayQuote: extractGatewayQuote(note["gatewayQuote"]),
               verse: note["verse"] ? String(note["verse"]) : undefined,
               externalReference: note["supportReference"]
                 ? { path: String(note["supportReference"]) }
@@ -1080,6 +1811,20 @@ function assembleBundle(
         }
         break;
       }
+
+      case "get_passage_context": {
+        // Returns: { reference, context[], availability? } — book/chapter intros
+        const ref = String(
+          (data as Record<string, unknown>)["reference"] ??
+            (spec.params as Record<string, unknown>).reference ??
+            "",
+        );
+        const parsed = parsePassageContextPayload(data, ref);
+        if (parsed && parsed.notes.length > 0) {
+          bundle.passageContext = parsed;
+        }
+        break;
+      }
     }
   }
 
@@ -1093,7 +1838,10 @@ function extractPayload(raw: unknown): Record<string, unknown> | null {
   // MCP tool responses often have a { content: [{type: "text", text: "..."}] } shape
   if (Array.isArray(obj["content"])) {
     const first = (obj["content"] as unknown[])[0] as Record<string, unknown>;
-    if (first?.["type"] === "text" && typeof first["text"] === "string") {
+    if (
+      (first?.["type"] === "text" || typeof first?.["text"] === "string") &&
+      typeof first["text"] === "string"
+    ) {
       try {
         return JSON.parse(first["text"]) as Record<string, unknown>;
       } catch {
@@ -1113,6 +1861,7 @@ function extractPayload(raw: unknown): Record<string, unknown> | null {
     "questions" in obj ||
     "resources" in obj ||
     "languages" in obj ||
+    "results" in obj ||
     "issues" in obj ||
     "keyTerms" in obj ||
     "availability" in obj ||
@@ -1123,23 +1872,105 @@ function extractPayload(raw: unknown): Record<string, unknown> | null {
   return null;
 }
 
-/** Extract the context array from a get_passage_context response. */
-function extractPassageContext(
+/** Normalize a get_passage_context payload into bundle.passageContext shape. */
+function parsePassageContextPayload(
+  data: Record<string, unknown>,
+  fallbackReference: string,
+): NonNullable<EnrichedBundle["passageContext"]> | undefined {
+  const context = data["context"] as Array<Record<string, unknown>> | undefined;
+  if (!Array.isArray(context) || context.length === 0) return undefined;
+
+  const notes = context
+    .map((n, index) => {
+      const noteText = String(
+        n["note"] ?? n["noteText"] ?? n["body"] ?? n["text"] ?? "",
+      )
+        .trim()
+        .replace(/\\n/g, "\n")
+        .replace(/<br\s*\/?>/gi, "\n");
+      if (!noteText) return null;
+      const scope: "book" | "chapter" =
+        n["scope"] === "book" || String(n["chapter"] ?? "") === "front"
+          ? "book"
+          : "chapter";
+      const titleRaw = n["title"] ? String(n["title"]).trim() : "";
+      return {
+        id: String(n["id"] ?? `intro-${scope}-${index}`).trim(),
+        scope,
+        ...(titleRaw ? { title: titleRaw } : {}),
+        noteText,
+      };
+    })
+    .filter((n): n is NonNullable<typeof n> => n !== null);
+
+  if (notes.length === 0) return undefined;
+
+  const reference = String(data["reference"] ?? fallbackReference ?? "").trim();
+  const availabilityRaw = data["availability"] as
+    | Array<Record<string, unknown>>
+    | undefined;
+  const availability = Array.isArray(availabilityRaw)
+    ? availabilityRaw.map((a) => ({
+        type: String(a["type"] ?? ""),
+        abbreviation: a["abbreviation"] ? String(a["abbreviation"]) : undefined,
+        subject: a["subject"] ? String(a["subject"]) : undefined,
+        role: a["role"] ? String(a["role"]) : undefined,
+      }))
+    : undefined;
+
+  return {
+    reference,
+    scope: inferPassageContextScope(reference),
+    notes,
+    ...(availability && availability.length > 0 ? { availability } : {}),
+  };
+}
+
+/** Extract passage context from a raw tool response (MCP-wrapped or direct). */
+function extractPassageContextBundle(
   raw: unknown,
-):
-  | Array<{ scope: "book" | "chapter"; title: string; body: string }>
-  | undefined {
+  fallbackReference = "",
+): NonNullable<EnrichedBundle["passageContext"]> | undefined {
   const data = extractPayload(raw);
   if (!data) return undefined;
-  const context = data["context"] as
-    | Array<{ scope: string; title: string; body: string }>
-    | undefined;
-  if (!Array.isArray(context) || context.length === 0) return undefined;
-  return context as Array<{
-    scope: "book" | "chapter";
-    title: string;
-    body: string;
-  }>;
+  return parsePassageContextPayload(data, fallbackReference);
+}
+
+/**
+ * Build a passage_context UIComponent from a successful get_passage_context fetch.
+ * Exported for unit tests.
+ */
+export function buildPassageContextComponent(
+  reference: string,
+  raw: unknown,
+): Extract<UIComponent, { type: "passage_context" }> | null {
+  const parsed = extractPassageContextBundle(raw, reference);
+  if (!parsed || parsed.notes.length === 0) return null;
+  return {
+    type: "passage_context",
+    reference: parsed.reference || reference,
+    scope: parsed.scope,
+    notes: parsed.notes,
+    ...(parsed.availability ? { availability: parsed.availability } : {}),
+  };
+}
+
+/**
+ * Narrow a raw `gatewayQuote` field from the notes payload
+ * (`{ original, aligned }` — see /api/v1/notes enrichment).
+ * Returns undefined when absent/malformed so older KV-cached payloads
+ * without the field degrade gracefully.
+ */
+function extractGatewayQuote(
+  raw: unknown,
+): { original?: string; aligned?: string } | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const gq = raw as Record<string, unknown>;
+  const original =
+    typeof gq["original"] === "string" ? gq["original"] : undefined;
+  const aligned = typeof gq["aligned"] === "string" ? gq["aligned"] : undefined;
+  if (original === undefined && aligned === undefined) return undefined;
+  return { original, aligned };
 }
 
 function extractArticleText(raw: unknown): string | null {
@@ -1152,29 +1983,79 @@ function extractArticleText(raw: unknown): string | null {
 function extractArticleKeys(
   searchResult: unknown,
   intent: string,
+  language: string,
 ): ToolCallSpec[] {
   if (!searchResult || typeof searchResult !== "object") return [];
-  const r = searchResult as Record<string, unknown>;
-  const results = r["results"] as
+  // Prefer payload unwrap (MCP content[] / structuredContent) so catalog hits
+  // are not missed when search_articles is wrapped.
+  const r =
+    extractPayload(searchResult) ?? (searchResult as Record<string, unknown>);
+  const results = (r["results"] ??
+    (searchResult as Record<string, unknown>)["results"]) as
     | Array<{ path: string; resourceType: "ta" | "tw"; title: string }>
     | undefined;
   if (!results?.length) return [];
 
+  const lang = language || String(r["language"] ?? "en");
   const specs: ToolCallSpec[] = [];
   for (const hit of results.slice(0, 3)) {
     if (hit.resourceType === "ta" || intent === "methodology") {
       specs.push({
         tool: "get_academy_article",
-        params: { path: hit.path, language: String(r["language"] ?? "en") },
+        params: { path: hit.path, language: lang },
       });
     } else if (hit.resourceType === "tw" || intent === "word_study") {
       specs.push({
         tool: "get_word_article",
-        params: { path: hit.path, language: String(r["language"] ?? "en") },
+        params: { path: hit.path, language: lang },
       });
     }
   }
   return specs;
+}
+
+/**
+ * Emit TW / TA article cards when there is no passage reference
+ * (e.g. standalone word_study or methodology).
+ */
+function emitArticleOnlyComponents(
+  bundle: EnrichedBundle,
+  emit: HarnessEmit,
+): number {
+  if (!emit.ui) return 0;
+  let count = 0;
+
+  const wordsWithArticles = bundle.tw.filter((t) => t.article?.trim());
+  if (wordsWithArticles.length > 0) {
+    emit.ui({
+      type: "translation_words",
+      reference: wordsWithArticles[0].title || wordsWithArticles[0].path,
+      words: wordsWithArticles.map((w) => ({
+        id: w.id,
+        term: w.title,
+        definition: w.article ? w.article.slice(0, 2000) : undefined,
+        verse: w.verse,
+        origWords: w.origWords,
+        wordPath: w.wordPath ?? w.path,
+      })),
+    });
+    emit.trace?.({ type: "ui_emit", componentType: "translation_words" });
+    count++;
+  }
+
+  for (const ta of bundle.ta.filter((a) => a.article?.trim()).slice(0, 1)) {
+    emit.ui({
+      type: "academy_article",
+      path: ta.path,
+      title: ta.title,
+      markdown: ta.article ?? "",
+      language: bundle.metadata.effectiveLanguage,
+    });
+    emit.trace?.({ type: "ui_emit", componentType: "academy_article" });
+    count++;
+  }
+
+  return count;
 }
 
 // ---------------------------------------------------------------------------
@@ -1189,6 +2070,7 @@ const ORIGINAL_SCRIPTURE_LABELS = new Set(["UGNT", "UHB"]);
  *
  * Emits:
  *   - `scripture_text`        — rich tabbed scripture viewer (all fetched versions)
+ *   - `passage_context`       — book/chapter intro notes (retained across drills)
  *   - `translation_notes`     — TN entries with quotes, categories, TA links (skippable)
  *   - `translation_words`     — TW key-term definitions
  *   - `translation_questions` — TQ comprehension questions
@@ -1201,8 +2083,9 @@ function emitBundleComponents(
   reference: string,
   emit: HarnessEmit,
   opts: { skipNotes?: boolean; highlightPhrase?: string } = {},
-): void {
-  if (!emit.ui) return;
+): number {
+  if (!emit.ui) return 0;
+  let count = 0;
 
   // scripture_text — tabbed scripture panel with RTL support
   if (bundle.scriptures.length > 0) {
@@ -1217,6 +2100,23 @@ function emitBundleComponents(
       })),
       highlightPhrase: opts.highlightPhrase,
     });
+    emit.trace?.({ type: "ui_emit", componentType: "scripture_text" });
+    count++;
+  }
+
+  // passage_context — book/chapter orientation (distinct from verse TN)
+  if (bundle.passageContext && bundle.passageContext.notes.length > 0) {
+    emit.ui({
+      type: "passage_context",
+      reference: bundle.passageContext.reference || reference,
+      scope: bundle.passageContext.scope,
+      notes: bundle.passageContext.notes,
+      ...(bundle.passageContext.availability
+        ? { availability: bundle.passageContext.availability }
+        : {}),
+    });
+    emit.trace?.({ type: "ui_emit", componentType: "passage_context" });
+    count++;
   }
 
   // translation_notes — skip when challenge_cards covers them (annotated_passage)
@@ -1227,11 +2127,14 @@ function emitBundleComponents(
       notes: bundle.notes.map((n) => ({
         id: n.id,
         quote: n.quote,
+        gatewayQuote: n.gatewayQuote,
         noteText: n.text,
         supportReference: n.supportReference,
         verse: n.verse,
       })),
     });
+    emit.trace?.({ type: "ui_emit", componentType: "translation_notes" });
+    count++;
   }
 
   // translation_words — key terms (include even without articles for basic listing)
@@ -1249,6 +2152,8 @@ function emitBundleComponents(
         wordPath: w.wordPath,
       })),
     });
+    emit.trace?.({ type: "ui_emit", componentType: "translation_words" });
+    count++;
   }
 
   // translation_questions — comprehension checks
@@ -1263,7 +2168,11 @@ function emitBundleComponents(
         verse: q.verse,
       })),
     });
+    emit.trace?.({ type: "ui_emit", componentType: "translation_questions" });
+    count++;
   }
+
+  return count;
 }
 
 // ---------------------------------------------------------------------------
@@ -1274,23 +2183,57 @@ function buildSystemPrompt(
   bundle: EnrichedBundle,
   intentResult: IntentResult,
   hasUiSupport = false,
+  langPair?: ReturnType<typeof resolveLanguagePair>,
+  workflowMode: WorkflowMode = DEFAULT_WORKFLOW_MODE,
+  studyContext?: string,
+  checkItemFocus?: string,
 ): string {
   const context = renderEnrichedBundle(bundle);
   const intentBlock = intentSystemFragment(intentResult.intent);
+  const modeBias = workflowModePromptBias(workflowMode);
 
-  // When the workbench panel is active the frontend already displays the
+  // When UI components are active the frontend already displays the
   // scripture text, translation notes, and key terms as structured cards.
-  // Instruct the LLM not to quote the full passage or repeat raw note/TW
-  // content — only provide explanation and commentary.
+  // Instruct the LLM not to dump the full passage — but still ground coaching
+  // in the note/article bodies provided in the context / focus blocks below.
   const workbenchHint = hasUiSupport
-    ? `\n\n## Important — Workbench is active
-The user's screen shows the scripture passage and translation resources in a dedicated panel on the right.
-Do NOT quote or reproduce the scripture text in your response.
-Do NOT list out translation notes or key term definitions verbatim.
-Instead, provide concise commentary, explain the translation challenge, and reference specific phrases by name only.`
+    ? `\n\n## Important — Study resources are on screen
+The user's screen shows the scripture passage (pinned header) and translation resources as interactive cards in the **resources side panel**.
+Read the PANEL STATE block each turn (open/tab/counts/quiz/checklist/focusHint) and refer accurately to what is loaded.
+Point them to the text/notes **in the panel** ("lee el texto en el panel…" / "read the text in the panel…") instead of re-dumping whole passages or listing every note.
+Do NOT quote or reproduce the full scripture text in your response.
+Do NOT dump a full list of all translation notes or key-term definitions — but DO ground coaching in the specific note/TW/TQ/TA bodies provided in the context or focused-resource block below (short quote or close paraphrase of *that* resource).
+Do NOT invent panel content or translation principles that are absent from PANEL STATE / STUDY CONTEXT / the loaded resource bodies.
+When focusHint / a focused resource body is present, stick to what that note or article says — never substitute a generic linguistics lecture (e.g. inventing abstract-noun advice).
+If the loaded resources do not cover the user's question: say so briefly and offer to open/fetch the relevant panel note or article.
+You cannot see Mi traducción draft text — never claim to have read their wording.
+Coach with concise commentary, reference phrases by name, ask what feels hard, and invite drafts in **Mi traducción**.
+Optional panel steer (hidden trailer only): \`<!-- PANEL:focus_tab:context -->\`, \`<!-- PANEL:highlight:note:<id> -->\`.`
     : "";
 
-  return `${SYSTEM_BASE}${workbenchHint}\n\n${intentBlock}\n\n${context}`;
+  const pairHint = langPair
+    ? `\n\n## Language pair\n${languagePairPromptGuidance(langPair)}`
+    : "";
+
+  // Session state from the client — includes the Checking-checklist `[x]`/`[ ]`
+  // lines and PANEL STATE. Critical for checking turns: probe only `[ ]` items.
+  const studyHint = studyContext?.trim()
+    ? `\n\n## STUDY CONTEXT (session state)\n${studyContext.trim()}\nChecklist lines starting with [x] are ALREADY validated — never re-ask those items. Probe only [ ] items. PANEL STATE describes the live resources panel — do not invent content missing from it. When focusHint names a note/term, ground this turn in that item's loaded body from the context below.`
+    : "";
+
+  // Single-item focus when the user clicked a Checking-checklist item.
+  const focusHint = checkItemFocus?.trim()
+    ? `\n\n${checkItemFocus.trim()}`
+    : "";
+
+  // Light checking-turn reinforcement (even without a CHECKITEM click).
+  const checkingGroundHint =
+    intentResult.intent === "checking"
+      ? `\n\n## Checking turn — resource grounding
+Walk the Checking checklist from loaded TN / TW / TQ only. Paraphrase what the loaded note or article says; do not invent translation principles or abstract-noun / grammar lectures from training data. If a focused resource body is present above, that body is authoritative for this turn.`
+      : "";
+
+  return `${SYSTEM_BASE}${workbenchHint}${pairHint}${studyHint}${focusHint}${checkingGroundHint}\n\n${modeBias}\n\n${intentBlock}\n\n${context}`;
 }
 
 function collectCitations(
@@ -1356,40 +2299,53 @@ function snapshotResult(result: unknown, depth = 0): unknown {
 function summarizeResult(tool: string, result: unknown): string | undefined {
   if (!result || typeof result !== "object") return undefined;
   const r = result as Record<string, unknown>;
+  const cache =
+    r["meta"] && typeof r["meta"] === "object"
+      ? String((r["meta"] as Record<string, unknown>)["cache"] ?? "")
+      : "";
+  const cacheTag = cache ? ` [${cache}]` : "";
 
   // New workflow tools
   if (tool === "get_passage") {
     const versions = r["versions"] as unknown[] | undefined;
-    return versions?.length ? `${versions.length} version(s)` : undefined;
+    return versions?.length
+      ? `${versions.length} version(s)${cacheTag}`
+      : undefined;
   }
   if (tool === "get_passage_context") {
     const context = r["context"] as unknown[] | undefined;
     return context?.length !== undefined
-      ? `${context.length} context note(s)`
+      ? `${context.length} context note(s)${cacheTag}`
       : undefined;
   }
   if (tool === "get_note") {
     const notes = r["notes"] as unknown[] | undefined;
-    return notes?.length !== undefined ? `${notes.length} note(s)` : undefined;
+    return notes?.length !== undefined
+      ? `${notes.length} note(s)${cacheTag}`
+      : undefined;
   }
   if (tool === "get_passage_index") {
     const words = r["words"] as unknown[] | undefined;
     const notes = r["notes"] as unknown[] | undefined;
-    return `${notes?.length ?? 0} note(s), ${words?.length ?? 0} word link(s)`;
+    return `${notes?.length ?? 0} note(s), ${words?.length ?? 0} word link(s)${cacheTag}`;
   }
   if (tool === "get_academy_article" || tool === "get_word_article") {
     const text = r["article"] as string | undefined;
-    return text ? `${Math.round(text.length / 100) * 100} chars` : undefined;
+    return text
+      ? `${Math.round(text.length / 100) * 100} chars${cacheTag}`
+      : undefined;
   }
   if (tool === "get_questions") {
     const qs = r["questions"] as unknown[] | undefined;
-    return qs?.length !== undefined ? `${qs.length} question(s)` : undefined;
+    return qs?.length !== undefined
+      ? `${qs.length} question(s)${cacheTag}`
+      : undefined;
   }
 
   if (tool === "search_articles") {
     const results = r["results"] as unknown[] | undefined;
     return results?.length !== undefined
-      ? `${results.length} result(s)`
+      ? `${results.length} result(s)${cacheTag}`
       : undefined;
   }
   if (tool === "list_languages") {
@@ -1398,11 +2354,69 @@ function summarizeResult(tool: string, result: unknown): string | undefined {
       ? `${langs.length} language(s)`
       : undefined;
   }
-  if (tool === "list_resources_for_language") {
-    const resources = r["resources"] as unknown[] | undefined;
+  if (tool === "list_resources") {
+    const resources = (r["available"] ?? r["resources"]) as
+      | unknown[]
+      | undefined;
     return resources?.length !== undefined
       ? `${resources.length} resource(s)`
       : undefined;
   }
   return undefined;
+}
+
+/** Localized natural continue question — no trigger keywords. */
+function checklistContinuePhrase(language: string): string {
+  const code = language.trim().toLowerCase().split(/[-_]/)[0] ?? "en";
+  if (code === "es") {
+    return "¿Seguimos con el siguiente paso, o prefieres empezar con una sección o unos versículos concretos?";
+  }
+  return "Shall we continue with the next step, or would you rather start with a specific section or verses?";
+}
+
+/** Localized "All steps complete" closing question. */
+function checklistCompletePhrase(language: string): string {
+  const code = language.trim().toLowerCase().split(/[-_]/)[0] ?? "en";
+  if (code === "es") {
+    return "¡Listo con el recorrido! ¿Con qué sección o desafío quieres empezar a traducir?";
+  }
+  return "That's the full path! Which section or challenge would you like to start translating?";
+}
+
+/** Localized natural batch-continuation question. */
+function batchContinuePhrase(language: string, nextRef: string): string {
+  const code = language.trim().toLowerCase().split(/[-_]/)[0] ?? "en";
+  const versePart = nextRef.includes(":")
+    ? (nextRef.split(":")[1] ?? nextRef)
+    : nextRef;
+  if (code === "es") {
+    return `¿Continuamos con los versículos ${versePart}?`;
+  }
+  return `Shall we continue with verses ${versePart}?`;
+}
+
+/**
+ * Strip legacy visible [Step N/M] / [Paso N/M] footers (and trailing ---)
+ * so session state can live in a hidden <!-- CHECKLIST --> marker instead.
+ * `step`/`total` are unused except to keep the call site explicit.
+ */
+function normalizeChecklistFooter(
+  text: string,
+  _step?: number,
+  _total?: number,
+): string {
+  let out = text;
+  // Drop --- + *[Step N/M] — …* footers (and localized Step synonyms)
+  out = out.replace(
+    /\n*---\n*\*\[(?:Step|Paso|Étape|Etape)\s*\d+\s*\/\s*\d+\][^\n]*\*?\s*/gi,
+    "\n",
+  );
+  // Drop bare *[Step N/M]…* lines without ---
+  out = out.replace(
+    /\n*\*\[(?:Step|Paso|Étape|Etape)\s*\d+\s*\/\s*\d+\][^\n]*\*?\s*/gi,
+    "\n",
+  );
+  // Drop leftover hidden markers so caller can re-append a fresh one
+  out = out.replace(/\n*<!-- CHECKLIST:\d+\/\d+ -->\s*/g, "\n");
+  return out.replace(/\s+$/, "");
 }

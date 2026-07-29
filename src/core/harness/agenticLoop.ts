@@ -12,6 +12,15 @@ import type { LLMProvider } from "../rag/providers/LLMProvider.js";
 import type { CallToolFn } from "./ContextHarness.js";
 import type { HarnessResult } from "./ContextHarness.js";
 import { SYSTEM_BASE } from "../rag/PromptFormatter.js";
+import { CHAT_WORD_BUDGETS, enforceReplyBudget } from "./chatPacing.js";
+
+function paceOpenEndedReply(text: string, language: string): string {
+  return enforceReplyBudget(text, {
+    budget: CHAT_WORD_BUDGETS.open_ended,
+    language,
+    closerKind: "brief",
+  }).text;
+}
 
 // ---------------------------------------------------------------------------
 // Tool function specs (OpenAI format)
@@ -50,13 +59,15 @@ const TOOL_SPECS: OpenAITool[] = [
       description:
         "STEP 1 (orient): Fetch the background AROUND a passage — book and chapter introductions " +
         "(themes, cultural background, overview) plus a summary of which resources exist for the language. " +
+        "Also accepts a bare book name (e.g. 'TIT' or 'Titus') to get just the book overview. " +
         "Does NOT return the verse text — use get_passage for that. Call once when starting a passage.",
       parameters: {
         type: "object",
         properties: {
           reference: {
             type: "string",
-            description: "USFM reference, e.g. 'JHN 3:16'",
+            description:
+              "USFM reference, e.g. 'JHN 3:16', or a bare book name/code, e.g. 'TIT', for the book overview only",
           },
           language: {
             type: "string",
@@ -241,7 +252,9 @@ RESPONSE STYLE — follow these rules strictly:
 - Respond conversationally in flowing prose. Do NOT use markdown headers (##, ###) or structured bullet-point lists unless the user explicitly asks for a structured explanation or list.
 - When you retrieve an article or resource, use it as a reference to inform your answer — do not reformat or copy its structure. Synthesize the key insight in 3–5 sentences and cite the source inline.
 - Lead with the most direct answer to the user's question, then add supporting detail.
-- Keep total response length proportional to question complexity: simple questions get 2–4 sentences, complex ones get a short paragraph.
+- Keep total response length proportional to question complexity: simple questions get 2–4 sentences, complex ones get a short paragraph (hard cap ≈ 180 words for drafting/overview/scholar answers).
+- Consultant pedagogy (CANA): consult by questioning. For translation briefs / drafting / scholar answers: at most **2–3 priority decisions**, point to the resources panel, then ONE consultant question (what the word they chose means / more than one sense / what's hard / draft in Mi traducción). Never ask "How did you translate X?" — ask for meaning instead.
+- On draft submit or "esto me costó…": acknowledge → ask what felt hard → exactly ONE meaning-based CANA probe per turn on a source item (the sequence continues across turns). Do NOT rewrite their draft or claim it "sounds right" in an unknown receptor language.
 - TRANSLATION ACADEMY FIDELITY: When citing a Translation Academy article, quote the exact strategy names and descriptions from the article — do NOT rewrite, reorder, or generate new strategies that are not present in the source. Use the article's own wording for every strategy listed. If the article describes 2 strategies, present exactly those 2 strategies in the article's own words.`;
 
 type ConversationMessage = {
@@ -251,34 +264,16 @@ type ConversationMessage = {
 
 export async function runAgenticLoop(
   userMessage: string,
+  /** Source language: Door43 tool fetches AND coach conversation locale. */
   language: string,
   llm: LLMProvider,
   callTool: CallToolFn,
   /** Recent conversation history — gives the LLM context to decide which tools to call. */
   history?: ConversationMessage[],
+  /** Receptor label metadata only — never the coach reply language. */
+  targetLanguage?: string,
 ): Promise<Omit<HarnessResult, "intent">> {
-  // If the LLM doesn't support function-calling, fall back to plain generate
-  const llmWithTools = llm as unknown as OpenAILLMWithTools;
-  if (typeof llmWithTools.generateWithTools !== "function") {
-    const response = await llm.generate([
-      {
-        role: "system",
-        content:
-          SYSTEM_BASE +
-          CONVERSATIONAL_STYLE +
-          "\n\nNote: You do not have live access to translation resources for this open-ended query. Answer from your training knowledge and note the limitation.",
-      },
-      { role: "user", content: userMessage },
-    ]);
-    return {
-      response,
-      citations: [],
-      mode: "training-only",
-      dataWarning:
-        "Open-ended question — function-calling not available in this LLM provider. Response from training knowledge.",
-    };
-  }
-
+  const receptorHint = targetLanguage?.trim();
   // Build recent history context for the LLM (strip hidden HTML markers so the
   // LLM doesn't trip over <!-- CHALLENGES --> or <!-- PHRASE_DRILL --> comments).
   const historyMessages: OpenAIMessage[] = (history ?? [])
@@ -290,6 +285,38 @@ export async function runAgenticLoop(
     }))
     .filter((m) => m.content.length > 0);
 
+  // If the LLM doesn't support function-calling, fall back to plain generate.
+  // Keep conversation history so the model can still use resources already
+  // quoted in prior turns (e.g. notes/passage from an annotated_passage turn).
+  const llmWithTools = llm as unknown as OpenAILLMWithTools;
+  if (typeof llmWithTools.generateWithTools !== "function") {
+    const response = await llm.generate([
+      {
+        role: "system",
+        content:
+          SYSTEM_BASE +
+          CONVERSATIONAL_STYLE +
+          "\n\nNote: You do not have live access to translation resources for this open-ended query. Answer from your training knowledge and note the limitation. Use any scripture text, notes, or terms already present in the conversation history.",
+      },
+      ...historyMessages.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
+      { role: "user", content: userMessage },
+    ]);
+    return {
+      response: paceOpenEndedReply(response, language),
+      citations: [],
+      mode: "training-only",
+      dataWarning:
+        "Open-ended question — function-calling not available in this LLM provider. Response from training knowledge.",
+    };
+  }
+
+  const languagePairHint = receptorHint
+    ? `SOURCE / CONVERSATION LANGUAGE: ${language} — fetch Door43 tools in this language and reply entirely in this language. TARGET / RECEPTOR (metadata only): ${receptorHint} — do not reply in it; do not ask them to paste their draft.`
+    : `SOURCE / CONVERSATION LANGUAGE: ${language}. Fetch tools and reply in this language. Do not ask for or evaluate receptor draft text.`;
+
   const messages: OpenAIMessage[] = [
     {
       role: "system",
@@ -300,10 +327,18 @@ export async function runAgenticLoop(
         `Use them to answer the question with real data. ` +
         `Typical workflow: get_passage (scripture text) + get_passage_context (book/chapter background) → get_note / get_passage_index → get_academy_article / get_word_article. ` +
         `Use search_articles when you don't know the exact article path. ` +
-        `Language context: ${language}.\n` +
+        `${languagePairHint}\n` +
+        `If a tool returns no data for the source language, retry the same call with language "en" and summarize findings in the source/conversation language (${language}). ` +
+        `If a tool result contains an error field (e.g. notesError), tell the user the resource could not be reached right now — do not invent background from memory.\n` +
+        `When the user asks for a Translation Word / dictionary article (e.g. "artículo sobre siervo", "TW article on servant"): ` +
+        `ALWAYS call search_articles (resourceTypes: tw) then get_word_article with the returned path. ` +
+        `Never claim the article is available unless get_word_article returned article text. If lookup fails, say so honestly.\n` +
+        `When the user asks what to do next, for a translation overview, or for drafting help: give a short translation brief ` +
+        `(structure + at most 2–3 priority decisions from notes), point to panel resources, and ONE consultant question (how they would translate a flagged phrase / more than one sense / what's hard / draft in Mi traducción) — do not answer with only resource counts or push a quiz.\n` +
+        `When they ask for check questions or say what was hard ("esto me costó…"): acknowledge, ask what felt hard if needed, then exactly ONE meaning-based CANA probe per turn on a source item from TN/TW (never "How did you translate X?" — ask what their chosen word means) — do not ask for their receptor draft, rewrite it, or evaluate target-language surface form.\n` +
         `IMPORTANT: The conversation history above gives you context. If the user is asking about a phrase, concept, or term ` +
         `mentioned in a previous response (e.g. a challenge phrase, a figure of speech like personification), ` +
-        `use that context to call the right tool (e.g. get_note with phrase, get_academy_article with the TA path).`,
+        `use that context to call the right tool (e.g. get_note with phrase, get_academy_article with the TA path, get_word_article for a TW term).`,
     },
     ...historyMessages,
     { role: "user", content: userMessage },
@@ -323,7 +358,7 @@ export async function runAgenticLoop(
 
     if (result.finish_reason === "stop" || !result.tool_calls?.length) {
       return {
-        response: result.content ?? "",
+        response: paceOpenEndedReply(result.content ?? "", language),
         citations: buildCitationsFromLog(toolCallLog),
         mode: toolCallLog.length > 0 ? "compose" : "training-only",
         dataWarning:
@@ -382,7 +417,7 @@ export async function runAgenticLoop(
   );
 
   return {
-    response: finalResponse,
+    response: paceOpenEndedReply(finalResponse, language),
     citations: buildCitationsFromLog(toolCallLog),
     mode: toolCallLog.length > 0 ? "compose" : "training-only",
   };

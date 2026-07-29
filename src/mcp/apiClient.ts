@@ -16,7 +16,7 @@
  *     REST `{ error: { code, message } }` contract into a structured exception.
  */
 
-import type { ApiErrorResponse } from "../core/contracts/index.js";
+import type { ApiErrorResponse } from "@translation-helps/door43";
 
 // ---------------------------------------------------------------------------
 // Error type
@@ -49,24 +49,41 @@ export interface ApiEnv {
 // ApiClient
 // ---------------------------------------------------------------------------
 
+function isLocalApiBaseUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname;
+    return host === "localhost" || host === "127.0.0.1" || host === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
 export class ApiClient {
   private readonly baseUrl: string;
   private readonly fetcher: Fetcher | null;
 
   constructor(env: ApiEnv) {
-    if (env.API) {
+    const base = env.API_BASE_URL?.replace(/\/$/, "");
+
+    // Vite's platformProxy and unbound wrangler service bindings expose env.API
+    // without a connected API worker → fetches return HTTP 503. Prefer an
+    // explicit localhost API_BASE_URL so local chat hits the real API on :8788.
+    if (base && isLocalApiBaseUrl(base)) {
+      this.fetcher = null;
+      this.baseUrl = base;
+    } else if (env.API) {
       // Service binding — zero-latency same-datacenter call.
       // fetch() on a Fetcher accepts any URL; we still need a hostname so
       // requests are valid HTTP. We use a placeholder that the binding ignores.
       this.fetcher = env.API;
       this.baseUrl = "http://internal";
-    } else if (env.API_BASE_URL) {
+    } else if (base) {
       this.fetcher = null;
-      this.baseUrl = env.API_BASE_URL.replace(/\/$/, "");
+      this.baseUrl = base;
     } else {
       throw new Error(
         "ApiClient: neither env.API (service binding) nor env.API_BASE_URL is set. " +
-        "Add [[services]] to wrangler.toml or set API_BASE_URL for local dev.",
+          "Add [[services]] to wrangler.toml or set API_BASE_URL for local dev.",
       );
     }
   }
@@ -75,7 +92,10 @@ export class ApiClient {
    * Perform a GET request against the REST API and return the parsed response.
    * Throws `ApiClientError` on any non-2xx response.
    */
-  async get<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
+  async get<T>(
+    path: string,
+    params?: Record<string, string | number | undefined>,
+  ): Promise<T> {
     const url = new URL(`${this.baseUrl}${path}`);
     if (params) {
       for (const [key, value] of Object.entries(params)) {
@@ -111,17 +131,19 @@ export class ApiClient {
 
   /**
    * Fire a background prefetch request to warm REST API caches for
-   * `reference` + `language`. Returns immediately — never awaited.
+   * `reference` + `language`. Returns the fetch Promise so callers can
+   * `waitUntil` it (MCP side) — never blocks the scripture response path.
    *
-   * The REST API worker uses ctx.waitUntil() to ensure the warming
-   * completes even after this call returns. Any errors are silently ignored.
+   * The REST API worker also uses ctx.waitUntil() for its own warming work.
+   * Errors are silently ignored.
    */
-  prefetch(reference: string, language: string): void {
+  prefetch(reference: string, language: string): Promise<void> {
     const url = new URL(`${this.baseUrl}/api/v1/prefetch`);
     url.searchParams.set("reference", reference);
     url.searchParams.set("language", language);
-    // Intentional fire-and-forget — we don't await or surface errors
-    this.fetchUrl(url.toString()).catch(() => {});
+    return this.fetchUrl(url.toString())
+      .then(() => undefined)
+      .catch(() => undefined);
   }
 
   private fetchUrl(url: string): Promise<Response> {
@@ -145,7 +167,7 @@ import type {
   WordArticle,
   ArticleSearchResult,
   ResourceAvailability,
-} from "../core/contracts/index.js";
+} from "@translation-helps/door43";
 
 export interface ScriptureResponse {
   reference: string;

@@ -154,7 +154,7 @@ export const Errors = {
       hints: [
         {
           message:
-            "Run list_resources_for_language to see what is available for this language.",
+            "Run list_resources to see what is available for this language.",
         },
       ],
     });

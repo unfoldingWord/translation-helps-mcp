@@ -1,21 +1,19 @@
 name = "translation-helps-mcp-v2"
 main = "src/worker.ts"
 compatibility_date = "2025-05-01"
-compatibility_flags = ["nodejs_compat"]
+compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
+account_id = "5a3ffd86280d3ed086be76d955829242"
 
 # Workers Assets — SvelteKit output goes here
 [assets]
 directory = "web/.svelte-kit/cloudflare"
 binding = "ASSETS"
+# Worker handles /v2/mcp and /v2/api/tool before static assets.
+run_worker_first = true
 
-# Structured JSON logging via Workers Logs (enables log tailing + Logpush)
 [observability]
 enabled = true
 head_sampling_rate = 1
-
-# ---------------------------------------------------------------------------
-# Bindings
-# ---------------------------------------------------------------------------
 
 [[kv_namespaces]]
 binding = "TRANSLATION_HELPS_CACHE"
@@ -26,12 +24,10 @@ preview_id = "3073e58cc3eb4f16958854a6ec1531e6"
 binding = "ZIP_FILES"
 bucket_name = "translation-helps-mcp-zip-persistence"
 
-# Analytics Engine for performance metrics + error-rate tracking
 [[analytics_engine_datasets]]
 binding = "ANALYTICS"
 dataset = "translation_helps_metrics"
 
-# Durable Object for McpAgent (TranslationHelpsMCP)
 [[durable_objects.bindings]]
 name = "MCP_AGENT"
 class_name = "TranslationHelpsMCP"
@@ -40,25 +36,25 @@ class_name = "TranslationHelpsMCP"
 tag = "v1"
 new_sqlite_classes = ["TranslationHelpsMCP"]
 
-# Service binding to the REST Data API worker (zero-latency same-DC call)
-[[services]]
-binding = "API"
-service = "translation-helps-api-v2"
-
-# ---------------------------------------------------------------------------
-# Top-level vars (used in local wrangler dev; overridden by service binding in prod)
-# ---------------------------------------------------------------------------
-# Fallback URL for the REST API worker when the service binding is unavailable
-# (e.g. when running only one wrangler dev process). Set to the API worker port.
+# Local / vite platformProxy: do NOT bind API here. An unbound service stub
+# returns HTTP 503 and shadows API_BASE_URL. Production/preview keep [[services]].
 [vars]
 API_BASE_URL = "http://localhost:8788"
+BASE_PATH = "/v2"
 
 # ---------------------------------------------------------------------------
-# Environment overrides
+# production — new *-v2 workers only; does not touch Pages project
+# translation-helps-mcp (tc-helps.mcp.servant.bible)
 # ---------------------------------------------------------------------------
 
 [env.production]
-vars = { NODE_ENV = "production" }
+name = "translation-helps-mcp-v2"
+vars = { NODE_ENV = "production", BASE_PATH = "/v2", API_BASE_URL = "https://translation-helps-api-v2.unfoldingword.workers.dev" }
+# Custom hostname routes require the zone on this Cloudflare account.
+# Pages v1 stays at tc-helps.mcp.servant.bible/; attach /v2* in the dashboard when ready:
+#   pattern: tc-helps.mcp.servant.bible/v2*
+#   worker:  translation-helps-mcp-v2
+# Until then, use workers.dev: https://translation-helps-mcp-v2.unfoldingword.workers.dev/v2/
 
 [[env.production.kv_namespaces]]
 binding = "TRANSLATION_HELPS_CACHE"
@@ -81,7 +77,7 @@ binding = "API"
 service = "translation-helps-api-v2"
 
 [env.preview]
-vars = { NODE_ENV = "development" }
+vars = { NODE_ENV = "development", BASE_PATH = "/v2" }
 
 [[env.preview.kv_namespaces]]
 binding = "TRANSLATION_HELPS_CACHE"

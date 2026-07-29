@@ -8,7 +8,7 @@ import {
   parseObsStoryMarkdown,
   parseObsNotesTsv,
   parseObsQuestionsTsv,
-} from "../../src/core/resources/obs.js";
+} from "@translation-helps/door43";
 
 // ---------------------------------------------------------------------------
 // parseObsReference

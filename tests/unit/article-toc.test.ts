@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveTitleFromToc } from "../../src/core/resources/articleToc.js";
+import { resolveTitleFromToc } from "@translation-helps/door43";
 
 // ---------------------------------------------------------------------------
 // Fixture TOC maps
@@ -24,24 +24,34 @@ const twMap = new Map<string, string>([
 
 describe("resolveTitleFromToc (ta)", () => {
   it("resolves bare slug exactly", () => {
-    expect(resolveTitleFromToc(taMap, "translate/figs-metaphor", "ta")).toBe("Metaphor");
+    expect(resolveTitleFromToc(taMap, "translate/figs-metaphor", "ta")).toBe(
+      "Metaphor",
+    );
   });
 
   it("resolves rc:// URI", () => {
-    expect(resolveTitleFromToc(taMap, "rc://*/ta/man/translate/figs-metaphor", "ta")).toBe("Metaphor");
+    expect(
+      resolveTitleFromToc(taMap, "rc://*/ta/man/translate/figs-metaphor", "ta"),
+    ).toBe("Metaphor");
   });
 
   it("resolves rc:// URI with specific language code", () => {
-    expect(resolveTitleFromToc(taMap, "rc://en/ta/man/translate/figs-simile", "ta")).toBe("Simile");
+    expect(
+      resolveTitleFromToc(taMap, "rc://en/ta/man/translate/figs-simile", "ta"),
+    ).toBe("Simile");
   });
 
   it("falls back to last-segment match when full slug is unknown", () => {
     // Only the last segment matches
-    expect(resolveTitleFromToc(taMap, "unknown/category/figs-metaphor", "ta")).toBe("Metaphor");
+    expect(
+      resolveTitleFromToc(taMap, "unknown/category/figs-metaphor", "ta"),
+    ).toBe("Metaphor");
   });
 
   it("returns null for unrecognised slug", () => {
-    expect(resolveTitleFromToc(taMap, "translate/figs-nonexistent", "ta")).toBeNull();
+    expect(
+      resolveTitleFromToc(taMap, "translate/figs-nonexistent", "ta"),
+    ).toBeNull();
   });
 
   it("returns null for empty string", () => {
@@ -49,7 +59,9 @@ describe("resolveTitleFromToc (ta)", () => {
   });
 
   it("returns null when map is empty", () => {
-    expect(resolveTitleFromToc(new Map(), "translate/figs-metaphor", "ta")).toBeNull();
+    expect(
+      resolveTitleFromToc(new Map(), "translate/figs-metaphor", "ta"),
+    ).toBeNull();
   });
 });
 
@@ -63,11 +75,15 @@ describe("resolveTitleFromToc (tw)", () => {
   });
 
   it("resolves rc:// URI for TW", () => {
-    expect(resolveTitleFromToc(twMap, "rc://*/tw/dict/bible/kt/grace", "tw")).toBe("Grace");
+    expect(
+      resolveTitleFromToc(twMap, "rc://*/tw/dict/bible/kt/grace", "tw"),
+    ).toBe("Grace");
   });
 
   it("resolves rc:// URI stripping tw/dict/ prefix", () => {
-    expect(resolveTitleFromToc(twMap, "rc://en/tw/dict/bible/kt/god", "tw")).toBe("God");
+    expect(
+      resolveTitleFromToc(twMap, "rc://en/tw/dict/bible/kt/god", "tw"),
+    ).toBe("God");
   });
 
   it("falls back to category/term tail match", () => {

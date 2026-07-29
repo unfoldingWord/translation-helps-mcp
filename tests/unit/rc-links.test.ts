@@ -9,7 +9,7 @@ import {
   rcToTwPath,
   extractTaPathsFromNotes,
   extractTwPathsFromLinks,
-} from "../../src/core/resources/rcLinks.js";
+} from "@translation-helps/door43";
 
 // ---------------------------------------------------------------------------
 // parseRcLink
@@ -59,11 +59,15 @@ describe("parseRcLink", () => {
 
 describe("rcToTaPath", () => {
   it("resolves a TA link", () => {
-    expect(rcToTaPath("rc://*/ta/man/translate/figs-metaphor")).toBe("translate/figs-metaphor");
+    expect(rcToTaPath("rc://*/ta/man/translate/figs-metaphor")).toBe(
+      "translate/figs-metaphor",
+    );
   });
 
   it("resolves a checking TA link", () => {
-    expect(rcToTaPath("rc://en/ta/man/checking/accuracy")).toBe("checking/accuracy");
+    expect(rcToTaPath("rc://en/ta/man/checking/accuracy")).toBe(
+      "checking/accuracy",
+    );
   });
 
   it("returns null for TW link", () => {
@@ -89,11 +93,15 @@ describe("rcToTwPath", () => {
   });
 
   it("resolves an other link", () => {
-    expect(rcToTwPath("rc://*/tw/dict/bible/other/sheep")).toBe("bible/other/sheep");
+    expect(rcToTwPath("rc://*/tw/dict/bible/other/sheep")).toBe(
+      "bible/other/sheep",
+    );
   });
 
   it("resolves a names link", () => {
-    expect(rcToTwPath("rc://*/tw/dict/bible/names/moses")).toBe("bible/names/moses");
+    expect(rcToTwPath("rc://*/tw/dict/bible/names/moses")).toBe(
+      "bible/names/moses",
+    );
   });
 
   it("returns null for TA link", () => {

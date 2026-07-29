@@ -11,7 +11,12 @@
  */
 
 import { z } from "zod";
-import { referenceParam, languageParam, ok, type ToolModule } from "./shared.js";
+import {
+  referenceParam,
+  languageParam,
+  ok,
+  type ToolModule,
+} from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
 
@@ -34,19 +39,29 @@ export const getPassageQuestionsTool: ToolModule<typeof inputSchema> = {
   inputSchema,
   annotations: { readOnlyHint: true, title: "Get Passage Questions" },
 
-  async handler(params: GetPassageQuestionsParams, env: Env, _requestId: string) {
+  async handler(
+    params: GetPassageQuestionsParams,
+    env: Env,
+    _requestId: string,
+  ) {
     const client = new ApiClient(env);
     const { reference, language } = params;
 
-    const data = await client.get<{ questions: Array<Record<string, unknown>> }>(
-      "/api/v1/questions",
-      { reference, language },
-    );
+    const data = await client.get<{
+      questions: Array<Record<string, unknown>>;
+      meta?: { cache?: string };
+    }>("/api/v1/questions", { reference, language });
 
     const questions = data.questions ?? [];
+    const cache = data.meta?.cache;
     return ok(
-      { reference, language, questions },
-      `${questions.length} question(s) for ${reference}`,
+      {
+        reference,
+        language,
+        questions,
+        ...(cache ? { meta: { cache } } : {}),
+      },
+      `${questions.length} question(s) for ${reference}${cache ? ` [${cache}]` : ""}`,
     );
   },
 };

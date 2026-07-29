@@ -12,13 +12,27 @@
  */
 
 import { z } from "zod";
-import { referenceParam, languageParam, ok, type ToolModule } from "./shared.js";
+import { languageParam, ok, type ToolModule } from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
-import type { ResourceAvailability } from "../../core/contracts/index.js";
+import type { ResourceAvailability } from "@translation-helps/door43";
+
+/**
+ * Unlike other passage tools, this one also accepts a BARE BOOK reference
+ * (no chapter/verse) — it then returns only the book-level intro (front:intro).
+ */
+const contextReferenceParam = z
+  .string()
+  .min(3)
+  .describe(
+    "A Bible passage OR a bare book name. " +
+      'With chapter ("TIT 1", "JHN 3:16") returns book + chapter intro notes. ' +
+      'With only a book name or USFM code ("TIT", "Titus", "1 John") returns just the book overview (front:intro). ' +
+      "The book name may be localized when it matches the `language` parameter.",
+  );
 
 const inputSchema = z.object({
-  reference: referenceParam,
+  reference: contextReferenceParam,
   language: languageParam,
 });
 
@@ -28,13 +42,17 @@ export const getPassageContextTool: ToolModule<typeof inputSchema> = {
   name: "get_passage_context",
   description:
     "STEP 1b (orient — background): Load the background AROUND a passage — book/chapter introductions and a summary of which resources exist. " +
-    "Returns `context[]` with book-level and chapter-level intro notes (each tagged `scope:\"book\"` or `scope:\"chapter\"` — cultural background, overview, themes) " +
+    'Returns `context[]` with book-level and chapter-level intro notes (each tagged `scope:"book"` or `scope:"chapter"` — cultural background, overview, themes) ' +
     "and `availability` listing which resource types exist for this language. " +
+    'Also accepts a BARE BOOK reference (e.g. "TIT" or "Titus") — then returns only the book overview (front:intro), ideal when the user names a whole book. ' +
     "BEFORE this: call `get_passage` first (Step 1a) to read the text and warm the server cache. " +
     "This does NOT return the verse text — use `get_passage` for that. " +
     "Call this once per passage, then call `get_passage_index` (Step 2) to survey translation issues and key terms in the specific verses.",
   inputSchema,
-  annotations: { readOnlyHint: true, title: "Get Passage Context (Background)" },
+  annotations: {
+    readOnlyHint: true,
+    title: "Get Passage Context (Background)",
+  },
 
   async handler(params: GetPassageContextParams, env: Env, _requestId: string) {
     const client = new ApiClient(env);
@@ -43,18 +61,39 @@ export const getPassageContextTool: ToolModule<typeof inputSchema> = {
     // Parse book + chapter from reference for intro-note filtering
     const bookChapter = extractBookChapter(reference);
 
+    // Bare book (no chapter): the notes API requires a chapter, so query
+    // "{book} 1" and keep only the book-level intro (front:intro) below.
+    const bookOnly = isBookOnlyReference(reference);
+    const apiReference = bookOnly ? `${reference.trim()} 1` : reference;
+
     const [notesData, resourcesData] = await Promise.allSettled([
-      client.get<{ notes: Array<Record<string, unknown>> }>("/api/v1/notes", { reference, language }),
-      client.get<{ available: ResourceAvailability[] }>("/api/v1/resources", { language }),
+      client.get<{ notes: Array<Record<string, unknown>> }>("/api/v1/notes", {
+        reference: apiReference,
+        language,
+      }),
+      client.get<{ available: ResourceAvailability[] }>("/api/v1/resources", {
+        language,
+      }),
     ]);
 
+    const notesError =
+      notesData.status === "rejected"
+        ? settledRejectionMessage(notesData.reason)
+        : undefined;
+    const availabilityError =
+      resourcesData.status === "rejected"
+        ? settledRejectionMessage(resourcesData.reason)
+        : undefined;
+
     const allNotes: Array<Record<string, unknown>> =
-      notesData.status === "fulfilled" ? notesData.value.notes : [];
+      notesData.status === "fulfilled" ? (notesData.value.notes ?? []) : [];
 
     // Keep only intro-level notes (front:intro = book intro, N:intro = chapter intro).
     // The parser always returns these alongside verse notes, so we just filter.
+    // For a bare-book reference, keep only the book overview (front:intro).
     const contextNotes = allNotes
       .filter((n) => String(n["verse"] ?? "") === "intro")
+      .filter((n) => !bookOnly || String(n["chapter"] ?? "") === "front")
       .map((n) => ({
         ...n,
         // Annotate scope so the LLM knows whether this is book-level or chapter-level context
@@ -62,7 +101,17 @@ export const getPassageContextTool: ToolModule<typeof inputSchema> = {
       }));
 
     const availability: ResourceAvailability[] =
-      resourcesData.status === "fulfilled" ? (resourcesData.value.available ?? []) : [];
+      resourcesData.status === "fulfilled"
+        ? (resourcesData.value.available ?? [])
+        : [];
+
+    const summaryParts = [
+      `${contextNotes.length} context note(s)`,
+      `${availability.length} resource type(s) available`,
+    ];
+    if (notesError) summaryParts.push(`notes fetch failed: ${notesError}`);
+    if (availabilityError)
+      summaryParts.push(`availability fetch failed: ${availabilityError}`);
 
     return ok(
       {
@@ -70,10 +119,15 @@ export const getPassageContextTool: ToolModule<typeof inputSchema> = {
         language,
         context: contextNotes,
         availability,
-        book: bookChapter?.book,
+        book:
+          bookChapter?.book ??
+          (bookOnly ? reference.trim().toUpperCase() : undefined),
         chapter: bookChapter?.chapter,
+        ...(bookOnly ? { scope: "book" } : {}),
+        ...(notesError ? { notesError } : {}),
+        ...(availabilityError ? { availabilityError } : {}),
       },
-      `${contextNotes.length} context note(s), ${availability.length} resource type(s) available`,
+      summaryParts.join(", "),
     );
   },
 };
@@ -82,7 +136,23 @@ export const getPassageContextTool: ToolModule<typeof inputSchema> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function extractBookChapter(reference: string): { book: string; chapter: string } | null {
+function settledRejectionMessage(reason: unknown): string {
+  if (reason instanceof Error) return reason.message;
+  return String(reason ?? "unknown error");
+}
+
+/**
+ * True when the reference names a book without any chapter/verse.
+ * Handles ordinal book names: "1 John" is book-only, "1 John 2" is not.
+ */
+function isBookOnlyReference(reference: string): boolean {
+  const withoutOrdinal = reference.trim().replace(/^[123]\s+/, "");
+  return !/\d/.test(withoutOrdinal);
+}
+
+function extractBookChapter(
+  reference: string,
+): { book: string; chapter: string } | null {
   // e.g. "JHN 3:16" → { book: "JHN", chapter: "3" }
   const m = reference.trim().match(/^(\S+)\s+(\d+)/);
   if (!m) return null;

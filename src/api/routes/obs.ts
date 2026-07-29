@@ -19,7 +19,7 @@ import {
   parseObsQuestionsTsv,
   obsStoryPath,
   type ObsReference,
-} from "../../core/resources/obs.js";
+} from "@translation-helps/door43";
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -51,7 +51,7 @@ function requireObsParams(url: URL): {
 // ---------------------------------------------------------------------------
 
 export async function handleObs(ctx: RouteContext): Promise<Response> {
-  const { url, env } = ctx;
+  const { url, env, execCtx } = ctx;
 
   let params: ReturnType<typeof requireObsParams>;
   try {
@@ -92,7 +92,7 @@ export async function handleObs(ctx: RouteContext): Promise<Response> {
     });
   }
 
-  const fetcher = makeFetcher(env);
+  const fetcher = makeFetcher(env, execCtx);
   const zip = await fetcher.getOrDownloadZip(resolved.zipUrl);
 
   const storyPath = obsStoryPath(obsRef.story);
@@ -132,7 +132,7 @@ export async function handleObs(ctx: RouteContext): Promise<Response> {
 // ---------------------------------------------------------------------------
 
 export async function handleObsNotes(ctx: RouteContext): Promise<Response> {
-  const { url, env } = ctx;
+  const { url, env, execCtx } = ctx;
 
   let params: ReturnType<typeof requireObsParams>;
   try {
@@ -160,7 +160,7 @@ export async function handleObsNotes(ctx: RouteContext): Promise<Response> {
     });
   }
 
-  const fetcher = makeFetcher(env);
+  const fetcher = makeFetcher(env, execCtx);
   const zip = await fetcher.getOrDownloadZip(resolved.zipUrl);
 
   // The OBS tN resource uses a single TSV file
@@ -190,7 +190,7 @@ export async function handleObsNotes(ctx: RouteContext): Promise<Response> {
 // ---------------------------------------------------------------------------
 
 export async function handleObsQuestions(ctx: RouteContext): Promise<Response> {
-  const { url, env } = ctx;
+  const { url, env, execCtx } = ctx;
 
   let params: ReturnType<typeof requireObsParams>;
   try {
@@ -218,7 +218,7 @@ export async function handleObsQuestions(ctx: RouteContext): Promise<Response> {
     });
   }
 
-  const fetcher = makeFetcher(env);
+  const fetcher = makeFetcher(env, execCtx);
   const zip = await fetcher.getOrDownloadZip(resolved.zipUrl);
 
   const tsvPaths = ["tq_OBS.tsv", "tq_obs.tsv"];

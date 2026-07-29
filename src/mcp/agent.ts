@@ -38,6 +38,11 @@ export interface Env {
   /** Base URL for the REST Data API worker (local dev when service binding is absent). */
   API_BASE_URL?: string;
   OPENAI_API_KEY?: string;
+  /**
+   * Optional waitUntil from the request ExecutionContext. When set (chat/agent
+   * Workers path), background work like prefetch stays alive after the response.
+   */
+  waitUntil?: (promise: Promise<unknown>) => void;
 }
 
 /**
@@ -48,10 +53,15 @@ const ALL_TOOLS = MCP_TOOLS;
 
 export type ToolName = string;
 
-/** MCP-standard error response helper. */
+/**
+ * MCP-standard error response helper.
+ *
+ * Omit `structuredContent` on isError results so clients that validate it
+ * against the tool's outputSchema (SEP-1624) do not reject the payload.
+ * Error details stay in `content` for the model to read.
+ */
 function mcpError(err: TranslationHelpsError): {
   content: { type: "text"; text: string }[];
-  structuredContent: Record<string, unknown>;
   isError: true;
 } {
   const payload = err.toMcpError();
@@ -59,7 +69,6 @@ function mcpError(err: TranslationHelpsError): {
     content: [
       { type: "text", text: `Error ${payload.code}: ${payload.message}` },
     ],
-    structuredContent: payload as unknown as Record<string, unknown>,
     isError: true,
   };
 }
@@ -77,9 +86,7 @@ function mcpNotAvailable(message: string): {
     available: false,
     code: "RESOURCE_NOT_AVAILABLE",
     message,
-    hints: [
-      "Run list_resources_for_language to see what is available for this language.",
-    ],
+    hints: ["Run list_resources to see what is available for this language."],
   };
   return {
     content: [{ type: "text", text: JSON.stringify(payload) }],
@@ -175,7 +182,15 @@ export class TranslationHelpsMCP extends McpAgent<Env> {
 
           try {
             logger.info(`tool:call`, { tool: name, requestId });
-            const result = await handler(params as never, this.env, requestId);
+            // Expose DO waitUntil so tools (e.g. get_passage prefetch) can
+            // schedule background work that survives after the MCP response.
+            const toolEnv: Env = {
+              ...this.env,
+              waitUntil: (promise: Promise<unknown>) => {
+                this.ctx.waitUntil(promise);
+              },
+            };
+            const result = await handler(params as never, toolEnv, requestId);
 
             // Extract cache status if the handler attached it
             if (
@@ -255,20 +270,13 @@ export class TranslationHelpsMCP extends McpAgent<Env> {
               cacheStatus: "none",
               errorCode,
             });
-            const errPayload = {
-              code: errorCode,
-              message: `Internal error in ${name}: ${message}`,
-              retryable: false,
-              hints: [],
-            };
             return {
               content: [
                 {
                   type: "text" as const,
-                  text: `Error ${errorCode}: ${errPayload.message}`,
+                  text: `Error ${errorCode}: Internal error in ${name}: ${message}`,
                 },
               ],
-              structuredContent: errPayload,
               isError: true,
             } as never;
           }

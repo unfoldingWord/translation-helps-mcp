@@ -11,7 +11,8 @@ type StatusKey =
 	| 'thinking'
 	| 'preparing'
 	| 'loading'
-	| 'still_gathering';
+	| 'still_gathering'
+	| 'reading';
 
 const STATUS_STRINGS: Record<string, Record<StatusKey, string>> = {
 	en: {
@@ -20,7 +21,8 @@ const STATUS_STRINGS: Record<string, Record<StatusKey, string>> = {
 		thinking: 'Thinking\u2026',
 		preparing: 'Preparing response\u2026',
 		loading: 'Loading\u2026',
-		still_gathering: 'Still gathering resources\u2026'
+		still_gathering: 'Still gathering resources\u2026',
+		reading: 'Reading passage and gathering translation resources\u2026'
 	},
 	es: {
 		searching: 'Buscando recursos\u2026',
@@ -28,7 +30,8 @@ const STATUS_STRINGS: Record<string, Record<StatusKey, string>> = {
 		thinking: 'Pensando\u2026',
 		preparing: 'Preparando respuesta\u2026',
 		loading: 'Cargando\u2026',
-		still_gathering: 'Todav\u00eda recopilando recursos\u2026'
+		still_gathering: 'Todav\u00eda recopilando recursos\u2026',
+		reading: 'Leyendo el pasaje y recopilando recursos de traducci\u00f3n\u2026'
 	},
 	fr: {
 		searching: 'Recherche de ressources\u2026',
@@ -36,7 +39,8 @@ const STATUS_STRINGS: Record<string, Record<StatusKey, string>> = {
 		thinking: 'R\u00e9flexion en cours\u2026',
 		preparing: 'Pr\u00e9paration de la r\u00e9ponse\u2026',
 		loading: 'Chargement\u2026',
-		still_gathering: 'R\u00e9cup\u00e9ration des ressources en cours\u2026'
+		still_gathering: 'R\u00e9cup\u00e9ration des ressources en cours\u2026',
+		reading: 'Lecture du passage et collecte des ressources de traduction\u2026'
 	},
 	pt: {
 		searching: 'Buscando recursos\u2026',
@@ -44,7 +48,8 @@ const STATUS_STRINGS: Record<string, Record<StatusKey, string>> = {
 		thinking: 'Pensando\u2026',
 		preparing: 'Preparando resposta\u2026',
 		loading: 'Carregando\u2026',
-		still_gathering: 'Ainda coletando recursos\u2026'
+		still_gathering: 'Ainda coletando recursos\u2026',
+		reading: 'Lendo a passagem e coletando recursos de tradu\u00e7\u00e3o\u2026'
 	}
 };
 

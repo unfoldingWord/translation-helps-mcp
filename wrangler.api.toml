@@ -2,6 +2,11 @@ name = "translation-helps-api-v2"
 main = "src/api/worker.ts"
 compatibility_date = "2025-05-01"
 compatibility_flags = ["nodejs_compat"]
+account_id = "5a3ffd86280d3ed086be76d955829242"
+
+# Run near Door43 origin for sequential catalog/zip subrequests (free).
+[placement]
+mode = "smart"
 
 [observability]
 enabled = true
@@ -25,11 +30,8 @@ bucket_name = "translation-helps-mcp-zip-persistence"
 binding = "ANALYTICS"
 dataset = "translation_helps_metrics"
 
-# ---------------------------------------------------------------------------
-# Environment overrides
-# ---------------------------------------------------------------------------
-
 [env.production]
+name = "translation-helps-api-v2"
 vars = { NODE_ENV = "production" }
 
 [[env.production.kv_namespaces]]

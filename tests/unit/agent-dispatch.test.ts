@@ -12,8 +12,8 @@ import { ApiClientError } from "../../src/mcp/apiClient.js";
 // ---------------------------------------------------------------------------
 
 describe("normalizeToolArgs — alias resolution", () => {
-  it("maps word_id synonym to path for fetch_translation_word", () => {
-    const result = normalizeToolArgs("fetch_translation_word", {
+  it("maps word_id synonym to path for get_word_article", () => {
+    const result = normalizeToolArgs("get_word_article", {
       word_id: "grace",
       language: "en",
     });
@@ -33,7 +33,7 @@ describe("normalizeToolArgs — alias resolution", () => {
   });
 
   it("assembles decomposed reference {book, chapter, verse} into reference string", () => {
-    const result = normalizeToolArgs("fetch_scripture", {
+    const result = normalizeToolArgs("get_passage", {
       book: "JHN",
       chapter: 3,
       verse: 16,
@@ -46,7 +46,7 @@ describe("normalizeToolArgs — alias resolution", () => {
   });
 
   it("maps language_code alias to language", () => {
-    const result = normalizeToolArgs("fetch_translation_notes", {
+    const result = normalizeToolArgs("get_note", {
       reference: "JHN 3:16",
       language_code: "es",
     });

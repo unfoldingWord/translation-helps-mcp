@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { parseTranslationNotesTsv } from "../../src/core/parsers/tsv.js";
+import { parseTranslationNotesTsv } from "@translation-helps/door43";
 
 // Minimal TN TSV fixture in the new Reference format
 const FIXTURE_NEW = [
@@ -64,8 +64,12 @@ describe("parseTranslationNotesTsv — context note inclusion", () => {
 
     it("intro notes have correct fields", () => {
       const rows = parseTranslationNotesTsv(FIXTURE_NEW, "3", "16");
-      const bookIntro = rows.find((r) => r.chapter === "front" && r.verse === "intro");
-      const chapterIntro = rows.find((r) => r.chapter === "3" && r.verse === "intro");
+      const bookIntro = rows.find(
+        (r) => r.chapter === "front" && r.verse === "intro",
+      );
+      const chapterIntro = rows.find(
+        (r) => r.chapter === "3" && r.verse === "intro",
+      );
       expect(bookIntro).toBeDefined();
       expect(bookIntro?.id).toBe("t6za");
       expect(bookIntro?.note).toContain("Introduction to John");
@@ -82,6 +86,23 @@ describe("parseTranslationNotesTsv — context note inclusion", () => {
       expect(refs).toContain("3:16");
       expect(refs).toContain("3:17");
       expect(refs).not.toContain("4:1");
+    });
+
+    it("unescapes literal \\n and <br> in note text to real newlines", () => {
+      // Door43 TSV cells encode line breaks as the two-char sequence \n (or <br>)
+      const fixture = [
+        "Reference\tID\tTags\tSupportReference\tQuote\tOccurrence\tNote",
+        "front:intro\tt6za\t\t\t\t0\t# Introduction to Titus\\n\\n## Part 1<br>Outline here.",
+        "1:intro\tc1in\t\t\t\t0\tChapter intro only.",
+      ].join("\n");
+      const rows = parseTranslationNotesTsv(fixture, "1");
+      const bookIntro = rows.find(
+        (r) => r.chapter === "front" && r.verse === "intro",
+      );
+      expect(bookIntro).toBeDefined();
+      expect(bookIntro?.note).toContain("\n");
+      expect(bookIntro?.note).not.toContain("\\n");
+      expect(bookIntro?.note).toMatch(/Titus\n\n## Part 1\nOutline/);
     });
   });
 

@@ -12,34 +12,51 @@ import {
   parseTwArticlePathsFromZipEntries,
   buildTaArticle,
   buildTwArticle,
-} from "../../core/parsers/catalogParsers.js";
-import { rankArticles } from "../../core/parsers/articleSearch.js";
-import type { AcademyArticle, WordArticle } from "../../core/contracts/index.js";
+} from "@translation-helps/door43";
+import { rankArticles } from "@translation-helps/door43";
+import type { AcademyArticle, WordArticle } from "@translation-helps/door43";
 
 export async function handleSearch(ctx: RouteContext): Promise<Response> {
-  const { url, env } = ctx;
+  const { url, env, execCtx } = ctx;
   const q = url.searchParams.get("q");
   const language = url.searchParams.get("language");
   if (!q || !language) {
     return apiError("BAD_REQUEST", "Missing required params: q, language", 400);
   }
   const typesParam = url.searchParams.get("types") ?? "ta,tw";
-  const types = typesParam.split(",").map((t) => t.trim()) as Array<"ta" | "tw">;
+  const types = typesParam.split(",").map((t) => t.trim()) as Array<
+    "ta" | "tw"
+  >;
   const topK = parseInt(url.searchParams.get("limit") ?? "5", 10);
 
-  const candidates: Array<{ path: string; title: string; category: string; resourceType: "ta" | "tw" }> = [];
+  const candidates: Array<{
+    path: string;
+    title: string;
+    category: string;
+    resourceType: "ta" | "tw";
+  }> = [];
 
   if (types.includes("ta")) {
-    const taArticles = await loadTaArticles(language, env);
+    const taArticles = await loadTaArticles(language, env, execCtx);
     for (const a of taArticles) {
-      candidates.push({ path: a.path, title: a.title, category: a.category, resourceType: "ta" });
+      candidates.push({
+        path: a.path,
+        title: a.title,
+        category: a.category,
+        resourceType: "ta",
+      });
     }
   }
 
   if (types.includes("tw")) {
-    const twArticles = await loadTwArticles(language, env);
+    const twArticles = await loadTwArticles(language, env, execCtx);
     for (const a of twArticles) {
-      candidates.push({ path: a.path, title: a.title, category: a.category, resourceType: "tw" });
+      candidates.push({
+        path: a.path,
+        title: a.title,
+        category: a.category,
+        resourceType: "tw",
+      });
     }
   }
 
@@ -51,17 +68,29 @@ export async function handleSearch(ctx: RouteContext): Promise<Response> {
 // Catalog loaders (with KV caching)
 // ---------------------------------------------------------------------------
 
-async function loadTaArticles(language: string, env: RouteContext["env"]): Promise<AcademyArticle[]> {
+async function loadTaArticles(
+  language: string,
+  env: RouteContext["env"],
+  execCtx?: ExecutionContext,
+): Promise<AcademyArticle[]> {
   const cacheKey = `catalog:ta:${language}`;
   if (env.TRANSLATION_HELPS_CACHE) {
-    const cached = await env.TRANSLATION_HELPS_CACHE.get(cacheKey).catch(() => null);
+    const cached = await env.TRANSLATION_HELPS_CACHE.get(cacheKey).catch(
+      () => null,
+    );
     if (cached) return JSON.parse(cached) as AcademyArticle[];
   }
 
-  const resolved = await getResourceZipUrl(language, "Translation Academy", "unfoldingWord", "prod", env.TRANSLATION_HELPS_CACHE);
+  const resolved = await getResourceZipUrl(
+    language,
+    "Translation Academy",
+    "unfoldingWord",
+    "prod",
+    env.TRANSLATION_HELPS_CACHE,
+  );
   if (!resolved) return [];
 
-  const fetcher = makeFetcher(env);
+  const fetcher = makeFetcher(env, execCtx);
   const zip = await fetcher.getOrDownloadZip(resolved.zipUrl);
   const entries = fetcher.listZipEntries(zip);
   const slugs = parseTaArticlePathsFromZipEntries(entries);
@@ -75,23 +104,37 @@ async function loadTaArticles(language: string, env: RouteContext["env"]): Promi
   articles.sort((a, b) => a.path.localeCompare(b.path));
 
   if (env.TRANSLATION_HELPS_CACHE) {
-    env.TRANSLATION_HELPS_CACHE.put(cacheKey, JSON.stringify(articles), { expirationTtl: 86400 }).catch(() => {});
+    env.TRANSLATION_HELPS_CACHE.put(cacheKey, JSON.stringify(articles), {
+      expirationTtl: 86400,
+    }).catch(() => {});
   }
 
   return articles;
 }
 
-async function loadTwArticles(language: string, env: RouteContext["env"]): Promise<WordArticle[]> {
+async function loadTwArticles(
+  language: string,
+  env: RouteContext["env"],
+  execCtx?: ExecutionContext,
+): Promise<WordArticle[]> {
   const cacheKey = `catalog:tw:${language}`;
   if (env.TRANSLATION_HELPS_CACHE) {
-    const cached = await env.TRANSLATION_HELPS_CACHE.get(cacheKey).catch(() => null);
+    const cached = await env.TRANSLATION_HELPS_CACHE.get(cacheKey).catch(
+      () => null,
+    );
     if (cached) return JSON.parse(cached) as WordArticle[];
   }
 
-  const resolved = await getResourceZipUrl(language, "Translation Words", "unfoldingWord", "prod", env.TRANSLATION_HELPS_CACHE);
+  const resolved = await getResourceZipUrl(
+    language,
+    "Translation Words",
+    "unfoldingWord",
+    "prod",
+    env.TRANSLATION_HELPS_CACHE,
+  );
   if (!resolved) return [];
 
-  const fetcher = makeFetcher(env);
+  const fetcher = makeFetcher(env, execCtx);
   const zip = await fetcher.getOrDownloadZip(resolved.zipUrl);
   const entries = fetcher.listZipEntries(zip);
   const paths = parseTwArticlePathsFromZipEntries(entries);
@@ -111,7 +154,9 @@ async function loadTwArticles(language: string, env: RouteContext["env"]): Promi
   articles.sort((a, b) => a.path.localeCompare(b.path));
 
   if (env.TRANSLATION_HELPS_CACHE) {
-    env.TRANSLATION_HELPS_CACHE.put(cacheKey, JSON.stringify(articles), { expirationTtl: 86400 }).catch(() => {});
+    env.TRANSLATION_HELPS_CACHE.put(cacheKey, JSON.stringify(articles), {
+      expirationTtl: 86400,
+    }).catch(() => {});
   }
 
   return articles;

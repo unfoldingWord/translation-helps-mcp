@@ -3,13 +3,14 @@
  *
  * The server exposes a progressive-disclosure workflow:
  *   1. listLanguages       — orient: discover valid language codes
- *   2. getPassageContext   — orient: scripture versions + intro notes + availability
- *   3. getPassageIndex     — survey: compact index of issues + key terms (no bodies)
- *   4. getNote             — drill: full note body by id
- *   5. getAcademyArticle   — drill: full TA article by path
- *   6. getWordArticle      — drill: full TW article by path
- *   7. getQuestions        — check: comprehension questions for a passage
- *   8. searchArticles      — lateral: concept → article path
+ *   2. listResources       — orient: resource availability for a language
+ *   3. getPassageContext   — orient: scripture versions + intro notes + availability
+ *   4. getPassageIndex     — survey: compact index of issues + key terms (no bodies)
+ *   5. getNote             — drill: full note body by id
+ *   6. getAcademyArticle   — drill: full TA article by path
+ *   7. getWordArticle      — drill: full TW article by path
+ *   8. getQuestions        — check: comprehension questions for a passage
+ *   9. searchArticles      — lateral: concept → article path
  */
 
 export interface ClientOptions {
@@ -21,9 +22,10 @@ export interface ClientOptions {
   headers?: Record<string, string>;
 }
 
-/** Workflow tool names exposed on the MCP surface */
-export type WorkflowToolName =
+/** Tool names exposed on the MCP surface (13 tools) */
+export type ToolName =
   | "list_languages"
+  | "list_resources"
   | "get_passage"
   | "get_passage_context"
   | "get_passage_index"
@@ -36,23 +38,6 @@ export type WorkflowToolName =
   | "get_obs_story"
   | "get_obs_notes"
   | "get_obs_questions";
-
-/** Legacy tool names kept for ContextHarness / backward compatibility */
-export type LegacyToolName =
-  | "fetch_scripture"
-  | "fetch_translation_notes"
-  | "fetch_translation_questions"
-  | "fetch_translation_word_links"
-  | "fetch_translation_word"
-  | "fetch_translation_academy"
-  | "list_subjects"
-  | "list_resources_for_language"
-  | "list_resources_by_language"
-  | "list_translation_academy"
-  | "list_translation_words"
-  | "get_bundle";
-
-export type ToolName = WorkflowToolName | LegacyToolName;
 
 export interface MCPToolResult {
   content: Array<{ type: "text"; text: string }>;
@@ -74,12 +59,17 @@ export function parseResult<T = unknown>(result: MCPToolResult): T {
 }
 
 // ---------------------------------------------------------------------------
-// Workflow tool option types (new progressive-disclosure surface)
+// Workflow tool option types
 // ---------------------------------------------------------------------------
 
 export interface ListLanguagesOptions {
   /** Substring filter on language code or name */
   filter?: string;
+}
+
+export interface ListResourcesOptions {
+  /** BCP-47 language code (required) */
+  language: string;
 }
 
 export interface GetPassageOptions {
@@ -94,7 +84,8 @@ export interface GetPassageOptions {
 
 export interface GetPassageContextOptions {
   /**
-   * Bible passage reference: "JHN 3:16", "MAT 5:3-12", "GEN 1"
+   * Bible passage reference: "JHN 3:16", "MAT 5:3-12", "GEN 1" — or a bare
+   * book name/code ("TIT", "Titus") to get only the book overview (front:intro).
    * Returns book/chapter intro notes + resource availability (NOT verse text — use getPassage).
    */
   reference: string;
@@ -212,80 +203,4 @@ export interface GetObsQuestionsOptions {
   reference: string;
   /** BCP-47 language code (default: "en") */
   language?: string;
-}
-
-// ---------------------------------------------------------------------------
-// Legacy tool option types — kept for backward compatibility
-// ---------------------------------------------------------------------------
-
-/** @deprecated Use GetPassageOptions instead */
-export interface FetchScriptureOptions {
-  reference: string;
-  language?: string;
-  organization?: string;
-  format?: "text" | "usfm";
-}
-
-/** @deprecated Use GetNoteOptions instead */
-export interface FetchTranslationNotesOptions {
-  reference: string;
-  language?: string;
-  organization?: string;
-}
-
-/** @deprecated Use GetQuestionsOptions instead */
-export interface FetchTranslationQuestionsOptions {
-  reference: string;
-  language?: string;
-  organization?: string;
-}
-
-/** @deprecated Use GetPassageIndexOptions instead */
-export interface FetchTranslationWordLinksOptions {
-  reference: string;
-  language?: string;
-  organization?: string;
-}
-
-/** @deprecated Use GetWordArticleOptions instead */
-export interface FetchTranslationWordOptions {
-  path?: string;
-  term?: string;
-  language?: string;
-  organization?: string;
-}
-
-/** @deprecated Use GetAcademyArticleOptions instead */
-export interface FetchTranslationAcademyOptions {
-  path: string;
-  language?: string;
-  organization?: string;
-}
-
-export interface ListSubjectsOptions {}
-
-export interface ListResourcesForLanguageOptions {
-  language: string;
-  subject?: string;
-  organization?: string;
-  stage?: "prod" | "preprod" | "latest";
-}
-
-/** @deprecated Use GetPassageContextOptions + getPassageIndex instead */
-export interface GetBundleOptions {
-  reference: string;
-  language?: string;
-  includeScripture?: boolean;
-  includeNotes?: boolean;
-  includeWords?: boolean;
-}
-
-export interface ListTranslationAcademyOptions {
-  language?: string;
-  category?: string;
-}
-
-export interface ListTranslationWordsOptions {
-  language?: string;
-  category?: "kt" | "other" | "names";
 }

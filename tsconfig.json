@@ -15,9 +15,23 @@
     "outDir": "dist",
     "rootDir": ".",
     "paths": {
-      "$core/*": ["./src/core/*"]
+      "$core/*": ["./src/core/*"],
+      "@translation-helps/door43": ["./packages/door43/src/index.ts"],
+      "@translation-helps/door43/*": ["./packages/door43/src/*"]
     }
   },
-  "include": ["src/**/*.ts", "scripts/**/*.ts"],
-  "exclude": ["node_modules", "dist", "web", "packages"]
+  "include": [
+    "src/**/*.ts",
+    "scripts/**/*.ts",
+    "packages/door43/src/**/*.ts",
+    "tests/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "web",
+    "packages/js-sdk",
+    "packages/python-sdk",
+    "packages/door43/dist"
+  ]
 }

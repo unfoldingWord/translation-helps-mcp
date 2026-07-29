@@ -14,7 +14,10 @@ The server uses a **progressive-disclosure workflow** — call tools in order to
 orient, survey, drill, and check a Bible passage.
 
 ```typescript
-import { TranslationHelpsClient, parseResult } from "@translation-helps/mcp-client";
+import {
+  TranslationHelpsClient,
+  parseResult,
+} from "@translation-helps/mcp-client";
 
 const client = new TranslationHelpsClient({
   // Optional — defaults to the public server
@@ -23,6 +26,9 @@ const client = new TranslationHelpsClient({
 
 // 1. Discover available languages
 const langs = await client.listLanguages({ filter: "es" });
+
+// 1b. Check which resource types exist for a language
+const resources = await client.listResources({ language: "en" });
 
 // 2a. Orient — scripture text (all versions, incl. original-language UGNT/UHB)
 //     Cheap and repeatable; re-call any time you need the verse text.
@@ -46,17 +52,17 @@ const index = await client.getPassageIndex({
 // 4. Drill — fetch specific items using IDs/paths from the index
 const note = await client.getNote({
   reference: "JHN 3:16",
-  id: "abc123",          // from index notes[].id
+  id: "abc123", // from index notes[].id
   language: "en",
 });
 
 const taArticle = await client.getAcademyArticle({
-  path: "translate/figs-metaphor",   // from index notes[].taArticle.path
+  path: "translate/figs-metaphor", // from index notes[].taArticle.path
   language: "en",
 });
 
 const twArticle = await client.getWordArticle({
-  path: "bible/kt/grace",            // from index wordLinks[].twArticle.path
+  path: "bible/kt/grace", // from index wordLinks[].twArticle.path
   language: "en",
 });
 
@@ -95,51 +101,63 @@ All methods return `MCPToolResult`. Use `parseResult<T>(result)` to extract type
 
 #### Step 1 — Orient
 
-| Method | Options | Description |
-| ------ | ------- | ----------- |
-| `listLanguages(opts?)` | `filter?` | Discover valid BCP-47 language codes |
-| `getPassage(opts)` | `reference` (req), `language?` | Scripture text — all versions (literal, simplified, original UGNT/UHB). Cheap and repeatable. |
+| Method                    | Options                                         | Description                                                                                       |
+| ------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `listLanguages(opts?)`    | `filter?`                                       | Discover valid BCP-47 language codes                                                              |
+| `listResources(opts)`     | `language` (req)                                | Resource types available for a language (presence summary from catalog)                           |
+| `getPassage(opts)`        | `reference` (req), `language?`                  | Scripture text — all versions (literal, simplified, original UGNT/UHB). Cheap and repeatable.     |
 | `getPassageContext(opts)` | `reference` (req), `language?`, `organization?` | Book/chapter intro notes + resource availability. Does NOT include verse text (use `getPassage`). |
 
 #### Step 2 — Survey
 
-| Method | Options | Description |
-| ------ | ------- | ----------- |
+| Method                  | Options                                         | Description                                                                                                       |
+| ----------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `getPassageIndex(opts)` | `reference` (req), `language?`, `organization?` | Compact index: note IDs + quotes + TA/TW paths (no article bodies). Includes `issues[]` and `keyTerms[]` rollups. |
 
 #### Step 3 — Drill
 
-| Method | Options | Description |
-| ------ | ------- | ----------- |
-| `getNote(opts)` | `reference` (req), `id?`, `language?`, `organization?` | Full note body. Omit `id` to get all notes for the reference. |
-| `getAcademyArticle(opts)` | `path` (req), `language?`, `organization?` | Full TA article markdown. Use `path` from index `taArticle.path`. |
-| `getWordArticle(opts)` | `path` (req), `language?`, `organization?` | Full TW article markdown. Use `path` from index `twArticle.path`. |
+| Method                    | Options                                                | Description                                                       |
+| ------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------- |
+| `getNote(opts)`           | `reference` (req), `id?`, `language?`, `organization?` | Full note body. Omit `id` to get all notes for the reference.     |
+| `getAcademyArticle(opts)` | `path` (req), `language?`, `organization?`             | Full TA article markdown. Use `path` from index `taArticle.path`. |
+| `getWordArticle(opts)`    | `path` (req), `language?`, `organization?`             | Full TW article markdown. Use `path` from index `twArticle.path`. |
 
 #### Step 4 — Check
 
-| Method | Options | Description |
-| ------ | ------- | ----------- |
+| Method               | Options                                         | Description                            |
+| -------------------- | ----------------------------------------------- | -------------------------------------- |
 | `getQuestions(opts)` | `reference` (req), `language?`, `organization?` | Comprehension questions for a passage. |
 
 #### Lateral Discovery
 
-| Method | Options | Description |
-| ------ | ------- | ----------- |
+| Method                 | Options                                               | Description                                                         |
+| ---------------------- | ----------------------------------------------------- | ------------------------------------------------------------------- |
 | `searchArticles(opts)` | `query` (req), `language?`, `resourceTypes?`, `topK?` | Lexical search over TA + TW article catalogs. Returns ranked paths. |
 
-### Legacy Methods (deprecated)
+#### Open Bible Stories (OBS)
 
-These remain for backward compatibility but should be migrated to the workflow methods above.
+| Method                  | Options                        | Description                                                           |
+| ----------------------- | ------------------------------ | --------------------------------------------------------------------- |
+| `getObsStory(opts)`     | `reference` (req), `language?` | OBS story text and frames for a story:frame reference (e.g. `"1:1"`). |
+| `getObsNotes(opts)`     | `reference` (req), `language?` | OBS Translation Notes for a story:frame reference.                    |
+| `getObsQuestions(opts)` | `reference` (req), `language?` | OBS Translation Questions for a story:frame reference.                |
 
-| Legacy Method | Use Instead |
-| ------------- | ----------- |
-| `fetchScripture(opts)` | `getPassage` |
-| `fetchTranslationNotes(opts)` | `getNote` |
-| `fetchTranslationQuestions(opts)` | `getQuestions` |
-| `fetchTranslationWordLinks(opts)` | `getPassageIndex` |
-| `fetchTranslationWord(opts)` | `getWordArticle` |
-| `fetchTranslationAcademy(opts)` | `getAcademyArticle` |
-| `getBundle(opts)` | `getPassageContext` + `getPassageIndex` |
+### Migration from legacy tools
+
+Legacy MCP tools (`fetch_*`, `get_bundle`, `list_subjects`, `list_resources_for_language`, etc.) have been removed from the server. Map them as follows:
+
+| Removed                                                      | Use instead                                          |
+| ------------------------------------------------------------ | ---------------------------------------------------- |
+| `fetch_scripture`                                            | `getPassage`                                         |
+| `fetch_translation_notes`                                    | `getNote`                                            |
+| `fetch_translation_questions`                                | `getQuestions`                                       |
+| `fetch_translation_word_links`                               | `getPassageIndex`                                    |
+| `fetch_translation_word`                                     | `getWordArticle`                                     |
+| `fetch_translation_academy`                                  | `getAcademyArticle`                                  |
+| `get_bundle`                                                 | `getPassageContext` + `getPassageIndex`              |
+| `list_resources_for_language` / `list_resources_by_language` | `listResources`                                      |
+| `list_subjects`                                              | `listResources` (availability includes subject/role) |
+| `list_translation_academy` / `list_translation_words`        | `searchArticles` + drill methods                     |
 
 ### Parsing Results
 
@@ -148,7 +166,9 @@ import { parseResult } from "@translation-helps/mcp-client";
 
 const result = await client.getPassageContext({ reference: "JHN 3:16" });
 if (result.isError) {
-  const error = parseResult<{ code: string; message: string; hints: string[] }>(result);
+  const error = parseResult<{ code: string; message: string; hints: string[] }>(
+    result,
+  );
   console.error(error.code, error.message);
 } else {
   const data = parseResult<{ versions: unknown[]; notes: unknown[] }>(result);

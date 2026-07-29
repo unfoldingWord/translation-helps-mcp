@@ -17,15 +17,39 @@ import {
   zipUrlFromEntry,
   buildBookPaths,
 } from "./helpers.js";
-import { catalogSearch } from "../../core/resources/dcsClient.js";
-import { tokenizeUsfm, QuoteMatcher } from "../../core/alignment/index.js";
-import type { QuoteReference } from "../../core/alignment/index.js";
+import { catalogSearch } from "@translation-helps/door43";
+import { tokenizeUsfm, QuoteMatcher } from "@translation-helps/door43";
+import type { QuoteReference } from "@translation-helps/door43";
 import { joinAlignedTokens } from "./alignmentHelper.js";
 
 const NT_BOOKS = new Set([
-  "MAT","MRK","LUK","JHN","ACT","ROM","1CO","2CO","GAL","EPH","PHP","COL",
-  "1TH","2TH","1TI","2TI","TIT","PHM","HEB","JAS","1PE","2PE","1JN","2JN",
-  "3JN","JUD","REV",
+  "MAT",
+  "MRK",
+  "LUK",
+  "JHN",
+  "ACT",
+  "ROM",
+  "1CO",
+  "2CO",
+  "GAL",
+  "EPH",
+  "PHP",
+  "COL",
+  "1TH",
+  "2TH",
+  "1TI",
+  "2TI",
+  "TIT",
+  "PHM",
+  "HEB",
+  "JAS",
+  "1PE",
+  "2PE",
+  "1JN",
+  "2JN",
+  "3JN",
+  "JUD",
+  "REV",
 ]);
 
 function isNtBook(book: string): boolean {
@@ -33,7 +57,7 @@ function isNtBook(book: string): boolean {
 }
 
 export async function handleQuote(ctx: RouteContext): Promise<Response> {
-  const { url, env } = ctx;
+  const { url, env, execCtx } = ctx;
 
   const quoteRaw = url.searchParams.get("quote");
   const occurrence = parseInt(url.searchParams.get("occurrence") ?? "1", 10);
@@ -63,12 +87,14 @@ export async function handleQuote(ctx: RouteContext): Promise<Response> {
     endVerse,
   };
 
-  const fetcher = makeFetcher(env);
+  const fetcher = makeFetcher(env, execCtx);
 
   // -------------------------------------------------------------------------
   // 1. Discover and fetch original-language USFM (UGNT or UHB)
   // -------------------------------------------------------------------------
-  const origSubject = isNtBook(book) ? "Greek New Testament" : "Hebrew Old Testament";
+  const origSubject = isNtBook(book)
+    ? "Greek New Testament"
+    : "Hebrew Old Testament";
   const origLang = isNtBook(book) ? "el-x-koine" : "hbo";
 
   const origEntries = await catalogSearch({
@@ -78,7 +104,11 @@ export async function handleQuote(ctx: RouteContext): Promise<Response> {
   });
 
   if (origEntries.length === 0) {
-    return apiError("NOT_FOUND", `No original-language resource found for book "${book}"`, 404);
+    return apiError(
+      "NOT_FOUND",
+      `No original-language resource found for book "${book}"`,
+      404,
+    );
   }
 
   const origEntry = origEntries[0];
@@ -93,7 +123,11 @@ export async function handleQuote(ctx: RouteContext): Promise<Response> {
   }
 
   if (!origUsfm) {
-    return apiError("NOT_FOUND", `Book "${book}" not found in original-language resource`, 404);
+    return apiError(
+      "NOT_FOUND",
+      `Book "${book}" not found in original-language resource`,
+      404,
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -101,7 +135,12 @@ export async function handleQuote(ctx: RouteContext): Promise<Response> {
   // -------------------------------------------------------------------------
   const origChapters = tokenizeUsfm(origUsfm, book.toUpperCase(), origLang);
   const matcher = new QuoteMatcher();
-  const origResult = matcher.findOriginalTokens(origChapters, quote, occurrence, qRef);
+  const origResult = matcher.findOriginalTokens(
+    origChapters,
+    quote,
+    occurrence,
+    qRef,
+  );
 
   if (!origResult.success) {
     return json({
@@ -153,7 +192,11 @@ export async function handleQuote(ctx: RouteContext): Promise<Response> {
       if (!usfm) return;
 
       const gwChapters = tokenizeUsfm(usfm, book.toUpperCase(), language);
-      const alignResult = matcher.findAlignedTokens(origResult.totalTokens, gwChapters, qRef);
+      const alignResult = matcher.findAlignedTokens(
+        origResult.totalTokens,
+        gwChapters,
+        qRef,
+      );
 
       if (alignResult.success && alignResult.totalAlignedTokens.length > 0) {
         const abbrev = entry.abbreviation ?? entry.repo.replace(/^[a-z]+_/, "");

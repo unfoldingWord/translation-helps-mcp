@@ -6,13 +6,20 @@ import { json, apiError } from "../worker.js";
 import {
   requireReferenceAndLanguage,
   makeFetcher,
-  getResourceZipUrl,
+  resolveLanguageVariant,
+  zipUrlFromEntry,
   buildBookPaths,
 } from "./helpers.js";
-import { parseTranslationQuestionsTsv } from "../../core/parsers/tsv.js";
+import { parseTranslationQuestionsTsv } from "@translation-helps/door43";
+import {
+  coalesceInFlight,
+  getCachedJson,
+  putCachedJson,
+  responseCacheKey,
+} from "./responseCache.js";
 
 export async function handleQuestions(ctx: RouteContext): Promise<Response> {
-  const { url, env } = ctx;
+  const { url, env, execCtx } = ctx;
 
   let ref: ReturnType<typeof requireReferenceAndLanguage>;
   try {
@@ -21,32 +28,81 @@ export async function handleQuestions(ctx: RouteContext): Promise<Response> {
     return apiError("BAD_REQUEST", (e as Error).message, 400);
   }
 
-  const { reference, language, book, chapter, verseStart } = ref;
+  const {
+    reference,
+    language: requestedLanguage,
+    book,
+    chapter,
+    verseStart,
+  } = ref;
 
-  const resolved = await getResourceZipUrl(
-    language,
-    "TSV Translation Questions",
-    "unfoldingWord",
-    "prod",
-    env.TRANSLATION_HELPS_CACHE,
+  const cacheKey = responseCacheKey(
+    "questions",
+    requestedLanguage,
+    book,
+    chapter,
+    verseStart,
   );
-  if (!resolved) {
-    return json({ reference, language, book, chapter, questions: [] });
+
+  const cached = await getCachedJson<Record<string, unknown>>(
+    env.TRANSLATION_HELPS_CACHE,
+    cacheKey,
+  );
+  if (cached) {
+    return json({ ...cached.value, meta: { cache: "kv" } });
   }
 
-  const fetcher = makeFetcher(env);
-  const zip = await fetcher.getOrDownloadZip(resolved.zipUrl);
-  const paths = buildBookPaths(resolved.entry, book, "tq_", ".tsv");
+  const body = await coalesceInFlight(cacheKey, async () => {
+    const again = await getCachedJson<Record<string, unknown>>(
+      env.TRANSLATION_HELPS_CACHE,
+      cacheKey,
+    );
+    if (again) return { payload: again.value, cache: "kv" as const };
 
-  let tsv: string | null = null;
-  for (const p of paths) {
-    tsv = await fetcher.extractFileFromZip(zip, p);
-    if (tsv) break;
-  }
-  if (!tsv) {
-    return json({ reference, language, book, chapter, questions: [] });
-  }
+    const { language, entries } = await resolveLanguageVariant(
+      requestedLanguage,
+      "TSV Translation Questions",
+      env.TRANSLATION_HELPS_CACHE,
+    );
+    if (entries.length === 0) {
+      return {
+        payload: { reference, language, book, chapter, questions: [] },
+        cache: "network" as const,
+      };
+    }
 
-  const questions = parseTranslationQuestionsTsv(tsv, chapter, verseStart);
-  return json({ reference, language, book, chapter, verse: verseStart ?? null, questions });
+    const entry =
+      entries.find((e) => e.owner === "unfoldingWord") ?? entries[0];
+    const zipUrl = zipUrlFromEntry(entry);
+
+    const fetcher = makeFetcher(env, execCtx);
+    const paths = buildBookPaths(entry, book, "tq_", ".tsv");
+
+    let tsv: string | null = null;
+    for (const p of paths) {
+      tsv = await fetcher.getFileText(zipUrl, p);
+      if (tsv) break;
+    }
+    const zipSource = fetcher.lastCacheSource ?? "network";
+    if (!tsv) {
+      return {
+        payload: { reference, language, book, chapter, questions: [] },
+        cache: zipSource,
+      };
+    }
+
+    const questions = parseTranslationQuestionsTsv(tsv, chapter, verseStart);
+    const payload = {
+      reference,
+      language,
+      book,
+      chapter,
+      verse: verseStart ?? null,
+      questions,
+    };
+    putCachedJson(env.TRANSLATION_HELPS_CACHE, cacheKey, payload, execCtx);
+    return { payload, cache: zipSource };
+  });
+
+  return json({ ...body.payload, meta: { cache: body.cache } });
 }

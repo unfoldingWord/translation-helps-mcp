@@ -19,8 +19,6 @@
 const PATH_TOOLS = new Set([
   "get_academy_article",
   "get_word_article",
-  "fetch_translation_word",
-  "fetch_translation_academy",
   // OBS tools
   "get_obs_notes",
   "get_obs_questions",
@@ -33,11 +31,7 @@ const REFERENCE_TOOLS = new Set([
   "get_passage_index",
   "get_note",
   "get_questions",
-  "fetch_scripture",
-  "fetch_translation_notes",
-  "fetch_translation_questions",
-  "fetch_translation_word_links",
-  "get_bundle",
+  "get_obs_story",
 ]);
 
 // ---------------------------------------------------------------------------

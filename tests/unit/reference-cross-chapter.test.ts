@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { parseReferenceForTool } from "../../src/core/resources/referenceParser.js";
+import { parseReferenceForTool } from "@translation-helps/door43";
 
 describe("cross-chapter reference parsing", () => {
   it("parses a simple verse reference", () => {

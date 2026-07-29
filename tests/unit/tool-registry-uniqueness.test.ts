@@ -1,6 +1,6 @@
 /**
  * Verify that the shared tool registry has no duplicate tool names and includes
- * all expected OBS tools.
+ * all expected workflow + OBS tools.
  */
 
 import { describe, it, expect } from "vitest";
@@ -24,9 +24,10 @@ describe("MCP_TOOLS uniqueness", () => {
     expect(names).toContain("get_obs_questions");
   });
 
-  it("includes all 9 workflow tools in MCP_TOOLS", () => {
+  it("includes all workflow tools in MCP_TOOLS", () => {
     const names = MCP_TOOLS.map((t) => t.name as string);
     expect(names).toContain("list_languages");
+    expect(names).toContain("list_resources");
     expect(names).toContain("get_passage");
     expect(names).toContain("get_passage_context");
     expect(names).toContain("get_passage_index");
@@ -36,27 +37,21 @@ describe("MCP_TOOLS uniqueness", () => {
     expect(names).toContain("get_questions");
     expect(names).toContain("search_articles");
   });
+
+  it("has exactly 13 tools", () => {
+    expect(MCP_TOOLS.length).toBe(13);
+  });
 });
 
-describe("ALL_TOOLS uniqueness", () => {
+describe("ALL_TOOLS equals MCP_TOOLS", () => {
   it("has no duplicate tool names in ALL_TOOLS", () => {
     const names = ALL_TOOLS.map((t) => t.name as string);
     const unique = new Set(names);
     expect(names.length).toBe(unique.size);
   });
 
-  it("ALL_TOOLS is a superset of MCP_TOOLS", () => {
-    const allNames = new Set(ALL_TOOLS.map((t) => t.name as string));
-    for (const t of MCP_TOOLS) {
-      expect(allNames).toContain(t.name);
-    }
-  });
-
-  it("includes legacy tools", () => {
-    const names = ALL_TOOLS.map((t) => t.name as string);
-    expect(names).toContain("fetch_scripture");
-    expect(names).toContain("fetch_translation_notes");
-    expect(names).toContain("get_bundle");
+  it("ALL_TOOLS is identical to MCP_TOOLS (legacy retired)", () => {
+    expect(ALL_TOOLS).toBe(MCP_TOOLS);
   });
 });
 
@@ -71,8 +66,9 @@ describe("TOOL_REGISTRY", () => {
     expect(Object.keys(TOOL_REGISTRY).length).toBe(ALL_TOOLS.length);
   });
 
-  it("get_obs_story is reachable from TOOL_REGISTRY", () => {
+  it("get_obs_story and list_resources are reachable", () => {
     expect(TOOL_REGISTRY["get_obs_story"]).toBeDefined();
-    expect(TOOL_REGISTRY["get_obs_story"].name).toBe("get_obs_story");
+    expect(TOOL_REGISTRY["list_resources"]).toBeDefined();
+    expect(TOOL_REGISTRY["list_resources"].name).toBe("list_resources");
   });
 });

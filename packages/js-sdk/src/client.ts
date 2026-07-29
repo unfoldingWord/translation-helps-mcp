@@ -6,20 +6,22 @@
  *
  * ### Progressive-disclosure workflow
  * 1. `listLanguages`     — discover valid language codes
- * 2. `getPassage`        — scripture text (all versions) — cheap, repeatable
- * 3. `getPassageContext` — book/chapter intro notes + resource availability
- * 4. `getPassageIndex`   — compact index of issues + key terms (no bodies)
- * 5. `getNote`           — full note body by id
- * 6. `getAcademyArticle` — full TA article by path
- * 7. `getWordArticle`    — full TW article by path
- * 8. `getQuestions`      — comprehension questions for a passage
- * 9. `searchArticles`    — lateral concept → article path discovery
+ * 2. `listResources`     — resource availability for a language
+ * 3. `getPassage`        — scripture text (all versions) — cheap, repeatable
+ * 4. `getPassageContext` — book/chapter intro notes + resource availability
+ * 5. `getPassageIndex`   — compact index of issues + key terms (no bodies)
+ * 6. `getNote`           — full note body by id
+ * 7. `getAcademyArticle` — full TA article by path
+ * 8. `getWordArticle`    — full TW article by path
+ * 9. `getQuestions`      — comprehension questions for a passage
+ * 10. `searchArticles`   — lateral concept → article path discovery
  */
 
 import type {
   ClientOptions,
   // Workflow tools
   ListLanguagesOptions,
+  ListResourcesOptions,
   GetPassageOptions,
   GetPassageContextOptions,
   GetPassageIndexOptions,
@@ -32,17 +34,6 @@ import type {
   GetObsStoryOptions,
   GetObsNotesOptions,
   GetObsQuestionsOptions,
-  // Legacy tools
-  FetchScriptureOptions,
-  FetchTranslationNotesOptions,
-  FetchTranslationQuestionsOptions,
-  FetchTranslationWordOptions,
-  FetchTranslationWordLinksOptions,
-  FetchTranslationAcademyOptions,
-  ListResourcesForLanguageOptions,
-  GetBundleOptions,
-  ListTranslationAcademyOptions,
-  ListTranslationWordsOptions,
   MCPToolResult,
   ToolName,
 } from "./types.js";
@@ -122,37 +113,6 @@ export class TranslationHelpsClient {
     }
   }
 
-  /**
-   * Call a legacy fetch_* tool via the /api/tool REST endpoint.
-   * These tools are not on the MCP /mcp surface in v2 but remain available
-   * at POST /api/tool for backward compatibility.
-   */
-  private async callLegacyTool(
-    name: string,
-    args: Record<string, unknown>,
-  ): Promise<MCPToolResult> {
-    const apiToolUrl = this.serverUrl.replace(/\/mcp$/, "/api/tool");
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.timeout);
-    try {
-      const response = await fetch(apiToolUrl, {
-        method: "POST",
-        headers: this.headers,
-        body: JSON.stringify({ tool: name, args }),
-        signal: controller.signal,
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status} from /api/tool`);
-      }
-      const json = (await response.json()) as MCPToolResult & {
-        content?: MCPToolResult["content"];
-      };
-      return json;
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
   /** List all tools exposed by the server. */
   async listTools(): Promise<Array<{ name: string; description: string }>> {
     const id = ++this.requestId;
@@ -185,6 +145,21 @@ export class TranslationHelpsClient {
   }
 
   /**
+   * List which translation resource types are available for a language.
+   * Returns an availability summary (type, abbreviation, role) from the
+   * Door43 catalog — presence check only, not a full catalog with zip URLs.
+   *
+   * @example
+   * const result = await client.listResources({ language: "en" });
+   */
+  async listResources(opts: ListResourcesOptions): Promise<MCPToolResult> {
+    return this.callTool(
+      "list_resources",
+      opts as unknown as Record<string, unknown>,
+    );
+  }
+
+  /**
    * Get the scripture TEXT for a passage — all versions (literal, simplified,
    * original) in one call. Cheap and repeatable: call it whenever you need to
    * (re-)read the verse text while studying or drafting. For book/chapter
@@ -207,6 +182,9 @@ export class TranslationHelpsClient {
    * Step 1 (orient): Get the background AROUND a passage — book/chapter intro
    * notes (tagged scope: "book"/"chapter") and a summary of which resources
    * exist for the language. Does NOT return verse text — use `getPassage` for that.
+   *
+   * Also accepts a bare book reference (e.g. "TIT" or "Titus") — then returns
+   * only the book overview (front:intro).
    *
    * @example
    * const result = await client.getPassageContext({
@@ -375,107 +353,6 @@ export class TranslationHelpsClient {
   async getObsQuestions(opts: GetObsQuestionsOptions): Promise<MCPToolResult> {
     return this.callTool(
       "get_obs_questions",
-      opts as unknown as Record<string, unknown>,
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Legacy methods — kept for ContextHarness / backward compatibility
-  // ---------------------------------------------------------------------------
-
-  /** @deprecated Use getPassage instead. Routes to /api/tool for backward compat. */
-  async fetchScripture(opts: FetchScriptureOptions): Promise<MCPToolResult> {
-    return this.callLegacyTool(
-      "fetch_scripture",
-      opts as unknown as Record<string, unknown>,
-    );
-  }
-
-  /** @deprecated Use getNote instead. Routes to /api/tool for backward compat. */
-  async fetchTranslationNotes(
-    opts: FetchTranslationNotesOptions,
-  ): Promise<MCPToolResult> {
-    return this.callLegacyTool(
-      "fetch_translation_notes",
-      opts as unknown as Record<string, unknown>,
-    );
-  }
-
-  /** @deprecated Use getQuestions instead. Routes to /api/tool for backward compat. */
-  async fetchTranslationQuestions(
-    opts: FetchTranslationQuestionsOptions,
-  ): Promise<MCPToolResult> {
-    return this.callLegacyTool(
-      "fetch_translation_questions",
-      opts as unknown as Record<string, unknown>,
-    );
-  }
-
-  /** @deprecated Use getPassageIndex instead. Routes to /api/tool for backward compat. */
-  async fetchTranslationWordLinks(
-    opts: FetchTranslationWordLinksOptions,
-  ): Promise<MCPToolResult> {
-    return this.callLegacyTool(
-      "fetch_translation_word_links",
-      opts as unknown as Record<string, unknown>,
-    );
-  }
-
-  /** @deprecated Use getWordArticle instead. Routes to /api/tool for backward compat. */
-  async fetchTranslationWord(
-    opts: FetchTranslationWordOptions,
-  ): Promise<MCPToolResult> {
-    return this.callLegacyTool(
-      "fetch_translation_word",
-      opts as unknown as Record<string, unknown>,
-    );
-  }
-
-  /** @deprecated Use getAcademyArticle instead. Routes to /api/tool for backward compat. */
-  async fetchTranslationAcademy(
-    opts: FetchTranslationAcademyOptions,
-  ): Promise<MCPToolResult> {
-    return this.callLegacyTool(
-      "fetch_translation_academy",
-      opts as unknown as Record<string, unknown>,
-    );
-  }
-
-  async listSubjects(): Promise<MCPToolResult> {
-    return this.callTool("list_subjects", {});
-  }
-
-  async listResourcesForLanguage(
-    opts: ListResourcesForLanguageOptions,
-  ): Promise<MCPToolResult> {
-    return this.callTool(
-      "list_resources_for_language",
-      opts as unknown as Record<string, unknown>,
-    );
-  }
-
-  /** @deprecated Use getPassageContext + getPassageIndex instead. Routes to /api/tool. */
-  async getBundle(opts: GetBundleOptions): Promise<MCPToolResult> {
-    return this.callLegacyTool(
-      "get_bundle",
-      opts as unknown as Record<string, unknown>,
-    );
-  }
-
-  async listTranslationAcademy(
-    opts: ListTranslationAcademyOptions = {},
-  ): Promise<MCPToolResult> {
-    return this.callTool(
-      "list_translation_academy",
-      opts as unknown as Record<string, unknown>,
-    );
-  }
-
-  async listTranslationWords(
-    opts: ListTranslationWordsOptions = {},
-  ): Promise<MCPToolResult> {
-    return this.callTool(
-      "list_translation_words",
       opts as unknown as Record<string, unknown>,
     );
   }

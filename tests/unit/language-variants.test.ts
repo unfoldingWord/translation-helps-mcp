@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   findLanguageVariants,
   resolveCatalogLanguage,
-} from "../../src/core/resources/dcsClient.js";
+} from "@translation-helps/door43";
 
 // ---------------------------------------------------------------------------
 // Mock global fetch
@@ -46,7 +46,13 @@ const LANGUAGES_WITH_ES419 = {
 
 // Catalog search stubs
 const ES_BIBLE_ENTRIES = [
-  { name: "es-419_ult", owner: "unfoldingWord", abbreviation: "ult", ingredients: [], catalog: { prod: { zipball_url: "https://example.com/es-419_ult.zip" } } },
+  {
+    name: "es-419_ult",
+    owner: "unfoldingWord",
+    abbreviation: "ult",
+    ingredients: [],
+    catalog: { prod: { zipball_url: "https://example.com/es-419_ult.zip" } },
+  },
 ];
 
 beforeEach(() => {
@@ -85,7 +91,10 @@ describe("findLanguageVariants", () => {
 
   it("returns [] for a base code that has no variants in the catalog", async () => {
     mockFetch({
-      "catalog/list/languages": { ok: true, data: [{ lc: "fr", ln: "French" }] },
+      "catalog/list/languages": {
+        ok: true,
+        data: [{ lc: "fr", ln: "French" }],
+      },
     });
     const variants = await findLanguageVariants("xx");
     expect(variants).toEqual([]);
@@ -100,12 +109,25 @@ describe("resolveCatalogLanguage", () => {
   it("happy path: returns the exact code when catalog has resources", async () => {
     mockFetch({
       // catalogSearch with lang=en returns results
-      "catalog/search": { ok: true, data: [
-        { name: "en_ult", owner: "unfoldingWord", abbreviation: "ult", ingredients: [], catalog: { prod: { zipball_url: "https://example.com/en_ult.zip" } } },
-      ]},
+      "catalog/search": {
+        ok: true,
+        data: [
+          {
+            name: "en_ult",
+            owner: "unfoldingWord",
+            abbreviation: "ult",
+            ingredients: [],
+            catalog: {
+              prod: { zipball_url: "https://example.com/en_ult.zip" },
+            },
+          },
+        ],
+      },
     });
 
-    const { language, entries } = await resolveCatalogLanguage("en", { subject: "Aligned Bible" });
+    const { language, entries } = await resolveCatalogLanguage("en", {
+      subject: "Aligned Bible",
+    });
     expect(language).toBe("en");
     expect(entries.length).toBeGreaterThan(0);
   });
@@ -116,19 +138,42 @@ describe("resolveCatalogLanguage", () => {
       callCount++;
       // First catalogSearch (lang=es) returns empty; languages list includes es-419;
       // second catalogSearch (lang=es-419) returns results.
-      if (url.includes("catalog/search") && url.includes("lang=es") && !url.includes("es-419")) {
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, data: [] }) });
+      if (
+        url.includes("catalog/search") &&
+        url.includes("lang=es") &&
+        !url.includes("es-419")
+      ) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ ok: true, data: [] }),
+        });
       }
       if (url.includes("catalog/list/languages")) {
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(LANGUAGES_WITH_ES419["catalog/list/languages"]) });
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve(LANGUAGES_WITH_ES419["catalog/list/languages"]),
+        });
       }
       if (url.includes("catalog/search") && url.includes("es-419")) {
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, data: ES_BIBLE_ENTRIES }) });
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ ok: true, data: ES_BIBLE_ENTRIES }),
+        });
       }
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, data: [] }) });
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ ok: true, data: [] }),
+      });
     }) as unknown as typeof fetch;
 
-    const { language, entries } = await resolveCatalogLanguage("es", { subject: "Aligned Bible,Bible" });
+    const { language, entries } = await resolveCatalogLanguage("es", {
+      subject: "Aligned Bible,Bible",
+    });
     expect(language).toBe("es-419");
     expect(entries.length).toBeGreaterThan(0);
   });
@@ -136,10 +181,15 @@ describe("resolveCatalogLanguage", () => {
   it("returns original code with empty entries when no variant found", async () => {
     mockFetch({
       "catalog/search": { ok: true, data: [] },
-      "catalog/list/languages": { ok: true, data: [{ lc: "fr", ln: "French" }] },
+      "catalog/list/languages": {
+        ok: true,
+        data: [{ lc: "fr", ln: "French" }],
+      },
     });
 
-    const { language, entries } = await resolveCatalogLanguage("xx", { subject: "Aligned Bible" });
+    const { language, entries } = await resolveCatalogLanguage("xx", {
+      subject: "Aligned Bible",
+    });
     expect(language).toBe("xx");
     expect(entries).toEqual([]);
   });
@@ -151,9 +201,13 @@ describe("resolveCatalogLanguage", () => {
     const fetchSpy = vi.fn().mockImplementation(globalThis.fetch);
     globalThis.fetch = fetchSpy;
 
-    const { language, entries } = await resolveCatalogLanguage("es-419", { subject: "Aligned Bible" });
+    const { language, entries } = await resolveCatalogLanguage("es-419", {
+      subject: "Aligned Bible",
+    });
     // Should not call listLanguages since es-419 already has a hyphen
-    const languageListCalls = fetchSpy.mock.calls.filter(([url]: [string]) => url.includes("list/languages"));
+    const languageListCalls = fetchSpy.mock.calls.filter(([url]: [string]) =>
+      url.includes("list/languages"),
+    );
     expect(languageListCalls).toHaveLength(0);
     expect(language).toBe("es-419");
     expect(entries).toEqual([]);

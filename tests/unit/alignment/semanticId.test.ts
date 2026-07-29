@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateSemanticId } from "../../../src/core/alignment/semanticId.js";
+import { generateSemanticId } from "@translation-helps/door43";
 
 describe("generateSemanticId", () => {
   it("returns a non-negative integer", () => {

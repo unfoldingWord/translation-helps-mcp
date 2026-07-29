@@ -60,7 +60,12 @@ export interface ToolModule<TInput extends AnyZodSchema> {
   description: string;
   /** Zod schema for the tool's input parameters. */
   inputSchema: TInput;
-  /** Optional Zod schema for the structured output (plain ZodRawShape for registerTool). */
+  /**
+   * Optional Zod schema for the structured output (plain ZodRawShape for
+   * registerTool). When present, MUST also accept the not-available envelope
+   * via `withNotAvailableOutput(...)` — the SDK validates structuredContent
+   * against this schema for every non-isError result.
+   */
   outputSchema?: Record<string, z.ZodTypeAny>;
   /** MCP tool annotations for capability hints. */
   annotations: {
@@ -80,6 +85,46 @@ export interface ToolModule<TInput extends AnyZodSchema> {
 }
 
 // ---------------------------------------------------------------------------
+// Output schema helpers (MCP outputSchema + RESOURCE_NOT_AVAILABLE)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fields for the `RESOURCE_NOT_AVAILABLE` envelope (`isError: false`).
+ * Spread into every tool `outputSchema` (see `withNotAvailableOutput`).
+ */
+export const notAvailableOutputFields = {
+  available: z
+    .boolean()
+    .optional()
+    .describe("False when the requested resource is not available."),
+  code: z
+    .literal("RESOURCE_NOT_AVAILABLE")
+    .optional()
+    .describe('Present when available is false: "RESOURCE_NOT_AVAILABLE".'),
+  message: z
+    .string()
+    .optional()
+    .describe("Human-readable not-available message."),
+  hints: z
+    .array(z.string())
+    .optional()
+    .describe("Suggested next steps for the client / model."),
+} as const;
+
+/**
+ * Merge a tool's success-shape fields with the not-available envelope fields.
+ *
+ * Success fields should be `.optional()` so the not-available payload validates.
+ * The MCP SDK wraps this shape in `z.object()` and rejects non-conforming
+ * structuredContent on any result where `isError` is not true.
+ */
+export function withNotAvailableOutput(
+  successFields: Record<string, z.ZodTypeAny>,
+): Record<string, z.ZodTypeAny> {
+  return { ...successFields, ...notAvailableOutputFields };
+}
+
+// ---------------------------------------------------------------------------
 // Standard result helpers
 // ---------------------------------------------------------------------------
 
@@ -94,7 +139,7 @@ export interface ToolResult {
  * Build a successful result.
  *
  * `structuredContent` is the authoritative data channel for modern MCP clients
- * (protocol >= 2025-11-05) that support it.
+ * that support it (spec 2025-06-18+).
  *
  * `content` always includes a compact JSON payload so that stdio clients and
  * older HTTP clients that only read `content` still receive usable data.
@@ -131,9 +176,7 @@ export function notAvailable(description: string, extra?: string): ToolResult {
     available: false,
     code: "RESOURCE_NOT_AVAILABLE",
     message,
-    hints: [
-      "Run list_resources_for_language to see what is available for this language.",
-    ],
+    hints: ["Run list_resources to see what is available for this language."],
   };
   return {
     content: [{ type: "text", text: JSON.stringify(data) }],
@@ -145,9 +188,20 @@ export function notAvailable(description: string, extra?: string): ToolResult {
 /** Build a successful result with a cache status hint (for the metrics layer). */
 export function okCached(
   data: unknown,
-  cacheStatus: "hit" | "miss" | "stale",
+  cacheStatus: "hit" | "miss" | "stale" | "none",
   humanText?: string,
 ): ToolResult {
   const result = ok(data, humanText);
   return { ...result, cacheStatus };
+}
+
+/** Map REST `meta.cache` values to Analytics cacheStatus. */
+export function mapApiCacheStatus(
+  cache?: string,
+): "hit" | "miss" | "stale" | "none" {
+  if (!cache) return "none";
+  if (cache === "kv" || cache === "memory") return "hit";
+  if (cache === "r2") return "stale";
+  if (cache === "network") return "miss";
+  return "none";
 }

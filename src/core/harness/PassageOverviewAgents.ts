@@ -16,6 +16,7 @@
 
 import type { LLMProvider } from "../rag/providers/LLMProvider.js";
 import type { EnrichedBundle, ScriptureText } from "./budgeter.js";
+import { DEFAULT_WORKFLOW_MODE, type WorkflowMode } from "./workflowMode.js";
 // Minimal emit interface — mirrors HarnessEmit to avoid circular imports.
 interface OverviewEmit {
   status(text: string): void;
@@ -62,7 +63,10 @@ async function runScriptureAgent(
   llm: LLMProvider,
 ): Promise<SubAgentResult> {
   if (scriptures.length === 0) {
-    return { summary: "(No scripture text available for analysis.)", citations: [] };
+    return {
+      summary: "(No scripture text available for analysis.)",
+      citations: [],
+    };
   }
 
   let context = `# Scripture Translations for ${reference}\n\n`;
@@ -77,7 +81,10 @@ async function runScriptureAgent(
 
   const summary = await llm.generate([
     { role: "system", content: SCRIPTURE_AGENT_SYSTEM },
-    { role: "user", content: `${context}\nPlease analyze ${reference} as described.` },
+    {
+      role: "user",
+      content: `${context}\nPlease analyze ${reference} as described.`,
+    },
   ]);
 
   return { summary, citations };
@@ -109,7 +116,8 @@ Your task — be concise and structured:
 
 3. **Flag 2–3 verses** that have the highest note density or most complex challenges.
 
-Stay factual. Reference the notes as given; do not add interpretation.`;
+Stay factual. Reference the notes as given; do not add interpretation.
+RESOURCE GROUNDING: Draw only from the note texts provided. Do not invent translation principles, figures of speech, or abstract-noun guidance from training knowledge that is not in these notes.`;
 
 async function runNotesAgent(
   notes: Array<Record<string, unknown>>,
@@ -117,7 +125,10 @@ async function runNotesAgent(
   llm: LLMProvider,
 ): Promise<SubAgentResult> {
   if (notes.length === 0) {
-    return { summary: "(No Translation Notes available for this passage.)", citations: [] };
+    return {
+      summary: "(No Translation Notes available for this passage.)",
+      citations: [],
+    };
   }
 
   let context = `# Translation Notes for ${reference} (${notes.length} total)\n\n`;
@@ -125,7 +136,9 @@ async function runNotesAgent(
     const id = String(note["id"] ?? "");
     const verse = String(note["verse"] ?? extractVerseFromId(id));
     const text = String(note["text"] ?? "");
-    const supportRef = String(note["supportReference"] ?? note["externalReference"] ?? "");
+    const supportRef = String(
+      note["supportReference"] ?? note["externalReference"] ?? "",
+    );
     context += `- **v.${verse}** [${id}]: ${text}`;
     if (supportRef) context += ` *(TA: ${supportRef})*`;
     context += "\n";
@@ -133,11 +146,17 @@ async function runNotesAgent(
 
   const citations: Array<{ path: string; title?: string }> = notes
     .slice(0, 5)
-    .map((n) => ({ path: `tn/${reference}/${String(n["id"] ?? "")}`, title: "Translation Note" }));
+    .map((n) => ({
+      path: `tn/${reference}/${String(n["id"] ?? "")}`,
+      title: "Translation Note",
+    }));
 
   const summary = await llm.generate([
     { role: "system", content: NOTES_AGENT_SYSTEM },
-    { role: "user", content: `${context}\nPlease analyze these notes for ${reference} as described.` },
+    {
+      role: "user",
+      content: `${context}\nPlease analyze these notes for ${reference} as described.`,
+    },
   ]);
 
   return { summary, citations };
@@ -162,7 +181,8 @@ Your task — be concise and structured:
 
 4. **Terms that appear multiple times** across the passage (list with count if obvious from context).
 
-Be factual. Draw only from the provided articles.`;
+Be factual. Draw only from the provided articles.
+RESOURCE GROUNDING: Do not invent term definitions or translation strategies from training knowledge. If an article body is missing, say so — do not fill the gap from general knowledge.`;
 
 async function runWordsAcademyAgent(
   tw: Array<Record<string, unknown>>,
@@ -172,7 +192,8 @@ async function runWordsAcademyAgent(
 ): Promise<SubAgentResult> {
   if (tw.length === 0 && ta.length === 0) {
     return {
-      summary: "(No Translation Words or Academy articles available for this passage.)",
+      summary:
+        "(No Translation Words or Academy articles available for this passage.)",
       citations: [],
     };
   }
@@ -203,13 +224,22 @@ async function runWordsAcademyAgent(
   }
 
   const citations: Array<{ path: string; title?: string }> = [
-    ...tw.slice(0, 3).map((t) => ({ path: String(t["path"] ?? ""), title: String(t["title"] ?? "") })),
-    ...ta.slice(0, 2).map((a) => ({ path: String(a["path"] ?? ""), title: String(a["title"] ?? "") })),
+    ...tw.slice(0, 3).map((t) => ({
+      path: String(t["path"] ?? ""),
+      title: String(t["title"] ?? ""),
+    })),
+    ...ta.slice(0, 2).map((a) => ({
+      path: String(a["path"] ?? ""),
+      title: String(a["title"] ?? ""),
+    })),
   ];
 
   const summary = await llm.generate([
     { role: "system", content: WORDS_ACADEMY_AGENT_SYSTEM },
-    { role: "user", content: `${context}\nPlease analyze the terms and strategies for ${reference} as described.` },
+    {
+      role: "user",
+      content: `${context}\nPlease analyze the terms and strategies for ${reference} as described.`,
+    },
   ]);
 
   return { summary, citations };
@@ -219,52 +249,101 @@ async function runWordsAcademyAgent(
 // Orchestrator
 // ---------------------------------------------------------------------------
 
-const ORCHESTRATOR_SYSTEM = `You are a Bible translation coach leading a translator through a structured lesson.
+/**
+ * Build the orchestrator system prompt for the study language.
+ * Structural tokens (☐ N., ✅) stay verbatim; session progress is injected as a
+ * hidden <!-- CHECKLIST --> marker by ContextHarness — do NOT emit [Step N/M].
+ *
+ * `workflowMode` biases the session: Study frames a panel-first *study path*
+ * (understanding, not drafting); Translate/Check keep the translation path.
+ */
+function buildOrchestratorSystem(
+  language: string,
+  workflowMode: WorkflowMode = DEFAULT_WORKFLOW_MODE,
+): string {
+  const lang = language?.trim() || "en";
+  const study = workflowMode === "study";
+  const pathHeading = study
+    ? "Your study path for"
+    : "Your translation path for";
+  const orientationLine = study
+    ? `(Write 1–2 real sentences inviting the translator to read the chapter introduction in the Context tab AND the scripture in the Scripture section of the resources panel beside the chat — in ${lang}. Do not output instructional brackets. NEVER paste, quote, or paraphrase intro notes or the passage text; both are already in the panel.)`
+    : `(Write 1–2 real sentences orienting the translator: point them to the chapter intro (Context tab) and text in the resources panel — in ${lang}. Do not output instructional brackets. Do not re-quote or paraphrase the full intro notes or passage.)`;
+  const stepFiveHint = study
+    ? `usually key ideas, key terms, or a comprehension check — NOT drafting`
+    : `usually key terms, draft in Mi traducción, or comprehension check`;
+  const closingQuestion = study
+    ? `End with exactly ONE simple orientation question in ${lang} about the passage itself (what they notice in the text in the panel, which section to explore, what stands out) — NEVER a drafting prompt, NEVER "how would you translate/render/divide this in your translation".`
+    : `End with exactly ONE clear consultant question in ${lang}: how they would render a flagged source item, what feels hard, continue to step 2 by name, pick a section, or invite a first draft in Mi traducción.`;
+  const modeGuidance = study
+    ? `ACTIVE MODE — STUDY: The user explicitly chose to STUDY this passage before drafting. Frame every step around understanding the source — context/setting, sections and flow, key ideas, key terms, comprehension. Do NOT frame steps as drafting or translation-decision tasks, and do not push Mi traducción this turn.`
+    : `ACTIVE MODE — ${workflowMode.toUpperCase()}: The user is working toward a draft. Steps guide translation decisions on the source text.`;
+  return `You are a Bible translation consultant leading a translator through a structured lesson — not a lecturer dumping notes, and not a grader of unknown receptor-language form.
 Three specialist agents have analyzed the passage. Use their reports to build a guided session.
 
-Your response MUST follow this exact format — no exceptions:
+${modeGuidance}
+
+LANGUAGE: Write ALL human-readable text in the user's study language (${lang}).
+The specialist reports below are in English — translate/adapt their content into ${lang}.
+Do NOT write English labels, headers, or instructions unless ${lang} is English.
+
+Your response MUST follow this exact structure — no exceptions:
 
 ---
-[1-2 sentence orientation to the passage — context, purpose, genre]
+${orientationLine}
 
-**Your translation path for [reference]:**
-☐ 1. [brief step title, e.g. "Passage structure and sections"]
-☐ 2. [brief step title, e.g. "Challenge: 'born again' (v.3, 7)"]
-☐ 3. [brief step title]
-☐ 4. [brief step title]
-☐ 5. [brief step title — usually key terms or comprehension check]
-[Add a 6th only if genuinely necessary. 4–6 steps total.]
+**(Localized equivalent of "${pathHeading}") [passage reference]:**
+☐ 1. (brief step title in ${lang})
+☐ 2. (brief step title in ${lang})
+☐ 3. (brief step title in ${lang})
+☐ 4. (brief step title in ${lang})
+☐ 5. (brief step title in ${lang} — ${stepFiveHint})
+(Add a 6th only if genuinely necessary. 4–6 steps total.)
 
 ---
-**Step 1 — [same title as ☐ 1 above]**
+**(Localized "Step 1") — (same title as ☐ 1 above)**
 
-[Present ONLY this step. 80–120 words MAX. Be direct, helpful, concrete.
+(Present ONLY this step. 80–120 words MAX. Be a consultant: direct, helpful, concrete — in ${lang}.
 For a section step: name the sections with verse ranges, one sentence each.
-For a challenge: state the problem, give the recommended AT from the notes, keep it tight.
-For a term: give the core meaning + one translation suggestion.]
+For a challenge: state the problem, offer the AT from the notes as an option (not "the correct" translation), keep it tight.
+For a term: give the core meaning + one translation suggestion from the source helps.)
 
-[End with ONE short question or prompt that invites the translator to engage — e.g.,
-"Which section feels most unfamiliar?" or "Does your language have a word for this concept?"]
+${closingQuestion}
+Never instruct them to type a keyword like "next". Never rewrite their draft or claim it "sounds right" in their language.
 
----
-*[Step 1/N] — Say **"next"** when ready to continue.*
-
-RULES:
+CRITICAL RULES:
+- NEVER echo instructional parentheses, bracketed placeholders, or template meta-text. Example of FORBIDDEN output: "[1-2 sentence orientation to the passage — context, purpose, genre]". Replace every slot with real content in ${lang}.
+- Keep these tokens EXACTLY as written (they are parsed by the app): ☐ N.  ✅
+- Do NOT write [Step N/M], [Paso N/M], "say next", "di next", or any keyword trigger. The app tracks progress invisibly.
+- Visible headings like "Paso 1" / "Step 1" MAY be localized.
 - Do NOT present Steps 2–N. They come in subsequent turns.
 - Keep Step 1 under 120 words. Quality over quantity.
 - The checklist is the path. The step content is the lesson.
-- Never add the batch-session footer — it is appended programmatically.`;
+- Never rewrite a full model translation for them unless they explicitly ask.
+- Never add a batch-session footer — it is appended programmatically.`;
+}
 
 async function runOrchestratorAgent(
   scriptureResult: SubAgentResult,
   notesResult: SubAgentResult,
   wordsResult: SubAgentResult,
   reference: string,
+  language: string,
   llm: LLMProvider,
+  workflowMode: WorkflowMode = DEFAULT_WORKFLOW_MODE,
 ): Promise<string> {
-  const prompt = buildOrchestratorPrompt(scriptureResult, notesResult, wordsResult, reference);
+  const prompt = buildOrchestratorPrompt(
+    scriptureResult,
+    notesResult,
+    wordsResult,
+    reference,
+    language,
+  );
   return llm.generate([
-    { role: "system", content: ORCHESTRATOR_SYSTEM },
+    {
+      role: "system",
+      content: buildOrchestratorSystem(language, workflowMode),
+    },
     { role: "user", content: prompt },
   ]);
 }
@@ -278,12 +357,26 @@ async function runOrchestratorAgentStream(
   notesResult: SubAgentResult,
   wordsResult: SubAgentResult,
   reference: string,
+  language: string,
   llm: LLMProvider,
   emit: OverviewEmit,
+  workflowMode: WorkflowMode = DEFAULT_WORKFLOW_MODE,
 ): Promise<string> {
   const messages = [
-    { role: "system" as const, content: ORCHESTRATOR_SYSTEM },
-    { role: "user" as const, content: buildOrchestratorPrompt(scriptureResult, notesResult, wordsResult, reference) },
+    {
+      role: "system" as const,
+      content: buildOrchestratorSystem(language, workflowMode),
+    },
+    {
+      role: "user" as const,
+      content: buildOrchestratorPrompt(
+        scriptureResult,
+        notesResult,
+        wordsResult,
+        reference,
+        language,
+      ),
+    },
   ];
 
   if (llm.generateStream) {
@@ -306,7 +399,9 @@ function buildOrchestratorPrompt(
   notesResult: SubAgentResult,
   wordsResult: SubAgentResult,
   reference: string,
+  language: string,
 ): string {
+  const lang = language?.trim() || "en";
   return `# Sub-Agent Reports for ${reference}
 
 ## [SCRIPTURE AGENT]
@@ -318,7 +413,10 @@ ${notesResult.summary}
 ## [WORDS + ACADEMY AGENT]
 ${wordsResult.summary}
 
-Build the guided checklist session for ${reference} as instructed. Remember: show the full checklist upfront, then present ONLY Step 1 in full.`;
+Build the guided checklist session for ${reference} as instructed.
+Write the entire response in the study language (${lang}).
+Show the full checklist upfront, then present ONLY Step 1 in full.
+Never echo template placeholders — fill every slot with real ${lang} content.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -344,8 +442,10 @@ export async function runOverviewPipeline(
   language: string,
   llm: LLMProvider,
   emit?: OverviewEmit,
+  workflowMode: WorkflowMode = DEFAULT_WORKFLOW_MODE,
 ): Promise<OverviewPipelineResult> {
-  void language; // reserved for future multilingual sub-agents
+  // Sub-agents stay English (intermediate analysis only).
+  // The orchestrator localizes the user-facing checklist into `language`.
 
   // Cast notes and tw/ta to the shape sub-agents expect
   const notes = bundle.notes as unknown as Array<Record<string, unknown>>;
@@ -364,9 +464,18 @@ export async function runOverviewPipeline(
     label: string;
     promise: Promise<SubAgentResult>;
   }> = [
-    { label: "Scripture structure", promise: runScriptureAgent(bundle.scriptures, reference, llm) },
-    { label: "Translation notes",   promise: runNotesAgent(notes, reference, llm) },
-    { label: "Key terms & academy", promise: runWordsAcademyAgent(tw, ta, reference, llm) },
+    {
+      label: "Scripture structure",
+      promise: runScriptureAgent(bundle.scriptures, reference, llm),
+    },
+    {
+      label: "Translation notes",
+      promise: runNotesAgent(notes, reference, llm),
+    },
+    {
+      label: "Key terms & academy",
+      promise: runWordsAcademyAgent(tw, ta, reference, llm),
+    },
   ];
 
   const [scriptureResult, notesResult, wordsResult] = await Promise.all(
@@ -374,8 +483,8 @@ export async function runOverviewPipeline(
       promise.then((r) => {
         emit?.thinking?.(label, "done");
         return r;
-      })
-    )
+      }),
+    ),
   );
 
   // Synthesize — stream tokens if emit is available
@@ -383,11 +492,24 @@ export async function runOverviewPipeline(
   let response: string;
   if (emit) {
     response = await runOrchestratorAgentStream(
-      scriptureResult, notesResult, wordsResult, reference, llm, emit,
+      scriptureResult,
+      notesResult,
+      wordsResult,
+      reference,
+      language,
+      llm,
+      emit,
+      workflowMode,
     );
   } else {
     response = await runOrchestratorAgent(
-      scriptureResult, notesResult, wordsResult, reference, llm,
+      scriptureResult,
+      notesResult,
+      wordsResult,
+      reference,
+      language,
+      llm,
+      workflowMode,
     );
   }
 

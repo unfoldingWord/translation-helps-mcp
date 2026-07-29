@@ -15,16 +15,13 @@
 
 import type { Env } from "../worker.js";
 import { makeFetcher, buildBookPaths, zipUrlFromEntry } from "./helpers.js";
-import { catalogSearch } from "../../core/resources/dcsClient.js";
+import { catalogSearch } from "@translation-helps/door43";
 import {
   tokenizeUsfm,
   QuoteMatcher,
   formatQuoteDisplay as formatQuoteDisplayCore,
-} from "../../core/alignment/index.js";
-import type {
-  QuoteReference,
-  OptimizedToken,
-} from "../../core/alignment/index.js";
+} from "@translation-helps/door43";
+import type { QuoteReference, OptimizedToken } from "@translation-helps/door43";
 
 // ---------------------------------------------------------------------------
 // Public helpers for quote display
@@ -128,6 +125,7 @@ export interface AlignmentRow {
  * @param book     USFM book code (uppercase, e.g. "JHN").
  * @param language Strategic language code for the aligned version (e.g. "en").
  * @param env      Worker environment with cache bindings.
+ * @param execCtx  Optional Cloudflare execution context for durable R2 puts.
  * @returns        Map from key `"ch:v:quote:occ"` → joined gateway words string.
  */
 export async function batchGatewayQuotes(
@@ -135,6 +133,7 @@ export async function batchGatewayQuotes(
   book: string,
   language: string,
   env: Env,
+  execCtx?: ExecutionContext,
 ): Promise<Map<string, string>> {
   const result = new Map<string, string>();
 
@@ -144,66 +143,59 @@ export async function batchGatewayQuotes(
   );
   if (active.length === 0) return result;
 
-  const fetcher = makeFetcher(env);
+  const fetcher = makeFetcher(env, execCtx);
   const upperBook = book.toUpperCase();
   const isNt = isNtBook(upperBook);
 
   // -------------------------------------------------------------------------
-  // 1. Fetch and tokenize the original-language USFM (UGNT or UHB)
+  // 1–2. Fetch original + aligned USFM in parallel (catalog + zip/file cache)
   // -------------------------------------------------------------------------
   const origSubject = isNt ? "Greek New Testament" : "Hebrew Old Testament";
   const origLang = isNt ? "el-x-koine" : "hbo";
 
   let origChapters;
-  try {
-    const origEntries = await catalogSearch({
-      lang: origLang,
-      subject: origSubject,
-      kv: env.TRANSLATION_HELPS_CACHE,
-    });
-    if (origEntries.length === 0) return result;
-
-    const origEntry = origEntries[0];
-    const origZip = await fetcher.getOrDownloadZip(zipUrlFromEntry(origEntry));
-    const origPaths = buildBookPaths(origEntry, upperBook, "", ".usfm");
-
-    let origUsfm: string | null = null;
-    for (const p of origPaths) {
-      origUsfm = await fetcher.extractFileFromZip(origZip, p);
-      if (origUsfm) break;
-    }
-    if (!origUsfm) return result;
-
-    origChapters = tokenizeUsfm(origUsfm, upperBook, origLang);
-  } catch {
-    return result;
-  }
-
-  // -------------------------------------------------------------------------
-  // 2. Fetch and tokenize the aligned strategic-language USFM (first ULT/UGT)
-  // -------------------------------------------------------------------------
   let alignedChapters;
   try {
-    const alignedEntries = await catalogSearch({
-      lang: language,
-      subject: "Aligned Bible",
-      kv: env.TRANSLATION_HELPS_CACHE,
-    });
-    if (alignedEntries.length === 0) return result;
+    const [origEntries, alignedEntries] = await Promise.all([
+      catalogSearch({
+        lang: origLang,
+        subject: origSubject,
+        kv: env.TRANSLATION_HELPS_CACHE,
+      }),
+      catalogSearch({
+        lang: language,
+        subject: "Aligned Bible",
+        kv: env.TRANSLATION_HELPS_CACHE,
+      }),
+    ]);
+    if (origEntries.length === 0 || alignedEntries.length === 0) return result;
 
+    const origEntry = origEntries[0];
     const alignedEntry = alignedEntries[0];
-    const alignedZip = await fetcher.getOrDownloadZip(
-      zipUrlFromEntry(alignedEntry),
-    );
+    const origPaths = buildBookPaths(origEntry, upperBook, "", ".usfm");
     const alignedPaths = buildBookPaths(alignedEntry, upperBook, "", ".usfm");
 
-    let alignedUsfm: string | null = null;
-    for (const p of alignedPaths) {
-      alignedUsfm = await fetcher.extractFileFromZip(alignedZip, p);
-      if (alignedUsfm) break;
-    }
-    if (!alignedUsfm) return result;
+    const [origUsfm, alignedUsfm] = await Promise.all([
+      (async () => {
+        const zipUrl = zipUrlFromEntry(origEntry);
+        for (const p of origPaths) {
+          const text = await fetcher.getFileText(zipUrl, p);
+          if (text) return text;
+        }
+        return null;
+      })(),
+      (async () => {
+        const zipUrl = zipUrlFromEntry(alignedEntry);
+        for (const p of alignedPaths) {
+          const text = await fetcher.getFileText(zipUrl, p);
+          if (text) return text;
+        }
+        return null;
+      })(),
+    ]);
+    if (!origUsfm || !alignedUsfm) return result;
 
+    origChapters = tokenizeUsfm(origUsfm, upperBook, origLang);
     alignedChapters = tokenizeUsfm(alignedUsfm, upperBook, language);
   } catch {
     return result;

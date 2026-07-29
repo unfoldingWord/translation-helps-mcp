@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { ZipResourceFetcher2 } from "../../src/core/resources/ZipResourceFetcher2.js";
+import { ZipResourceFetcher2 } from "@translation-helps/door43";
 import { zipSync } from "fflate";
 
 /** Create a valid ZIP using fflate (matches what the fetcher now uses for extraction). */

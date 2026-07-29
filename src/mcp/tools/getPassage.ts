@@ -15,14 +15,24 @@
  */
 
 import { z } from "zod";
-import { referenceParam, languageParam, ok, type ToolModule } from "./shared.js";
+import {
+  referenceParam,
+  languageParam,
+  okCached,
+  mapApiCacheStatus,
+  type ToolModule,
+} from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
-import type { ScriptureVersion } from "../../core/contracts/index.js";
+import type { ScriptureVersion } from "@translation-helps/door43";
 
 const inputSchema = z.object({
   reference: referenceParam,
   language: languageParam,
+  format: z
+    .enum(["text", "usfm"])
+    .default("text")
+    .describe('"text" = plain prose (default), "usfm" = raw USFM markup.'),
 });
 
 export type GetPassageParams = z.infer<typeof inputSchema>;
@@ -34,6 +44,7 @@ export const getPassageTool: ToolModule<typeof inputSchema> = {
     "Returns `versions[]`, each labeled by `role`: `literal` (word-for-word, e.g. ULT), " +
     "`simplified` (meaning-based, e.g. UST), and `original` (Hebrew/Greek source, always included). " +
     "Use `role:literal` to translate form and `role:simplified` to translate meaning; compare against `role:original` for the source wording. " +
+    'Optional `format`: "text" (default) or "usfm" for raw markup. ' +
     "Call this FIRST when studying or translating a passage — it also warms the server cache for all subsequent steps. " +
     "It is cheap and repeatable: re-call it any time you need to re-read the verse while studying or drafting. " +
     "After this → call `get_passage_context` (Step 1b) for background notes, then `get_passage_index` (Step 2) to survey translation issues.",
@@ -42,7 +53,7 @@ export const getPassageTool: ToolModule<typeof inputSchema> = {
 
   async handler(params: GetPassageParams, env: Env, _requestId: string) {
     const client = new ApiClient(env);
-    const { reference, language } = params;
+    const { reference, language, format } = params;
 
     const data = await client.get<{
       reference: string;
@@ -51,20 +62,23 @@ export const getPassageTool: ToolModule<typeof inputSchema> = {
       chapter?: string;
       verse?: string | null;
       versions: ScriptureVersion[];
-    }>("/api/v1/scripture", { reference, language });
+      meta?: { cache?: string; timings?: Record<string, number> };
+    }>("/api/v1/scripture", { reference, language, format });
 
     const versions = data.versions ?? [];
     // Use the effective language returned by the server — may differ from the
     // input when a variant was resolved (e.g. "es" → "es-419").
     const effectiveLanguage = data.language ?? language;
 
-    // Kick off background cache warming for the next workflow steps
-    // (get_passage_context, get_passage_index, get_note, get_questions).
-    // Fire-and-forget — the REST API worker uses ctx.waitUntil() to ensure
-    // completion. Never blocks or errors the scripture response.
-    client.prefetch(reference, effectiveLanguage);
+    // Kick off background cache warming for the next workflow steps.
+    // Prefer env.waitUntil (chat Worker) so the prefetch survives the response.
+    const prefetchPromise = client.prefetch(reference, effectiveLanguage);
+    if (typeof env.waitUntil === "function") {
+      env.waitUntil(prefetchPromise);
+    }
 
-    return ok(
+    const cache = data.meta?.cache;
+    return okCached(
       {
         reference,
         language: effectiveLanguage,
@@ -72,8 +86,17 @@ export const getPassageTool: ToolModule<typeof inputSchema> = {
         chapter: data.chapter,
         verse: data.verse ?? null,
         versions,
+        ...(cache || data.meta?.timings
+          ? {
+              meta: {
+                ...(cache ? { cache } : {}),
+                ...(data.meta?.timings ? { timings: data.meta.timings } : {}),
+              },
+            }
+          : {}),
       },
-      `${versions.length} scripture version(s) for ${reference}`,
+      mapApiCacheStatus(cache),
+      `${versions.length} scripture version(s) for ${reference}${cache ? ` [${cache}]` : ""}`,
     );
   },
 };

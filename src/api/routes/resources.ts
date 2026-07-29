@@ -10,8 +10,8 @@ import { json, apiError } from "../worker.js";
 import {
   catalogSearch,
   resolveCatalogLanguage,
-} from "../../core/resources/dcsClient.js";
-import { resolveScriptureVersionRole } from "../../core/resources/scriptureRoles.js";
+} from "@translation-helps/door43";
+import { resolveScriptureVersionRole } from "@translation-helps/door43";
 
 const ALL_SUBJECTS = [
   { subject: "Aligned Bible,Bible", type: "scripture" as const },

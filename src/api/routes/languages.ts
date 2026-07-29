@@ -4,9 +4,11 @@
  */
 import type { RouteContext } from "../worker.js";
 import { json } from "../worker.js";
-import { listLanguages } from "../../core/resources/dcsClient.js";
+import { listLanguages } from "@translation-helps/door43";
 
-export async function handleLanguages({ env }: RouteContext): Promise<Response> {
+export async function handleLanguages({
+  env,
+}: RouteContext): Promise<Response> {
   const languages = await listLanguages(env.TRANSLATION_HELPS_CACHE);
   return json({ languages });
 }

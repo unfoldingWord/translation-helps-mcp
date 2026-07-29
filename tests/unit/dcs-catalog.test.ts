@@ -11,7 +11,7 @@ import {
   getResourceZipUrlByAbbreviation,
   clearCatalogProcessCache,
   type CatalogEntry,
-} from "../../src/core/resources/dcsClient.js";
+} from "@translation-helps/door43";
 
 // ---------------------------------------------------------------------------
 // Mock global fetch

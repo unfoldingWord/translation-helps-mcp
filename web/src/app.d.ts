@@ -31,6 +31,10 @@ declare global {
 				TRANSLATION_HELPS_CACHE?: KVNamespace;
 				// R2 bucket for ZIPs and extracted files
 				ZIP_FILES?: R2Bucket;
+				/** Service binding to the REST API worker. */
+				API?: Fetcher;
+				API_BASE_URL?: string;
+				BASE_PATH?: string;
 				// Secrets
 				OPENAI_API_KEY?: string;
 				ANTHROPIC_API_KEY?: string;

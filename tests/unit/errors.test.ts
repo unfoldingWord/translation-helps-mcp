@@ -75,11 +75,11 @@ describe("notAvailable helper", () => {
     );
   });
 
-  it("includes hints array pointing to list_resources_for_language", () => {
+  it("includes hints array pointing to list_resources", () => {
     const result = notAvailable("anything");
     const hints = (result.structuredContent as { hints: string[] }).hints;
     expect(Array.isArray(hints)).toBe(true);
-    expect(hints[0]).toContain("list_resources_for_language");
+    expect(hints[0]).toContain("list_resources");
   });
 
   it("appends optional extra message when provided", () => {

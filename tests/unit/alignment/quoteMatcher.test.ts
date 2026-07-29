@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { QuoteMatcher } from "../../../src/core/alignment/quoteMatcher.js";
-import { generateSemanticId } from "../../../src/core/alignment/semanticId.js";
-import type { OptimizedChapter, OptimizedToken } from "../../../src/core/alignment/usfmTokenizer.js";
+import { QuoteMatcher } from "@translation-helps/door43";
+import { generateSemanticId } from "@translation-helps/door43";
+import type {
+  OptimizedChapter,
+  OptimizedToken,
+} from "@translation-helps/door43";
 
 // ---------------------------------------------------------------------------
 // Test fixture helpers
@@ -21,14 +24,16 @@ function makeOrigToken(text: string, occurrence = 1): OptimizedToken {
 
 function makeAlignedToken(text: string, alignIds: number[]): OptimizedToken {
   return {
-    id: Math.random() * 1000 | 0,
+    id: (Math.random() * 1000) | 0,
     text,
     type: "word",
     align: alignIds,
   };
 }
 
-function chapter(verses: { num: number; tokens: OptimizedToken[] }[]): OptimizedChapter {
+function chapter(
+  verses: { num: number; tokens: OptimizedToken[] }[],
+): OptimizedChapter {
   return {
     number: 3,
     verseCount: verses.length,
@@ -52,7 +57,11 @@ describe("QuoteMatcher", () => {
 
   describe("findOriginalTokens", () => {
     it("finds a simple single word quote", () => {
-      const tokens = [makeOrigToken("Θεός"), makeOrigToken("ἀγαπάω"), makeOrigToken("κόσμος")];
+      const tokens = [
+        makeOrigToken("Θεός"),
+        makeOrigToken("ἀγαπάω"),
+        makeOrigToken("κόσμος"),
+      ];
       const chapters = [chapter([{ num: 16, tokens }])];
 
       const result = matcher.findOriginalTokens(chapters, "ἀγαπάω", 1, ref);
@@ -96,7 +105,12 @@ describe("QuoteMatcher", () => {
       ];
       const chapters = [chapter([{ num: 16, tokens }])];
 
-      const result = matcher.findOriginalTokens(chapters, "Θεός & κόσμος", 1, ref);
+      const result = matcher.findOriginalTokens(
+        chapters,
+        "Θεός & κόσμος",
+        1,
+        ref,
+      );
       expect(result.success).toBe(true);
       expect(result.totalTokens.length).toBe(2);
       expect(result.totalTokens.map((t) => t.text)).toContain("Θεός");
@@ -104,7 +118,9 @@ describe("QuoteMatcher", () => {
     });
 
     it("returns failure for empty quote", () => {
-      const chapters = [chapter([{ num: 16, tokens: [makeOrigToken("test")] }])];
+      const chapters = [
+        chapter([{ num: 16, tokens: [makeOrigToken("test")] }]),
+      ];
       const result = matcher.findOriginalTokens(chapters, "", 1, ref);
       expect(result.success).toBe(false);
     });
@@ -122,12 +138,23 @@ describe("QuoteMatcher", () => {
       const otherToken = makeAlignedToken("loved", [999]);
 
       const origChapters = [chapter([{ num: 16, tokens: [origToken] }])];
-      const targetChapters = [chapter([{ num: 16, tokens: [gatewayToken, otherToken] }])];
+      const targetChapters = [
+        chapter([{ num: 16, tokens: [gatewayToken, otherToken] }]),
+      ];
 
-      const origResult = matcher.findOriginalTokens(origChapters, "Θεός", 1, ref);
+      const origResult = matcher.findOriginalTokens(
+        origChapters,
+        "Θεός",
+        1,
+        ref,
+      );
       expect(origResult.success).toBe(true);
 
-      const alignResult = matcher.findAlignedTokens(origResult.totalTokens, targetChapters, ref);
+      const alignResult = matcher.findAlignedTokens(
+        origResult.totalTokens,
+        targetChapters,
+        ref,
+      );
       expect(alignResult.success).toBe(true);
       expect(alignResult.totalAlignedTokens.length).toBe(1);
       expect(alignResult.totalAlignedTokens[0].text).toBe("God");
@@ -140,8 +167,17 @@ describe("QuoteMatcher", () => {
       const origChapters = [chapter([{ num: 16, tokens: [origToken] }])];
       const targetChapters = [chapter([{ num: 16, tokens: [gatewayToken] }])];
 
-      const origResult = matcher.findOriginalTokens(origChapters, "Θεός", 1, ref);
-      const alignResult = matcher.findAlignedTokens(origResult.totalTokens, targetChapters, ref);
+      const origResult = matcher.findOriginalTokens(
+        origChapters,
+        "Θεός",
+        1,
+        ref,
+      );
+      const alignResult = matcher.findAlignedTokens(
+        origResult.totalTokens,
+        targetChapters,
+        ref,
+      );
 
       expect(alignResult.success).toBe(true);
       expect(alignResult.totalAlignedTokens.length).toBe(0);

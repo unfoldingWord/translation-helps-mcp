@@ -1,55 +1,34 @@
 <script lang="ts">
 	/**
-	 * ResourceWorkbench — the right-panel translation resource viewer.
+	 * ResourceWorkbench — full-canvas translation resource viewer.
 	 *
 	 * Layout:
 	 *   - Scripture text pane at the top (~40% of panel height)
 	 *   - Tabbed helps pane below (Notes / Words / Questions / Challenges)
-	 *
-	 * Accepts the full array of UIComponent data from the latest assistant message.
-	 * Reactively updates as new components arrive via SSE.
+	 *   - When a resource is selected, shows ResourceThread in the detail area
 	 */
 
 	import ScriptureTextPanel from './ScriptureTextPanel.svelte';
 	import TranslationNotesPanel from './TranslationNotesPanel.svelte';
 	import TranslationWordsPanel from './TranslationWordsPanel.svelte';
 	import ChallengeCards from './ChallengeCards.svelte';
-	import PhraseDrillCard from './PhraseDrillCard.svelte';
+	import ResourceThread from './ResourceThread.svelte';
 	import type { UIComponent } from '$core/harness/uiComponents.js';
+	import {
+		selectResource,
+		studySession,
+		type ResourcePayload,
+		type ChallengeItem
+	} from '$lib/stores/studySession.js';
 
-	// ── UIComponent type — use canonical type from core ──────────────────────
-
-	// Alias to avoid renaming all template references
 	type UIComponentData = UIComponent;
 
-	interface ChallengeItem {
-		index: number;
-		verse: string;
-		phrase: string;
-		noteText: string;
-		category: string;
-		sourceType?: 'tn' | 'tw';
-		at?: string;
-	}
-
-	// ── Props ────────────────────────────────────────────────────────────────
-
-	/** All UIComponents from the latest assistant message */
 	export let components: UIComponentData[] = [];
-
-	/** Whether the assistant is currently generating (disables drill interactions) */
 	export let isLoading = false;
-
-	/** Set of already-explored challenge indices */
-	export let explored: Set<number> = new Set();
-
-	/** Called when user selects a challenge from ChallengeCards */
-	export let onSelectChallenge: (index: number) => void = () => {};
-
-	/** Called when user clicks "back" from a phrase drill */
-	export let onDrillBack: () => void = () => {};
-
-	// ── Derived state ────────────────────────────────────────────────────────
+	export let currentLanguage: string = 'en';
+	export let onExplored: (index: number) => void = () => {};
+	export let suggestions: string[] = [];
+	export let onSuggestion: ((s: string) => void) | undefined = undefined;
 
 	$: scriptureTextComp = components.find((c) => c.type === 'scripture_text') as
 		| Extract<UIComponentData, { type: 'scripture_text' }>
@@ -75,11 +54,6 @@
 		| Extract<UIComponentData, { type: 'challenge_cards' }>
 		| undefined;
 
-	$: drillComp = components.find((c) => c.type === 'phrase_drill') as
-		| Extract<UIComponentData, { type: 'phrase_drill' }>
-		| undefined;
-
-	// Convert legacy scripture_panel to scripture_text format for unified display
 	$: scriptureVersions =
 		scriptureTextComp?.versions ??
 		scripturePanelComp?.verses.map((v) => ({ label: v.label, text: v.text })) ??
@@ -99,66 +73,137 @@
 	$: hasWords = (wordsComp?.words.length ?? 0) > 0;
 	$: hasQuestions = (questionsComp?.questions.length ?? 0) > 0;
 	$: hasChallenges = (challengesComp?.challenges.length ?? 0) > 0;
-	$: hasDrill = Boolean(drillComp);
 
-	// ── Tab state ────────────────────────────────────────────────────────────
+	$: totalChallenges = challengesComp?.challenges.length ?? 0;
+	$: exploredSet = new Set($studySession.explored);
 
-	type Tab = 'notes' | 'words' | 'questions' | 'challenges' | 'drill';
+	$: scope = $studySession.scope;
+	$: hasResourceScope = scope.kind === 'resource';
+	$: selectedResource = scope.kind === 'resource' ? scope.resource : null;
+	$: selectedKey = scope.kind === 'resource' ? scope.key : '';
 
+	type Tab = 'notes' | 'words' | 'questions' | 'challenges';
 	let activeTab: Tab = 'notes';
+	let tabPinned = false;
 
-	// Auto-select the most relevant tab when components change
 	$: {
-		if (hasDrill) activeTab = 'drill';
-		else if (hasChallenges) activeTab = 'challenges';
-		else if (hasNotes) activeTab = 'notes';
-		else if (hasWords) activeTab = 'words';
-		else if (hasQuestions) activeTab = 'questions';
+		if (!tabPinned) {
+			if (hasChallenges) activeTab = 'challenges';
+			else if (hasNotes) activeTab = 'notes';
+			else if (hasWords) activeTab = 'words';
+			else if (hasQuestions) activeTab = 'questions';
+		}
 	}
 
-	// ── Helpers ──────────────────────────────────────────────────────────────
+	$: hasAnyContent = hasScripture || hasNotes || hasWords || hasQuestions || hasChallenges;
 
-	const hasAnyContent = () =>
-		hasScripture || hasNotes || hasWords || hasQuestions || hasChallenges || hasDrill;
+	function setTab(tab: Tab) {
+		activeTab = tab;
+		tabPinned = true;
+	}
 
 	function tabBtn(tab: Tab): string {
 		const base = 'px-3 py-2 text-xs font-medium transition-colors whitespace-nowrap';
 		return tab === activeTab
-			? `${base} border-b-2 border-indigo-500 text-indigo-300`
-			: `${base} text-gray-500 hover:text-gray-300`;
+			? `${base} border-b-2 border-sky-500 text-sky-800`
+			: `${base} text-[var(--bt-taupe)] hover:text-[var(--bt-black)]`;
+	}
+
+	function handleChallengeSelect(index: number) {
+		const challenges = challengesComp?.challenges as ChallengeItem[] | undefined;
+		const c = challenges?.find((ch) => ch.index === index);
+		if (!c) return;
+		selectResource({ kind: 'challenge', challenge: c });
+		onExplored(c.index);
+	}
+
+	function handleNextChallenge(nextIndex: number) {
+		handleChallengeSelect(nextIndex);
+	}
+
+	function handleSelectResource(payload: ResourcePayload) {
+		selectResource(payload);
+	}
+
+	function handleQuestionSelect(q: {
+		id: string;
+		question: string;
+		response?: string;
+		verse?: string;
+	}) {
+		selectResource({
+			kind: 'question',
+			question: { id: q.id, question: q.question, response: q.response, verse: q.verse }
+		});
 	}
 </script>
 
-<div class="flex h-full flex-col overflow-hidden rounded-xl border border-gray-800 bg-gray-900">
-	{#if !hasAnyContent()}
-		<!-- Empty state -->
+<div
+	class="flex h-full flex-col overflow-hidden rounded-xl border border-[var(--bt-border)] bg-white"
+>
+	{#if !hasAnyContent}
 		<div class="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
 			<div class="text-5xl opacity-30">📚</div>
 			<div>
-				<p class="font-semibold text-gray-400">Resource Workbench</p>
-				<p class="mt-1 text-sm text-gray-600">
-					Scripture, notes, and key terms will appear here as you explore passages.
+				<p class="font-semibold text-[var(--bt-muted)]">Ask a translation question</p>
+				<p class="mt-1 text-sm text-[var(--bt-taupe)]">
+					Include a Bible reference for in-depth passage analysis, or ask a general translation
+					question.
 				</p>
 			</div>
-			<div class="mt-2 grid grid-cols-3 gap-2 text-xs text-gray-600">
-				<div class="rounded-lg border border-gray-800 p-2">
-					<p class="text-lg">📖</p>
-					<p>Scripture</p>
+			{#if suggestions.length > 0}
+				<div class="mt-3 flex flex-wrap justify-center gap-1.5">
+					{#each suggestions as s}
+						<button
+							on:click={() => onSuggestion?.(s)}
+							class="rounded-lg border border-[var(--bt-border)] px-2.5 py-1 text-xs text-[var(--bt-muted)] transition-colors hover:border-sky-500 hover:text-[var(--bt-black)]"
+						>
+							{s}
+						</button>
+					{/each}
 				</div>
-				<div class="rounded-lg border border-gray-800 p-2">
-					<p class="text-lg">📝</p>
-					<p>Notes</p>
+			{:else}
+				<div class="mt-2 grid grid-cols-3 gap-2 text-xs text-[var(--bt-taupe)]">
+					<div class="rounded-lg border border-[var(--bt-border)] bg-[var(--bt-parchment)] p-2">
+						<p class="text-lg">📖</p>
+						<p>Scripture</p>
+					</div>
+					<div class="rounded-lg border border-[var(--bt-border)] bg-[var(--bt-parchment)] p-2">
+						<p class="text-lg">📝</p>
+						<p>Notes</p>
+					</div>
+					<div class="rounded-lg border border-[var(--bt-border)] bg-[var(--bt-parchment)] p-2">
+						<p class="text-lg">🔑</p>
+						<p>Key Terms</p>
+					</div>
 				</div>
-				<div class="rounded-lg border border-gray-800 p-2">
-					<p class="text-lg">🔑</p>
-					<p>Key Terms</p>
+			{/if}
+		</div>
+	{:else if hasResourceScope && selectedResource}
+		<!-- Resource thread detail (full canvas when scoped) -->
+		<div class="flex min-h-0 flex-1 flex-col">
+			{#if hasScripture}
+				<div class="shrink-0 border-b border-[var(--bt-border)]" style="height: 28%">
+					<ScriptureTextPanel
+						reference={scriptureReference}
+						versions={scriptureVersions}
+						{highlightPhrase}
+					/>
 				</div>
+			{/if}
+			<div class="min-h-0 flex-1">
+				<ResourceThread
+					resource={selectedResource}
+					resourceKey={selectedKey}
+					{currentLanguage}
+					{totalChallenges}
+					onNextChallenge={handleNextChallenge}
+				/>
 			</div>
 		</div>
 	{:else}
-		<!-- ── Scripture pane (top) ──────────────────────────────────────────── -->
 		{#if hasScripture}
-			<div class="shrink-0 border-b border-gray-700/60" style="height: 42%">
+			<div class="shrink-0 border-b border-[var(--bt-border)]" style="height: 42%">
 				<ScriptureTextPanel
 					reference={scriptureReference}
 					versions={scriptureVersions}
@@ -167,101 +212,117 @@
 			</div>
 		{/if}
 
-		<!-- ── Tabbed helps pane (bottom) ───────────────────────────────────── -->
 		<div class="flex min-h-0 flex-1 flex-col">
-			<!-- Tab bar -->
-			<div class="flex shrink-0 gap-0 overflow-x-auto border-b border-gray-700/60 bg-gray-900">
+			<div
+				class="flex shrink-0 gap-0 overflow-x-auto border-b border-[var(--bt-border)] bg-[var(--bt-parchment)]"
+			>
 				{#if hasChallenges}
-					<button class={tabBtn('challenges')} on:click={() => (activeTab = 'challenges')}>
+					<button class={tabBtn('challenges')} on:click={() => setTab('challenges')}>
 						🎯 Challenges
-						<span class="ml-1 rounded-full bg-indigo-900/60 px-1.5 text-indigo-300">
+						<span class="ml-1 rounded-full bg-sky-100 px-1.5 text-sky-800">
 							{challengesComp?.challenges.length}
 						</span>
 					</button>
 				{/if}
-				{#if hasDrill}
-					<button class={tabBtn('drill')} on:click={() => (activeTab = 'drill')}> ↳ Drill </button>
-				{/if}
 				{#if hasNotes}
-					<button class={tabBtn('notes')} on:click={() => (activeTab = 'notes')}>
+					<button class={tabBtn('notes')} on:click={() => setTab('notes')}>
 						📝 Notes
-						<span class="ml-1 rounded-full bg-gray-700/60 px-1.5 text-gray-400">
+						<span class="ml-1 rounded-full bg-white px-1.5 text-[var(--bt-taupe)]">
 							{notesComp?.notes.length}
 						</span>
 					</button>
 				{/if}
 				{#if hasWords}
-					<button class={tabBtn('words')} on:click={() => (activeTab = 'words')}>
+					<button class={tabBtn('words')} on:click={() => setTab('words')}>
 						🔑 Words
-						<span class="ml-1 rounded-full bg-amber-900/60 px-1.5 text-amber-400">
+						<span class="ml-1 rounded-full bg-amber-100 px-1.5 text-amber-900">
 							{wordsComp?.words.length}
 						</span>
 					</button>
 				{/if}
 				{#if hasQuestions}
-					<button class={tabBtn('questions')} on:click={() => (activeTab = 'questions')}>
+					<button class={tabBtn('questions')} on:click={() => setTab('questions')}>
 						❓ Questions
-						<span class="ml-1 rounded-full bg-gray-700/60 px-1.5 text-gray-400">
+						<span class="ml-1 rounded-full bg-white px-1.5 text-[var(--bt-taupe)]">
 							{questionsComp?.questions.length}
 						</span>
 					</button>
 				{/if}
 			</div>
 
-			<!-- Tab content -->
 			<div class="min-h-0 flex-1 overflow-hidden">
 				{#if activeTab === 'challenges' && challengesComp}
 					<div class="h-full overflow-y-auto px-3 py-2.5">
 						<ChallengeCards
 							challenges={challengesComp.challenges}
-							{explored}
+							explored={exploredSet}
 							{isLoading}
-							onSelect={onSelectChallenge}
-						/>
-					</div>
-				{:else if activeTab === 'drill' && drillComp}
-					<div class="h-full overflow-y-auto px-3 py-2.5">
-						<PhraseDrillCard
-							challenge={drillComp.challenge}
-							noteText={drillComp.noteText}
-							atSuggestion={drillComp.atSuggestion}
-							on:back={onDrillBack}
+							onSelect={handleChallengeSelect}
 						/>
 					</div>
 				{:else if activeTab === 'notes' && notesComp}
-					<TranslationNotesPanel reference={notesComp.reference} notes={notesComp.notes} />
+					<TranslationNotesPanel
+						reference={notesComp.reference}
+						notes={notesComp.notes}
+						onSelectNote={handleSelectResource}
+					/>
 				{:else if activeTab === 'words' && wordsComp}
-					<TranslationWordsPanel reference={wordsComp.reference} words={wordsComp.words} />
+					<TranslationWordsPanel
+						reference={wordsComp.reference}
+						words={wordsComp.words}
+						onSelectWord={handleSelectResource}
+					/>
 				{:else if activeTab === 'questions' && questionsComp}
 					<div class="h-full overflow-y-auto p-3">
 						<div class="mb-2 flex items-center justify-between">
-							<p class="text-xs font-semibold tracking-wider text-gray-400 uppercase">
+							<p class="text-xs font-semibold tracking-wider text-[var(--bt-taupe)] uppercase">
 								Translation Questions
 							</p>
 							{#if questionsComp.reference}
-								<span class="rounded bg-indigo-950 px-2 py-0.5 font-mono text-xs text-indigo-300">
+								<span
+									class="rounded bg-[var(--bt-black)] px-2 py-0.5 font-mono text-xs text-[var(--bt-cream)]"
+								>
 									{questionsComp.reference}
 								</span>
 							{/if}
 						</div>
 						<div class="space-y-2">
 							{#each questionsComp.questions as q (q.id)}
-								<div class="rounded-lg border border-gray-700/60 bg-gray-800/50 p-3 text-sm">
+								{@const qKey = `question:${q.id}`}
+								{@const qCount = ($studySession.resourceThreads[qKey] ?? []).length}
+								{@const qSelected =
+									$studySession.scope.kind === 'resource' && $studySession.scope.key === qKey}
+								<button
+									type="button"
+									on:click={() => handleQuestionSelect(q)}
+									class="relative w-full rounded-lg border p-3 text-left text-sm transition-all
+										{qSelected
+										? 'border-sky-500 bg-sky-50 ring-2 ring-sky-400/40'
+										: 'border-[var(--bt-border)] bg-[var(--bt-parchment)] hover:border-sky-400'}"
+								>
+									{#if qCount > 0}
+										<span
+											class="absolute top-2 right-2 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-sky-600 px-1 text-xs font-bold text-white"
+										>
+											{qCount}
+										</span>
+									{/if}
 									{#if q.verse}
-										<span class="mb-1 block font-mono text-xs text-gray-500">v.{q.verse}</span>
+										<span class="mb-1 block font-mono text-xs text-[var(--bt-taupe)]"
+											>v.{q.verse}</span
+										>
 									{/if}
-									<p class="font-medium text-gray-200">{q.question}</p>
+									<p class="font-medium text-[var(--bt-black)]">{q.question}</p>
 									{#if q.response}
-										<p class="mt-1.5 text-xs text-gray-400">{q.response}</p>
+										<p class="mt-1.5 text-xs text-[var(--bt-muted)]">{q.response}</p>
 									{/if}
-								</div>
+								</button>
 							{/each}
 						</div>
 					</div>
 				{:else}
-					<!-- Empty tab state -->
 					<div
-						class="flex h-full flex-col items-center justify-center gap-2 text-center text-gray-600"
+						class="flex h-full flex-col items-center justify-center gap-2 text-center text-[var(--bt-taupe)]"
 					>
 						<p class="text-2xl opacity-40">📭</p>
 						<p class="text-xs">No content for this tab</p>

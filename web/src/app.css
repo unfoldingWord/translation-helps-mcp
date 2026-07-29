@@ -1,37 +1,454 @@
 @import 'tailwindcss';
+@plugin '@tailwindcss/typography';
 
-/* Dark theme base styles */
+/*
+ * BT Servant brand palette (from btservant.ai):
+ *   black #1F1F1F · cream #EDECE8 · taupe #857C6F · gold #B29159
+ *   terracotta #A8603D · parchment #F5F2EA
+ * Remap cool Tailwind hues so leftover utility classes stay earthy.
+ */
+@theme {
+	--font-sans: 'Inter', system-ui, sans-serif;
+	--font-serif: 'Playfair Display', Georgia, serif;
+
+	/* slate: dark theme bg/text → cream page / near-black text */
+	--color-slate-50: #1f1f1f;
+	--color-slate-100: #1f1f1f;
+	--color-slate-200: #2a2a2a;
+	--color-slate-300: #4a463f;
+	--color-slate-400: #857c6f;
+	--color-slate-500: #857c6f;
+	--color-slate-600: #a89f90;
+	--color-slate-700: #d4cfc3;
+	--color-slate-800: #e4e1d8;
+	--color-slate-900: #ffffff;
+	--color-slate-950: #edece8;
+
+	/* sky accent → gold */
+	--color-sky-50: #faf6ee;
+	--color-sky-100: #f5efe3;
+	--color-sky-200: #ebe0c8;
+	--color-sky-300: #d4bc8a;
+	--color-sky-400: #c4a66e;
+	--color-sky-500: #b29159;
+	--color-sky-600: #a0824d;
+	--color-sky-700: #85693e;
+	--color-sky-800: #6b5434;
+	--color-sky-900: #4a3a24;
+	--color-sky-950: #2e2416;
+
+	/* indigo / violet / purple leftovers → gold–taupe family */
+	--color-indigo-50: #faf6ee;
+	--color-indigo-100: #f5efe3;
+	--color-indigo-200: #ebe0c8;
+	--color-indigo-300: #d4bc8a;
+	--color-indigo-400: #c4a66e;
+	--color-indigo-500: #b29159;
+	--color-indigo-600: #a0824d;
+	--color-indigo-700: #85693e;
+	--color-indigo-800: #6b5434;
+	--color-indigo-900: #4a3a24;
+	--color-indigo-950: #2e2416;
+
+	--color-violet-50: #faf6ee;
+	--color-violet-100: #f5efe3;
+	--color-violet-200: #ebe0c8;
+	--color-violet-300: #d4bc8a;
+	--color-violet-400: #c4a66e;
+	--color-violet-500: #b29159;
+	--color-violet-600: #a0824d;
+	--color-violet-700: #85693e;
+	--color-violet-800: #6b5434;
+	--color-violet-900: #4a3a24;
+	--color-violet-950: #2e2416;
+
+	--color-purple-50: #faf6ee;
+	--color-purple-100: #f5efe3;
+	--color-purple-200: #ebe0c8;
+	--color-purple-300: #d4bc8a;
+	--color-purple-400: #c4a66e;
+	--color-purple-500: #b29159;
+	--color-purple-600: #a0824d;
+	--color-purple-700: #85693e;
+	--color-purple-800: #6b5434;
+	--color-purple-900: #4a3a24;
+	--color-purple-950: #2e2416;
+
+	/* blue leftovers → muted taupe (avoid cool chrome) */
+	--color-blue-50: #f7f5f0;
+	--color-blue-100: #efebe3;
+	--color-blue-200: #ddd6c8;
+	--color-blue-300: #b8ae9c;
+	--color-blue-400: #9a8f7c;
+	--color-blue-500: #857c6f;
+	--color-blue-600: #6b6560;
+	--color-blue-700: #534e48;
+	--color-blue-800: #3d3934;
+	--color-blue-900: #2a2723;
+	--color-blue-950: #1c1a17;
+
+	/* emerald accents → terracotta / warm brown */
+	--color-emerald-50: #faf4ef;
+	--color-emerald-100: #f3e6da;
+	--color-emerald-200: #e0c4a8;
+	--color-emerald-300: #c4a882;
+	--color-emerald-400: #a8603d;
+	--color-emerald-500: #8f5234;
+	--color-emerald-600: #75432b;
+	--color-emerald-700: #5c3522;
+	--color-emerald-800: #432718;
+	--color-emerald-900: #2e1a10;
+	--color-emerald-950: #1a0f09;
+
+	/* yellow highlight → soft gold wash */
+	--color-yellow-200: #ebe0c8;
+	--color-yellow-300: #d4bc8a;
+	--color-yellow-400: #c4a66e;
+	--color-yellow-900: #4a3a24;
+	--color-yellow-950: #2e2416;
+}
+
+:root {
+	--bt-black: #1f1f1f;
+	--bt-cream: #edece8;
+	--bt-parchment: #f5f2ea;
+	--bt-taupe: #857c6f;
+	--bt-gold: #b29159;
+	--bt-terracotta: #a8603d;
+	--bt-border: rgba(31, 31, 31, 0.08);
+	--bt-muted: #6b6560;
+	--font-heading: 'Playfair Display', Georgia, serif;
+	--font-body: 'Inter', system-ui, sans-serif;
+}
+
 html {
-	background-color: #0f172a;
-	color: white;
+	background-color: var(--bt-cream);
+	color: var(--bt-black);
+	font-family: var(--font-body);
 }
 
 body {
-	background-color: #0f172a;
-	color: white;
+	background-color: var(--bt-cream);
+	color: var(--bt-black);
+	font-family: var(--font-body);
+	-webkit-font-smoothing: antialiased;
 }
 
-/* Custom scrollbar */
+h1,
+h2,
+h3,
+h4 {
+	font-family: var(--font-heading);
+	font-weight: 500;
+	letter-spacing: -0.01em;
+	line-height: 1.15;
+	color: var(--bt-black);
+}
+
+/*
+ * Brand prose theme for chat bubbles and light panels.
+ * Overrides typography plugin defaults to match the cream BT palette.
+ */
+.prose {
+	--tw-prose-body: var(--bt-black);
+	--tw-prose-headings: var(--bt-black);
+	--tw-prose-lead: var(--bt-muted);
+	--tw-prose-links: var(--bt-gold);
+	--tw-prose-bold: var(--bt-black);
+	--tw-prose-counters: var(--bt-taupe);
+	--tw-prose-bullets: var(--bt-taupe);
+	--tw-prose-hr: rgba(31, 31, 31, 0.12);
+	--tw-prose-quotes: var(--bt-muted);
+	--tw-prose-quote-borders: rgba(178, 145, 89, 0.45);
+	--tw-prose-captions: var(--bt-taupe);
+	--tw-prose-code: #a8603d;
+	--tw-prose-pre-code: #e2e8f0;
+	--tw-prose-pre-bg: #1f1f1f;
+	--tw-prose-th-borders: rgba(31, 31, 31, 0.12);
+	--tw-prose-td-borders: rgba(31, 31, 31, 0.08);
+}
+.prose :where(h1, h2, h3, h4) {
+	font-family: var(--font-body);
+	font-weight: 600;
+	letter-spacing: 0;
+	line-height: 1.35;
+}
+.prose-sm :where(h1, h2, h3, h4) {
+	margin-top: 0.75em;
+	margin-bottom: 0.4em;
+}
+.prose :where(hr) {
+	margin-top: 1em;
+	margin-bottom: 1em;
+}
+.prose :where(ul, ol) {
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+	padding-inline-start: 1.25em;
+}
+.prose :where(p) {
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+}
+.prose :where(p):first-child {
+	margin-top: 0;
+}
+.prose :where(p):last-child {
+	margin-bottom: 0;
+}
+
+/* Shared page chrome */
+.page-shell {
+	position: relative;
+	min-height: calc(100vh - 8rem);
+	background:
+		radial-gradient(ellipse at top, rgba(178, 145, 89, 0.08), transparent 55%),
+		var(--bt-cream);
+}
+
+.ui-card {
+	border-radius: 14px;
+	border: 1px solid var(--bt-border);
+	background: #fff;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
+}
+.ui-card:hover {
+	transform: translateY(-3px);
+	box-shadow: 0 20px 30px rgba(31, 31, 31, 0.06);
+}
+
+.ui-input {
+	width: 100%;
+	border-radius: 0.75rem;
+	border: 1px solid #e4e1d8;
+	background: #fff;
+	padding: 0.5rem 0.75rem;
+	font-size: 0.875rem;
+	color: var(--bt-black);
+	outline: none;
+}
+.ui-input::placeholder {
+	color: #bdb7a8;
+}
+.ui-input:focus {
+	border-color: rgba(178, 145, 89, 0.55);
+	box-shadow: 0 0 0 1px rgba(178, 145, 89, 0.25);
+}
+
+.ui-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.375rem;
+	border-radius: 999px;
+	background: transparent;
+	padding: 0.7rem 1.25rem;
+	font-size: 0.9rem;
+	font-weight: 500;
+	color: var(--bt-black);
+	border: 1px solid transparent;
+	transition:
+		background 0.15s ease,
+		color 0.15s ease,
+		transform 0.15s ease;
+}
+.ui-btn:hover {
+	opacity: 0.85;
+}
+.ui-btn:disabled {
+	cursor: not-allowed;
+	opacity: 0.45;
+}
+
+.ui-btn-solid {
+	background: var(--bt-black);
+	color: var(--bt-cream);
+	border-color: transparent;
+}
+.ui-btn-solid:hover {
+	background: #000;
+	color: #fff;
+	opacity: 1;
+}
+
+.ui-chip {
+	border-radius: 9999px;
+	border: 1px solid var(--bt-border);
+	background: #fff;
+	padding: 0.35rem 0.85rem;
+	font-size: 0.75rem;
+	color: var(--bt-taupe);
+	transition:
+		border-color 0.15s,
+		background 0.15s,
+		color 0.15s;
+}
+.ui-chip:hover {
+	border-color: rgba(178, 145, 89, 0.45);
+	background: rgba(178, 145, 89, 0.08);
+	color: var(--bt-black);
+}
+.ui-chip-active {
+	border-color: rgba(178, 145, 89, 0.5);
+	background: rgba(178, 145, 89, 0.14);
+	color: var(--bt-black);
+	font-weight: 600;
+}
+
+/* Light scrollbars */
 ::-webkit-scrollbar {
 	width: 8px;
 	height: 8px;
 }
-
 ::-webkit-scrollbar-track {
-	background-color: rgba(0, 0, 0, 0.2);
+	background-color: rgba(31, 31, 31, 0.04);
 }
-
 ::-webkit-scrollbar-thumb {
 	border-radius: 9999px;
-	background-color: rgba(255, 255, 255, 0.2);
+	background-color: rgba(31, 31, 31, 0.18);
 }
-
 ::-webkit-scrollbar-thumb:hover {
-	background-color: rgba(255, 255, 255, 0.3);
+	background-color: rgba(31, 31, 31, 0.28);
 }
-
-/* Firefox scrollbar */
 * {
 	scrollbar-width: thin;
-	scrollbar-color: rgba(255, 255, 255, 0.2) rgba(0, 0, 0, 0.2);
+	scrollbar-color: rgba(31, 31, 31, 0.18) rgba(31, 31, 31, 0.04);
+}
+
+/* Terminal-style code blocks stay dark (restore real slate inside) */
+.docs-code {
+	--color-slate-50: #f8fafc;
+	--color-slate-100: #f1f5f9;
+	--color-slate-200: #e2e8f0;
+	--color-slate-300: #cbd5e1;
+	--color-slate-400: #94a3b8;
+	--color-slate-500: #64748b;
+	--color-slate-600: #475569;
+	--color-slate-700: #334155;
+	--color-slate-800: #1e293b;
+	--color-slate-900: #0f172a;
+	--color-slate-950: #020617;
+	--color-emerald-300: #6ee7b7;
+	--color-emerald-400: #34d399;
+	background: #020617 !important;
+	color: #e2e8f0;
+}
+.docs-code .text-white {
+	color: #fff !important;
+}
+.docs-code code,
+.docs-code .token {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+		'Courier New', monospace;
+}
+.docs-code .token.comment,
+.docs-code .token.prolog,
+.docs-code .token.doctype,
+.docs-code .token.cdata {
+	color: #857c6f;
+	font-style: italic;
+}
+.docs-code .token.punctuation {
+	color: #c4bfb4;
+}
+.docs-code .token.property,
+.docs-code .token.tag,
+.docs-code .token.constant,
+.docs-code .token.symbol,
+.docs-code .token.deleted {
+	color: #d4bc8a;
+}
+.docs-code .token.boolean,
+.docs-code .token.number {
+	color: #e8c98a;
+}
+.docs-code .token.selector,
+.docs-code .token.attr-name,
+.docs-code .token.string,
+.docs-code .token.char,
+.docs-code .token.builtin,
+.docs-code .token.inserted {
+	color: #c4a882;
+}
+.docs-code .token.operator,
+.docs-code .token.entity,
+.docs-code .token.url,
+.docs-code .language-css .token.string,
+.docs-code .style .token.string {
+	color: #edece8;
+}
+.docs-code .token.atrule,
+.docs-code .token.attr-value,
+.docs-code .token.keyword {
+	color: #e0c9a0;
+}
+.docs-code .token.function,
+.docs-code .token.class-name {
+	color: #f0d9a8;
+}
+.docs-code .token.regex,
+.docs-code .token.important,
+.docs-code .token.variable {
+	color: #d4a574;
+}
+
+/* Docs prose — light theme */
+.docs-prose h2 {
+	margin-top: 2.5rem;
+	margin-bottom: 1rem;
+	padding-bottom: 0.5rem;
+	border-bottom: 1px solid var(--bt-border);
+	font-family: var(--font-heading);
+	font-size: 1.35rem;
+	font-weight: 500;
+	letter-spacing: -0.01em;
+	color: var(--bt-black);
+}
+.docs-prose p {
+	line-height: 1.7;
+	color: var(--bt-muted);
+}
+.docs-prose p a,
+.docs-prose li a,
+.docs-prose header a {
+	color: var(--bt-gold);
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+.docs-prose p a:hover,
+.docs-prose li a:hover,
+.docs-prose header a:hover {
+	color: #a0824d;
+}
+.docs-prose code:not(pre code) {
+	border-radius: 0.375rem;
+	background: #f5efe3;
+	border: 1px solid var(--bt-border);
+	padding: 0.1rem 0.35rem;
+	font-size: 0.85em;
+	color: #a8603d;
+}
+
+/* Utility helpers for BT brand accents */
+.bt-accent {
+	color: var(--bt-gold);
+	font-style: italic;
+}
+.bt-eyebrow {
+	font-family: var(--font-body);
+	font-size: 0.75rem;
+	font-weight: 700;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: var(--bt-black);
+}
+.bt-cta-banner {
+	background: var(--bt-black);
+	color: var(--bt-cream);
+}
+.bt-cta-banner h2,
+.bt-cta-banner h3 {
+	color: var(--bt-cream);
 }
