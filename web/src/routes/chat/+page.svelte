@@ -36,7 +36,8 @@
 	} from '$lib/stores/studySession.js';
 	import { resolveLanguagePair } from '$core/harness/languagePair.js';
 	import { panelEmphasisForMode, parseWorkflowMode } from '$core/harness/workflowMode.js';
-	import { ensureCheckingSessionFooter } from '$core/harness/intent.js';
+	// Client-safe: do NOT import $core/harness/intent (pulls door43/fflate).
+	import { ensureCheckingSessionFooter } from '$core/harness/checkingSession.js';
 	import { saveSession, loadSession, clearSession } from '$lib/stores/sessionPersistence.js';
 	import {
 		hydrateDrafts,

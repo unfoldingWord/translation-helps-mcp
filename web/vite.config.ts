@@ -35,13 +35,10 @@ export default defineConfig({
 			'node:path': path.resolve(__dirname, 'src/lib/mcp/node-stubs.ts')
 		}
 	},
+	// SSR may externalize heavy deps; the *client* Rollup build must NOT —
+	// bare "fflate"/"zod" specifiers break the browser (chat 500 Internal Error).
 	ssr: {
 		external: ['zod', 'zod-to-json-schema', 'fflate']
-	},
-	build: {
-		rollupOptions: {
-			external: ['zod', 'zod-to-json-schema', 'fflate']
-		}
 	},
 	server: {
 		port: 8174,
