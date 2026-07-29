@@ -8,7 +8,7 @@
     "dev:worker": "npx wrangler dev --config wrangler.toml --port 8787",
     "dev:api": "npx wrangler dev --config wrangler.api.toml --port 8788",
     "dev:all": "concurrently \"npm run dev:api\" \"npm run dev:worker\" \"npm run dev\"",
-    "build": "cd web && npm install && npm run build",
+    "build": "npm run build --workspace=translation-helps-mcp-web",
     "typecheck": "tsc --noEmit && cd web && npx tsc --noEmit",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",

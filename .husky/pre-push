@@ -2,12 +2,24 @@ echo "🚀 Running pre-push checks..."
 
 # Prettier already ran in pre-commit, no need to run again
 
-# Quick build to catch obvious issues
+# Quick build to catch obvious issues (Windows: TS/svelte watchers can EBUSY
+# the adapter output dir — clear it and retry once).
 echo "🏗️ Building..."
-npm run build >/dev/null 2>&1 || {
-  echo "❌ Build failed. Aborting push."
-  exit 1
-}
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL='*'
+if command -v taskkill >/dev/null 2>&1; then
+  taskkill //F //IM workerd.exe >/dev/null 2>&1 || true
+fi
+rm -rf web/.svelte-kit/cloudflare
+if ! npm run build; then
+  echo "⚠️  Build failed (often EBUSY on Windows). Retrying once..."
+  sleep 2
+  rm -rf web/.svelte-kit/cloudflare
+  npm run build || {
+    echo "❌ Build failed. Aborting push."
+    exit 1
+  }
+fi
 
 # Optional: a light test suite (avoid long runs on push)
 # Check if Wrangler is running on port 8787
@@ -22,4 +34,3 @@ else
 fi
 
 echo "✅ Pre-push checks passed!"
-

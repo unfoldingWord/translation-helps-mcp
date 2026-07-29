@@ -23,11 +23,10 @@ if command -v taskkill >/dev/null 2>&1; then
   taskkill //F //IM workerd.exe >/dev/null 2>&1 || true
 fi
 rm -rf web/.svelte-kit/cloudflare
-cd web
+# Prefer workspace build from repo root (nested web npm install breaks under npm workspaces).
 npm install --no-fund --no-audit
 # Pass BASE_PATH via env only (do not put /v2 on a command argv under Git Bash).
-npm run build
-cd ..
+npm run build --workspace=translation-helps-mcp-web
 
 echo "==> Deploying API worker (translation-helps-api-v2)"
 npx wrangler deploy --config wrangler.api.toml --env production
