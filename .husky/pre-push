@@ -3,18 +3,34 @@ echo "🚀 Running pre-push checks..."
 # Prettier already ran in pre-commit, no need to run again
 
 # Quick build to catch obvious issues (Windows: TS/svelte watchers can EBUSY
-# the adapter output dir — clear it and retry once).
+# the adapter output dir — clear it best-effort and retry once).
 echo "🏗️ Building..."
 export MSYS_NO_PATHCONV=1
 export MSYS2_ARG_CONV_EXCL='*'
-if command -v taskkill >/dev/null 2>&1; then
-  taskkill //F //IM workerd.exe >/dev/null 2>&1 || true
-fi
-rm -rf web/.svelte-kit/cloudflare
+
+clear_cloudflare_out() {
+  # Never fail the hook on a locked rmdir; adapter will overwrite when possible.
+  if command -v taskkill >/dev/null 2>&1; then
+    taskkill //F //IM workerd.exe >/dev/null 2>&1 || true
+  fi
+  for attempt in 1 2 3; do
+    if rm -rf web/.svelte-kit/cloudflare 2>/dev/null; then
+      return 0
+    fi
+    sleep 1
+  done
+  echo "⚠️  Could not fully remove web/.svelte-kit/cloudflare (EBUSY); continuing..."
+  return 0
+}
+
+clear_cloudflare_out
 if ! npm run build; then
   echo "⚠️  Build failed (often EBUSY on Windows). Retrying once..."
   sleep 2
-  rm -rf web/.svelte-kit/cloudflare
+  clear_cloudflare_out
+  # Stale virtual CSS modules after a failed adapter clean can make Tailwind
+  # parse the Svelte <script> as CSS — wipe kit cache before retry.
+  rm -rf web/.svelte-kit/output 2>/dev/null || true
   npm run build || {
     echo "❌ Build failed. Aborting push."
     exit 1

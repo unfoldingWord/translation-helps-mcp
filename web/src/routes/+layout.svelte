@@ -225,9 +225,3 @@
 		</footer>
 	{/if}
 </div>
-
-<style>
-	.safe-top {
-		padding-top: env(safe-area-inset-top, 0px);
-	}
-</style>

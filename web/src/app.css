@@ -452,3 +452,9 @@ h4 {
 .bt-cta-banner h3 {
 	color: var(--bt-cream);
 }
+
+/* Mobile safe area (was in +layout.svelte <style>; keep in global CSS so
+   Tailwind never sees a broken Svelte virtual style module after EBUSY). */
+.safe-top {
+	padding-top: env(safe-area-inset-top, 0px);
+}
