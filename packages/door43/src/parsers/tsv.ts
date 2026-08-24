@@ -197,13 +197,43 @@ export function parseTranslationWordLinksTsv(
 // ---------------------------------------------------------------------------
 
 /**
+ * True when a TSV verse cell overlaps an inclusive query range.
+ *
+ * TSV cells may be a single verse (`"2"`), a bridge (`"1-3"`), or non-numeric
+ * (`"intro"`). Non-numeric cells never match a verse filter. Bridges match when
+ * they overlap the query range (not only when equal).
+ */
+export function verseOverlapsQueryRange(
+  tsvVerse: string,
+  verseStart: string,
+  verseEnd?: string,
+): boolean {
+  const rowMatch = tsvVerse.trim().match(/^(\d+)(?:\s*[-–—]\s*(\d+))?/);
+  if (!rowMatch) return false;
+
+  const rowStart = Number.parseInt(rowMatch[1]!, 10);
+  const rowEnd = rowMatch[2] ? Number.parseInt(rowMatch[2], 10) : rowStart;
+  const qStart = Number.parseInt(verseStart, 10);
+  if (Number.isNaN(rowStart) || Number.isNaN(qStart)) return false;
+  const qEnd = verseEnd ? Number.parseInt(verseEnd, 10) : qStart;
+  if (Number.isNaN(qEnd)) return false;
+
+  return rowStart <= qEnd && rowEnd >= qStart;
+}
+
+/**
  * Parse a TQ TSV string. Accepts both the new format (Reference, ID, Tags, Quote, Occurrence, Question, Response)
  * and the old format (Book, Chapter, Verse, ID, Question, Response).
+ *
+ * When `verse` is set, returns questions whose verse (or verse bridge) overlaps
+ * the inclusive range `[verse, verseEnd ?? verse]`. Chapter-only queries
+ * (no `verse`) return every question in that chapter.
  */
 export function parseTranslationQuestionsTsv(
   tsv: string,
   chapter: string,
   verse?: string,
+  verseEnd?: string,
 ): TranslationQuestionRow[] {
   const lines = tsv.split("\n");
   const results: TranslationQuestionRow[] = [];
@@ -220,13 +250,13 @@ export function parseTranslationQuestionsTsv(
       // New format: Reference  ID  Tags  Quote  Occurrence  Question  Response
       if (cols.length < 6) continue;
       const [ref, id, , , , question, ...responseParts] = cols;
-      // ref examples: "3:16", "1:intro", "front:intro"
+      // ref examples: "3:16", "1:1-3", "1:intro", "front:intro"
       const colonIdx = ref.indexOf(":");
       if (colonIdx === -1) continue;
       const ch = ref.slice(0, colonIdx);
       const vs = ref.slice(colonIdx + 1);
       if (ch !== chapter) continue;
-      if (verse && vs !== verse) continue;
+      if (verse && !verseOverlapsQueryRange(vs, verse, verseEnd)) continue;
       results.push({
         book: "",
         chapter: ch,
@@ -240,7 +270,8 @@ export function parseTranslationQuestionsTsv(
       if (cols.length < 5) continue;
       const [book, ch, vs, id, question, ...responseParts] = cols;
       if (ch !== chapter) continue;
-      if (verse && vs !== verse) continue;
+      if (verse && !verseOverlapsQueryRange(vs ?? "", verse, verseEnd))
+        continue;
       results.push({
         book: book ?? "",
         chapter: ch,

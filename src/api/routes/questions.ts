@@ -34,14 +34,23 @@ export async function handleQuestions(ctx: RouteContext): Promise<Response> {
     book,
     chapter,
     verseStart,
+    verseEnd,
   } = ref;
+
+  // Distinguish chapter / single-verse / range so KV cache does not collide.
+  const verseCacheKey =
+    verseStart == null
+      ? undefined
+      : verseEnd && verseEnd !== verseStart
+        ? `${verseStart}-${verseEnd}`
+        : verseStart;
 
   const cacheKey = responseCacheKey(
     "questions",
     requestedLanguage,
     book,
     chapter,
-    verseStart,
+    verseCacheKey,
   );
 
   const cached = await getCachedJson<Record<string, unknown>>(
@@ -91,13 +100,19 @@ export async function handleQuestions(ctx: RouteContext): Promise<Response> {
       };
     }
 
-    const questions = parseTranslationQuestionsTsv(tsv, chapter, verseStart);
+    const questions = parseTranslationQuestionsTsv(
+      tsv,
+      chapter,
+      verseStart,
+      verseEnd,
+    );
     const payload = {
       reference,
       language,
       book,
       chapter,
       verse: verseStart ?? null,
+      verseEnd: verseEnd ?? null,
       questions,
     };
     putCachedJson(env.TRANSLATION_HELPS_CACHE, cacheKey, payload, execCtx);
