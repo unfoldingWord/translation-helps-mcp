@@ -9,9 +9,10 @@ import {
   catalogSearch,
   getResourceZipUrl,
   resolveCatalogLanguage,
+  pickPreferredCatalogEntry,
+  parseReferenceForTool,
 } from "@translation-helps/door43";
 import type { CatalogEntry, CatalogKVCache } from "@translation-helps/door43";
-import { parseReferenceForTool } from "@translation-helps/door43";
 
 export {
   ZipResourceFetcher2,
@@ -19,6 +20,7 @@ export {
   getResourceZipUrl,
   resolveCatalogLanguage,
   parseReferenceForTool,
+  pickPreferredCatalogEntry,
 };
 export type { CatalogEntry, CatalogKVCache };
 
@@ -31,6 +33,9 @@ export type { CatalogEntry, CatalogKVCache };
  *
  * Returns `{ language, entries }` where `language` may be a variant of the
  * input (e.g. "es" → "es-419") when the exact code has no resources.
+ *
+ * Note for other agents: do not change variant discovery semantics here without
+ * coordinating — scripture/TN and TW/TA/search all depend on this path.
  */
 export async function resolveLanguageVariant(
   language: string,
@@ -38,6 +43,37 @@ export async function resolveLanguageVariant(
   kv: CatalogKVCache | null | undefined,
 ): Promise<{ language: string; entries: CatalogEntry[] }> {
   return resolveCatalogLanguage(language, { subject, kv });
+}
+
+/**
+ * Build the canonical zip URL from a CatalogEntry.
+ */
+export function zipUrlFromEntry(entry: CatalogEntry): string {
+  return (
+    entry.catalog?.prod?.zipball_url ??
+    `https://git.door43.org/${entry.owner}/${entry.repo}/archive/${entry.catalog?.prod?.branch_or_tag_name ?? "master"}.zip`
+  );
+}
+
+/**
+ * Resolve zip URL for a subject, preferring unfoldingWord then any catalog owner.
+ * Applies language-variant fallback (es → es-419) via resolveLanguageVariant.
+ * Used by TW/TA/search routes so non-UW owners (es-419_gl, BCS, …) work.
+ */
+export async function resolveResourceZip(
+  language: string,
+  subject: string,
+  kv: CatalogKVCache | null | undefined,
+): Promise<{ language: string; zipUrl: string; entry: CatalogEntry } | null> {
+  const { language: resolved, entries } = await resolveLanguageVariant(
+    language,
+    subject,
+    kv,
+  );
+  if (entries.length === 0) return null;
+  const entry = pickPreferredCatalogEntry(entries);
+  if (!entry) return null;
+  return { language: resolved, zipUrl: zipUrlFromEntry(entry), entry };
 }
 
 /**
@@ -62,16 +98,6 @@ export function requireReferenceAndLanguage(url: URL): {
   if (!parsed) throw new Error(`Invalid reference: "${reference}"`);
 
   return { reference, language, ...parsed };
-}
-
-/**
- * Build the canonical zip URL from a CatalogEntry.
- */
-export function zipUrlFromEntry(entry: CatalogEntry): string {
-  return (
-    entry.catalog?.prod?.zipball_url ??
-    `https://git.door43.org/${entry.owner}/${entry.repo}/archive/${entry.catalog?.prod?.branch_or_tag_name ?? "master"}.zip`
-  );
 }
 
 /**

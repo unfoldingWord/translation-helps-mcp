@@ -64,6 +64,8 @@ const CATALOG_PROCESS_CACHE = new Map<string, CatalogEntry[]>();
 /** Clear the process-level catalog cache. Used in tests to prevent cross-test pollution. */
 export function clearCatalogProcessCache(): void {
   CATALOG_PROCESS_CACHE.clear();
+  VARIANT_RESOLVE_CACHE.clear();
+  VARIANT_RESOLVE_INFLIGHT.clear();
 }
 
 // ---------------------------------------------------------------------------
@@ -122,6 +124,12 @@ const SUBJECT_TO_SUFFIX: Record<string, string> = {
   "Translation Word Links": "twl",
   "TSV Translation Words Links": "twl",
   "Open Bible Stories": "obs",
+  // OBS helps use hyphenated abbreviations; prefer subject match when
+  // abbreviation "obs" also hits OBS Theological Formation (en_obs-tf).
+  "TSV OBS Translation Notes": "obs-tn",
+  "OBS Translation Notes": "obs-tn",
+  "TSV OBS Translation Questions": "obs-tq",
+  "OBS Translation Questions": "obs-tq",
 };
 
 // ---------------------------------------------------------------------------
@@ -642,12 +650,43 @@ function VARIANT_INFLIGHT(
 }
 
 /**
+ * Prefer entries matching `preferredSubject` (when set), then `preferredOwner`.
+ * Many gateway languages publish TW/TA under community orgs
+ * (e.g. es-419_gl, translationCore-Create-BCS) rather than unfoldingWord.
+ * Abbreviation "obs" can match both Open Bible Stories and OBS Theological
+ * Formation — subject preference avoids wiring the wrong zip.
+ */
+export function pickPreferredCatalogEntry(
+  results: CatalogEntry[],
+  preferredOwner = "unfoldingWord",
+  preferredSubject?: string,
+): CatalogEntry | undefined {
+  if (results.length === 0) return undefined;
+
+  const subjectNorm = preferredSubject?.trim().toLowerCase();
+  const subjectPool = subjectNorm
+    ? results.filter((r) => (r.subject ?? "").toLowerCase() === subjectNorm)
+    : [];
+  const pool = subjectPool.length > 0 ? subjectPool : results;
+
+  if (!preferredOwner) return pool[0];
+  return (
+    pool.find((r) => r.owner.toLowerCase() === preferredOwner.toLowerCase()) ??
+    pool[0]
+  );
+}
+
+/**
  * Resolve a specific resource's ZIP URL.
  *
  * Strategy:
  *   1. Try Catalog API with lang + abbreviation (precise).
  *   2. Fall back to Catalog API with lang + subject.
- *   3. Fall back to Gitea tree walk.
+ *   3. Language-variant fallback (e.g. "es" → "es-419").
+ *
+ * Organization is a preference, not a hard filter: when the preferred org
+ * has no entry, the first catalog hit for that language/subject is used.
+ * This matches list_resources / notes / wordLinks behavior for non-UW owners.
  *
  * @param abbreviation - preferred: exact repo suffix (ult, ust, tn, tw, ta, tq, twl)
  */
@@ -661,42 +700,34 @@ export async function getResourceZipUrl(
   // Derive abbreviation from subject for precise disambiguation
   const abbreviation = SUBJECT_TO_SUFFIX[subject];
 
-  /** Filter results by organization (case-insensitive). */
-  const matchOrg = (results: CatalogEntry[]): CatalogEntry | undefined =>
-    organization
-      ? results.find(
-          (r) => r.owner.toLowerCase() === organization.toLowerCase(),
-        )
-      : results[0];
+  const zipFromEntry = (
+    entry: CatalogEntry,
+  ): { zipUrl: string; entry: CatalogEntry } => ({
+    zipUrl:
+      entry.catalog?.prod?.zipball_url ??
+      `${GITEA_BASE}/${entry.owner}/${entry.repo}/archive/${entry.catalog?.prod?.branch_or_tag_name ?? "master"}.zip`,
+    entry,
+  });
 
-  // 1. Try Catalog by abbreviation (most precise — avoids ULT/UST confusion)
+  // 1. Try Catalog by abbreviation (most precise — avoids ULT/UST confusion).
+  //    Still pass subject so "obs" prefers Open Bible Stories over obs-tf.
   if (abbreviation) {
     const results = await catalogSearch({
       lang: languageCode,
       abbreviation,
       kv,
     });
-    const entry = matchOrg(results);
-    if (entry) {
-      const zipUrl =
-        entry.catalog?.prod?.zipball_url ??
-        `${GITEA_BASE}/${entry.owner}/${entry.repo}/archive/${entry.catalog?.prod?.branch_or_tag_name ?? "master"}.zip`;
-      return { zipUrl, entry };
-    }
-    // NOTE: do NOT early-return here when org doesn't match — we still need to
-    // fall through to the language-variant fallback (e.g. "es" → "es-419").
+    const entry = pickPreferredCatalogEntry(results, organization, subject);
+    if (entry) return zipFromEntry(entry);
+    // NOTE: do NOT early-return here when empty — fall through to subject /
+    // language-variant fallback (e.g. "es" → "es-419").
   }
 
   // 2. Try Catalog by subject (broader match)
   if (subject) {
     const results = await catalogSearch({ lang: languageCode, subject, kv });
-    const entry = matchOrg(results);
-    if (entry) {
-      const zipUrl =
-        entry.catalog?.prod?.zipball_url ??
-        `${GITEA_BASE}/${entry.owner}/${entry.repo}/archive/${entry.catalog?.prod?.branch_or_tag_name ?? "master"}.zip`;
-      return { zipUrl, entry };
-    }
+    const entry = pickPreferredCatalogEntry(results, organization, subject);
+    if (entry) return zipFromEntry(entry);
     // NOTE: do NOT early-return here — fall through to language-variant fallback.
   }
 

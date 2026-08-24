@@ -4,7 +4,7 @@
  */
 import type { RouteContext } from "../worker.js";
 import { json, apiError } from "../worker.js";
-import { makeFetcher, getResourceZipUrl } from "./helpers.js";
+import { makeFetcher, resolveResourceZip } from "./helpers.js";
 import {
   parseTaArticlePathsFromZipEntries,
   buildTaArticle,
@@ -13,13 +13,28 @@ import { buildTaPathCandidates } from "@translation-helps/door43";
 
 export async function handleAcademy(ctx: RouteContext): Promise<Response> {
   const { url, env, execCtx } = ctx;
-  const language = url.searchParams.get("language");
-  if (!language)
+  const requestedLanguage = url.searchParams.get("language");
+  if (!requestedLanguage)
     return apiError("BAD_REQUEST", "Missing required param: language", 400);
   const category = url.searchParams.get("category") ?? undefined;
   const limit = parseInt(url.searchParams.get("limit") ?? "9999", 10);
   const offset = parseInt(url.searchParams.get("offset") ?? "0", 10);
 
+  const resolved = await resolveResourceZip(
+    requestedLanguage,
+    "Translation Academy",
+    env.TRANSLATION_HELPS_CACHE,
+  );
+  if (!resolved)
+    return json({
+      language: requestedLanguage,
+      requestedLanguage,
+      total_count: 0,
+      articles: [],
+      has_more: false,
+    });
+
+  const { language, zipUrl } = resolved;
   const cacheKey = `catalog:ta:${language}${category ? `:${category}` : ""}`;
   if (env.TRANSLATION_HELPS_CACHE) {
     const cached = await env.TRANSLATION_HELPS_CACHE.get(cacheKey).catch(
@@ -30,6 +45,7 @@ export async function handleAcademy(ctx: RouteContext): Promise<Response> {
       const page = all.slice(offset, offset + limit);
       return json({
         language,
+        requestedLanguage,
         total_count: all.length,
         articles: page,
         has_more: offset + limit < all.length,
@@ -37,18 +53,8 @@ export async function handleAcademy(ctx: RouteContext): Promise<Response> {
     }
   }
 
-  const resolved = await getResourceZipUrl(
-    language,
-    "Translation Academy",
-    "unfoldingWord",
-    "prod",
-    env.TRANSLATION_HELPS_CACHE,
-  );
-  if (!resolved)
-    return json({ language, total_count: 0, articles: [], has_more: false });
-
   const fetcher = makeFetcher(env, execCtx);
-  const zip = await fetcher.getOrDownloadZip(resolved.zipUrl);
+  const zip = await fetcher.getOrDownloadZip(zipUrl);
   const entries = fetcher.listZipEntries(zip);
 
   const slugs = parseTaArticlePathsFromZipEntries(entries);
@@ -73,6 +79,7 @@ export async function handleAcademy(ctx: RouteContext): Promise<Response> {
   const page = articles.slice(offset, offset + limit);
   return json({
     language,
+    requestedLanguage,
     total_count: articles.length,
     articles: page,
     has_more: offset + limit < articles.length,
@@ -81,27 +88,26 @@ export async function handleAcademy(ctx: RouteContext): Promise<Response> {
 
 export async function handleAcademyPath(ctx: RouteContext): Promise<Response> {
   const { url, env, execCtx, pathParam } = ctx;
-  const language = url.searchParams.get("language");
-  if (!language)
+  const requestedLanguage = url.searchParams.get("language");
+  if (!requestedLanguage)
     return apiError("BAD_REQUEST", "Missing required param: language", 400);
   if (!pathParam) return apiError("BAD_REQUEST", "Missing article path", 400);
 
-  const resolved = await getResourceZipUrl(
-    language,
+  const resolved = await resolveResourceZip(
+    requestedLanguage,
     "Translation Academy",
-    "unfoldingWord",
-    "prod",
     env.TRANSLATION_HELPS_CACHE,
   );
   if (!resolved)
     return apiError(
       "NOT_FOUND",
-      `Translation Academy not found for "${language}"`,
+      `Translation Academy not found for "${requestedLanguage}"`,
       404,
     );
 
+  const { language, zipUrl } = resolved;
   const fetcher = makeFetcher(env, execCtx);
-  const zip = await fetcher.getOrDownloadZip(resolved.zipUrl);
+  const zip = await fetcher.getOrDownloadZip(zipUrl);
   const candidates = buildTaPathCandidates(pathParam);
 
   let article: string | null = null;
@@ -122,5 +128,5 @@ export async function handleAcademyPath(ctx: RouteContext): Promise<Response> {
     );
   }
 
-  return json({ language, path: resolvedPath, article });
+  return json({ language, requestedLanguage, path: resolvedPath, article });
 }

@@ -43,6 +43,7 @@ export {
   listResourcesForLanguage,
   findLanguageVariants,
   resolveCatalogLanguage,
+  pickPreferredCatalogEntry,
   getResourceZipUrl,
   getResourceZipUrlByAbbreviation,
 } from "./resources/dcsClient.js";

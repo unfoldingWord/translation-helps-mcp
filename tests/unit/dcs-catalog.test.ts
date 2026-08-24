@@ -9,6 +9,7 @@ import {
   listSubjects,
   getResourceZipUrl,
   getResourceZipUrlByAbbreviation,
+  pickPreferredCatalogEntry,
   clearCatalogProcessCache,
   type CatalogEntry,
 } from "@translation-helps/door43";
@@ -178,6 +179,41 @@ describe("listSubjects", () => {
 // ---------------------------------------------------------------------------
 
 describe("getResourceZipUrl", () => {
+  it("prefers Open Bible Stories over obs-tf when resolving obs abbreviation", async () => {
+    mockFetch({
+      "catalog/search": {
+        ok: true,
+        data: [
+          {
+            name: "en_obs-tf",
+            owner: "unfoldingWord",
+            subject: "OBS Theological Formation",
+            abbreviation: "obs",
+            branch_or_tag_name: "v4",
+            zipball_url:
+              "https://git.door43.org/unfoldingWord/en_obs-tf/archive/v4.zip",
+            ingredients: [],
+          },
+          {
+            name: "en_obs",
+            owner: "unfoldingWord",
+            subject: "Open Bible Stories",
+            abbreviation: "obs",
+            branch_or_tag_name: "v9",
+            zipball_url:
+              "https://git.door43.org/unfoldingWord/en_obs/archive/v9.zip",
+            ingredients: [],
+          },
+        ],
+      },
+    });
+
+    const result = await getResourceZipUrl("en", "Open Bible Stories");
+    expect(result).not.toBeNull();
+    expect(result!.entry.name).toBe("en_obs");
+    expect(result!.zipUrl).toContain("en_obs/archive/v9.zip");
+  });
+
   it("returns zipball_url from catalog on happy path", async () => {
     mockFetch({
       "catalog/search": {
@@ -201,6 +237,146 @@ describe("getResourceZipUrl", () => {
     expect(result).not.toBeNull();
     expect(result!.zipUrl).toContain("v44.zip");
     expect(result!.entry.abbreviation).toBe("tn");
+  });
+
+  it("falls back to non-unfoldingWord owner when UW has no TW (hi)", async () => {
+    mockFetch({
+      "catalog/search": {
+        ok: true,
+        data: [
+          {
+            name: "hi_tw",
+            owner: "translationCore-Create-BCS",
+            subject: "Translation Words",
+            abbreviation: "tw",
+            branch_or_tag_name: "v1",
+            zipball_url:
+              "https://git.door43.org/translationCore-Create-BCS/hi_tw/archive/v1.zip",
+            ingredients: [],
+          },
+        ],
+      },
+    });
+
+    // Prefer UW, but accept BCS when that is the only catalog hit.
+    const result = await getResourceZipUrl(
+      "hi",
+      "Translation Words",
+      "unfoldingWord",
+    );
+    expect(result).not.toBeNull();
+    expect(result!.entry.owner).toBe("translationCore-Create-BCS");
+    expect(result!.zipUrl).toContain("hi_tw");
+  });
+
+  it("resolves es → es-419 TW owned by es-419_gl (not UW)", async () => {
+    // URL-aware mock: empty for lang=es, non-UW hit for lang=es-419
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      const u = url as string;
+      let data: unknown[] = [];
+      if (u.includes("catalog/search") && u.includes("lang=es-419")) {
+        data = [
+          {
+            name: "es-419_tw",
+            owner: "es-419_gl",
+            subject: "Translation Words",
+            abbreviation: "tw",
+            branch_or_tag_name: "v12",
+            zipball_url:
+              "https://git.door43.org/es-419_gl/es-419_tw/archive/v12.zip",
+            ingredients: [],
+          },
+        ];
+      }
+      // lang=es (exact, no region) → empty so variant fallback runs
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ ok: true, data }),
+      });
+    }) as unknown as typeof fetch;
+
+    const result = await getResourceZipUrl(
+      "es",
+      "Translation Words",
+      "unfoldingWord",
+    );
+    expect(result).not.toBeNull();
+    expect(result!.entry.owner).toBe("es-419_gl");
+    expect(result!.entry.repo).toBe("es-419_tw");
+    expect(result!.zipUrl).toContain("es-419_tw");
+  });
+
+  it("prefers unfoldingWord when both UW and community owners exist", async () => {
+    mockFetch({
+      "catalog/search": {
+        ok: true,
+        data: [
+          {
+            name: "en_tw",
+            owner: "SomeCommunity",
+            subject: "Translation Words",
+            abbreviation: "tw",
+            branch_or_tag_name: "v1",
+            zipball_url:
+              "https://git.door43.org/SomeCommunity/en_tw/archive/v1.zip",
+            ingredients: [],
+          },
+          {
+            name: "en_tw",
+            owner: "unfoldingWord",
+            subject: "Translation Words",
+            abbreviation: "tw",
+            branch_or_tag_name: "v88",
+            zipball_url:
+              "https://git.door43.org/unfoldingWord/en_tw/archive/v88.zip",
+            ingredients: [],
+          },
+        ],
+      },
+    });
+
+    const result = await getResourceZipUrl(
+      "en",
+      "Translation Words",
+      "unfoldingWord",
+    );
+    expect(result).not.toBeNull();
+    expect(result!.entry.owner).toBe("unfoldingWord");
+    expect(result!.zipUrl).toContain("v88.zip");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// pickPreferredCatalogEntry
+// ---------------------------------------------------------------------------
+
+describe("pickPreferredCatalogEntry", () => {
+  const uw: CatalogEntry = {
+    owner: "unfoldingWord",
+    repo: "en_tw",
+    name: "en_tw",
+    abbreviation: "tw",
+    ingredients: [],
+  };
+  const gl: CatalogEntry = {
+    owner: "es-419_gl",
+    repo: "es-419_tw",
+    name: "es-419_tw",
+    abbreviation: "tw",
+    ingredients: [],
+  };
+
+  it("returns undefined for empty list", () => {
+    expect(pickPreferredCatalogEntry([])).toBeUndefined();
+  });
+
+  it("prefers unfoldingWord when present", () => {
+    expect(pickPreferredCatalogEntry([gl, uw])?.owner).toBe("unfoldingWord");
+  });
+
+  it("falls back to first entry when preferred owner missing", () => {
+    expect(pickPreferredCatalogEntry([gl])?.owner).toBe("es-419_gl");
   });
 });
 

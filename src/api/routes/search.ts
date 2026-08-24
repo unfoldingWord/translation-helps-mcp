@@ -6,7 +6,7 @@
  */
 import type { RouteContext } from "../worker.js";
 import { json, apiError } from "../worker.js";
-import { makeFetcher, getResourceZipUrl } from "./helpers.js";
+import { makeFetcher, resolveResourceZip } from "./helpers.js";
 import {
   parseTaArticlePathsFromZipEntries,
   parseTwArticlePathsFromZipEntries,
@@ -19,8 +19,8 @@ import type { AcademyArticle, WordArticle } from "@translation-helps/door43";
 export async function handleSearch(ctx: RouteContext): Promise<Response> {
   const { url, env, execCtx } = ctx;
   const q = url.searchParams.get("q");
-  const language = url.searchParams.get("language");
-  if (!q || !language) {
+  const requestedLanguage = url.searchParams.get("language");
+  if (!q || !requestedLanguage) {
     return apiError("BAD_REQUEST", "Missing required params: q, language", 400);
   }
   const typesParam = url.searchParams.get("types") ?? "ta,tw";
@@ -36,9 +36,13 @@ export async function handleSearch(ctx: RouteContext): Promise<Response> {
     resourceType: "ta" | "tw";
   }> = [];
 
+  // Resolve once so both TA and TW share the same effective language (es → es-419).
+  let language = requestedLanguage;
+
   if (types.includes("ta")) {
-    const taArticles = await loadTaArticles(language, env, execCtx);
-    for (const a of taArticles) {
+    const ta = await loadTaArticles(requestedLanguage, env, execCtx);
+    language = ta.language;
+    for (const a of ta.articles) {
       candidates.push({
         path: a.path,
         title: a.title,
@@ -49,8 +53,9 @@ export async function handleSearch(ctx: RouteContext): Promise<Response> {
   }
 
   if (types.includes("tw")) {
-    const twArticles = await loadTwArticles(language, env, execCtx);
-    for (const a of twArticles) {
+    const tw = await loadTwArticles(requestedLanguage, env, execCtx);
+    language = tw.language;
+    for (const a of tw.articles) {
       candidates.push({
         path: a.path,
         title: a.title,
@@ -61,7 +66,7 @@ export async function handleSearch(ctx: RouteContext): Promise<Response> {
   }
 
   const results = rankArticles(candidates, q, topK);
-  return json({ q, language, results });
+  return json({ q, language, requestedLanguage, results });
 }
 
 // ---------------------------------------------------------------------------
@@ -69,29 +74,32 @@ export async function handleSearch(ctx: RouteContext): Promise<Response> {
 // ---------------------------------------------------------------------------
 
 async function loadTaArticles(
-  language: string,
+  requestedLanguage: string,
   env: RouteContext["env"],
   execCtx?: ExecutionContext,
-): Promise<AcademyArticle[]> {
+): Promise<{ language: string; articles: AcademyArticle[] }> {
+  const resolved = await resolveResourceZip(
+    requestedLanguage,
+    "Translation Academy",
+    env.TRANSLATION_HELPS_CACHE,
+  );
+  if (!resolved) return { language: requestedLanguage, articles: [] };
+
+  const { language, zipUrl } = resolved;
   const cacheKey = `catalog:ta:${language}`;
   if (env.TRANSLATION_HELPS_CACHE) {
     const cached = await env.TRANSLATION_HELPS_CACHE.get(cacheKey).catch(
       () => null,
     );
-    if (cached) return JSON.parse(cached) as AcademyArticle[];
+    if (cached)
+      return {
+        language,
+        articles: JSON.parse(cached) as AcademyArticle[],
+      };
   }
 
-  const resolved = await getResourceZipUrl(
-    language,
-    "Translation Academy",
-    "unfoldingWord",
-    "prod",
-    env.TRANSLATION_HELPS_CACHE,
-  );
-  if (!resolved) return [];
-
   const fetcher = makeFetcher(env, execCtx);
-  const zip = await fetcher.getOrDownloadZip(resolved.zipUrl);
+  const zip = await fetcher.getOrDownloadZip(zipUrl);
   const entries = fetcher.listZipEntries(zip);
   const slugs = parseTaArticlePathsFromZipEntries(entries);
 
@@ -109,33 +117,36 @@ async function loadTaArticles(
     }).catch(() => {});
   }
 
-  return articles;
+  return { language, articles };
 }
 
 async function loadTwArticles(
-  language: string,
+  requestedLanguage: string,
   env: RouteContext["env"],
   execCtx?: ExecutionContext,
-): Promise<WordArticle[]> {
+): Promise<{ language: string; articles: WordArticle[] }> {
+  const resolved = await resolveResourceZip(
+    requestedLanguage,
+    "Translation Words",
+    env.TRANSLATION_HELPS_CACHE,
+  );
+  if (!resolved) return { language: requestedLanguage, articles: [] };
+
+  const { language, zipUrl } = resolved;
   const cacheKey = `catalog:tw:${language}`;
   if (env.TRANSLATION_HELPS_CACHE) {
     const cached = await env.TRANSLATION_HELPS_CACHE.get(cacheKey).catch(
       () => null,
     );
-    if (cached) return JSON.parse(cached) as WordArticle[];
+    if (cached)
+      return {
+        language,
+        articles: JSON.parse(cached) as WordArticle[],
+      };
   }
 
-  const resolved = await getResourceZipUrl(
-    language,
-    "Translation Words",
-    "unfoldingWord",
-    "prod",
-    env.TRANSLATION_HELPS_CACHE,
-  );
-  if (!resolved) return [];
-
   const fetcher = makeFetcher(env, execCtx);
-  const zip = await fetcher.getOrDownloadZip(resolved.zipUrl);
+  const zip = await fetcher.getOrDownloadZip(zipUrl);
   const entries = fetcher.listZipEntries(zip);
   const paths = parseTwArticlePathsFromZipEntries(entries);
 
@@ -159,5 +170,5 @@ async function loadTwArticles(
     }).catch(() => {});
   }
 
-  return articles;
+  return { language, articles };
 }
