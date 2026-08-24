@@ -23,8 +23,8 @@ const inputSchema = z.object({
     .string()
     .min(1)
     .describe(
-      'The TA article path from `get_passage_index` notes[].taArticle.path or `search_articles`. ' +
-      'Examples: "translate/figs-metaphor", "translate/translate-unknown", "checking/accuracy-check".',
+      "The TA article path from `get_passage_index` notes[].taArticle.path or `search_articles`. " +
+        'Examples: "translate/figs-metaphor", "translate/translate-unknown", "checking/accuracy-check".',
     ),
   language: languageParam,
 });
@@ -37,6 +37,8 @@ export const getAcademyArticleTool: ToolModule<typeof inputSchema> = {
     "STEP 3 (study/drill): Fetch the full text of a Translation Academy article by path. " +
     "TA articles explain HOW to translate: figurative language, implicit information, cultural concepts, grammar, checking procedures. " +
     "Get the `path` from `get_passage_index` notes[].taArticle.path or from `search_articles`. " +
+    "Always pass `language` as the user's resource language (e.g. hi for Hindi) — " +
+    "do not default to en when they asked for another language; many GLs have their own TA on Door43. " +
     "BEFORE: call `get_passage_index` (survey step). " +
     "AFTER: call `get_questions` to verify a draft.",
   inputSchema,

@@ -53,6 +53,8 @@ export const listResourcesTool: ToolModule<typeof inputSchema> = {
     "List which translation resource types are available for a language. " +
     "Returns an availability summary (`type`, `abbreviation`, `role`) from the Door43 catalog — " +
     "scripture versions, notes, words, academy, questions, OBS, and original-language sources. " +
+    "Pass `language` as the user's resource language (e.g. hi) — availability is per-language; " +
+    "do not list English resources when the user asked for another language. " +
     "Book-scoped entries may include `books` / `bookCount` / `warning` when coverage is partial. " +
     "Pass optional `book` or `reference` to filter out resources that do not cover that book. " +
     "Use this for discovery: confirm a language has the resources you need before calling get_passage / get_note / etc. " +

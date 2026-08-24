@@ -150,3 +150,26 @@ describe("Workflow tool names follow convention", () => {
     expect(toolByName("get_word_article").name).toBe("get_word_article");
   });
 });
+
+describe("Language parameter steers away from English default", () => {
+  const LANGUAGE_STEER =
+    /do not (omit|default to en|use en)|user'?s (requested |resource )?language/i;
+
+  it("shared languageParam description requires user's language", () => {
+    const shape = toolByName("get_word_article").inputSchema.shape;
+    const desc = (shape.language as z.ZodTypeAny).description ?? "";
+    expect(desc).toMatch(LANGUAGE_STEER);
+    expect(desc).toMatch(/gateway languages|own TW\/TA|Door43/i);
+  });
+
+  for (const name of [
+    "get_word_article",
+    "get_academy_article",
+    "search_articles",
+    "list_resources",
+  ] as const) {
+    it(`${name} description steers language choice`, () => {
+      expect(toolByName(name).description).toMatch(LANGUAGE_STEER);
+    });
+  }
+});

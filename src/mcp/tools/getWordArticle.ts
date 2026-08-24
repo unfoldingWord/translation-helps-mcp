@@ -23,8 +23,8 @@ const inputSchema = z.object({
     .string()
     .min(1)
     .describe(
-      'The TW article path from `get_passage_index` words[].twArticle.path or `search_articles`. ' +
-      'Examples: "bible/kt/god", "bible/kt/covenant", "bible/other/king", "bible/names/paul".',
+      "The TW article path from `get_passage_index` words[].twArticle.path or `search_articles`. " +
+        'Examples: "bible/kt/god", "bible/kt/covenant", "bible/other/king", "bible/names/paul".',
     ),
   language: languageParam,
 });
@@ -37,6 +37,8 @@ export const getWordArticleTool: ToolModule<typeof inputSchema> = {
     "STEP 3 (study/drill): Fetch the full text of a Translation Words article (key term dictionary entry) by path. " +
     "TW articles define what a biblical term means, how it is used, and how to translate it. " +
     "Get the `path` from `get_passage_index` words[].twArticle.path or from `search_articles`. " +
+    "Always pass `language` as the user's resource language (e.g. hi for Hindi) — " +
+    "do not default to en when they asked for another language; many GLs have their own TW on Door43. " +
     "BEFORE: call `get_passage_index` (survey step). " +
     "AFTER: call `get_questions` to verify a draft.",
   inputSchema,

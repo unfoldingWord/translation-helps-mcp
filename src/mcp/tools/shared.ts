@@ -20,9 +20,12 @@ export const REFERENCE_DESCRIPTION =
   "Decomposed arguments {book, chapter, verse} and common non-standard codes (MAR, 2KGS) are also accepted.";
 
 export const LANGUAGE_DESCRIPTION =
-  "BCP-47 language code. Accepts both base codes and region variants: " +
-  '"en", "es", "es-419", "fr", "pt-BR". ' +
-  'Defaults to "en". Run list_languages to see all available codes.';
+  "BCP-47 language code for the resource/response the user wants " +
+  '(e.g. "hi", "es", "es-419", "fr", "pt-BR", "en"). ' +
+  'CRITICAL: pass the user\'s requested language — do NOT omit this or use "en" ' +
+  "when they asked for another language (Hindi, Spanish, etc.). " +
+  "Gateway languages often have their own TW/TA on Door43; English is only correct when the user wants English. " +
+  'Schema default is "en" only when language is omitted. Run list_languages for valid codes.';
 
 export const FORMAT_DESCRIPTION =
   'Output format: "text" for plain prose, "json" for structured data (default), "md" for Markdown.';

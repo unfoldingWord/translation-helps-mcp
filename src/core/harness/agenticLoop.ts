@@ -45,7 +45,8 @@ const TOOL_SPECS: OpenAITool[] = [
           },
           language: {
             type: "string",
-            description: "BCP-47 language code, e.g. 'en'",
+            description:
+              "User's resource language (BCP-47). Do not use en when the user asked for another language.",
           },
         },
         required: ["reference", "language"],
@@ -71,7 +72,8 @@ const TOOL_SPECS: OpenAITool[] = [
           },
           language: {
             type: "string",
-            description: "BCP-47 language code, e.g. 'en'",
+            description:
+              "User's resource language (BCP-47). Do not use en when the user asked for another language.",
           },
         },
         required: ["reference", "language"],
@@ -93,7 +95,11 @@ const TOOL_SPECS: OpenAITool[] = [
             type: "string",
             description: "USFM reference, e.g. 'JHN 3:16'",
           },
-          language: { type: "string", description: "BCP-47 language code" },
+          language: {
+            type: "string",
+            description:
+              "User's resource language (BCP-47). Do not use en when the user asked for another language.",
+          },
           id: {
             type: "string",
             description: "Optional: specific note ID to fetch (e.g. 'vg6z')",
@@ -119,7 +125,11 @@ const TOOL_SPECS: OpenAITool[] = [
             type: "string",
             description: "USFM reference, e.g. 'JHN 3:16'",
           },
-          language: { type: "string", description: "BCP-47 language code" },
+          language: {
+            type: "string",
+            description:
+              "User's resource language (BCP-47). Do not use en when the user asked for another language.",
+          },
         },
         required: ["reference", "language"],
       },
@@ -140,7 +150,11 @@ const TOOL_SPECS: OpenAITool[] = [
             type: "string",
             description: "Word path, e.g. 'bible/kt/grace'",
           },
-          language: { type: "string", description: "BCP-47 language code" },
+          language: {
+            type: "string",
+            description:
+              "User's resource language (BCP-47). Do not use en when the user asked for another language.",
+          },
         },
         required: ["path", "language"],
       },
@@ -162,7 +176,11 @@ const TOOL_SPECS: OpenAITool[] = [
             type: "string",
             description: "TA article path, e.g. 'translate/figs-metaphor'",
           },
-          language: { type: "string", description: "BCP-47 language code" },
+          language: {
+            type: "string",
+            description:
+              "User's resource language (BCP-47). Do not use en when the user asked for another language.",
+          },
         },
         required: ["path", "language"],
       },
@@ -179,7 +197,11 @@ const TOOL_SPECS: OpenAITool[] = [
         type: "object",
         properties: {
           reference: { type: "string", description: "USFM reference" },
-          language: { type: "string", description: "BCP-47 language code" },
+          language: {
+            type: "string",
+            description:
+              "User's resource language (BCP-47). Do not use en when the user asked for another language.",
+          },
         },
         required: ["reference", "language"],
       },
@@ -192,6 +214,7 @@ const TOOL_SPECS: OpenAITool[] = [
       description:
         "Semantic search across Translation Academy (TA) and Translation Words (TW) catalogs. " +
         "Use to locate articles when you don't know the exact path. " +
+        "Pass the user's language so search hits that language's catalog. " +
         "Returns paths and titles — follow up with get_academy_article or get_word_article.",
       parameters: {
         type: "object",
@@ -200,7 +223,11 @@ const TOOL_SPECS: OpenAITool[] = [
             type: "string",
             description: "Natural language search query",
           },
-          language: { type: "string", description: "BCP-47 language code" },
+          language: {
+            type: "string",
+            description:
+              "User's resource language (BCP-47). Do not use en when the user asked for another language.",
+          },
           resourceTypes: {
             type: "array",
             items: { type: "string", enum: ["ta", "tw"] },

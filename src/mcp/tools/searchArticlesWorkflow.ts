@@ -51,6 +51,8 @@ export const searchArticlesWorkflowTool: ToolModule<typeof inputSchema> = {
     "LATERAL: Find Translation Academy or Translation Words articles by concept or keyword. " +
     "Use this to locate an article when you know the concept (e.g. 'metaphor', 'abstract nouns', 'covenant') but not the path, " +
     "or when no article is linked to the current passage. " +
+    "Pass `language` as the user's resource language — search that language's TW/TA catalog, not English, " +
+    "unless the user asked for English. " +
     "Returns `{ path, title, resourceType }[]` sorted by relevance. " +
     'Pass `path` to `get_academy_article` (resourceType:"ta") or `get_word_article` (resourceType:"tw").',
   inputSchema,
