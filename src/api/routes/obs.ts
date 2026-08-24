@@ -78,7 +78,7 @@ export async function handleObs(ctx: RouteContext): Promise<Response> {
   const resolved = await getResourceZipUrl(
     language,
     "Open Bible Stories",
-    "unfoldingWord",
+    undefined,
     "prod",
     env.TRANSLATION_HELPS_CACHE,
   );
@@ -146,7 +146,7 @@ export async function handleObsNotes(ctx: RouteContext): Promise<Response> {
   const resolved = await getResourceZipUrl(
     language,
     "TSV OBS Translation Notes",
-    "unfoldingWord",
+    undefined,
     "prod",
     env.TRANSLATION_HELPS_CACHE,
   );
@@ -204,7 +204,7 @@ export async function handleObsQuestions(ctx: RouteContext): Promise<Response> {
   const resolved = await getResourceZipUrl(
     language,
     "TSV OBS Translation Questions",
-    "unfoldingWord",
+    undefined,
     "prod",
     env.TRANSLATION_HELPS_CACHE,
   );

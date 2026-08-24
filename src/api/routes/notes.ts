@@ -13,6 +13,7 @@ import {
   resolveLanguageVariant,
   zipUrlFromEntry,
   buildBookPaths,
+  pickPreferredCatalogEntry,
 } from "./helpers.js";
 import { parseTranslationNotesTsv } from "@translation-helps/door43";
 import { resolveTitleFromPath } from "@translation-helps/door43";
@@ -90,8 +91,13 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
       };
     }
 
-    const entry =
-      entries.find((e) => e.owner === "unfoldingWord") ?? entries[0];
+    const entry = pickPreferredCatalogEntry(entries);
+    if (!entry) {
+      return {
+        payload: { reference, language, book, chapter, notes: [] },
+        cache: "network" as const,
+      };
+    }
     const zipUrl = zipUrlFromEntry(entry);
 
     const fetcher = makeFetcher(env, execCtx);

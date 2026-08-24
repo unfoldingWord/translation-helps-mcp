@@ -98,7 +98,7 @@ export interface GetPassageContextOptions {
   reference: string;
   /** BCP-47 language code (default: "en") */
   language?: string;
-  /** Organization slug (default: "unfoldingWord") */
+  /** Organization slug (optional; omit to search all owners, prefer UW among hits) */
   organization?: string;
 }
 
@@ -110,7 +110,7 @@ export interface GetPassageIndexOptions {
   reference: string;
   /** BCP-47 language code (default: "en") */
   language?: string;
-  /** Organization slug (default: "unfoldingWord") */
+  /** Organization slug (optional; omit to search all owners, prefer UW among hits) */
   organization?: string;
 }
 
@@ -122,7 +122,7 @@ export interface GetNoteOptions {
   reference: string;
   /** BCP-47 language code (default: "en") */
   language?: string;
-  /** Organization slug (default: "unfoldingWord") */
+  /** Organization slug (optional; omit to search all owners, prefer UW among hits) */
   organization?: string;
   /**
    * Specific note ID from get_passage_index (e.g. "abc123").
@@ -139,7 +139,7 @@ export interface GetAcademyArticleOptions {
   path: string;
   /** BCP-47 language code (default: "en") */
   language?: string;
-  /** Organization slug (default: "unfoldingWord") */
+  /** Organization slug (optional; omit to search all owners, prefer UW among hits) */
   organization?: string;
 }
 
@@ -151,7 +151,7 @@ export interface GetWordArticleOptions {
   path: string;
   /** BCP-47 language code (default: "en") */
   language?: string;
-  /** Organization slug (default: "unfoldingWord") */
+  /** Organization slug (optional; omit to search all owners, prefer UW among hits) */
   organization?: string;
 }
 
@@ -162,7 +162,7 @@ export interface GetQuestionsOptions {
   reference: string;
   /** BCP-47 language code (default: "en") */
   language?: string;
-  /** Organization slug (default: "unfoldingWord") */
+  /** Organization slug (optional; omit to search all owners, prefer UW among hits) */
   organization?: string;
 }
 

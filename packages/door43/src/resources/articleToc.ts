@@ -118,7 +118,7 @@ async function buildTaMap(
   const resolved = await getResourceZipUrl(
     language,
     "Translation Academy",
-    "unfoldingWord",
+    undefined,
     "prod",
     kv,
   );
@@ -168,7 +168,7 @@ async function buildTwMap(
   const resolved = await getResourceZipUrl(
     language,
     "Translation Words",
-    "unfoldingWord",
+    undefined,
     "prod",
     kv,
   );

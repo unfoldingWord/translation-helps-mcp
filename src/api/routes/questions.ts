@@ -9,6 +9,7 @@ import {
   resolveLanguageVariant,
   zipUrlFromEntry,
   buildBookPaths,
+  pickPreferredCatalogEntry,
 } from "./helpers.js";
 import { parseTranslationQuestionsTsv } from "@translation-helps/door43";
 import {
@@ -80,8 +81,13 @@ export async function handleQuestions(ctx: RouteContext): Promise<Response> {
       };
     }
 
-    const entry =
-      entries.find((e) => e.owner === "unfoldingWord") ?? entries[0];
+    const entry = pickPreferredCatalogEntry(entries);
+    if (!entry) {
+      return {
+        payload: { reference, language, book, chapter, questions: [] },
+        cache: "network" as const,
+      };
+    }
     const zipUrl = zipUrlFromEntry(entry);
 
     const fetcher = makeFetcher(env, execCtx);

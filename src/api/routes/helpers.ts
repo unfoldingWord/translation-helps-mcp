@@ -56,8 +56,9 @@ export function zipUrlFromEntry(entry: CatalogEntry): string {
 }
 
 /**
- * Resolve zip URL for a subject, preferring unfoldingWord then any catalog owner.
- * Applies language-variant fallback (es → es-419) via resolveLanguageVariant.
+ * Resolve zip URL for a subject, preferring UW among catalog hits then any owner.
+ * Catalog search is lang/subject only (no owner filter). Applies language-variant
+ * fallback (es → es-419) via resolveLanguageVariant.
  * Used by TW/TA/search routes so non-UW owners (es-419_gl, BCS, …) work.
  */
 export async function resolveResourceZip(

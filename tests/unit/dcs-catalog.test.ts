@@ -258,12 +258,8 @@ describe("getResourceZipUrl", () => {
       },
     });
 
-    // Prefer UW, but accept BCS when that is the only catalog hit.
-    const result = await getResourceZipUrl(
-      "hi",
-      "Translation Words",
-      "unfoldingWord",
-    );
+    // Prefer UW among hits when present; accept non-UW when that is the only hit.
+    const result = await getResourceZipUrl("hi", "Translation Words");
     expect(result).not.toBeNull();
     expect(result!.entry.owner).toBe("translationCore-Create-BCS");
     expect(result!.zipUrl).toContain("hi_tw");
@@ -296,11 +292,7 @@ describe("getResourceZipUrl", () => {
       });
     }) as unknown as typeof fetch;
 
-    const result = await getResourceZipUrl(
-      "es",
-      "Translation Words",
-      "unfoldingWord",
-    );
+    const result = await getResourceZipUrl("es", "Translation Words");
     expect(result).not.toBeNull();
     expect(result!.entry.owner).toBe("es-419_gl");
     expect(result!.entry.repo).toBe("es-419_tw");
@@ -336,14 +328,42 @@ describe("getResourceZipUrl", () => {
       },
     });
 
-    const result = await getResourceZipUrl(
-      "en",
-      "Translation Words",
-      "unfoldingWord",
-    );
+    // Omit organization — still prefer UW among results, never owner= filter.
+    const result = await getResourceZipUrl("en", "Translation Words");
     expect(result).not.toBeNull();
     expect(result!.entry.owner).toBe("unfoldingWord");
     expect(result!.zipUrl).toContain("v88.zip");
+
+    const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock
+      .calls[0];
+    const calledUrl = fetchCall[0] as string;
+    expect(calledUrl).not.toContain("owner=");
+  });
+
+  it("does not inject owner into catalog search when organization omitted", async () => {
+    mockFetch({
+      "catalog/search": {
+        ok: true,
+        data: [
+          {
+            name: "en_tn",
+            owner: "unfoldingWord",
+            subject: "TSV Translation Notes",
+            abbreviation: "tn",
+            branch_or_tag_name: "v44",
+            zipball_url:
+              "https://git.door43.org/unfoldingWord/en_tn/archive/v44.zip",
+            ingredients: [],
+          },
+        ],
+      },
+    });
+
+    await getResourceZipUrl("en", "TSV Translation Notes");
+    const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
+    for (const [url] of calls) {
+      expect(url as string).not.toContain("owner=");
+    }
   });
 });
 

@@ -684,16 +684,17 @@ export function pickPreferredCatalogEntry(
  *   2. Fall back to Catalog API with lang + subject.
  *   3. Language-variant fallback (e.g. "es" → "es-419").
  *
- * Organization is a preference, not a hard filter: when the preferred org
- * has no entry, the first catalog hit for that language/subject is used.
- * This matches list_resources / notes / wordLinks behavior for non-UW owners.
+ * Catalog queries use lang/subject/abbreviation only — never an owner filter.
+ * `organization`, when provided, is a ranking preference among hits via
+ * {@link pickPreferredCatalogEntry}; when omitted, UW is still preferred among
+ * results without excluding other owners.
  *
  * @param abbreviation - preferred: exact repo suffix (ult, ust, tn, tw, ta, tq, twl)
  */
 export async function getResourceZipUrl(
   languageCode: string,
   subject: string,
-  organization = "unfoldingWord",
+  organization?: string,
   _stage: "prod" | "preprod" | "latest" = "prod",
   kv?: CatalogKVCache | null,
 ): Promise<{ zipUrl: string; entry: CatalogEntry } | null> {
@@ -754,15 +755,17 @@ export async function getResourceZipUrl(
 /**
  * Resolve by explicit abbreviation (ult, ust, tn, etc.) — preferred over subject.
  * Used by fetch_scripture to distinguish ULT from UST precisely.
+ *
+ * Does not filter catalog by owner. Optional `organization` ranks among hits.
  */
 export async function getResourceZipUrlByAbbreviation(
   languageCode: string,
   abbreviation: string,
-  _organization = "unfoldingWord",
+  organization?: string,
   kv?: CatalogKVCache | null,
 ): Promise<{ zipUrl: string; entry: CatalogEntry } | null> {
   const results = await catalogSearch({ lang: languageCode, abbreviation, kv });
-  const entry = results[0];
+  const entry = pickPreferredCatalogEntry(results, organization);
   if (entry) {
     const zipUrl =
       entry.catalog?.prod?.zipball_url ??

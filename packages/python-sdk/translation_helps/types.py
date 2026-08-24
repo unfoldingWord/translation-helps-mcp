@@ -46,38 +46,38 @@ class GetPassageOptions(TypedDict, total=False):
 class GetPassageContextOptions(TypedDict, total=False):
     reference: str                 # Required — e.g. "JHN 3:16", "GEN 1", or bare book "TIT" (book overview only)
     language: Optional[str]        # BCP-47 code (default "en")
-    organization: Optional[str]    # Default "unfoldingWord"
+    organization: Optional[str]    # Optional; omit to search all owners (UW preferred among hits)
 
 
 class GetPassageIndexOptions(TypedDict, total=False):
     reference: str                 # Required — e.g. "JHN 3:16", "MAT 5"
     language: Optional[str]        # BCP-47 code (default "en")
-    organization: Optional[str]    # Default "unfoldingWord"
+    organization: Optional[str]    # Optional; omit to search all owners (UW preferred among hits)
 
 
 class GetNoteOptions(TypedDict, total=False):
     reference: str                 # Required — e.g. "JHN 3:16"
     language: Optional[str]        # BCP-47 code (default "en")
-    organization: Optional[str]    # Default "unfoldingWord"
+    organization: Optional[str]    # Optional; omit to search all owners (UW preferred among hits)
     id: Optional[str]              # Specific note ID from get_passage_index
 
 
 class GetAcademyArticleOptions(TypedDict, total=False):
     path: str                      # Required — e.g. "translate/figs-metaphor"
     language: Optional[str]        # BCP-47 code (default "en")
-    organization: Optional[str]    # Default "unfoldingWord"
+    organization: Optional[str]    # Optional; omit to search all owners (UW preferred among hits)
 
 
 class GetWordArticleOptions(TypedDict, total=False):
     path: str                      # Required — e.g. "bible/kt/grace"
     language: Optional[str]        # BCP-47 code (default "en")
-    organization: Optional[str]    # Default "unfoldingWord"
+    organization: Optional[str]    # Optional; omit to search all owners (UW preferred among hits)
 
 
 class GetQuestionsOptions(TypedDict, total=False):
     reference: str                 # Required — e.g. "JHN 3:16"
     language: Optional[str]        # BCP-47 code (default "en")
-    organization: Optional[str]    # Default "unfoldingWord"
+    organization: Optional[str]    # Optional; omit to search all owners (UW preferred among hits)
 
 
 class SearchArticlesOptions(TypedDict, total=False):
