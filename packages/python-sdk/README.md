@@ -113,7 +113,7 @@ TranslationHelpsClient(
 | Method                      | Required    | Optional                   | Description                                                                                        |
 | --------------------------- | ----------- | -------------------------- | -------------------------------------------------------------------------------------------------- |
 | `list_languages(opts?)`     | —           | `filter`                   | Discover valid BCP-47 language codes                                                               |
-| `list_resources(opts)`      | `language`  | —                          | Resource types available for a language (presence summary from catalog)                            |
+| `list_resources(opts)`      | `language`  | `book`, `reference`        | Resource types for a language; optional book filter for partial coverage                           |
 | `get_passage(opts)`         | `reference` | `language`                 | Scripture text — all versions (literal, simplified, original UGNT/UHB). Cheap and repeatable.      |
 | `get_passage_context(opts)` | `reference` | `language`, `organization` | Book/chapter intro notes + resource availability. Does NOT include verse text (use `get_passage`). |
 

@@ -147,10 +147,12 @@ export class TranslationHelpsClient {
   /**
    * List which translation resource types are available for a language.
    * Returns an availability summary (type, abbreviation, role) from the
-   * Door43 catalog — presence check only, not a full catalog with zip URLs.
+   * Door43 catalog. Pass optional `book` / `reference` to filter book-scoped
+   * resources that do not cover that book (partial TN/TQ coverage).
    *
    * @example
    * const result = await client.listResources({ language: "en" });
+   * const tit = await client.listResources({ language: "hi", book: "TIT" });
    */
   async listResources(opts: ListResourcesOptions): Promise<MCPToolResult> {
     return this.callTool(

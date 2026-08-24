@@ -88,7 +88,7 @@ export async function handleObs(ctx: RouteContext): Promise<Response> {
       language,
       available: false,
       code: "RESOURCE_NOT_AVAILABLE",
-      message: `No Open Bible Stories resource available for language "${language}".`,
+      message: `No Open Bible Stories resource available for language "${language}". Catalog subject "Open Bible Stories" (tc-ready) was not found — check list_resources for OBS availability.`,
     });
   }
 
@@ -145,7 +145,7 @@ export async function handleObsNotes(ctx: RouteContext): Promise<Response> {
 
   const resolved = await getResourceZipUrl(
     language,
-    "OBS Translation Notes",
+    "TSV OBS Translation Notes",
     "unfoldingWord",
     "prod",
     env.TRANSLATION_HELPS_CACHE,
@@ -156,7 +156,7 @@ export async function handleObsNotes(ctx: RouteContext): Promise<Response> {
       language,
       available: false,
       code: "RESOURCE_NOT_AVAILABLE",
-      message: `No OBS Translation Notes resource available for language "${language}".`,
+      message: `No OBS Translation Notes resource available for language "${language}". Catalog subject "TSV OBS Translation Notes" (tc-ready) was not found.`,
     });
   }
 
@@ -203,7 +203,7 @@ export async function handleObsQuestions(ctx: RouteContext): Promise<Response> {
 
   const resolved = await getResourceZipUrl(
     language,
-    "OBS Translation Questions",
+    "TSV OBS Translation Questions",
     "unfoldingWord",
     "prod",
     env.TRANSLATION_HELPS_CACHE,
@@ -214,7 +214,7 @@ export async function handleObsQuestions(ctx: RouteContext): Promise<Response> {
       language,
       available: false,
       code: "RESOURCE_NOT_AVAILABLE",
-      message: `No OBS Translation Questions resource available for language "${language}".`,
+      message: `No OBS Translation Questions resource available for language "${language}". Catalog subject "TSV OBS Translation Questions" (tc-ready) was not found.`,
     });
   }
 

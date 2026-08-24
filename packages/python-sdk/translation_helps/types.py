@@ -34,6 +34,8 @@ class ListLanguagesOptions(TypedDict, total=False):
 
 class ListResourcesOptions(TypedDict, total=False):
     language: str                  # Required — BCP-47 language code
+    book: Optional[str]            # Optional USFM book code/name (e.g. "TIT")
+    reference: Optional[str]       # Optional passage; book is extracted like book
 
 
 class GetPassageOptions(TypedDict, total=False):

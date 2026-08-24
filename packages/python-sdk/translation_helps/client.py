@@ -148,16 +148,19 @@ class TranslationHelpsClient:
         List which translation resource types are available for a language.
 
         Returns an availability summary (type, abbreviation, role) from the
-        Door43 catalog — presence check only, not a full catalog with zip URLs.
+        Door43 catalog. Optional ``book`` / ``reference`` filter book-scoped
+        resources that do not cover that book.
 
         Args:
             options: Dict with ``language`` (required, BCP-47 code).
+                Optional ``book`` (USFM code/name) or ``reference``.
 
         Returns:
             MCP result with ``available`` / ``resources`` lists.
 
         Example::
             resources = client.list_resources({"language": "en"})
+            tit = client.list_resources({"language": "hi", "book": "TIT"})
         """
         if not options.get("language"):
             raise ValueError("language parameter is required")
@@ -457,7 +460,7 @@ class AsyncTranslationHelpsClient:
     async def list_resources(self, options: Dict[str, Any]) -> Dict[str, Any]:
         """
         List resource types available for a language.
-        Required: language. Presence summary from catalog (not full zip listing).
+        Required: language. Optional: book, reference (filter book-scoped coverage).
         """
         if not options.get("language"):
             raise ValueError("language parameter is required")

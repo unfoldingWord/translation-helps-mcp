@@ -142,7 +142,17 @@ export interface ResourceAvailability {
     | "wordLinks"
     | "words"
     | "academy"
-    | "questions";
+    | "questions"
+    | "obs"
+    | "obsNotes"
+    | "obsQuestions";
+  /** USFM book codes from catalog ingredients when book-scoped. */
+  books?: string[];
+  bookCount?: number;
+  /** Present when list_resources /resources was called with book/reference. */
+  coversBook?: boolean;
+  /** Set when ingredient book list is clearly incomplete vs a full Bible. */
+  warning?: string;
 }
 
 // ---------------------------------------------------------------------------

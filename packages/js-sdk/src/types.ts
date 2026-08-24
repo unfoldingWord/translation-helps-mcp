@@ -70,6 +70,13 @@ export interface ListLanguagesOptions {
 export interface ListResourcesOptions {
   /** BCP-47 language code (required) */
   language: string;
+  /**
+   * Optional USFM book code or name (e.g. "TIT").
+   * Filters out book-scoped resources whose ingredients omit this book.
+   */
+  book?: string;
+  /** Optional passage reference; book is extracted like `book`. */
+  reference?: string;
 }
 
 export interface GetPassageOptions {

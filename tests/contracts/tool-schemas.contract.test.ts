@@ -117,10 +117,14 @@ describe("Key param requirements", () => {
     expect(shape.path instanceof z.ZodOptional).toBe(false);
   });
 
-  it("list_resources requires language", () => {
+  it("list_resources requires language and allows optional book/reference", () => {
     const shape = toolByName("list_resources").inputSchema.shape;
     expect(shape.language).toBeDefined();
     expect(shape.language instanceof z.ZodOptional).toBe(false);
+    expect(shape.book).toBeDefined();
+    expect(shape.book instanceof z.ZodOptional).toBe(true);
+    expect(shape.reference).toBeDefined();
+    expect(shape.reference instanceof z.ZodOptional).toBe(true);
   });
 });
 

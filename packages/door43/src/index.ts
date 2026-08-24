@@ -72,6 +72,12 @@ export {
 // Scripture roles
 export { resolveScriptureVersionRole } from "./resources/scriptureRoles.js";
 
+// Catalog ingredient → book coverage
+export {
+  bookCodesFromIngredients,
+  ingredientCoversBook,
+} from "./resources/ingredientBooks.js";
+
 // Reference parsing (types)
 export type {
   ParsedReference,

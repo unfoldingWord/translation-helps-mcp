@@ -450,6 +450,8 @@ export const API_MANIFEST: ApiManifest = {
       },
       responseNotes: [
         "`language` may differ from `requestedLanguage` when a variant is resolved (e.g. es → es-419).",
+        "Optional `book` / `reference` filters book-scoped resources missing that book.",
+        "Entries may include `books` / `bookCount` / `warning` for partial coverage; see `coverage.note`.",
       ],
     },
     {

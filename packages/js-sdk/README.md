@@ -104,7 +104,7 @@ All methods return `MCPToolResult`. Use `parseResult<T>(result)` to extract type
 | Method                    | Options                                         | Description                                                                                       |
 | ------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | `listLanguages(opts?)`    | `filter?`                                       | Discover valid BCP-47 language codes                                                              |
-| `listResources(opts)`     | `language` (req)                                | Resource types available for a language (presence summary from catalog)                           |
+| `listResources(opts)`     | `language` (req), `book?`, `reference?`         | Resource types for a language; optional book filter for partial coverage                          |
 | `getPassage(opts)`        | `reference` (req), `language?`                  | Scripture text — all versions (literal, simplified, original UGNT/UHB). Cheap and repeatable.     |
 | `getPassageContext(opts)` | `reference` (req), `language?`, `organization?` | Book/chapter intro notes + resource availability. Does NOT include verse text (use `getPassage`). |
 

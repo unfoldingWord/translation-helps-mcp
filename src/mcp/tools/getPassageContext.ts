@@ -43,7 +43,7 @@ export const getPassageContextTool: ToolModule<typeof inputSchema> = {
   description:
     "STEP 1b (orient — background): Load the background AROUND a passage — book/chapter introductions and a summary of which resources exist. " +
     'Returns `context[]` with book-level and chapter-level intro notes (each tagged `scope:"book"` or `scope:"chapter"` — cultural background, overview, themes) ' +
-    "and `availability` listing which resource types exist for this language. " +
+    "and `availability` listing which resource types exist for this language (filtered to the reference book when catalog ingredients allow). " +
     'Also accepts a BARE BOOK reference (e.g. "TIT" or "Titus") — then returns only the book overview (front:intro), ideal when the user names a whole book. ' +
     "BEFORE this: call `get_passage` first (Step 1a) to read the text and warm the server cache. " +
     "This does NOT return the verse text — use `get_passage` for that. " +
@@ -73,6 +73,11 @@ export const getPassageContextTool: ToolModule<typeof inputSchema> = {
       }),
       client.get<{ available: ResourceAvailability[] }>("/api/v1/resources", {
         language,
+        ...(bookChapter?.book
+          ? { book: bookChapter.book }
+          : bookOnly
+            ? { book: reference.trim() }
+            : {}),
       }),
     ]);
 

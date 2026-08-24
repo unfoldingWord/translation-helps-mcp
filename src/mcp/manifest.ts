@@ -43,22 +43,27 @@ export const TOOL_DOC_META: Record<string, ToolDocMeta> = {
   list_resources: {
     category: "discovery",
     summary: "Availability summary of resource types for a language.",
-    example: { language: "en" },
+    example: { language: "en", book: "TIT" },
     exampleResponse: {
       language: "en",
       requestedLanguage: "en",
+      book: "TIT",
       available: [
         {
           type: "scripture",
           subject: "Aligned Bible",
           abbreviation: "ult",
           role: "literal",
+          books: ["GEN", "TIT"],
+          bookCount: 66,
+          coversBook: true,
         },
         {
           type: "notes",
           subject: "TSV Translation Notes",
           abbreviation: "tn",
           role: "notes",
+          coversBook: true,
         },
       ],
       resources: [
@@ -69,11 +74,17 @@ export const TOOL_DOC_META: Record<string, ToolDocMeta> = {
           role: "literal",
         },
       ],
+      coverage: {
+        note: "Type-level catalog presence does not guarantee every book.",
+        filteredByBook: "TIT",
+      },
       requestId: "req_…",
     },
     responseNotes: [
       "`resources` is an alias of `available` for discovery consumers.",
       "`language` may differ from `requestedLanguage` after variant resolution.",
+      "Optional `book` / `reference` filters book-scoped resources missing that book.",
+      "Book-scoped entries may include `books`, `bookCount`, `coversBook`, and `warning`.",
     ],
   },
   get_passage: {
