@@ -377,7 +377,8 @@ export const API_MANIFEST: ApiManifest = {
         },
       },
       responseNotes: [
-        "When the quote cannot be matched, `match.ok` is false and aligned text may be empty.",
+        "When the quote cannot be matched, `original`/`gateway` are empty and `note` explains why.",
+        "`language` may differ from `requestedLanguage` when a variant is resolved (e.g. es → es-419).",
       ],
     },
     {

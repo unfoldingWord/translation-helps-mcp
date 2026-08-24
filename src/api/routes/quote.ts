@@ -16,6 +16,7 @@ import {
   makeFetcher,
   zipUrlFromEntry,
   buildBookPaths,
+  resolveLanguageVariant,
 } from "./helpers.js";
 import { catalogSearch } from "@translation-helps/door43";
 import { tokenizeUsfm, QuoteMatcher } from "@translation-helps/door43";
@@ -74,7 +75,14 @@ export async function handleQuote(ctx: RouteContext): Promise<Response> {
   }
 
   const quote = decodeURIComponent(quoteRaw);
-  const { reference, language, book, chapter, verseStart, verseEnd } = ref;
+  const {
+    reference,
+    language: requestedLanguage,
+    book,
+    chapter,
+    verseStart,
+    verseEnd,
+  } = ref;
 
   const startChapter = parseInt(chapter, 10);
   const startVerse = parseInt(verseStart ?? "1", 10);
@@ -142,10 +150,19 @@ export async function handleQuote(ctx: RouteContext): Promise<Response> {
     qRef,
   );
 
+  // Resolve gateway language early so error/success payloads share effective code
+  // (e.g. es → es-419), matching scripture/notes/resources routes.
+  const { language, entries: gatewayEntries } = await resolveLanguageVariant(
+    requestedLanguage,
+    "Aligned Bible",
+    env.TRANSLATION_HELPS_CACHE,
+  );
+
   if (!origResult.success) {
     return json({
       reference,
       language,
+      requestedLanguage,
       quote,
       occurrence,
       original: [],
@@ -166,12 +183,6 @@ export async function handleQuote(ctx: RouteContext): Promise<Response> {
   // -------------------------------------------------------------------------
   // 3. Discover aligned gateway-language USFM (ULT, UST …) and match
   // -------------------------------------------------------------------------
-  const gatewayEntries = await catalogSearch({
-    lang: language,
-    subject: "Aligned Bible",
-    kv: env.TRANSLATION_HELPS_CACHE,
-  });
-
   const gatewayOut: Array<{
     version: string;
     words: string[];
@@ -212,6 +223,7 @@ export async function handleQuote(ctx: RouteContext): Promise<Response> {
   return json({
     reference,
     language,
+    requestedLanguage,
     quote,
     occurrence,
     original: originalOut,

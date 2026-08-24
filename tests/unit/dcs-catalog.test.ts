@@ -467,4 +467,35 @@ describe("getResourceZipUrlByAbbreviation", () => {
     // Should NOT contain "ult"
     expect(calledUrl).not.toContain("abbreviation=ult");
   });
+
+  it("resolves es → es-419 by abbreviation (variant fallback)", async () => {
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      const u = url as string;
+      let data: unknown[] = [];
+      if (u.includes("catalog/search") && u.includes("lang=es-419")) {
+        data = [
+          {
+            name: "es-419_ult",
+            owner: "unfoldingWord",
+            subject: "Aligned Bible",
+            abbreviation: "ult",
+            branch_or_tag_name: "v1",
+            zipball_url:
+              "https://git.door43.org/unfoldingWord/es-419_ult/archive/v1.zip",
+            ingredients: [],
+          },
+        ];
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ ok: true, data }),
+      });
+    }) as unknown as typeof fetch;
+
+    const result = await getResourceZipUrlByAbbreviation("es", "ult");
+    expect(result).not.toBeNull();
+    expect(result!.entry.repo).toBe("es-419_ult");
+    expect(result!.zipUrl).toContain("es-419_ult");
+  });
 });

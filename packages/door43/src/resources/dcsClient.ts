@@ -74,8 +74,9 @@ export function clearCatalogProcessCache(): void {
 
 /**
  * Static map of well-known base-language → variant codes.
- * Keep this small. Do NOT add es → es-419 here; it exists in the DCS catalog
- * and is discovered + cached dynamically to avoid org-specific retry problems.
+ * Keep this small — only stable, widely used variants so
+ * {@link findLanguageVariants} can skip a listLanguages() round-trip.
+ * Includes es → es-419 (Latin American Spanish is the Door43 strategic Spanish).
  */
 const KNOWN_VARIANTS: Record<string, string[]> = {
   // Well-known regional variants — avoids a round-trip to listLanguages()
@@ -754,9 +755,13 @@ export async function getResourceZipUrl(
 
 /**
  * Resolve by explicit abbreviation (ult, ust, tn, etc.) — preferred over subject.
- * Used by fetch_scripture to distinguish ULT from UST precisely.
+ * Used by tests and callers that already know the repo suffix (ult vs ust).
  *
- * Does not filter catalog by owner. Optional `organization` ranks among hits.
+ * Strategy mirrors {@link getResourceZipUrl}:
+ *   1. Catalog by lang + abbreviation (no owner filter).
+ *   2. Language-variant fallback (e.g. "es" → "es-419").
+ *
+ * Optional `organization` ranks among hits via {@link pickPreferredCatalogEntry}.
  */
 export async function getResourceZipUrlByAbbreviation(
   languageCode: string,
@@ -772,5 +777,20 @@ export async function getResourceZipUrlByAbbreviation(
       `${GITEA_BASE}/${entry.owner}/${entry.repo}/archive/${entry.catalog?.prod?.branch_or_tag_name ?? "master"}.zip`;
     return { zipUrl, entry };
   }
+
+  // Language-variant fallback (e.g. "es" → "es-419"), same as getResourceZipUrl.
+  if (!languageCode.includes("-")) {
+    const variants = await findLanguageVariants(languageCode, kv);
+    for (const v of variants) {
+      const variantResult = await getResourceZipUrlByAbbreviation(
+        v,
+        abbreviation,
+        organization,
+        kv,
+      );
+      if (variantResult) return variantResult;
+    }
+  }
+
   return null;
 }

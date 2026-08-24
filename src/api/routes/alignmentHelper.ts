@@ -14,7 +14,12 @@
  */
 
 import type { Env } from "../worker.js";
-import { makeFetcher, buildBookPaths, zipUrlFromEntry } from "./helpers.js";
+import {
+  makeFetcher,
+  buildBookPaths,
+  zipUrlFromEntry,
+  resolveLanguageVariant,
+} from "./helpers.js";
 import { catalogSearch } from "@translation-helps/door43";
 import {
   tokenizeUsfm,
@@ -156,18 +161,21 @@ export async function batchGatewayQuotes(
   let origChapters;
   let alignedChapters;
   try {
-    const [origEntries, alignedEntries] = await Promise.all([
+    // Gateway subject uses variant resolution (es → es-419); original langs do not.
+    const [origEntries, alignedResolved] = await Promise.all([
       catalogSearch({
         lang: origLang,
         subject: origSubject,
         kv: env.TRANSLATION_HELPS_CACHE,
       }),
-      catalogSearch({
-        lang: language,
-        subject: "Aligned Bible",
-        kv: env.TRANSLATION_HELPS_CACHE,
-      }),
+      resolveLanguageVariant(
+        language,
+        "Aligned Bible",
+        env.TRANSLATION_HELPS_CACHE,
+      ),
     ]);
+    const alignedEntries = alignedResolved.entries;
+    const gatewayLanguage = alignedResolved.language;
     if (origEntries.length === 0 || alignedEntries.length === 0) return result;
 
     const origEntry = origEntries[0];
@@ -196,7 +204,7 @@ export async function batchGatewayQuotes(
     if (!origUsfm || !alignedUsfm) return result;
 
     origChapters = tokenizeUsfm(origUsfm, upperBook, origLang);
-    alignedChapters = tokenizeUsfm(alignedUsfm, upperBook, language);
+    alignedChapters = tokenizeUsfm(alignedUsfm, upperBook, gatewayLanguage);
   } catch {
     return result;
   }

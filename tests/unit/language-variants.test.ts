@@ -11,6 +11,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   findLanguageVariants,
   resolveCatalogLanguage,
+  clearCatalogProcessCache,
 } from "@translation-helps/door43";
 
 // ---------------------------------------------------------------------------
@@ -56,8 +57,7 @@ const ES_BIBLE_ENTRIES = [
 ];
 
 beforeEach(() => {
-  // Clear in-process caches before each test by re-importing with a fresh module
-  // (vitest isolates modules per test file, so the Maps start empty)
+  clearCatalogProcessCache();
 });
 
 afterEach(() => {
@@ -83,10 +83,26 @@ describe("findLanguageVariants", () => {
     fetchSpy.mockRestore();
   });
 
-  it("discovers variants from the language list (es → es-419)", async () => {
-    mockFetch(LANGUAGES_WITH_ES419);
+  it("returns KNOWN_VARIANTS entries without a network call (es → es-419)", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
     const variants = await findLanguageVariants("es");
-    expect(variants).toContain("es-419");
+    expect(variants).toEqual(["es-419"]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
+  it("discovers variants from the language list for unknown bases", async () => {
+    mockFetch({
+      "catalog/list/languages": {
+        ok: true,
+        data: [
+          { lc: "xx", ln: "Example" },
+          { lc: "xx-latn", ln: "Example Latin" },
+        ],
+      },
+    });
+    const variants = await findLanguageVariants("xx");
+    expect(variants).toContain("xx-latn");
   });
 
   it("returns [] for a base code that has no variants in the catalog", async () => {
@@ -96,7 +112,7 @@ describe("findLanguageVariants", () => {
         data: [{ lc: "fr", ln: "French" }],
       },
     });
-    const variants = await findLanguageVariants("xx");
+    const variants = await findLanguageVariants("zz");
     expect(variants).toEqual([]);
   });
 });
