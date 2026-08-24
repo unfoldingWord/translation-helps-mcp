@@ -127,6 +127,31 @@ npm run deploy:staging
 npm run deploy:prod
 ```
 
+## Compare v1 vs v2 (live MCP)
+
+Re-runnable harness that calls the same logical tool matrix against Pages **v1**
+and Worker **v2**, fingerprints content (ignoring latency / volatile ids), and
+writes a report:
+
+```bash
+# Defaults:
+#   v1 = https://tc-helps.mcp.servant.bible/api/mcp
+#   v2 = https://tc-helps.mcp.servant.bible/v2/mcp
+py -3.11 scripts/compare-mcp-v1-v2.py
+# or
+npm run compare:mcp
+```
+
+On Windows, prefer `py -3.11` if the default `py` launcher points at a broken install.
+Outputs (default dir `.scratch-mcp-compare/`):
+
+- `compare-report.md` — human table + divergence section (also printed to stdout)
+- `compare-report.json` — machine-readable cases + fingerprints
+
+Optional flags: `--v1 URL`, `--v2 URL`, `--out DIR`, `--limit N`, `--fail-on-diverge`,
+`--recompare path/to/compare-report.json` (re-score fingerprints without live calls).
+Exit `1` on transport failure; exit `2` only with `--fail-on-diverge`.
+
 ## Versioning
 
 This project uses [Changesets](https://github.com/changesets/changesets) for version management.

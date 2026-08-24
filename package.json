@@ -20,6 +20,8 @@
     "test:contracts": "vitest run tests/contracts/",
     "test:chat": "npx tsx scripts/test-chat.ts",
     "test:chat:judge": "npx tsx scripts/test-chat.ts --judge",
+    "compare:mcp": "py -3.11 scripts/compare-mcp-v1-v2.py",
+    "compare:mcp:fail": "py -3.11 scripts/compare-mcp-v1-v2.py --fail-on-diverge",
     "deploy:staging": "bash scripts/deploy-staging.sh",
     "deploy:api": "npx wrangler deploy --config wrangler.api.toml",
     "deploy:prod": "npm run deploy:api && npx wrangler deploy --config wrangler.toml",

@@ -62,6 +62,11 @@ ui/.dev.vars
 # Work-in-progress patches
 .wip/
 
+# Local MCP compare / agent scratch outputs
+.scratch-mcp-compare/
+.scratch-agent-a/
+.scratch-quiz/
+
 # Web build output
 web/.svelte-kit/
 web/build/
