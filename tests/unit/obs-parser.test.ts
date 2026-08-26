@@ -5,6 +5,7 @@
 import { describe, it, expect } from "vitest";
 import {
   parseObsReference,
+  formatObsReferenceLabel,
   parseObsStoryMarkdown,
   parseObsNotesTsv,
   parseObsQuestionsTsv,
@@ -47,6 +48,20 @@ describe("parseObsReference", () => {
     expect(ref!.frame).toBe(3);
   });
 
+  it("parses bare story number", () => {
+    const ref = parseObsReference("1");
+    expect(ref!.story).toBe(1);
+    expect(ref!.frame).toBeNull();
+    expect(ref!.canonical).toBe("1");
+  });
+
+  it("parses 'OBS 1' as bare story 1", () => {
+    const ref = parseObsReference("OBS 1");
+    expect(ref!.story).toBe(1);
+    expect(ref!.frame).toBeNull();
+    expect(ref!.canonical).toBe("1");
+  });
+
   it("parses story 50 (boundary)", () => {
     const ref = parseObsReference("50:1");
     expect(ref!.story).toBe(50);
@@ -70,6 +85,27 @@ describe("parseObsReference", () => {
 
   it("rejects empty string", () => {
     expect(parseObsReference("")).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formatObsReferenceLabel
+// ---------------------------------------------------------------------------
+describe("formatObsReferenceLabel", () => {
+  it("formats bare story without double OBS prefix", () => {
+    expect(formatObsReferenceLabel("1")).toBe("OBS 1");
+    expect(formatObsReferenceLabel("OBS 1")).toBe("OBS 1");
+    expect(formatObsReferenceLabel("obs 1")).toBe("OBS 1");
+  });
+
+  it("formats story:frame cleanly", () => {
+    expect(formatObsReferenceLabel("1:1")).toBe("OBS 1:1");
+    expect(formatObsReferenceLabel("OBS 1:1")).toBe("OBS 1:1");
+  });
+
+  it("formats front matter", () => {
+    expect(formatObsReferenceLabel("front")).toBe("OBS front");
+    expect(formatObsReferenceLabel("OBS front")).toBe("OBS front");
   });
 });
 

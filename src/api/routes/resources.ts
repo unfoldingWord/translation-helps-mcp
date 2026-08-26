@@ -18,6 +18,8 @@ import {
   bookCodesFromIngredients,
   bookNameToUsfm,
   parseReference,
+  pickPreferredCatalogEntry,
+  type CatalogEntry,
 } from "@translation-helps/door43";
 
 const ALL_SUBJECTS = [
@@ -28,9 +30,13 @@ const ALL_SUBJECTS = [
   { subject: "Translation Academy", type: "academy" as const },
   { subject: "TSV Translation Questions", type: "questions" as const },
   { subject: "Open Bible Stories", type: "obs" as const },
-  { subject: "TSV OBS Translation Notes", type: "obsNotes" as const },
+  // Gateway languages may publish OBS helps under either subject label.
   {
-    subject: "TSV OBS Translation Questions",
+    subject: "TSV OBS Translation Notes,OBS Translation Notes",
+    type: "obsNotes" as const,
+  },
+  {
+    subject: "TSV OBS Translation Questions,OBS Translation Questions",
     type: "obsQuestions" as const,
   },
 ];
@@ -42,6 +48,81 @@ const BOOK_SCOPED_TYPES = new Set([
   "wordLinks",
   "questions",
 ]);
+
+export interface ResourceAvailabilityItem {
+  type: string;
+  subject: string;
+  abbreviation: string;
+  role: string;
+  owner?: string;
+  books?: string[];
+  bookCount?: number;
+  coversBook?: boolean;
+  warning?: string;
+}
+
+/**
+ * Build availability rows for a subject query, keeping one canonical entry
+ * per type+abbreviation (UW preferred when present).
+ */
+export function buildAvailabilityForEntries(
+  type: string,
+  entries: CatalogEntry[],
+  bookFilter?: string,
+): ResourceAvailabilityItem[] {
+  // Group by abbreviation; pick one owner per group.
+  const byAbbrev = new Map<string, CatalogEntry[]>();
+  for (const entry of entries) {
+    const abbrev = (
+      entry.abbreviation ?? entry.repo.replace(/^[a-z0-9-]+_/, "")
+    ).toLowerCase();
+    const list = byAbbrev.get(abbrev) ?? [];
+    list.push(entry);
+    byAbbrev.set(abbrev, list);
+  }
+
+  const available: ResourceAvailabilityItem[] = [];
+
+  for (const [, group] of byAbbrev) {
+    const entry = pickPreferredCatalogEntry(group);
+    if (!entry) continue;
+
+    const abbrev = entry.abbreviation ?? entry.repo.replace(/^[a-z0-9-]+_/, "");
+    const role =
+      type === "scripture" ? resolveScriptureVersionRole(abbrev) : type;
+    const books = BOOK_SCOPED_TYPES.has(type)
+      ? bookCodesFromIngredients(entry.ingredients)
+      : [];
+    const coversBook =
+      bookFilter && books.length > 0 ? books.includes(bookFilter) : undefined;
+
+    if (bookFilter && books.length > 0 && coversBook === false) {
+      continue;
+    }
+
+    const item: ResourceAvailabilityItem = {
+      type,
+      subject: entry.subject ?? "",
+      abbreviation: abbrev,
+      role,
+      owner: entry.owner || undefined,
+    };
+    if (books.length > 0) {
+      item.books = books;
+      item.bookCount = books.length;
+      if (books.length < 66) {
+        item.warning =
+          `Partial book coverage (${books.length} book(s)` +
+          `${bookFilter ? `; requested ${bookFilter}` : ""})` +
+          " — type-level presence does not guarantee every book.";
+      }
+    }
+    if (coversBook !== undefined) item.coversBook = coversBook;
+    available.push(item);
+  }
+
+  return available;
+}
 
 export async function handleResources(ctx: RouteContext): Promise<Response> {
   const { url, env } = ctx;
@@ -70,56 +151,12 @@ export async function handleResources(ctx: RouteContext): Promise<Response> {
     }),
   );
 
-  const available: Array<{
-    type: string;
-    subject: string;
-    abbreviation: string;
-    role: string;
-    books?: string[];
-    bookCount?: number;
-    coversBook?: boolean;
-    warning?: string;
-  }> = [];
+  const available: ResourceAvailabilityItem[] = [];
 
   for (const result of results) {
     if (result.status !== "fulfilled") continue;
     const { type, entries } = result.value;
-    for (const entry of entries) {
-      const abbrev = entry.abbreviation ?? entry.repo.replace(/^[a-z]+_/, "");
-      const role =
-        type === "scripture" ? resolveScriptureVersionRole(abbrev) : type;
-      const books = BOOK_SCOPED_TYPES.has(type)
-        ? bookCodesFromIngredients(entry.ingredients)
-        : [];
-      const coversBook =
-        bookFilter && books.length > 0 ? books.includes(bookFilter) : undefined;
-
-      // When a book filter is set and this resource declares books but not
-      // the requested one, omit it from available (honest presence check).
-      if (bookFilter && books.length > 0 && coversBook === false) {
-        continue;
-      }
-
-      const item: (typeof available)[number] = {
-        type,
-        subject: entry.subject ?? "",
-        abbreviation: abbrev,
-        role,
-      };
-      if (books.length > 0) {
-        item.books = books;
-        item.bookCount = books.length;
-        // Flag partial Bible coverage without requiring a book filter
-        if (books.length < 66) {
-          item.warning =
-            `Partial book coverage (${books.length} book(s)` +
-            `${bookFilter ? `; requested ${bookFilter}` : ""})` +
-            " — type-level presence does not guarantee every book.";
-        }
-      }
-      if (coversBook !== undefined) item.coversBook = coversBook;
-      available.push(item);
-    }
+    available.push(...buildAvailabilityForEntries(type, entries, bookFilter));
   }
 
   // Also check if original languages exist (for alignment support)
@@ -139,11 +176,12 @@ export async function handleResources(ctx: RouteContext): Promise<Response> {
     if (bookFilter && books.length > 0 && !books.includes(bookFilter)) {
       continue;
     }
-    const item: (typeof available)[number] = {
+    const item: ResourceAvailabilityItem = {
       type: "scripture",
       subject,
       abbreviation: label,
       role: "original",
+      owner: entries[0].owner || undefined,
     };
     if (books.length > 0) {
       item.books = books;

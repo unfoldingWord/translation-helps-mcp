@@ -44,6 +44,8 @@ export {
   findLanguageVariants,
   resolveCatalogLanguage,
   pickPreferredCatalogEntry,
+  subjectsForAbbreviation,
+  abbreviationFromSubject,
   getResourceZipUrl,
   getResourceZipUrlByAbbreviation,
 } from "./resources/dcsClient.js";
@@ -88,6 +90,7 @@ export { isValidReference } from "./resources/referenceParser.js";
 // OBS
 export {
   parseObsReference,
+  formatObsReferenceLabel,
   parseObsStoryMarkdown,
   parseObsNotesTsv,
   parseObsQuestionsTsv,

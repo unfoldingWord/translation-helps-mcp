@@ -10,6 +10,8 @@ import {
   getResourceZipUrl,
   getResourceZipUrlByAbbreviation,
   pickPreferredCatalogEntry,
+  subjectsForAbbreviation,
+  abbreviationFromSubject,
   clearCatalogProcessCache,
   type CatalogEntry,
 } from "@translation-helps/door43";
@@ -214,6 +216,34 @@ describe("getResourceZipUrl", () => {
     expect(result!.zipUrl).toContain("en_obs/archive/v9.zip");
   });
 
+  it("resolves obs-tq when catalog uses non-TSV subject label", async () => {
+    mockFetch({
+      "catalog/search": {
+        ok: true,
+        data: [
+          {
+            name: "es-419_obs-tq",
+            owner: "es-419_gl",
+            subject: "OBS Translation Questions",
+            abbreviation: "obs-tq",
+            branch_or_tag_name: "v2",
+            zipball_url:
+              "https://git.door43.org/es-419_gl/es-419_obs-tq/archive/v2.zip",
+            ingredients: [],
+          },
+        ],
+      },
+    });
+
+    const result = await getResourceZipUrl(
+      "es-419",
+      "TSV OBS Translation Questions,OBS Translation Questions",
+    );
+    expect(result).not.toBeNull();
+    expect(result!.entry.abbreviation).toBe("obs-tq");
+    expect(result!.entry.subject).toBe("OBS Translation Questions");
+  });
+
   it("returns zipball_url from catalog on happy path", async () => {
     mockFetch({
       "catalog/search": {
@@ -364,6 +394,26 @@ describe("getResourceZipUrl", () => {
     for (const [url] of calls) {
       expect(url as string).not.toContain("owner=");
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Subject ↔ abbreviation helpers
+// ---------------------------------------------------------------------------
+
+describe("subjectsForAbbreviation / abbreviationFromSubject", () => {
+  it("maps obs-tq to both TSV and non-TSV subject labels", () => {
+    const subjects = subjectsForAbbreviation("obs-tq");
+    expect(subjects).toContain("TSV OBS Translation Questions");
+    expect(subjects).toContain("OBS Translation Questions");
+  });
+
+  it("derives abbreviation from comma-separated subjects", () => {
+    expect(
+      abbreviationFromSubject(
+        "TSV OBS Translation Questions,OBS Translation Questions",
+      ),
+    ).toBe("obs-tq");
   });
 });
 

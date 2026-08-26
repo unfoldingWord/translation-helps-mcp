@@ -6,6 +6,7 @@ import { z } from "zod";
 import { languageParam, ok, notAvailable, type ToolModule } from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
+import { formatObsReferenceLabel } from "@translation-helps/door43";
 
 const inputSchema = z.object({
   reference: z
@@ -54,9 +55,10 @@ export const getObsQuestionsTool: ToolModule<typeof inputSchema> = {
     }
 
     const questions = (data.questions as unknown[]) ?? [];
+    const label = formatObsReferenceLabel(reference);
     return ok(
       data,
-      `${questions.length} OBS question(s) for ${reference} (${language})`,
+      `${questions.length} OBS question(s) for ${label} (${language})`,
     );
   },
 };

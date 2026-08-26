@@ -6,12 +6,14 @@ import { z } from "zod";
 import { languageParam, ok, notAvailable, type ToolModule } from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
+import { formatObsReferenceLabel } from "@translation-helps/door43";
 
 const OBS_REFERENCE_DESCRIPTION =
   "An OBS story:frame reference. " +
   'Examples: "1:1" (story 1, frame 1), "1:0" (story 1 title), "front" (front matter). ' +
   "Story numbers run from 1 to 50; frames are 1-indexed. " +
-  'Omitting the frame (e.g. "1") returns all frames of the story.';
+  'Omitting the frame (e.g. "1") returns all frames of the story. ' +
+  'An optional "OBS" prefix is accepted ("OBS 1" ≡ "1").';
 
 const inputSchema = z.object({
   reference: z.string().min(1).describe(OBS_REFERENCE_DESCRIPTION),
@@ -37,6 +39,7 @@ export const getObsStoryTool: ToolModule<typeof inputSchema> = {
   async handler(params: GetObsStoryParams, env: Env, _requestId: string) {
     const { reference, language } = params;
     const client = new ApiClient(env);
+    const label = formatObsReferenceLabel(reference);
 
     const data = await client.get<Record<string, unknown>>("/api/v1/obs", {
       reference,
@@ -52,7 +55,7 @@ export const getObsStoryTool: ToolModule<typeof inputSchema> = {
 
     return ok(
       data,
-      `OBS ${reference} (${language}) — ${(data.frames as unknown[])?.length ?? 0} frame(s)`,
+      `${label} (${language}) — ${(data.frames as unknown[])?.length ?? 0} frame(s)`,
     );
   },
 };

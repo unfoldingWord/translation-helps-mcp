@@ -92,6 +92,19 @@ export function parseObsReference(input: string): ObsReference | null {
   };
 }
 
+/**
+ * Human-readable OBS reference label for summaries / UI.
+ *
+ * Strips a redundant "OBS" prefix from the input so both `"1"` and `"OBS 1"`
+ * display as `"OBS 1"` (never `"OBS OBS 1"`).
+ */
+export function formatObsReferenceLabel(input: string): string {
+  const ref = parseObsReference(input);
+  if (!ref) return String(input ?? "").trim() || "OBS";
+  if (ref.isFront) return "OBS front";
+  return `OBS ${ref.canonical}`;
+}
+
 // ---------------------------------------------------------------------------
 // OBS story text parser
 // ---------------------------------------------------------------------------

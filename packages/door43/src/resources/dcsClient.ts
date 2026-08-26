@@ -133,6 +133,31 @@ const SUBJECT_TO_SUFFIX: Record<string, string> = {
   "OBS Translation Questions": "obs-tq",
 };
 
+/** All catalog subject labels that map to a given repo-suffix abbreviation. */
+export function subjectsForAbbreviation(abbreviation: string): string[] {
+  const abbr = abbreviation.trim().toLowerCase();
+  if (!abbr) return [];
+  return Object.entries(SUBJECT_TO_SUFFIX)
+    .filter(([, suffix]) => suffix.toLowerCase() === abbr)
+    .map(([subject]) => subject);
+}
+
+/**
+ * Derive the repo-suffix abbreviation from a subject string.
+ * Accepts comma-separated subjects (first mapped part wins).
+ */
+export function abbreviationFromSubject(subject: string): string | undefined {
+  const parts = subject
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  for (const part of parts) {
+    const abbr = SUBJECT_TO_SUFFIX[part];
+    if (abbr) return abbr;
+  }
+  return undefined;
+}
+
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
@@ -700,7 +725,10 @@ export async function getResourceZipUrl(
   kv?: CatalogKVCache | null,
 ): Promise<{ zipUrl: string; entry: CatalogEntry } | null> {
   // Derive abbreviation from subject for precise disambiguation
-  const abbreviation = SUBJECT_TO_SUFFIX[subject];
+  const abbreviation = abbreviationFromSubject(subject);
+  const preferredSubject = subject.includes(",")
+    ? subject.split(",")[0]?.trim()
+    : subject;
 
   const zipFromEntry = (
     entry: CatalogEntry,
@@ -719,16 +747,34 @@ export async function getResourceZipUrl(
       abbreviation,
       kv,
     });
-    const entry = pickPreferredCatalogEntry(results, organization, subject);
+    const entry = pickPreferredCatalogEntry(
+      results,
+      organization,
+      preferredSubject,
+    );
     if (entry) return zipFromEntry(entry);
     // NOTE: do NOT early-return here when empty — fall through to subject /
     // language-variant fallback (e.g. "es" → "es-419").
   }
 
-  // 2. Try Catalog by subject (broader match)
+  // 2. Try Catalog by subject (broader match). Include subject aliases that
+  //    map to the same abbreviation (e.g. "TSV OBS Translation Questions" and
+  //    "OBS Translation Questions" both → obs-tq) so gateway languages that
+  //    omit the "TSV " prefix still resolve.
   if (subject) {
-    const results = await catalogSearch({ lang: languageCode, subject, kv });
-    const entry = pickPreferredCatalogEntry(results, organization, subject);
+    const subjectQuery = abbreviation
+      ? subjectsForAbbreviation(abbreviation).join(",") || subject
+      : subject;
+    const results = await catalogSearch({
+      lang: languageCode,
+      subject: subjectQuery,
+      kv,
+    });
+    const entry = pickPreferredCatalogEntry(
+      results,
+      organization,
+      preferredSubject,
+    );
     if (entry) return zipFromEntry(entry);
     // NOTE: do NOT early-return here — fall through to language-variant fallback.
   }

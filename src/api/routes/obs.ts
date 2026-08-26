@@ -14,12 +14,21 @@ import { json, apiError } from "../worker.js";
 import { getResourceZipUrl, makeFetcher } from "./helpers.js";
 import {
   parseObsReference,
+  formatObsReferenceLabel,
   parseObsStoryMarkdown,
   parseObsNotesTsv,
   parseObsQuestionsTsv,
   obsStoryPath,
+  resolveCatalogLanguage,
   type ObsReference,
 } from "@translation-helps/door43";
+
+// Subjects used for catalog lookup. Comma-joined aliases cover gateway
+// languages that omit the "TSV " prefix (e.g. es-419 OBS TQ).
+const OBS_STORY_SUBJECT = "Open Bible Stories";
+const OBS_TN_SUBJECT = "TSV OBS Translation Notes,OBS Translation Notes";
+const OBS_TQ_SUBJECT =
+  "TSV OBS Translation Questions,OBS Translation Questions";
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -29,6 +38,7 @@ function requireObsParams(url: URL): {
   reference: string;
   language: string;
   obsRef: ObsReference;
+  displayReference: string;
 } {
   const reference = url.searchParams.get("reference");
   const language = url.searchParams.get("language");
@@ -43,7 +53,40 @@ function requireObsParams(url: URL): {
     );
   }
 
-  return { reference, language, obsRef };
+  return {
+    reference,
+    language,
+    obsRef,
+    displayReference: formatObsReferenceLabel(reference),
+  };
+}
+
+/**
+ * Resolve language variant once (es → es-419), then fetch the zip.
+ * Avoids getResourceZipUrl re-trying empty base-language catalog searches.
+ */
+async function resolveObsZip(
+  language: string,
+  subject: string,
+  kv: RouteContext["env"]["TRANSLATION_HELPS_CACHE"],
+): Promise<{
+  language: string;
+  zipUrl: string;
+  entry: NonNullable<Awaited<ReturnType<typeof getResourceZipUrl>>>["entry"];
+} | null> {
+  const { language: resolvedLang } = await resolveCatalogLanguage(language, {
+    subject,
+    kv,
+  });
+  const zip = await getResourceZipUrl(
+    resolvedLang,
+    subject,
+    undefined,
+    "prod",
+    kv,
+  );
+  if (!zip) return null;
+  return { language: resolvedLang, zipUrl: zip.zipUrl, entry: zip.entry };
 }
 
 // ---------------------------------------------------------------------------
@@ -60,11 +103,11 @@ export async function handleObs(ctx: RouteContext): Promise<Response> {
     return apiError("BAD_REQUEST", (e as Error).message, 400);
   }
 
-  const { reference, language, obsRef } = params;
+  const { language, obsRef, displayReference } = params;
 
   if (obsRef.isFront || obsRef.story === null) {
     return json({
-      reference,
+      reference: displayReference,
       language,
       story: null,
       frames: [],
@@ -74,17 +117,14 @@ export async function handleObs(ctx: RouteContext): Promise<Response> {
     });
   }
 
-  // Fetch the OBS story zip for this language
-  const resolved = await getResourceZipUrl(
+  const resolved = await resolveObsZip(
     language,
-    "Open Bible Stories",
-    undefined,
-    "prod",
+    OBS_STORY_SUBJECT,
     env.TRANSLATION_HELPS_CACHE,
   );
   if (!resolved) {
     return json({
-      reference,
+      reference: displayReference,
       language,
       available: false,
       code: "RESOURCE_NOT_AVAILABLE",
@@ -100,11 +140,11 @@ export async function handleObs(ctx: RouteContext): Promise<Response> {
 
   if (!markdown) {
     return json({
-      reference,
-      language,
+      reference: displayReference,
+      language: resolved.language,
       available: false,
       code: "RESOURCE_NOT_AVAILABLE",
-      message: `OBS story ${obsRef.story} not found in resource for language "${language}".`,
+      message: `OBS story ${obsRef.story} not found in resource for language "${resolved.language}".`,
     });
   }
 
@@ -118,8 +158,8 @@ export async function handleObs(ctx: RouteContext): Promise<Response> {
       : story.frames.filter((f) => f.index > 0); // exclude synthetic title frame for whole-story
 
   return json({
-    reference,
-    language,
+    reference: displayReference,
+    language: resolved.language,
     story: story.story,
     title: story.title,
     frames,
@@ -141,18 +181,16 @@ export async function handleObsNotes(ctx: RouteContext): Promise<Response> {
     return apiError("BAD_REQUEST", (e as Error).message, 400);
   }
 
-  const { reference, language, obsRef } = params;
+  const { language, obsRef, displayReference } = params;
 
-  const resolved = await getResourceZipUrl(
+  const resolved = await resolveObsZip(
     language,
-    "TSV OBS Translation Notes",
-    undefined,
-    "prod",
+    OBS_TN_SUBJECT,
     env.TRANSLATION_HELPS_CACHE,
   );
   if (!resolved) {
     return json({
-      reference,
+      reference: displayReference,
       language,
       available: false,
       code: "RESOURCE_NOT_AVAILABLE",
@@ -173,16 +211,20 @@ export async function handleObsNotes(ctx: RouteContext): Promise<Response> {
 
   if (!tsv) {
     return json({
-      reference,
-      language,
+      reference: displayReference,
+      language: resolved.language,
       available: false,
       code: "RESOURCE_NOT_AVAILABLE",
-      message: `OBS Translation Notes TSV not found in resource for language "${language}".`,
+      message: `OBS Translation Notes TSV not found in resource for language "${resolved.language}".`,
     });
   }
 
   const notes = parseObsNotesTsv(tsv, obsRef);
-  return json({ reference, language, notes });
+  return json({
+    reference: displayReference,
+    language: resolved.language,
+    notes,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -199,18 +241,16 @@ export async function handleObsQuestions(ctx: RouteContext): Promise<Response> {
     return apiError("BAD_REQUEST", (e as Error).message, 400);
   }
 
-  const { reference, language, obsRef } = params;
+  const { language, obsRef, displayReference } = params;
 
-  const resolved = await getResourceZipUrl(
+  const resolved = await resolveObsZip(
     language,
-    "TSV OBS Translation Questions",
-    undefined,
-    "prod",
+    OBS_TQ_SUBJECT,
     env.TRANSLATION_HELPS_CACHE,
   );
   if (!resolved) {
     return json({
-      reference,
+      reference: displayReference,
       language,
       available: false,
       code: "RESOURCE_NOT_AVAILABLE",
@@ -230,14 +270,18 @@ export async function handleObsQuestions(ctx: RouteContext): Promise<Response> {
 
   if (!tsv) {
     return json({
-      reference,
-      language,
+      reference: displayReference,
+      language: resolved.language,
       available: false,
       code: "RESOURCE_NOT_AVAILABLE",
-      message: `OBS Translation Questions TSV not found in resource for language "${language}".`,
+      message: `OBS Translation Questions TSV not found in resource for language "${resolved.language}".`,
     });
   }
 
   const questions = parseObsQuestionsTsv(tsv, obsRef);
-  return json({ reference, language, questions });
+  return json({
+    reference: displayReference,
+    language: resolved.language,
+    questions,
+  });
 }
