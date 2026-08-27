@@ -13,6 +13,8 @@ export interface Env {
   /** Injected service binding in the MCP-to-API architecture (unused in api worker itself) */
   API?: Fetcher;
   NODE_ENV?: string;
+  /** Max requests/min per IP for /api/v1/*. Default 90; 0 = off. */
+  RATE_LIMIT_RPM?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -31,6 +33,7 @@ import { handleResources } from "./routes/resources.js";
 import { handlePrefetch } from "./routes/prefetch.js";
 import { handleObs, handleObsNotes, handleObsQuestions } from "./routes/obs.js";
 import { API_MANIFEST } from "./manifest.js";
+import { enforceRateLimit } from "../core/rateLimit.js";
 
 // ---------------------------------------------------------------------------
 // CORS / common headers
@@ -140,7 +143,7 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // Health check (GET only) — never edge-cache
+    // Health check (GET only) — never edge-cache, never rate-limit
     if (path === "/health" || path === "/api/health") {
       return json({
         status: "ok",
@@ -148,6 +151,10 @@ export default {
         version: "1",
       });
     }
+
+    // Soft per-IP limit on hot API paths (MCP corpus is public read-only)
+    const limited = enforceRateLimit(request, env.RATE_LIMIT_RPM, CORS_HEADERS);
+    if (limited) return limited;
 
     // Strip /api/v1 prefix
     if (!path.startsWith("/api/v1/")) {

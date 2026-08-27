@@ -15,6 +15,7 @@ import {
 } from "@translation-helps/door43";
 import { rankArticles } from "@translation-helps/door43";
 import type { AcademyArticle, WordArticle } from "@translation-helps/door43";
+import { isSafeArticlePath } from "../../core/articlePath.js";
 
 export async function handleSearch(ctx: RouteContext): Promise<Response> {
   const { url, env, execCtx } = ctx;
@@ -65,7 +66,9 @@ export async function handleSearch(ctx: RouteContext): Promise<Response> {
     }
   }
 
-  const results = rankArticles(candidates, q, topK);
+  const results = rankArticles(candidates, q, topK).filter((r) =>
+    isSafeArticlePath(r.path),
+  );
   return json({ q, language, requestedLanguage, results });
 }
 

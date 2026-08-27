@@ -49,6 +49,19 @@ describe("Errors helpers", () => {
     const e = Errors.unauthorized();
     expect(e.statusCode).toBe(401);
   });
+
+  it("Errors.rateLimited has 429 status and is retryable", () => {
+    const e = Errors.rateLimited(30);
+    expect(e.statusCode).toBe(429);
+    expect(e.code).toBe(ErrorCode.RATE_LIMITED);
+    expect(e.retryable).toBe(true);
+  });
+
+  it("Errors.invalidParams has 400 status", () => {
+    const e = Errors.invalidParams("bad path");
+    expect(e.statusCode).toBe(400);
+    expect(e.code).toBe(ErrorCode.INVALID_PARAMS);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -96,6 +96,26 @@ Cloudflare Worker
 - **Article discovery**: Lexical search over TA/TW catalogs (`search_articles`) — no vector store required
 - **Observability**: Analytics Engine metrics, structured JSON logs
 
+## Security & rate limiting
+
+The corpus is **public, read-only** Door43 content. Anonymous access remains the
+default when secrets are unset (current production posture).
+
+| Control                   | Env / secret                    | Default | Notes                                                                                                                                                                                                                                 |
+| ------------------------- | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Per-IP rate limit         | `RATE_LIMIT_RPM`                | `90`    | Sliding 60s window via isolate-local Map + `CF-Connecting-IP`. Applies to `/mcp`, `/v2/mcp`, `/api/tool`, and the API worker’s `/api/v1/*`. Set `0` to disable. Over limit → HTTP **429** + `Retry-After` / `ErrorCode.RATE_LIMITED`. |
+| Optional MCP API key      | `MCP_API_KEY` (wrangler secret) | unset   | When set, `/mcp` requires `Authorization: Bearer <key>` or `X-Api-Key`. Unset → anonymous OK.                                                                                                                                         |
+| Tool runner secret        | `TOOL_SECRET`                   | unset   | When set, `POST /api/tool` requires `X-Tool-Secret`.                                                                                                                                                                                  |
+| Article path sanitization | (always on)                     | —       | `get_word_article` / `get_academy_article` and `/api/v1/words                                                                                                                                                                         | academy/{path}`reject`..`, absolute paths, control chars; allowlist `[a-zA-Z0-9_./-]`. |
+
+```bash
+# Enable a stricter limit (wrangler.toml [vars] or dashboard)
+RATE_LIMIT_RPM=60
+
+# Optional: require a key for remote MCP clients
+npx wrangler secret put MCP_API_KEY
+```
+
 ## SDKs
 
 - **JavaScript/TypeScript**: `packages/js-sdk/`

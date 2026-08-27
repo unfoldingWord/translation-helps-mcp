@@ -10,6 +10,7 @@ import {
   buildTaArticle,
 } from "@translation-helps/door43";
 import { buildTaPathCandidates } from "@translation-helps/door43";
+import { sanitizeArticlePath } from "../../core/articlePath.js";
 
 export async function handleAcademy(ctx: RouteContext): Promise<Response> {
   const { url, env, execCtx } = ctx;
@@ -93,6 +94,12 @@ export async function handleAcademyPath(ctx: RouteContext): Promise<Response> {
     return apiError("BAD_REQUEST", "Missing required param: language", 400);
   if (!pathParam) return apiError("BAD_REQUEST", "Missing article path", 400);
 
+  const pathCheck = sanitizeArticlePath(pathParam);
+  if (!pathCheck.ok) {
+    return apiError("INVALID_PARAMS", pathCheck.error.message, 400);
+  }
+  const safePath = pathCheck.path;
+
   const resolved = await resolveResourceZip(
     requestedLanguage,
     "Translation Academy",
@@ -108,7 +115,7 @@ export async function handleAcademyPath(ctx: RouteContext): Promise<Response> {
   const { language, zipUrl } = resolved;
   const fetcher = makeFetcher(env, execCtx);
   const zip = await fetcher.getOrDownloadZip(zipUrl);
-  const candidates = buildTaPathCandidates(pathParam);
+  const candidates = buildTaPathCandidates(safePath);
 
   let article: string | null = null;
   let resolvedPath = "";
@@ -123,7 +130,7 @@ export async function handleAcademyPath(ctx: RouteContext): Promise<Response> {
   if (!article) {
     return apiError(
       "NOT_FOUND",
-      `Translation Academy article not found: "${pathParam}"`,
+      `Translation Academy article not found: "${safePath}"`,
       404,
     );
   }

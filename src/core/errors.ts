@@ -83,8 +83,9 @@ export class TranslationHelpsError extends Error {
   }
 
   /**
-   * The structured error payload returned to MCP clients
-   * inside `structuredContent` alongside `isError: true`.
+   * Machine-readable error payload for logging / REST.
+   * MCP hard errors put this in `content` only and omit `structuredContent`
+   * (SEP-1624 — clients that validate against outputSchema must not see it).
    */
   toMcpError(): {
     code: string;
@@ -173,6 +174,29 @@ export const Errors = {
       code: ErrorCode.UNAUTHORIZED,
       message: "Admin token required. Set the adminToken parameter.",
       hints: [{ message: "Only administrators can call this tool." }],
+    });
+  },
+
+  rateLimited(retryAfterSec = 60): TranslationHelpsError {
+    return new TranslationHelpsError({
+      code: ErrorCode.RATE_LIMITED,
+      message: `Rate limit exceeded. Retry after ${retryAfterSec}s.`,
+      retryable: true,
+      hints: [
+        {
+          message:
+            "Slow down requests. Public endpoints are limited per client IP (RATE_LIMIT_RPM).",
+        },
+      ],
+      context: { retryAfterSec },
+    });
+  },
+
+  invalidParams(message: string, hint?: string): TranslationHelpsError {
+    return new TranslationHelpsError({
+      code: ErrorCode.INVALID_PARAMS,
+      message,
+      hints: hint ? [{ message: hint }] : [],
     });
   },
 

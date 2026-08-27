@@ -10,6 +10,7 @@ import {
   buildTwArticle,
 } from "@translation-helps/door43";
 import { buildTwPathCandidates } from "@translation-helps/door43";
+import { sanitizeArticlePath } from "../../core/articlePath.js";
 
 export async function handleWords(ctx: RouteContext): Promise<Response> {
   const { url, env, execCtx } = ctx;
@@ -100,6 +101,12 @@ export async function handleWordsPath(ctx: RouteContext): Promise<Response> {
     return apiError("BAD_REQUEST", "Missing required param: language", 400);
   if (!pathParam) return apiError("BAD_REQUEST", "Missing word path", 400);
 
+  const pathCheck = sanitizeArticlePath(pathParam);
+  if (!pathCheck.ok) {
+    return apiError("INVALID_PARAMS", pathCheck.error.message, 400);
+  }
+  const safePath = pathCheck.path;
+
   const resolved = await resolveResourceZip(
     requestedLanguage,
     "Translation Words",
@@ -115,7 +122,7 @@ export async function handleWordsPath(ctx: RouteContext): Promise<Response> {
   const { language, zipUrl } = resolved;
   const fetcher = makeFetcher(env, execCtx);
   const zip = await fetcher.getOrDownloadZip(zipUrl);
-  const candidates = buildTwPathCandidates(pathParam);
+  const candidates = buildTwPathCandidates(safePath);
 
   let article: string | null = null;
   let resolvedPath = "";
@@ -130,7 +137,7 @@ export async function handleWordsPath(ctx: RouteContext): Promise<Response> {
   if (!article) {
     return apiError(
       "NOT_FOUND",
-      `Translation Word not found at path: "${pathParam}"`,
+      `Translation Word not found at path: "${safePath}"`,
       404,
     );
   }
