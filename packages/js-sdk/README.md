@@ -17,24 +17,27 @@ orient, survey, drill, and check a Bible passage.
 import {
   TranslationHelpsClient,
   parseResult,
+  getStructuredContent,
+  isResourceNotAvailable,
 } from "@translation-helps/mcp-client";
 
 const client = new TranslationHelpsClient({
-  // Optional — defaults to the public server
-  serverUrl: "https://translation-helps-mcp.workers.dev/mcp",
+  // Optional — defaults to the public v2 server
+  serverUrl: "https://translation-helps-mcp-v2.workers.dev/mcp",
 });
 
-// 1. Discover available languages
-const langs = await client.listLanguages({ filter: "es" });
+// 1. Discover available languages (paginated)
+const langs = await client.listLanguages({ filter: "es", limit: 20 });
 
-// 1b. Check which resource types exist for a language
-const resources = await client.listResources({ language: "en" });
+// 1b. Check which resource types exist for a language / book
+const resources = await client.listResources({ language: "en", book: "TIT" });
 
 // 2a. Orient — scripture text (all versions, incl. original-language UGNT/UHB)
 //     Cheap and repeatable; re-call any time you need the verse text.
 const passage = await client.getPassage({
   reference: "JHN 3:16",
   language: "en",
+  format: "text", // or "usfm"
 });
 
 // 2b. Orient — book/chapter background + which resources exist (no verse text)
@@ -56,13 +59,20 @@ const note = await client.getNote({
   language: "en",
 });
 
+// Or match notes by strategic-language phrase
+const byPhrase = await client.getNote({
+  reference: "TIT 2:12",
+  phrase: "teaching us",
+  language: "en",
+});
+
 const taArticle = await client.getAcademyArticle({
   path: "translate/figs-metaphor", // from index notes[].taArticle.path
   language: "en",
 });
 
 const twArticle = await client.getWordArticle({
-  path: "bible/kt/grace", // from index wordLinks[].twArticle.path
+  path: "bible/kt/grace", // from index words[].twArticle.path
   language: "en",
 });
 
@@ -76,8 +86,8 @@ const questions = await client.getQuestions({
 const hits = await client.searchArticles({
   query: "How should I translate figurative language?",
   language: "en",
-  resourceTypes: ["ta"],
-  topK: 5,
+  types: "ta", // comma-separated: "ta", "tw", or "ta,tw"
+  limit: 5,
 });
 ```
 
@@ -97,42 +107,42 @@ new TranslationHelpsClient(options?: ClientOptions)
 
 ### Workflow Methods
 
-All methods return `MCPToolResult`. Use `parseResult<T>(result)` to extract typed JSON.
+All methods return `MCPToolResult` (`content`, optional `structuredContent`, optional `isError`). Prefer `getStructuredContent(result)` or `parseResult<T>(result)` (both prefer `structuredContent` when present).
 
 #### Step 1 — Orient
 
-| Method                    | Options                                         | Description                                                                                       |
-| ------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `listLanguages(opts?)`    | `filter?`                                       | Discover valid BCP-47 language codes                                                              |
-| `listResources(opts)`     | `language` (req), `book?`, `reference?`         | Resource types for a language; optional book filter for partial coverage                          |
-| `getPassage(opts)`        | `reference` (req), `language?`                  | Scripture text — all versions (literal, simplified, original UGNT/UHB). Cheap and repeatable.     |
-| `getPassageContext(opts)` | `reference` (req), `language?`, `organization?` | Book/chapter intro notes + resource availability. Does NOT include verse text (use `getPassage`). |
+| Method                    | Options                                                      | Description                                                                                       |
+| ------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `listLanguages(opts?)`    | `filter?`, `limit?`, `offset?`                               | Discover valid BCP-47 language codes (default limit 50)                                           |
+| `listResources(opts)`     | `language` (req), `book?`, `reference?`                      | Resource types for a language; optional book filter for partial coverage                          |
+| `getPassage(opts)`        | `reference` (req), `language?`, `format?` (`text` \| `usfm`) | Scripture text — all versions (literal, simplified, original UGNT/UHB). Cheap and repeatable.     |
+| `getPassageContext(opts)` | `reference` (req), `language?`                               | Book/chapter intro notes + resource availability. Does NOT include verse text (use `getPassage`). |
 
 #### Step 2 — Survey
 
-| Method                  | Options                                         | Description                                                                                                       |
-| ----------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `getPassageIndex(opts)` | `reference` (req), `language?`, `organization?` | Compact index: note IDs + quotes + TA/TW paths (no article bodies). Includes `issues[]` and `keyTerms[]` rollups. |
+| Method                  | Options                                      | Description                                                                                                       |
+| ----------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `getPassageIndex(opts)` | `reference` (req), `language?`, `skipNotes?` | Compact index: note IDs + quotes + TA/TW paths (no article bodies). Includes `issues[]` and `keyTerms[]` rollups. |
 
 #### Step 3 — Drill
 
-| Method                    | Options                                                | Description                                                       |
-| ------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------- |
-| `getNote(opts)`           | `reference` (req), `id?`, `language?`, `organization?` | Full note body. Omit `id` to get all notes for the reference.     |
-| `getAcademyArticle(opts)` | `path` (req), `language?`, `organization?`             | Full TA article markdown. Use `path` from index `taArticle.path`. |
-| `getWordArticle(opts)`    | `path` (req), `language?`, `organization?`             | Full TW article markdown. Use `path` from index `twArticle.path`. |
+| Method                    | Options                                          | Description                                                            |
+| ------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------- |
+| `getNote(opts)`           | `reference` (req), `id?`, `phrase?`, `language?` | Full note body. Omit `id`/`phrase` to get all notes for the reference. |
+| `getAcademyArticle(opts)` | `path` (req), `language?`                        | Full TA article markdown. Use `path` from index `taArticle.path`.      |
+| `getWordArticle(opts)`    | `path` (req), `language?`                        | Full TW article markdown. Use `path` from index `twArticle.path`.      |
 
 #### Step 4 — Check
 
-| Method               | Options                                         | Description                            |
-| -------------------- | ----------------------------------------------- | -------------------------------------- |
-| `getQuestions(opts)` | `reference` (req), `language?`, `organization?` | Comprehension questions for a passage. |
+| Method               | Options                        | Description                            |
+| -------------------- | ------------------------------ | -------------------------------------- |
+| `getQuestions(opts)` | `reference` (req), `language?` | Comprehension questions for a passage. |
 
 #### Lateral Discovery
 
-| Method                 | Options                                               | Description                                                         |
-| ---------------------- | ----------------------------------------------------- | ------------------------------------------------------------------- |
-| `searchArticles(opts)` | `query` (req), `language?`, `resourceTypes?`, `topK?` | Lexical search over TA + TW article catalogs. Returns ranked paths. |
+| Method                 | Options                                        | Description                                                                   |
+| ---------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------- |
+| `searchArticles(opts)` | `query` (req), `language?`, `types?`, `limit?` | Lexical search over TA + TW catalogs. `types` is `"ta"` / `"tw"` / `"ta,tw"`. |
 
 #### Open Bible Stories (OBS)
 
@@ -162,21 +172,29 @@ Legacy MCP tools (`fetch_*`, `get_bundle`, `list_subjects`, `list_resources_for_
 ### Parsing Results
 
 ```typescript
-import { parseResult } from "@translation-helps/mcp-client";
+import {
+  parseResult,
+  getStructuredContent,
+  isResourceNotAvailable,
+} from "@translation-helps/mcp-client";
 
 const result = await client.getPassageContext({ reference: "JHN 3:16" });
-if (result.isError) {
-  const error = parseResult<{ code: string; message: string; hints: string[] }>(
-    result,
-  );
+const data = getStructuredContent(result) ?? parseResult(result);
+
+if (isResourceNotAvailable(data)) {
+  // Soft not-available: isError is false; code is RESOURCE_NOT_AVAILABLE
+  console.error(data.code, data.message, data.hints);
+} else if (result.isError) {
+  const error = data as { code?: string; message?: string; hints?: string[] };
   console.error(error.code, error.message);
 } else {
-  const data = parseResult<{ versions: unknown[]; notes: unknown[] }>(result);
-  console.log(data.versions);
+  console.log(data);
 }
 ```
 
-Error codes: `INVALID_REFERENCE`, `INVALID_LANGUAGE`, `RESOURCE_NOT_FOUND`, `UPSTREAM_DCS_ERROR`, `RATE_LIMITED`, `INTERNAL_ERROR`.
+Soft not-available uses `isError: false` with `code: "RESOURCE_NOT_AVAILABLE"` so clients can handle missing resources without treating them as server failures.
+
+Error codes: `INVALID_REFERENCE`, `INVALID_LANGUAGE`, `RESOURCE_NOT_FOUND`, `RESOURCE_NOT_AVAILABLE`, `UPSTREAM_DCS_ERROR`, `RATE_LIMITED`, `INTERNAL_ERROR`.
 
 ### Transport
 

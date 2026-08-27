@@ -12,7 +12,12 @@ Usage::
     result = client.get_passage({"reference": "JHN 3:16", "language": "en"})
 """
 
-from .client import TranslationHelpsClient, AsyncTranslationHelpsClient
+from .client import (
+    TranslationHelpsClient,
+    AsyncTranslationHelpsClient,
+    get_structured_content,
+    is_resource_not_available,
+)
 from .types import (
     ClientOptions,
     ListLanguagesOptions,
@@ -28,6 +33,8 @@ from .types import (
     GetObsStoryOptions,
     GetObsNotesOptions,
     GetObsQuestionsOptions,
+    ResourceNotAvailable,
+    MCPToolResult,
 )
 
 __version__ = "2.0.0"
@@ -35,6 +42,8 @@ __version__ = "2.0.0"
 __all__ = [
     "TranslationHelpsClient",
     "AsyncTranslationHelpsClient",
+    "get_structured_content",
+    "is_resource_not_available",
     "ClientOptions",
     "ListLanguagesOptions",
     "ListResourcesOptions",
@@ -49,4 +58,6 @@ __all__ = [
     "GetObsStoryOptions",
     "GetObsNotesOptions",
     "GetObsQuestionsOptions",
+    "ResourceNotAvailable",
+    "MCPToolResult",
 ]

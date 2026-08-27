@@ -22,19 +22,27 @@ orient, survey, drill, and check a Bible passage.
 ### Synchronous (built-in urllib)
 
 ```python
-from translation_helps import TranslationHelpsClient
+from translation_helps import (
+    TranslationHelpsClient,
+    get_structured_content,
+    is_resource_not_available,
+)
 
 client = TranslationHelpsClient()
 
-# 1. Discover available languages
-langs = client.list_languages({"filter": "es"})
+# 1. Discover available languages (paginated)
+langs = client.list_languages({"filter": "es", "limit": 20})
 
-# 1b. Check which resource types exist for a language
-resources = client.list_resources({"language": "en"})
+# 1b. Check which resource types exist for a language / book
+resources = client.list_resources({"language": "en", "book": "TIT"})
 
 # 2a. Orient — scripture text, all versions (incl. original-language UGNT/UHB)
 #     Cheap and repeatable; re-call any time you need the verse text
-passage = client.get_passage({"reference": "JHN 3:16", "language": "en"})
+passage = client.get_passage({
+    "reference": "JHN 3:16",
+    "language": "en",
+    "format": "text",  # or "usfm"
+})
 
 # 2b. Orient — book/chapter background + which resources exist (no verse text)
 ctx = client.get_passage_context({"reference": "JHN 3:16", "language": "en"})
@@ -49,13 +57,20 @@ note = client.get_note({
     "language": "en",
 })
 
+# Or match notes by strategic-language phrase
+by_phrase = client.get_note({
+    "reference": "TIT 2:12",
+    "phrase": "teaching us",
+    "language": "en",
+})
+
 ta_article = client.get_academy_article({
-    "path": "translate/figs-metaphor",   # from index["notes"][i]["taArticle"]["path"]
+    "path": "translate/figs-metaphor",   # from notes[i]["taArticle"]["path"]
     "language": "en",
 })
 
 tw_article = client.get_word_article({
-    "path": "bible/kt/grace",            # from index["wordLinks"][i]["twArticle"]["path"]
+    "path": "bible/kt/grace",            # from words[i]["twArticle"]["path"]
     "language": "en",
 })
 
@@ -66,8 +81,8 @@ questions = client.get_questions({"reference": "JHN 3:16", "language": "en"})
 hits = client.search_articles({
     "query": "How should I translate figurative language?",
     "language": "en",
-    "resourceTypes": ["ta"],
-    "topK": 5,
+    "types": "ta",   # "ta", "tw", or "ta,tw"
+    "limit": 5,
 })
 ```
 
@@ -100,7 +115,7 @@ asyncio.run(main())
 
 ```python
 TranslationHelpsClient(
-    server_url="https://translation-helps-mcp.workers.dev/mcp",
+    server_url="https://translation-helps-mcp-v2.workers.dev/mcp",
     timeout=90.0,
     headers=None,
 )
@@ -108,40 +123,46 @@ TranslationHelpsClient(
 
 ### Workflow Methods
 
+Results include `content`, optional `structuredContent`, and optional `isError`.
+Use `get_structured_content(result)` or `TranslationHelpsClient.parse_result(result)`
+(both prefer `structuredContent` when present). Soft not-available responses use
+`isError: false` with `code: "RESOURCE_NOT_AVAILABLE"` — check with
+`is_resource_not_available(data)`.
+
 #### Step 1 — Orient
 
-| Method                      | Required    | Optional                   | Description                                                                                        |
-| --------------------------- | ----------- | -------------------------- | -------------------------------------------------------------------------------------------------- |
-| `list_languages(opts?)`     | —           | `filter`                   | Discover valid BCP-47 language codes                                                               |
-| `list_resources(opts)`      | `language`  | `book`, `reference`        | Resource types for a language; optional book filter for partial coverage                           |
-| `get_passage(opts)`         | `reference` | `language`                 | Scripture text — all versions (literal, simplified, original UGNT/UHB). Cheap and repeatable.      |
-| `get_passage_context(opts)` | `reference` | `language`, `organization` | Book/chapter intro notes + resource availability. Does NOT include verse text (use `get_passage`). |
+| Method                      | Required    | Optional                    | Description                                                                                        |
+| --------------------------- | ----------- | --------------------------- | -------------------------------------------------------------------------------------------------- |
+| `list_languages(opts?)`     | —           | `filter`, `limit`, `offset` | Discover valid BCP-47 language codes (default limit 50)                                            |
+| `list_resources(opts)`      | `language`  | `book`, `reference`         | Resource types for a language; optional book filter for partial coverage                           |
+| `get_passage(opts)`         | `reference` | `language`, `format`        | Scripture text — all versions. `format`: `"text"` (default) or `"usfm"`. Cheap and repeatable.     |
+| `get_passage_context(opts)` | `reference` | `language`                  | Book/chapter intro notes + resource availability. Does NOT include verse text (use `get_passage`). |
 
 #### Step 2 — Survey
 
-| Method                    | Required    | Optional                   | Description                                                                                                       |
-| ------------------------- | ----------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `get_passage_index(opts)` | `reference` | `language`, `organization` | Compact index: note IDs + quotes + TA/TW paths (no article bodies). Includes `issues[]` and `keyTerms[]` rollups. |
+| Method                    | Required    | Optional                | Description                                                                                                       |
+| ------------------------- | ----------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `get_passage_index(opts)` | `reference` | `language`, `skipNotes` | Compact index: note IDs + quotes + TA/TW paths (no article bodies). Includes `issues[]` and `keyTerms[]` rollups. |
 
 #### Step 3 — Drill
 
-| Method                      | Required    | Optional                         | Description                                                       |
-| --------------------------- | ----------- | -------------------------------- | ----------------------------------------------------------------- |
-| `get_note(opts)`            | `reference` | `id`, `language`, `organization` | Full note body. Omit `id` to get all notes for the reference.     |
-| `get_academy_article(opts)` | `path`      | `language`, `organization`       | Full TA article markdown. Use `path` from index `taArticle.path`. |
-| `get_word_article(opts)`    | `path`      | `language`, `organization`       | Full TW article markdown. Use `path` from index `twArticle.path`. |
+| Method                      | Required    | Optional                   | Description                                                       |
+| --------------------------- | ----------- | -------------------------- | ----------------------------------------------------------------- |
+| `get_note(opts)`            | `reference` | `id`, `phrase`, `language` | Full note body. Omit `id`/`phrase` to get all notes for the ref.  |
+| `get_academy_article(opts)` | `path`      | `language`                 | Full TA article markdown. Use `path` from index `taArticle.path`. |
+| `get_word_article(opts)`    | `path`      | `language`                 | Full TW article markdown. Use `path` from index `twArticle.path`. |
 
 #### Step 4 — Check
 
-| Method                | Required    | Optional                   | Description                            |
-| --------------------- | ----------- | -------------------------- | -------------------------------------- |
-| `get_questions(opts)` | `reference` | `language`, `organization` | Comprehension questions for a passage. |
+| Method                | Required    | Optional   | Description                            |
+| --------------------- | ----------- | ---------- | -------------------------------------- |
+| `get_questions(opts)` | `reference` | `language` | Comprehension questions for a passage. |
 
 #### Lateral Discovery
 
-| Method                  | Required | Optional                            | Description                                                         |
-| ----------------------- | -------- | ----------------------------------- | ------------------------------------------------------------------- |
-| `search_articles(opts)` | `query`  | `language`, `resourceTypes`, `topK` | Lexical search over TA + TW article catalogs. Returns ranked paths. |
+| Method                  | Required | Optional                     | Description                                                                      |
+| ----------------------- | -------- | ---------------------------- | -------------------------------------------------------------------------------- |
+| `search_articles(opts)` | `query`  | `language`, `types`, `limit` | Lexical search over TA + TW. `types`: `"ta"` / `"tw"` / `"ta,tw"`. `limit` 1–30. |
 
 #### Open Bible Stories (OBS)
 
@@ -171,20 +192,28 @@ Legacy MCP tools (`fetch_*`, `get_bundle`, `list_subjects`, `list_resources_for_
 ### Parsing Results
 
 ```python
-import json
+from translation_helps import (
+    TranslationHelpsClient,
+    get_structured_content,
+    is_resource_not_available,
+)
 
+client = TranslationHelpsClient()
 result = client.get_passage_context({"reference": "JHN 3:16"})
-if result.get("isError"):
-    error = json.loads(result["content"][0]["text"])
-    print(f"{error['code']}: {error['message']}")
-    for hint in error.get("hints", []):
-        print(f"  • {hint['message']}")
+data = get_structured_content(result)
+
+if is_resource_not_available(data):
+    # Soft not-available: isError is false; code is RESOURCE_NOT_AVAILABLE
+    print(f"{data['code']}: {data['message']}")
+    for hint in data.get("hints", []):
+        print(f"  • {hint}")
+elif result.get("isError"):
+    print(f"{data.get('code')}: {data.get('message')}")
 else:
-    data = json.loads(result["content"][0]["text"])
-    print(data["versions"])
+    print(data)
 ```
 
-Error codes: `INVALID_REFERENCE`, `INVALID_LANGUAGE`, `RESOURCE_NOT_FOUND`, `UPSTREAM_DCS_ERROR`, `RATE_LIMITED`, `INTERNAL_ERROR`.
+Error codes: `INVALID_REFERENCE`, `INVALID_LANGUAGE`, `RESOURCE_NOT_FOUND`, `RESOURCE_NOT_AVAILABLE`, `UPSTREAM_DCS_ERROR`, `RATE_LIMITED`, `INTERNAL_ERROR`.
 
 ## License
 

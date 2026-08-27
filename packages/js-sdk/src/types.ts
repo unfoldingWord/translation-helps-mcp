@@ -14,7 +14,7 @@
  */
 
 export interface ClientOptions {
-  /** MCP server URL (default: https://translation-helps-mcp.workers.dev/mcp) */
+  /** MCP server URL (default: https://translation-helps-mcp-v2.workers.dev/mcp) */
   serverUrl?: string;
   /** Request timeout in ms (default: 90000) */
   timeout?: number;
@@ -39,13 +39,60 @@ export type ToolName =
   | "get_obs_notes"
   | "get_obs_questions";
 
+/**
+ * MCP tool call result.
+ *
+ * Prefer `structuredContent` when present (MCP 2025-06-18+). Older clients
+ * that only read `content` still get a JSON text fallback from the server.
+ *
+ * Soft not-available responses use `isError: false` with
+ * `code: "RESOURCE_NOT_AVAILABLE"` in structuredContent / content JSON.
+ */
 export interface MCPToolResult {
   content: Array<{ type: "text"; text: string }>;
+  /** Authoritative structured payload when the server provides it */
+  structuredContent?: Record<string, unknown>;
   isError?: boolean;
+}
+
+/** Soft-NA envelope when a resource does not exist for the request (isError: false). */
+export interface ResourceNotAvailable {
+  available: false;
+  code: "RESOURCE_NOT_AVAILABLE";
+  message: string;
+  hints?: string[];
+}
+
+/** True when parsed tool data is a soft resource-not-available result. */
+export function isResourceNotAvailable(
+  data: unknown,
+): data is ResourceNotAvailable {
+  if (typeof data !== "object" || data === null) return false;
+  const d = data as Record<string, unknown>;
+  return d.available === false && d.code === "RESOURCE_NOT_AVAILABLE";
+}
+
+/**
+ * Prefer `structuredContent`, else parse JSON from `content` text items.
+ */
+export function getStructuredContent<T = unknown>(
+  result: MCPToolResult,
+): T | undefined {
+  if (result.structuredContent !== undefined) {
+    return result.structuredContent as T;
+  }
+  try {
+    return parseResult<T>(result);
+  } catch {
+    return undefined;
+  }
 }
 
 /** Extract and parse the structured JSON from a tool result. */
 export function parseResult<T = unknown>(result: MCPToolResult): T {
+  if (result.structuredContent !== undefined) {
+    return result.structuredContent as T;
+  }
   for (const item of result.content) {
     if (item.type === "text") {
       try {
@@ -65,6 +112,10 @@ export function parseResult<T = unknown>(result: MCPToolResult): T {
 export interface ListLanguagesOptions {
   /** Substring filter on language code or name */
   filter?: string;
+  /** Max results (default 50). Pass a high value to get all. */
+  limit?: number;
+  /** Results to skip for pagination (default 0) */
+  offset?: number;
 }
 
 export interface ListResourcesOptions {
@@ -87,6 +138,8 @@ export interface GetPassageOptions {
   reference: string;
   /** BCP-47 language code (default: "en") */
   language?: string;
+  /** "text" = plain prose (default), "usfm" = raw USFM markup */
+  format?: "text" | "usfm";
 }
 
 export interface GetPassageContextOptions {
@@ -98,8 +151,6 @@ export interface GetPassageContextOptions {
   reference: string;
   /** BCP-47 language code (default: "en") */
   language?: string;
-  /** Organization slug (optional; omit to search all owners, prefer UW among hits) */
-  organization?: string;
 }
 
 export interface GetPassageIndexOptions {
@@ -110,8 +161,11 @@ export interface GetPassageIndexOptions {
   reference: string;
   /** BCP-47 language code (default: "en") */
   language?: string;
-  /** Organization slug (optional; omit to search all owners, prefer UW among hits) */
-  organization?: string;
+  /**
+   * When true, skip the notes fetch and return empty notes[]/issues[].
+   * Use when getNote was already called in the same turn — only word-links needed.
+   */
+  skipNotes?: boolean;
 }
 
 export interface GetNoteOptions {
@@ -122,13 +176,16 @@ export interface GetNoteOptions {
   reference: string;
   /** BCP-47 language code (default: "en") */
   language?: string;
-  /** Organization slug (optional; omit to search all owners, prefer UW among hits) */
-  organization?: string;
   /**
    * Specific note ID from get_passage_index (e.g. "abc123").
-   * Omit to return all verse-level notes for the reference.
+   * Omit to return all verse-level notes for the reference (unless `phrase` is set).
    */
   id?: string;
+  /**
+   * Strategic-language word/phrase to match against note quote or body
+   * (case-insensitive). Use when the user asks about a specific phrase.
+   */
+  phrase?: string;
 }
 
 export interface GetAcademyArticleOptions {
@@ -139,8 +196,6 @@ export interface GetAcademyArticleOptions {
   path: string;
   /** BCP-47 language code (default: "en") */
   language?: string;
-  /** Organization slug (optional; omit to search all owners, prefer UW among hits) */
-  organization?: string;
 }
 
 export interface GetWordArticleOptions {
@@ -151,8 +206,6 @@ export interface GetWordArticleOptions {
   path: string;
   /** BCP-47 language code (default: "en") */
   language?: string;
-  /** Organization slug (optional; omit to search all owners, prefer UW among hits) */
-  organization?: string;
 }
 
 export interface GetQuestionsOptions {
@@ -162,8 +215,6 @@ export interface GetQuestionsOptions {
   reference: string;
   /** BCP-47 language code (default: "en") */
   language?: string;
-  /** Organization slug (optional; omit to search all owners, prefer UW among hits) */
-  organization?: string;
 }
 
 export interface SearchArticlesOptions {
@@ -171,10 +222,13 @@ export interface SearchArticlesOptions {
   query: string;
   /** BCP-47 language code (default: "en") */
   language?: string;
-  /** Resource types to search: "ta" | "tw" (default: both) */
-  resourceTypes?: Array<"ta" | "tw">;
-  /** Max results (default: 5) */
-  topK?: number;
+  /**
+   * Comma-separated resource types: "ta", "tw", or "ta,tw" (default all).
+   * Matches the MCP `types` parameter.
+   */
+  types?: string;
+  /** Max results (default 10, max 30). Matches the MCP `limit` parameter. */
+  limit?: number;
 }
 
 // ---------------------------------------------------------------------------

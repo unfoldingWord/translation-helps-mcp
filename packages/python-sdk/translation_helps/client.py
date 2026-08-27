@@ -9,11 +9,11 @@ Progressive-disclosure workflow::
     client = TranslationHelpsClient()
 
     # 1. Discover language codes + resource availability
-    langs = client.list_languages({"filter": "es"})
-    resources = client.list_resources({"language": "en"})
+    langs = client.list_languages({"filter": "es", "limit": 20})
+    resources = client.list_resources({"language": "en", "book": "TIT"})
 
     # 2a. Orient: scripture text — all versions (cheap, repeatable)
-    passage = client.get_passage({"reference": "JHN 3:16", "language": "en"})
+    passage = client.get_passage({"reference": "JHN 3:16", "language": "en", "format": "text"})
 
     # 2b. Orient: book/chapter background + resource availability (no verse text)
     ctx = client.get_passage_context({"reference": "JHN 3:16", "language": "en"})
@@ -30,13 +30,12 @@ Progressive-disclosure workflow::
     questions = client.get_questions({"reference": "JHN 3:16"})
 
     # 6. Lateral discovery: find articles by concept
-    hits = client.search_articles({"query": "abstract nouns", "resourceTypes": ["ta"]})
+    hits = client.search_articles({"query": "abstract nouns", "types": "ta", "limit": 5})
 """
 
 from __future__ import annotations
 
 import json
-import time
 from typing import Any, Dict, Optional
 
 try:
@@ -54,6 +53,22 @@ except ImportError:
 
 
 DEFAULT_SERVER_URL = "https://translation-helps-mcp-v2.workers.dev/mcp"
+
+
+def is_resource_not_available(data: Any) -> bool:
+    """True when parsed tool data is a soft RESOURCE_NOT_AVAILABLE result."""
+    return (
+        isinstance(data, dict)
+        and data.get("available") is False
+        and data.get("code") == "RESOURCE_NOT_AVAILABLE"
+    )
+
+
+def get_structured_content(result: Dict[str, Any]) -> Any:
+    """Prefer structuredContent; else parse JSON from content text items."""
+    if "structuredContent" in result and result["structuredContent"] is not None:
+        return result["structuredContent"]
+    return TranslationHelpsClient.parse_result(result)
 
 
 class TranslationHelpsClient:
@@ -133,13 +148,14 @@ class TranslationHelpsClient:
         Discover available language codes.
 
         Args:
-            options: Optional dict with ``filter`` (substring to filter on).
+            options: Optional dict with ``filter``, ``limit`` (default 50),
+                ``offset`` (default 0).
 
         Returns:
-            MCP result with list of language entries.
+            MCP result with list of language entries (paginated).
 
         Example::
-            langs = client.list_languages({"filter": "es"})
+            langs = client.list_languages({"filter": "es", "limit": 20})
         """
         return self.call_tool("list_languages", options or {})
 
@@ -173,10 +189,14 @@ class TranslationHelpsClient:
         need to (re-)read the verse text. For book/chapter background and resource
         availability, use ``get_passage_context``.
 
-        Required: reference. Optional: language.
+        Required: reference. Optional: language, format (``"text"`` | ``"usfm"``).
 
         Example::
-            passage = client.get_passage({"reference": "JHN 3:16", "language": "en"})
+            passage = client.get_passage({
+                "reference": "JHN 3:16",
+                "language": "en",
+                "format": "text",
+            })
         """
         return self.call_tool("get_passage", options)
 
@@ -192,7 +212,7 @@ class TranslationHelpsClient:
         Call this once when starting to study a passage.
 
         Args:
-            options: Dict with ``reference`` (required), ``language``, ``organization``.
+            options: Dict with ``reference`` (required), ``language``.
 
         Returns:
             MCP result with intro notes (book + chapter) and resource availability.
@@ -211,7 +231,8 @@ class TranslationHelpsClient:
         items with get_note / get_academy_article / get_word_article.
 
         Args:
-            options: Dict with ``reference`` (required), ``language``, ``organization``.
+            options: Dict with ``reference`` (required), ``language``,
+                optional ``skipNotes`` (skip notes fetch; words only).
 
         Returns:
             MCP result with notes index (id, quote, taArticle) and
@@ -228,8 +249,9 @@ class TranslationHelpsClient:
         or all verse-level notes for a reference.
 
         Args:
-            options: Dict with ``reference`` (required), ``language``, ``organization``,
-                     and optionally ``id`` (specific note ID from get_passage_index).
+            options: Dict with ``reference`` (required), ``language``,
+                     optionally ``id`` (from get_passage_index) or ``phrase``
+                     (strategic-language match against quote/body).
 
         Returns:
             MCP result with note body markdown.
@@ -238,6 +260,11 @@ class TranslationHelpsClient:
             note = client.get_note({
                 "reference": "JHN 3:16",
                 "id": "abc123",
+                "language": "en",
+            })
+            by_phrase = client.get_note({
+                "reference": "TIT 2:12",
+                "phrase": "teaching us",
                 "language": "en",
             })
         """
@@ -250,7 +277,7 @@ class TranslationHelpsClient:
         Use the path from a note's taArticle.path field.
 
         Args:
-            options: Dict with ``path`` (required), ``language``, ``organization``.
+            options: Dict with ``path`` (required), ``language``.
 
         Returns:
             MCP result with full article markdown.
@@ -267,7 +294,7 @@ class TranslationHelpsClient:
         Use the path from a word-link's twArticle.path field.
 
         Args:
-            options: Dict with ``path`` (required), ``language``, ``organization``.
+            options: Dict with ``path`` (required), ``language``.
 
         Returns:
             MCP result with full article markdown.
@@ -284,7 +311,7 @@ class TranslationHelpsClient:
         Use to verify understanding before drafting a translation.
 
         Args:
-            options: Dict with ``reference`` (required), ``language``, ``organization``.
+            options: Dict with ``reference`` (required), ``language``.
 
         Returns:
             MCP result with question/answer pairs.
@@ -301,7 +328,7 @@ class TranslationHelpsClient:
 
         Args:
             options: Dict with ``query`` (required), ``language``,
-                     ``resourceTypes`` (["ta"] | ["tw"] | ["ta","tw"]), ``topK``.
+                     ``types`` (``"ta"`` | ``"tw"`` | ``"ta,tw"``), ``limit`` (1–30).
 
         Returns:
             MCP result with ranked article paths and titles.
@@ -309,8 +336,8 @@ class TranslationHelpsClient:
         Example::
             hits = client.search_articles({
                 "query": "abstract nouns",
-                "resourceTypes": ["ta"],
-                "topK": 5,
+                "types": "ta",
+                "limit": 5,
             })
         """
         return self.call_tool("search_articles", options)
@@ -363,7 +390,9 @@ class TranslationHelpsClient:
 
     @staticmethod
     def parse_result(result: Dict[str, Any]) -> Any:
-        """Extract and parse JSON from an MCP tool result."""
+        """Extract structured data from an MCP tool result (prefer structuredContent)."""
+        if "structuredContent" in result and result["structuredContent"] is not None:
+            return result["structuredContent"]
         for item in result.get("content", []):
             if item.get("type") == "text":
                 try:
@@ -454,7 +483,7 @@ class AsyncTranslationHelpsClient:
     # ---------------------------------------------------------------------------
 
     async def list_languages(self, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Discover available language codes. Optional: filter."""
+        """Discover available language codes. Optional: filter, limit, offset."""
         return await self.call_tool("list_languages", options or {})
 
     async def list_resources(self, options: Dict[str, Any]) -> Dict[str, Any]:
@@ -469,56 +498,56 @@ class AsyncTranslationHelpsClient:
     async def get_passage(self, options: Dict[str, Any]) -> Dict[str, Any]:
         """
         Scripture text — all versions (literal, simplified, original UGNT/UHB).
-        Cheap and repeatable. Required: reference. Optional: language.
+        Cheap and repeatable. Required: reference. Optional: language, format.
         """
         return await self.call_tool("get_passage", options)
 
     async def get_passage_context(self, options: Dict[str, Any]) -> Dict[str, Any]:
         """
         Step 1 (orient): Book/chapter intro notes + resource availability.
-        Does NOT include verse text (use get_passage). Required: reference. Optional: language, organization.
+        Does NOT include verse text (use get_passage). Required: reference. Optional: language.
         """
         return await self.call_tool("get_passage_context", options)
 
     async def get_passage_index(self, options: Dict[str, Any]) -> Dict[str, Any]:
         """
         Step 2 (survey): Compact index of issues + key terms (no full bodies).
-        Required: reference. Optional: language, organization.
+        Required: reference. Optional: language, skipNotes.
         """
         return await self.call_tool("get_passage_index", options)
 
     async def get_note(self, options: Dict[str, Any]) -> Dict[str, Any]:
         """
         Step 3 (drill): Full note body by ID or all notes for a reference.
-        Required: reference. Optional: id, language, organization.
+        Required: reference. Optional: id, phrase, language.
         """
         return await self.call_tool("get_note", options)
 
     async def get_academy_article(self, options: Dict[str, Any]) -> Dict[str, Any]:
         """
         Step 3 (drill): Full TA article markdown.
-        Required: path (from taArticle.path). Optional: language, organization.
+        Required: path (from taArticle.path). Optional: language.
         """
         return await self.call_tool("get_academy_article", options)
 
     async def get_word_article(self, options: Dict[str, Any]) -> Dict[str, Any]:
         """
         Step 3 (drill): Full TW article markdown.
-        Required: path (from twArticle.path). Optional: language, organization.
+        Required: path (from twArticle.path). Optional: language.
         """
         return await self.call_tool("get_word_article", options)
 
     async def get_questions(self, options: Dict[str, Any]) -> Dict[str, Any]:
         """
         Step 4 (check): Comprehension questions for a passage.
-        Required: reference. Optional: language, organization.
+        Required: reference. Optional: language.
         """
         return await self.call_tool("get_questions", options)
 
     async def search_articles(self, options: Dict[str, Any]) -> Dict[str, Any]:
         """
         Lateral discovery: concept → article path.
-        Required: query. Optional: language, resourceTypes, topK.
+        Required: query. Optional: language, types, limit.
         """
         return await self.call_tool("search_articles", options)
 
@@ -569,5 +598,5 @@ class AsyncTranslationHelpsClient:
 
     @staticmethod
     def parse_result(result: Dict[str, Any]) -> Any:
-        """Extract and parse JSON from an MCP tool result."""
+        """Extract structured data from an MCP tool result."""
         return TranslationHelpsClient.parse_result(result)

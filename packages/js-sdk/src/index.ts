@@ -3,6 +3,7 @@ export type {
   ClientOptions,
   ToolName,
   MCPToolResult,
+  ResourceNotAvailable,
   ListLanguagesOptions,
   ListResourcesOptions,
   GetPassageOptions,
@@ -17,4 +18,8 @@ export type {
   GetObsNotesOptions,
   GetObsQuestionsOptions,
 } from "./types.js";
-export { parseResult } from "./types.js";
+export {
+  parseResult,
+  getStructuredContent,
+  isResourceNotAvailable,
+} from "./types.js";

@@ -65,7 +65,7 @@ print("Questions:", questions)
 results = client.search_articles({
     "query": "How should I translate figurative language?",
     "language": "en",
-    "resourceTypes": ["ta"],
-    "topK": 5,
+    "types": "ta",
+    "limit": 5,
 })
 print("Search results:", results)

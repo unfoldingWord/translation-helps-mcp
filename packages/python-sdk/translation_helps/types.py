@@ -14,14 +14,33 @@ The server exposes a progressive-disclosure workflow:
   10. search_articles    — lateral: concept → article path
 """
 
-from typing import TypedDict, Optional, Dict, Any, List
+from typing import TypedDict, Optional, Dict, Any, List, Literal
 
 
 class ClientOptions(TypedDict, total=False):
     """Options for configuring the TranslationHelpsClient."""
-    serverUrl: Optional[str]       # Default: https://translation-helps-mcp.workers.dev/mcp
+    serverUrl: Optional[str]       # Default: https://translation-helps-mcp-v2.workers.dev/mcp
     timeout: Optional[float]       # Seconds (default 90)
     headers: Optional[Dict[str, str]]
+
+
+# ---------------------------------------------------------------------------
+# Soft not-available / structured content helpers
+# ---------------------------------------------------------------------------
+
+class ResourceNotAvailable(TypedDict, total=False):
+    """Soft-NA envelope when a resource does not exist (isError: false)."""
+    available: Literal[False]
+    code: Literal["RESOURCE_NOT_AVAILABLE"]
+    message: str
+    hints: List[str]
+
+
+class MCPToolResult(TypedDict, total=False):
+    """MCP tool call result. Prefer structuredContent when present."""
+    content: List[Dict[str, Any]]
+    structuredContent: Dict[str, Any]
+    isError: bool
 
 
 # ---------------------------------------------------------------------------
@@ -30,6 +49,8 @@ class ClientOptions(TypedDict, total=False):
 
 class ListLanguagesOptions(TypedDict, total=False):
     filter: Optional[str]          # Substring filter on language code or name
+    limit: Optional[int]           # Max results (default 50)
+    offset: Optional[int]          # Pagination offset (default 0)
 
 
 class ListResourcesOptions(TypedDict, total=False):
@@ -41,50 +62,47 @@ class ListResourcesOptions(TypedDict, total=False):
 class GetPassageOptions(TypedDict, total=False):
     reference: str                 # Required — e.g. "JHN 3:16", "GEN 1:1-3"
     language: Optional[str]        # BCP-47 code (default "en")
+    format: Optional[Literal["text", "usfm"]]  # default "text"
 
 
 class GetPassageContextOptions(TypedDict, total=False):
-    reference: str                 # Required — e.g. "JHN 3:16", "GEN 1", or bare book "TIT" (book overview only)
+    reference: str                 # Required — e.g. "JHN 3:16", "GEN 1", or bare book "TIT"
     language: Optional[str]        # BCP-47 code (default "en")
-    organization: Optional[str]    # Optional; omit to search all owners (UW preferred among hits)
 
 
 class GetPassageIndexOptions(TypedDict, total=False):
     reference: str                 # Required — e.g. "JHN 3:16", "MAT 5"
     language: Optional[str]        # BCP-47 code (default "en")
-    organization: Optional[str]    # Optional; omit to search all owners (UW preferred among hits)
+    skipNotes: Optional[bool]      # Skip notes fetch; words only
 
 
 class GetNoteOptions(TypedDict, total=False):
     reference: str                 # Required — e.g. "JHN 3:16"
     language: Optional[str]        # BCP-47 code (default "en")
-    organization: Optional[str]    # Optional; omit to search all owners (UW preferred among hits)
     id: Optional[str]              # Specific note ID from get_passage_index
+    phrase: Optional[str]          # Match quote/body (strategic-language phrase)
 
 
 class GetAcademyArticleOptions(TypedDict, total=False):
     path: str                      # Required — e.g. "translate/figs-metaphor"
     language: Optional[str]        # BCP-47 code (default "en")
-    organization: Optional[str]    # Optional; omit to search all owners (UW preferred among hits)
 
 
 class GetWordArticleOptions(TypedDict, total=False):
     path: str                      # Required — e.g. "bible/kt/grace"
     language: Optional[str]        # BCP-47 code (default "en")
-    organization: Optional[str]    # Optional; omit to search all owners (UW preferred among hits)
 
 
 class GetQuestionsOptions(TypedDict, total=False):
     reference: str                 # Required — e.g. "JHN 3:16"
     language: Optional[str]        # BCP-47 code (default "en")
-    organization: Optional[str]    # Optional; omit to search all owners (UW preferred among hits)
 
 
 class SearchArticlesOptions(TypedDict, total=False):
     query: str                     # Required — concept or phrase to search
     language: Optional[str]
-    resourceTypes: Optional[List[str]]   # ["ta"] | ["tw"] | ["ta","tw"] (default both)
-    topK: Optional[int]            # 1–20 (default 5)
+    types: Optional[str]           # "ta" | "tw" | "ta,tw" (MCP `types` param)
+    limit: Optional[int]           # 1–30 (default 10; MCP `limit` param)
 
 
 # ---------------------------------------------------------------------------

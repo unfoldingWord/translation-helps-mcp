@@ -170,14 +170,16 @@ After updating SDKs, verify:
 
 ## 📝 Example: Adding a New Parameter
 
-If you add an optional `organization` parameter to `list_resources`:
+If you add an optional `book` parameter to `list_resources`:
 
 1. ✅ Update tool handler (`src/mcp/tools/listResources.ts`) - Add to Zod schema
-2. ✅ Update JS SDK type (`packages/js-sdk/src/types.ts`) - Add `organization?: string`
+2. ✅ Update JS SDK type (`packages/js-sdk/src/types.ts`) - Add `book?: string`
 3. ✅ Update JS SDK method (`packages/js-sdk/src/client.ts`) - Pass through in `callTool` args
-4. ✅ Update Python SDK type (`packages/python-sdk/translation_helps/types.py`) - Add `organization: Optional[str]`
+4. ✅ Update Python SDK type (`packages/python-sdk/translation_helps/types.py`) - Add `book: Optional[str]`
 5. ✅ Update Python SDK method (`packages/python-sdk/translation_helps/client.py`) - Add parameter handling
-6. ✅ Update both READMEs with examples showing `organization` usage
+6. ✅ Update both READMEs with examples showing `book` usage
+
+**Do not document params the server does not accept** (e.g. dead `organization` on workflow tools). Keep SDK option names aligned with MCP inputSchema (`types`/`limit` for `search_articles`, not legacy `resourceTypes`/`topK`).
 
 ---
 

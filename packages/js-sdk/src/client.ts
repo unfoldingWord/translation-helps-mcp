@@ -133,9 +133,10 @@ export class TranslationHelpsClient {
 
   /**
    * Discover available language codes. Call first to validate language codes.
+   * Optional `limit` / `offset` paginate results (defaults 50 / 0).
    *
    * @example
-   * const result = await client.listLanguages({ filter: "es" });
+   * const result = await client.listLanguages({ filter: "es", limit: 20 });
    */
   async listLanguages(opts?: ListLanguagesOptions): Promise<MCPToolResult> {
     return this.callTool(
@@ -166,11 +167,13 @@ export class TranslationHelpsClient {
    * original) in one call. Cheap and repeatable: call it whenever you need to
    * (re-)read the verse text while studying or drafting. For book/chapter
    * background and resource availability, use `getPassageContext`.
+   * Optional `format`: `"text"` (default) or `"usfm"`.
    *
    * @example
    * const result = await client.getPassage({
    *   reference: "JHN 3:16",
    *   language: "en",
+   *   format: "text",
    * });
    */
   async getPassage(opts: GetPassageOptions): Promise<MCPToolResult> {
@@ -207,6 +210,7 @@ export class TranslationHelpsClient {
    * Step 2 (survey): Get a compact, self-describing index of translation issues
    * and key terms without full article bodies. Use note IDs and article paths
    * to drill into specific items with getNote / getAcademyArticle / getWordArticle.
+   * Pass `skipNotes: true` when getNote already ran in the same turn (words only).
    *
    * @example
    * const result = await client.getPassageIndex({
@@ -223,13 +227,19 @@ export class TranslationHelpsClient {
 
   /**
    * Step 3 (drill): Fetch the full body of a specific translation note by ID,
-   * or all verse-level notes for a reference.
+   * or all verse-level notes for a reference. Pass `phrase` to match notes
+   * whose quote or body contains a strategic-language phrase.
    *
    * @example
    * const result = await client.getNote({
    *   reference: "JHN 3:16",
    *   language: "en",
    *   id: "abc123",
+   * });
+   * const byPhrase = await client.getNote({
+   *   reference: "TIT 2:12",
+   *   language: "en",
+   *   phrase: "teaching us",
    * });
    */
   async getNote(opts: GetNoteOptions): Promise<MCPToolResult> {
@@ -295,13 +305,14 @@ export class TranslationHelpsClient {
   /**
    * Lateral discovery: Search Translation Academy and Translation Words articles
    * by concept. Returns ranked paths to pass to getAcademyArticle or getWordArticle.
+   * Server params: `types` (comma-separated `"ta"` / `"tw"`) and `limit`.
    *
    * @example
    * const result = await client.searchArticles({
    *   query: "How should I translate figurative language?",
    *   language: "en",
-   *   resourceTypes: ["ta"],
-   *   topK: 5,
+   *   types: "ta",
+   *   limit: 5,
    * });
    */
   async searchArticles(opts: SearchArticlesOptions): Promise<MCPToolResult> {
