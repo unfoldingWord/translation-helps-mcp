@@ -14,9 +14,15 @@
  */
 
 import { z } from "zod";
-import { languageParam, ok, type ToolModule } from "./shared.js";
+import {
+  languageParam,
+  ok,
+  withNotAvailableOutput,
+  type ToolModule,
+} from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
+import { assertSafeArticlePath } from "../../core/articlePath.js";
 
 const inputSchema = z.object({
   path: z
@@ -31,6 +37,13 @@ const inputSchema = z.object({
 
 export type GetWordArticleParams = z.infer<typeof inputSchema>;
 
+const outputSchema = withNotAvailableOutput({
+  path: z.string().optional(),
+  language: z.string().optional(),
+  title: z.string().optional(),
+  article: z.string().optional(),
+});
+
 export const getWordArticleTool: ToolModule<typeof inputSchema> = {
   name: "get_word_article",
   description:
@@ -40,19 +53,23 @@ export const getWordArticleTool: ToolModule<typeof inputSchema> = {
     "Always pass `language` as the user's resource language (e.g. hi for Hindi) — " +
     "do not default to en when they asked for another language; many GLs have their own TW on Door43. " +
     "BEFORE: call `get_passage_index` (survey step). " +
-    "AFTER: call `get_questions` to verify a draft.",
+    "AFTER: call `get_questions` to verify a draft. " +
+    "Missing article/path: soft-fail with RESOURCE_NOT_AVAILABLE (isError:false).",
   inputSchema,
+  outputSchema,
   annotations: { readOnlyHint: true, title: "Get Word Article" },
 
   async handler(params: GetWordArticleParams, env: Env, _requestId: string) {
     const client = new ApiClient(env);
-    const { path, language } = params;
+    const path = assertSafeArticlePath(params.path);
+    const { language } = params;
 
+    const encodedPath = path.split("/").map(encodeURIComponent).join("/");
     const data = await client.get<{
       path: string;
       language: string;
       article: string;
-    }>(`/api/v1/words/${path}`, { language });
+    }>(`/api/v1/words/${encodedPath}`, { language });
 
     const slug = path.split("/").pop() ?? path;
     return ok(data, `Word article: ${slug}`);
