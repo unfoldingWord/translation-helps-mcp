@@ -49,16 +49,20 @@ describe("Tool module contracts", () => {
         expect(typeof tool.handler).toBe("function");
       });
 
-      it("has an outputSchema (ZodRawShape) if defined", () => {
-        if (tool.outputSchema !== undefined) {
-          expect(typeof tool.outputSchema).toBe("object");
-          for (const [key, val] of Object.entries(tool.outputSchema)) {
-            expect(
-              val instanceof z.ZodType,
-              `outputSchema.${key} should be a ZodType`,
-            ).toBe(true);
-          }
+      it("declares outputSchema (ZodRawShape) with not-available fields", () => {
+        expect(tool.outputSchema).toBeDefined();
+        expect(typeof tool.outputSchema).toBe("object");
+        for (const [key, val] of Object.entries(tool.outputSchema)) {
+          expect(
+            val instanceof z.ZodType,
+            `outputSchema.${key} should be a ZodType`,
+          ).toBe(true);
         }
+        // Soft-NA envelope fields (RESOURCE_NOT_AVAILABLE, isError:false)
+        expect(tool.outputSchema.code).toBeDefined();
+        expect(tool.outputSchema.message).toBeDefined();
+        expect(tool.outputSchema.hints).toBeDefined();
+        expect(tool.outputSchema.available).toBeDefined();
       });
     });
   }

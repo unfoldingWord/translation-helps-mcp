@@ -3,7 +3,13 @@
  */
 
 import { z } from "zod";
-import { languageParam, ok, notAvailable, type ToolModule } from "./shared.js";
+import {
+  languageParam,
+  ok,
+  notAvailable,
+  withNotAvailableOutput,
+  type ToolModule,
+} from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
 import { formatObsReferenceLabel } from "@translation-helps/door43";
@@ -21,6 +27,12 @@ const inputSchema = z.object({
 
 export type GetObsQuestionsParams = z.infer<typeof inputSchema>;
 
+const outputSchema = withNotAvailableOutput({
+  reference: z.string().optional(),
+  language: z.string().optional(),
+  questions: z.array(z.record(z.unknown())).optional(),
+});
+
 export const getObsQuestionsTool: ToolModule<typeof inputSchema> = {
   name: "get_obs_questions",
   description:
@@ -28,8 +40,10 @@ export const getObsQuestionsTool: ToolModule<typeof inputSchema> = {
     "OBS-TQ provides comprehension questions and expected answers for each frame of the 50 OBS stories. " +
     "Use these after a translator has produced a draft to verify the translation conveys the correct meaning. " +
     'Use reference "1:1" for frame-level questions, or "1" for all questions in a story. ' +
-    "Pairs with get_obs_story to provide the story text context.",
+    "Pairs with get_obs_story to provide the story text context. " +
+    "Missing OBS-TQ for the language: soft-fail with RESOURCE_NOT_AVAILABLE (isError:false).",
   inputSchema,
+  outputSchema,
   annotations: {
     readOnlyHint: true,
     title: "Get OBS Translation Questions",

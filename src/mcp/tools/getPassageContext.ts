@@ -12,7 +12,13 @@
  */
 
 import { z } from "zod";
-import { languageParam, ok, type ToolModule } from "./shared.js";
+import {
+  languageParam,
+  ok,
+  resourceAvailabilityItemSchema,
+  withNotAvailableOutput,
+  type ToolModule,
+} from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
 import type { ResourceAvailability } from "@translation-helps/door43";
@@ -38,6 +44,18 @@ const inputSchema = z.object({
 
 export type GetPassageContextParams = z.infer<typeof inputSchema>;
 
+const outputSchema = withNotAvailableOutput({
+  reference: z.string().optional(),
+  language: z.string().optional(),
+  book: z.string().optional(),
+  chapter: z.string().optional(),
+  scope: z.string().optional(),
+  context: z.array(z.record(z.unknown())).optional(),
+  availability: z.array(resourceAvailabilityItemSchema).optional(),
+  notesError: z.string().optional(),
+  availabilityError: z.string().optional(),
+});
+
 export const getPassageContextTool: ToolModule<typeof inputSchema> = {
   name: "get_passage_context",
   description:
@@ -47,8 +65,10 @@ export const getPassageContextTool: ToolModule<typeof inputSchema> = {
     'Also accepts a BARE BOOK reference (e.g. "TIT" or "Titus") — then returns only the book overview (front:intro), ideal when the user names a whole book. ' +
     "BEFORE this: call `get_passage` first (Step 1a) to read the text and warm the server cache. " +
     "This does NOT return the verse text — use `get_passage` for that. " +
-    "Call this once per passage, then call `get_passage_index` (Step 2) to survey translation issues and key terms in the specific verses.",
+    "Call this once per passage, then call `get_passage_index` (Step 2) to survey translation issues and key terms in the specific verses. " +
+    "Empty `context` / `availability` arrays mean nothing is available — not an error. Partial upstream failures may set `notesError` / `availabilityError` while still returning isError:false.",
   inputSchema,
+  outputSchema,
   annotations: {
     readOnlyHint: true,
     title: "Get Passage Context (Background)",

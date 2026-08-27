@@ -20,6 +20,8 @@ import {
   languageParam,
   okCached,
   mapApiCacheStatus,
+  metaOutputSchema,
+  withNotAvailableOutput,
   type ToolModule,
 } from "./shared.js";
 import { ApiClient } from "../apiClient.js";
@@ -37,6 +39,26 @@ const inputSchema = z.object({
 
 export type GetPassageParams = z.infer<typeof inputSchema>;
 
+const outputSchema = withNotAvailableOutput({
+  reference: z.string().optional(),
+  language: z.string().optional(),
+  book: z.string().optional(),
+  chapter: z.string().optional(),
+  verse: z.union([z.string(), z.null()]).optional(),
+  format: z.string().optional(),
+  versions: z
+    .array(
+      z.object({
+        resourceType: z.string(),
+        role: z.string(),
+        text: z.string(),
+        source: z.string(),
+      }),
+    )
+    .optional(),
+  meta: metaOutputSchema,
+});
+
 export const getPassageTool: ToolModule<typeof inputSchema> = {
   name: "get_passage",
   description:
@@ -47,8 +69,10 @@ export const getPassageTool: ToolModule<typeof inputSchema> = {
     'Optional `format`: "text" (default) or "usfm" for raw markup. ' +
     "Call this FIRST when studying or translating a passage — it also warms the server cache for all subsequent steps. " +
     "It is cheap and repeatable: re-call it any time you need to re-read the verse while studying or drafting. " +
-    "After this → call `get_passage_context` (Step 1b) for background notes, then `get_passage_index` (Step 2) to survey translation issues.",
+    "After this → call `get_passage_context` (Step 1b) for background notes, then `get_passage_index` (Step 2) to survey translation issues. " +
+    "When scripture is missing for the language/book: soft-fail with RESOURCE_NOT_AVAILABLE (isError:false), not a hard error.",
   inputSchema,
+  outputSchema,
   annotations: { readOnlyHint: true, title: "Get Passage" },
 
   async handler(params: GetPassageParams, env: Env, _requestId: string) {

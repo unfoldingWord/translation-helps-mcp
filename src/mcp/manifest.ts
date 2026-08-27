@@ -123,6 +123,7 @@ export const TOOL_DOC_META: Record<string, ToolDocMeta> = {
     responseNotes: [
       '`role` is typically "literal" | "simplified" | "original".',
       "Also warms caches for later workflow steps (notes / word-links / questions).",
+      "Missing scripture for language/book → RESOURCE_NOT_AVAILABLE soft-fail (isError:false), not a hard error.",
     ],
   },
   get_passage_context: {
@@ -156,6 +157,7 @@ export const TOOL_DOC_META: Record<string, ToolDocMeta> = {
     responseNotes: [
       '`context` holds intro notes only (`verse: "intro"`); `scope` is "book" or "chapter".',
       "Empty `context` / `availability` arrays mean nothing is available — not an error.",
+      "Partial upstream failures may set `notesError` / `availabilityError` while isError remains false.",
     ],
   },
   get_passage_index: {
@@ -243,6 +245,9 @@ export const TOOL_DOC_META: Record<string, ToolDocMeta> = {
       title: "Metaphor",
       article: "# Metaphor\n\n### Description\nA metaphor…\n",
     },
+    responseNotes: [
+      "Missing article → RESOURCE_NOT_AVAILABLE soft-fail (isError:false).",
+    ],
   },
   get_word_article: {
     category: "workflow",
@@ -254,6 +259,9 @@ export const TOOL_DOC_META: Record<string, ToolDocMeta> = {
       title: "grace, gracious",
       article: "# grace, gracious\n\n### Definition:\nThe word **grace**…\n",
     },
+    responseNotes: [
+      "Missing article → RESOURCE_NOT_AVAILABLE soft-fail (isError:false).",
+    ],
   },
   get_questions: {
     category: "workflow",
@@ -282,10 +290,9 @@ export const TOOL_DOC_META: Record<string, ToolDocMeta> = {
       language: "en",
       results: [
         {
-          type: "ta",
+          resourceType: "ta",
           path: "translate/figs-metaphor",
           title: "Metaphor",
-          snippet: "A metaphor is a figure of speech…",
           score: 12.4,
         },
       ],
@@ -304,6 +311,9 @@ export const TOOL_DOC_META: Record<string, ToolDocMeta> = {
       title: "The Creation",
       text: "This is how God made everything…",
     },
+    responseNotes: [
+      "Missing OBS for language → RESOURCE_NOT_AVAILABLE soft-fail (isError:false).",
+    ],
   },
   get_obs_notes: {
     category: "obs",
@@ -321,6 +331,9 @@ export const TOOL_DOC_META: Record<string, ToolDocMeta> = {
         },
       ],
     },
+    responseNotes: [
+      "Missing OBS-TN → RESOURCE_NOT_AVAILABLE soft-fail (isError:false).",
+    ],
   },
   get_obs_questions: {
     category: "obs",
@@ -338,6 +351,9 @@ export const TOOL_DOC_META: Record<string, ToolDocMeta> = {
         },
       ],
     },
+    responseNotes: [
+      "Missing OBS-TQ → RESOURCE_NOT_AVAILABLE soft-fail (isError:false).",
+    ],
   },
 };
 

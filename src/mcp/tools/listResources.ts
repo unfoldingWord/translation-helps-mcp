@@ -9,7 +9,13 @@
  */
 
 import { z } from "zod";
-import { languageParam, ok, type ToolModule } from "./shared.js";
+import {
+  languageParam,
+  ok,
+  resourceAvailabilityItemSchema,
+  withNotAvailableOutput,
+  type ToolModule,
+} from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
 
@@ -47,6 +53,32 @@ interface ResourceAvailability {
   warning?: string;
 }
 
+/**
+ * Success uses `available` as an array of rows; soft-NA uses boolean false.
+ * Override after withNotAvailableOutput so both shapes validate.
+ */
+const outputSchema = {
+  ...withNotAvailableOutput({
+    language: z.string().optional(),
+    requestedLanguage: z.string().optional(),
+    book: z.string().optional(),
+    resources: z.array(resourceAvailabilityItemSchema).optional(),
+    coverage: z
+      .object({
+        note: z.string().optional(),
+        filteredByBook: z.string().optional(),
+      })
+      .optional(),
+    requestId: z.string().optional(),
+  }),
+  available: z
+    .union([z.boolean(), z.array(resourceAvailabilityItemSchema)])
+    .optional()
+    .describe(
+      "Success: availability rows. Soft-NA (RESOURCE_NOT_AVAILABLE): false.",
+    ),
+};
+
 export const listResourcesTool: ToolModule<typeof inputSchema> = {
   name: "list_resources",
   description:
@@ -58,8 +90,10 @@ export const listResourcesTool: ToolModule<typeof inputSchema> = {
     "Book-scoped entries may include `books` / `bookCount` / `warning` when coverage is partial. " +
     "Pass optional `book` or `reference` to filter out resources that do not cover that book. " +
     "Use this for discovery: confirm a language has the resources you need before calling get_passage / get_note / etc. " +
-    "Limitation: without `book`, this is a type-level presence check — not a guarantee every book exists.",
+    "Limitation: without `book`, this is a type-level presence check — not a guarantee every book exists. " +
+    "Empty `available`/`resources` arrays mean nothing matched — not an error.",
   inputSchema,
+  outputSchema,
   annotations: { readOnlyHint: true, title: "List Resources" },
 
   async handler(params: ListResourcesParams, env: Env, requestId: string) {

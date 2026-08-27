@@ -15,6 +15,8 @@ import {
   referenceParam,
   languageParam,
   ok,
+  metaOutputSchema,
+  withNotAvailableOutput,
   type ToolModule,
 } from "./shared.js";
 import { ApiClient } from "../apiClient.js";
@@ -27,6 +29,13 @@ const inputSchema = z.object({
 
 export type GetPassageQuestionsParams = z.infer<typeof inputSchema>;
 
+const outputSchema = withNotAvailableOutput({
+  reference: z.string().optional(),
+  language: z.string().optional(),
+  questions: z.array(z.record(z.unknown())).optional(),
+  meta: metaOutputSchema,
+});
+
 export const getPassageQuestionsTool: ToolModule<typeof inputSchema> = {
   name: "get_questions",
   description:
@@ -35,8 +44,9 @@ export const getPassageQuestionsTool: ToolModule<typeof inputSchema> = {
     "Use after producing a translation draft to identify meaning gaps. " +
     "Returns `questions[]` with `{ reference, question, response }` — `response` is the expected correct answer. " +
     "BEFORE: complete steps 1-3 (context → index → study) and draft a translation. " +
-    "Empty array means no questions are available for this language/passage.",
+    "Empty `questions: []` means no questions are available for this language/passage — not an error.",
   inputSchema,
+  outputSchema,
   annotations: { readOnlyHint: true, title: "Get Passage Questions" },
 
   async handler(

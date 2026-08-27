@@ -15,6 +15,8 @@ import {
   referenceParam,
   languageParam,
   ok,
+  metaOutputSchema,
+  withNotAvailableOutput,
   type ToolModule,
 } from "./shared.js";
 import { ApiClient } from "../apiClient.js";
@@ -44,6 +46,15 @@ const inputSchema = z.object({
 
 export type GetNoteParams = z.infer<typeof inputSchema>;
 
+const outputSchema = withNotAvailableOutput({
+  reference: z.string().optional(),
+  language: z.string().optional(),
+  id: z.union([z.string(), z.null()]).optional(),
+  phrase: z.union([z.string(), z.null()]).optional(),
+  notes: z.array(z.record(z.unknown())).optional(),
+  meta: metaOutputSchema,
+});
+
 export const getNoteTool: ToolModule<typeof inputSchema> = {
   name: "get_note",
   description:
@@ -57,8 +68,10 @@ export const getNoteTool: ToolModule<typeof inputSchema> = {
     "'what does X mean?' to the exact authoritative note. " +
     "Omit both `id` and `phrase` to retrieve all verse notes. " +
     "BEFORE: call `get_passage_index`. " +
-    "AFTER: call `get_academy_article(supportReference)` for the linked translation principle.",
+    "AFTER: call `get_academy_article(supportReference)` for the linked translation principle. " +
+    "Empty `notes: []` when none match — not an error.",
   inputSchema,
+  outputSchema,
   annotations: { readOnlyHint: true, title: "Get Note" },
 
   async handler(params: GetNoteParams, env: Env, _requestId: string) {

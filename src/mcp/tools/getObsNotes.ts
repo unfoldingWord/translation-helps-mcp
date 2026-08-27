@@ -3,7 +3,13 @@
  */
 
 import { z } from "zod";
-import { languageParam, ok, notAvailable, type ToolModule } from "./shared.js";
+import {
+  languageParam,
+  ok,
+  notAvailable,
+  withNotAvailableOutput,
+  type ToolModule,
+} from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
 import { formatObsReferenceLabel } from "@translation-helps/door43";
@@ -21,6 +27,12 @@ const inputSchema = z.object({
 
 export type GetObsNotesParams = z.infer<typeof inputSchema>;
 
+const outputSchema = withNotAvailableOutput({
+  reference: z.string().optional(),
+  language: z.string().optional(),
+  notes: z.array(z.record(z.unknown())).optional(),
+});
+
 export const getObsNotesTool: ToolModule<typeof inputSchema> = {
   name: "get_obs_notes",
   description:
@@ -28,8 +40,10 @@ export const getObsNotesTool: ToolModule<typeof inputSchema> = {
     "OBS-TN notes explain difficult words, cultural context, and translation strategies " +
     "for each frame of the 50 OBS stories — analogous to TN for Bible passages. " +
     'Use reference "1:1" for frame-specific notes, or "1" for all notes in a story. ' +
-    "Pairs with get_obs_story to provide the story text context.",
+    "Pairs with get_obs_story to provide the story text context. " +
+    "Missing OBS-TN for the language: soft-fail with RESOURCE_NOT_AVAILABLE (isError:false).",
   inputSchema,
+  outputSchema,
   annotations: {
     readOnlyHint: true,
     title: "Get OBS Translation Notes",

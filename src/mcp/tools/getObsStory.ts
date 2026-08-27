@@ -3,7 +3,13 @@
  */
 
 import { z } from "zod";
-import { languageParam, ok, notAvailable, type ToolModule } from "./shared.js";
+import {
+  languageParam,
+  ok,
+  notAvailable,
+  withNotAvailableOutput,
+  type ToolModule,
+} from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
 import { formatObsReferenceLabel } from "@translation-helps/door43";
@@ -22,6 +28,26 @@ const inputSchema = z.object({
 
 export type GetObsStoryParams = z.infer<typeof inputSchema>;
 
+const outputSchema = withNotAvailableOutput({
+  reference: z.string().optional(),
+  language: z.string().optional(),
+  story: z.union([z.number(), z.null()]).optional(),
+  frame: z.number().optional(),
+  title: z.string().optional(),
+  text: z.string().optional(),
+  frames: z
+    .array(
+      z.object({
+        index: z.number(),
+        imageUrl: z.union([z.string(), z.null()]),
+        text: z.string(),
+      }),
+    )
+    .optional(),
+  attribution: z.union([z.string(), z.null()]).optional(),
+  note: z.string().optional(),
+});
+
 export const getObsStoryTool: ToolModule<typeof inputSchema> = {
   name: "get_obs_story",
   description:
@@ -29,8 +55,10 @@ export const getObsStoryTool: ToolModule<typeof inputSchema> = {
     "OBS is a set of 50 illustrated Bible stories designed for communities without written Scripture. " +
     "Returns the story title and one or more frame objects, each containing the frame text and image URL. " +
     'Use reference "1:1" for story 1, frame 1; "2" or "2:*" for all frames of story 2. ' +
-    "Use get_obs_notes and get_obs_questions for translation helps on the same reference.",
+    "Use get_obs_notes and get_obs_questions for translation helps on the same reference. " +
+    "Missing OBS for the language: soft-fail with RESOURCE_NOT_AVAILABLE (isError:false).",
   inputSchema,
+  outputSchema,
   annotations: {
     readOnlyHint: true,
     title: "Get OBS Story Text",

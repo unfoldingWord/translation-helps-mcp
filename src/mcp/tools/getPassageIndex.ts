@@ -24,6 +24,8 @@ import {
   languageParam,
   okCached,
   mapApiCacheStatus,
+  metaOutputSchema,
+  withNotAvailableOutput,
   type ToolModule,
 } from "./shared.js";
 import { ApiClient } from "../apiClient.js";
@@ -51,6 +53,63 @@ const inputSchema = z.object({
 
 export type GetPassageIndexParams = z.infer<typeof inputSchema>;
 
+const quoteSchema = z.object({
+  original: z.string(),
+  aligned: z.string(),
+});
+
+const outputSchema = withNotAvailableOutput({
+  reference: z.string().optional(),
+  language: z.string().optional(),
+  notes: z
+    .array(
+      z.object({
+        reference: z.string(),
+        id: z.string(),
+        quote: quoteSchema,
+        occurrence: z.string(),
+        tags: z.string(),
+        taArticle: z.object({ path: z.string(), title: z.string() }).nullable(),
+      }),
+    )
+    .optional(),
+  words: z
+    .array(
+      z.object({
+        reference: z.string(),
+        quote: quoteSchema,
+        occurrence: z.string(),
+        twArticle: z
+          .object({
+            path: z.string(),
+            category: z.string(),
+            title: z.string(),
+          })
+          .nullable(),
+      }),
+    )
+    .optional(),
+  issues: z
+    .array(
+      z.object({
+        path: z.string(),
+        title: z.string(),
+        count: z.number(),
+      }),
+    )
+    .optional(),
+  keyTerms: z
+    .array(
+      z.object({
+        path: z.string(),
+        title: z.string(),
+        count: z.number(),
+      }),
+    )
+    .optional(),
+  meta: metaOutputSchema,
+});
+
 export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
   name: "get_passage_index",
   description:
@@ -61,8 +120,9 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
     "BEFORE this: call `get_passage_context`. " +
     "AFTER this: drill with `get_note(id)`, `get_academy_article(taArticle.path)`, or `get_word_article(twArticle.path)`. " +
     "Use `search_articles` for concepts not linked to this passage. " +
-    "Empty arrays mean no resources are available for the passage — not an error.",
+    "Empty arrays mean no resources are available for the passage — not an error (isError remains false).",
   inputSchema,
+  outputSchema,
   annotations: { readOnlyHint: true, title: "Get Passage Index" },
 
   async handler(params: GetPassageIndexParams, env: Env, _requestId: string) {

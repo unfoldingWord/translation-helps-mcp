@@ -64,10 +64,11 @@ export interface ToolModule<TInput extends AnyZodSchema> {
   /** Zod schema for the tool's input parameters. */
   inputSchema: TInput;
   /**
-   * Optional Zod schema for the structured output (plain ZodRawShape for
-   * registerTool). When present, MUST also accept the not-available envelope
-   * via `withNotAvailableOutput(...)` — the SDK validates structuredContent
-   * against this schema for every non-isError result.
+   * Zod schema for structured output (plain ZodRawShape for registerTool).
+   * Required for Grade A MCP compliance. MUST accept the not-available
+   * envelope via `withNotAvailableOutput(...)` — the SDK validates
+   * structuredContent against this schema for every non-isError result.
+   * Hard errors (isError: true) omit structuredContent (SEP-1624).
    */
   outputSchema?: Record<string, z.ZodTypeAny>;
   /** MCP tool annotations for capability hints. */
@@ -120,12 +121,37 @@ export const notAvailableOutputFields = {
  * Success fields should be `.optional()` so the not-available payload validates.
  * The MCP SDK wraps this shape in `z.object()` and rejects non-conforming
  * structuredContent on any result where `isError` is not true.
+ *
+ * Note: if a success payload uses `available` as a non-boolean (e.g.
+ * list_resources returns an array), override `available` after this merge
+ * with a `z.union([z.boolean(), …])`.
  */
 export function withNotAvailableOutput(
   successFields: Record<string, z.ZodTypeAny>,
 ): Record<string, z.ZodTypeAny> {
   return { ...successFields, ...notAvailableOutputFields };
 }
+
+/** Optional `meta.cache` / timings block returned by several passage tools. */
+export const metaOutputSchema = z
+  .object({
+    cache: z.string().optional(),
+    timings: z.record(z.number()).optional(),
+  })
+  .optional();
+
+/** Catalog availability row (list_resources / get_passage_context). */
+export const resourceAvailabilityItemSchema = z.object({
+  type: z.string().optional(),
+  subject: z.string(),
+  abbreviation: z.string(),
+  role: z.string(),
+  owner: z.string().optional(),
+  books: z.array(z.string()).optional(),
+  bookCount: z.number().optional(),
+  coversBook: z.boolean().optional(),
+  warning: z.string().optional(),
+});
 
 // ---------------------------------------------------------------------------
 // Standard result helpers

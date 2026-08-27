@@ -14,7 +14,12 @@
  */
 
 import { z } from "zod";
-import { languageParam, ok, type ToolModule } from "./shared.js";
+import {
+  languageParam,
+  ok,
+  withNotAvailableOutput,
+  type ToolModule,
+} from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
 import type { ArticleSearchResult } from "@translation-helps/door43";
@@ -45,6 +50,21 @@ const inputSchema = z.object({
 
 export type SearchArticlesWorkflowParams = z.infer<typeof inputSchema>;
 
+const outputSchema = withNotAvailableOutput({
+  query: z.string().optional(),
+  language: z.string().optional(),
+  results: z
+    .array(
+      z.object({
+        path: z.string(),
+        title: z.string(),
+        resourceType: z.enum(["ta", "tw"]),
+        score: z.number(),
+      }),
+    )
+    .optional(),
+});
+
 export const searchArticlesWorkflowTool: ToolModule<typeof inputSchema> = {
   name: "search_articles",
   description:
@@ -54,8 +74,10 @@ export const searchArticlesWorkflowTool: ToolModule<typeof inputSchema> = {
     "Pass `language` as the user's resource language — search that language's TW/TA catalog, not English, " +
     "unless the user asked for English. " +
     "Returns `{ path, title, resourceType }[]` sorted by relevance. " +
-    'Pass `path` to `get_academy_article` (resourceType:"ta") or `get_word_article` (resourceType:"tw").',
+    'Pass `path` to `get_academy_article` (resourceType:"ta") or `get_word_article` (resourceType:"tw"). ' +
+    "Empty `results: []` when nothing matches — not an error.",
   inputSchema,
+  outputSchema,
   annotations: { readOnlyHint: true, title: "Search Articles" },
 
   async handler(
