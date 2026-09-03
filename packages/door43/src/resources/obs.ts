@@ -25,11 +25,17 @@ export interface ObsReference {
    * Frame number within the story (1-based).
    * 0 = story title/header.
    * null = all frames (whole story requested).
+   * For a range request ("3:1-3"), this is the start frame (inclusive).
    */
   frame: number | null;
+  /**
+   * End frame for an inclusive range ("3:1-3" → frameEnd 3).
+   * Omitted for a single frame or whole-story requests.
+   */
+  frameEnd?: number;
   /** True if this is the "front" / intro reference. */
   isFront: boolean;
-  /** Canonical string form: "1:1", "1:0", "front". */
+  /** Canonical string form: "1:1", "3:1-3", "1:0", "front". */
   canonical: string;
 }
 
@@ -81,15 +87,38 @@ export function parseObsReference(input: string): ObsReference | null {
 
   const story = parseInt(match[1], 10);
   const frame = parseInt(match[2], 10);
+  const frameEnd = match[3] ? parseInt(match[3], 10) : undefined;
 
   if (story < 1 || story > 50) return null;
+  if (frameEnd !== undefined && frameEnd < frame) return null;
+
+  const canonical =
+    frameEnd !== undefined
+      ? `${story}:${frame}-${frameEnd}`
+      : `${story}:${frame}`;
 
   return {
     story,
     frame,
+    ...(frameEnd !== undefined ? { frameEnd } : {}),
     isFront: false,
-    canonical: `${story}:${frame}`,
+    canonical,
   };
+}
+
+/**
+ * Filter parsed story frames for a reference (single frame, range, or whole story).
+ */
+export function filterObsStoryFrames(
+  frames: ObsFrame[],
+  ref: ObsReference,
+): ObsFrame[] {
+  if (ref.frame === null) {
+    return frames.filter((f) => f.index > 0);
+  }
+  const start = ref.frame;
+  const end = ref.frameEnd ?? ref.frame;
+  return frames.filter((f) => f.index >= start && f.index <= end);
 }
 
 /**
@@ -342,7 +371,9 @@ function matchesObsRef(rowRef: string, ref: ObsReference): boolean {
   const rowFrameStart = parseInt(m[2], 10);
   const rowFrameEnd = m[3] ? parseInt(m[3], 10) : rowFrameStart;
 
-  return ref.frame >= rowFrameStart && ref.frame <= rowFrameEnd;
+  const refStart = ref.frame;
+  const refEnd = ref.frameEnd ?? ref.frame;
+  return refStart <= rowFrameEnd && refEnd >= rowFrameStart;
 }
 
 // ---------------------------------------------------------------------------

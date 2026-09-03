@@ -86,6 +86,26 @@ const KNOWN_VARIANTS: Record<string, string[]> = {
   ar: ["ar-x-strong"],
 };
 
+/**
+ * ISO 639-2/639-3 bibliographic codes → Door43 BCP-47 catalog codes.
+ * MCP clients and Aquifer sometimes pass three-letter codes (e.g. spa for Spanish).
+ */
+const ISO639_2_TO_BCP47: Record<string, string> = {
+  spa: "es",
+  eng: "en",
+  fra: "fr",
+  deu: "de",
+  hin: "hi",
+  ind: "id",
+  por: "pt",
+};
+
+/** Normalize a catalog language tag before DCS lookup (spa → es, trim, lowercase). */
+export function normalizeCatalogLanguageCode(lang: string): string {
+  const code = lang.trim().toLowerCase();
+  return ISO639_2_TO_BCP47[code] ?? code;
+}
+
 /** In-process memo: `${base}:${subject}` → resolved code (e.g. "es-419"). */
 const VARIANT_RESOLVE_CACHE = new Map<string, string>();
 
@@ -597,6 +617,7 @@ export async function resolveCatalogLanguage(
   opts: { subject?: string; kv?: CatalogKVCache | null } = {},
 ): Promise<{ language: string; entries: CatalogEntry[] }> {
   const { subject, kv } = opts;
+  lang = normalizeCatalogLanguageCode(lang);
 
   // Fast path: exact match already in catalog
   const exact = await catalogSearch({ lang, subject, kv });

@@ -18,6 +18,7 @@ import {
   parseObsStoryMarkdown,
   parseObsNotesTsv,
   parseObsQuestionsTsv,
+  filterObsStoryFrames,
   obsStoryPath,
   resolveCatalogLanguage,
   type ObsReference,
@@ -150,12 +151,7 @@ export async function handleObs(ctx: RouteContext): Promise<Response> {
 
   const story = parseObsStoryMarkdown(obsRef.story, markdown);
 
-  // If a specific frame was requested, filter to that frame.
-  // frame === 0 returns the synthetic title frame; frame === null returns all frames.
-  const frames =
-    obsRef.frame !== null
-      ? story.frames.filter((f) => f.index === obsRef.frame)
-      : story.frames.filter((f) => f.index > 0); // exclude synthetic title frame for whole-story
+  const frames = filterObsStoryFrames(story.frames, obsRef);
 
   return json({
     reference: displayReference,

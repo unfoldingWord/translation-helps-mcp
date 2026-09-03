@@ -86,6 +86,16 @@ describe("parseObsReference", () => {
   it("rejects empty string", () => {
     expect(parseObsReference("")).toBeNull();
   });
+
+  it("parses inclusive frame range", () => {
+    const ref = parseObsReference("1:1-3");
+    expect(ref).toMatchObject({
+      story: 1,
+      frame: 1,
+      frameEnd: 3,
+      canonical: "1:1-3",
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
