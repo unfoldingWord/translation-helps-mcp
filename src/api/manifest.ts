@@ -52,7 +52,10 @@ const LANG: ApiParamDoc = {
   in: "query",
   type: "string",
   required: true,
-  description: 'BCP-47 language code, e.g. "en", "es", "es-419".',
+  description:
+    'BCP-47 language code, e.g. "en", "es", "es-419". ' +
+    'ISO 639-2/639-3 bibliographic codes are also accepted (e.g. "spa" for Spanish → catalog "es"; may further resolve to "es-419"). ' +
+    "Prefer BCP-47 when known; run /languages for codes.",
   example: "en",
 };
 
@@ -61,8 +64,11 @@ const OBS_REF: ApiParamDoc = {
   in: "query",
   type: "string",
   required: true,
-  description: 'OBS reference — "1:1", "1:0" (intro), "front", or "obs 1:1".',
-  example: "1:1",
+  description:
+    'OBS reference — "1:1" (single frame), "3:1-3" (frames 1–3 inclusive), "3" (whole story), "1:0" (story title), "front" (front matter). ' +
+    'Optional "OBS" prefix ("OBS 3:1-3"). Story numbers 1–50; frames are 1-indexed. ' +
+    'Inverted ranges (e.g. "3:5-2") are invalid.',
+  example: "3:1-3",
 };
 
 const META_NOTES = [
@@ -480,16 +486,37 @@ export const API_MANIFEST: ApiManifest = {
       description: "OBS story frames for a story:frame reference.",
       adapts: ["Open Bible Stories"],
       params: [OBS_REF, LANG],
-      exampleRequest: "/api/v1/obs?reference=1:1&language=en",
+      exampleRequest: "/api/v1/obs?reference=3%3A1-3&language=spa",
       exampleResponse: {
-        reference: "1:1",
-        language: "en",
-        story: 1,
-        frame: 1,
-        title: "The Creation",
-        text: "This is how God made everything…",
-        frames: [{ frame: 1, text: "This is how God made everything…" }],
+        reference: "3:1-3",
+        language: "es-419",
+        story: 3,
+        title: "Noah and the Great Flood",
+        frames: [
+          {
+            index: 1,
+            imageUrl: "https://cdn.door43.org/obs/en/obs/01/01.jpg",
+            text: "A long time ago, the world had become very wicked…",
+          },
+          {
+            index: 2,
+            imageUrl: "https://cdn.door43.org/obs/en/obs/01/02.jpg",
+            text: "God saw that the people on earth were very wicked…",
+          },
+          {
+            index: 3,
+            imageUrl: "https://cdn.door43.org/obs/en/obs/01/03.jpg",
+            text: "So God decided to send a great flood…",
+          },
+        ],
+        attribution: "© unfoldingWord",
       },
+      responseNotes: [
+        "Frame text lives in `frames[]` (`index`, `imageUrl`, `text`); there is no top-level `frame` or `text`.",
+        "Single-frame requests return one element in `frames`; ranges and whole-story requests return multiple.",
+        "`language` may differ from the requested code after variant resolution (e.g. spa → es → es-419).",
+        ...META_NOTES,
+      ],
     },
     {
       method: "GET",

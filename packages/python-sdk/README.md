@@ -166,11 +166,19 @@ Use `get_structured_content(result)` or `TranslationHelpsClient.parse_result(res
 
 #### Open Bible Stories (OBS)
 
-| Method                    | Required    | Optional   | Description                                                               |
-| ------------------------- | ----------- | ---------- | ------------------------------------------------------------------------- |
-| `get_obs_story(opts)`     | `reference` | `language` | Fetch OBS story text and frames for a story:frame reference (e.g. "1:1"). |
-| `get_obs_notes(opts)`     | `reference` | `language` | Fetch OBS Translation Notes for a story:frame reference.                  |
-| `get_obs_questions(opts)` | `reference` | `language` | Fetch OBS Translation Questions for a story:frame reference.              |
+Reference examples: `"1:1"` (single frame), `"3:1-3"` (frames 1–3), `"3"` (whole story).
+Language accepts BCP-47 (`"es"`) or ISO 639-2/639-3 aliases (`"spa"`).
+
+```python
+story = client.get_obs_story({"reference": "3:1-3", "language": "spa"})
+notes = client.get_obs_notes({"reference": "3:1-3", "language": "spa"})
+```
+
+| Method                    | Required    | Optional   | Description                                                                 |
+| ------------------------- | ----------- | ---------- | --------------------------------------------------------------------------- |
+| `get_obs_story(opts)`     | `reference` | `language` | Fetch OBS story text and frames for a story:frame reference (e.g. "3:1-3"). |
+| `get_obs_notes(opts)`     | `reference` | `language` | Fetch OBS Translation Notes for a story:frame reference.                    |
+| `get_obs_questions(opts)` | `reference` | `language` | Fetch OBS Translation Questions for a story:frame reference.                |
 
 ### Migration from legacy tools
 

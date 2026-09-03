@@ -5,6 +5,7 @@
 import { z } from "zod";
 import {
   languageParam,
+  OBS_REFERENCE_DESCRIPTION,
   ok,
   notAvailable,
   withNotAvailableOutput,
@@ -14,15 +15,11 @@ import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
 import { formatObsReferenceLabel } from "@translation-helps/door43";
 
-const OBS_REFERENCE_DESCRIPTION =
-  "An OBS story:frame reference. " +
-  'Examples: "1:1" (story 1, frame 1), "1:0" (story 1 title), "front" (front matter). ' +
-  "Story numbers run from 1 to 50; frames are 1-indexed. " +
-  'Omitting the frame (e.g. "1") returns all frames of the story. ' +
-  'An optional "OBS" prefix is accepted ("OBS 1" ≡ "1").';
-
 const inputSchema = z.object({
-  reference: z.string().min(1).describe(OBS_REFERENCE_DESCRIPTION),
+  reference: z
+    .string()
+    .min(1)
+    .describe(`An OBS story:frame reference. ${OBS_REFERENCE_DESCRIPTION}`),
   language: languageParam,
 });
 
@@ -54,7 +51,7 @@ export const getObsStoryTool: ToolModule<typeof inputSchema> = {
     "Fetch Open Bible Stories (OBS) text for a specific story and frame. " +
     "OBS is a set of 50 illustrated Bible stories designed for communities without written Scripture. " +
     "Returns the story title and one or more frame objects, each containing the frame text and image URL. " +
-    'Use reference "1:1" for story 1, frame 1; "2" or "2:*" for all frames of story 2. ' +
+    'Use reference "1:1" for story 1, frame 1; "3:1-3" for frames 1–3; "2" for all frames of story 2. ' +
     "Use get_obs_notes and get_obs_questions for translation helps on the same reference. " +
     "Missing OBS for the language: soft-fail with RESOURCE_NOT_AVAILABLE (isError:false).",
   inputSchema,

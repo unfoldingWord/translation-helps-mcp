@@ -111,20 +111,20 @@ class SearchArticlesOptions(TypedDict, total=False):
 
 class GetObsStoryOptions(TypedDict, total=False):
     """Options for get_obs_story — fetch Open Bible Stories text."""
-    reference: str             # Required — OBS story:frame, e.g. "1:1", "1:0", "front"
-    language: Optional[str]    # BCP-47 code (default "en")
+    reference: str             # Required — e.g. "1:1", "3:1-3", "3", "1:0", "front", "OBS 3:1-3"
+    language: Optional[str]    # BCP-47 (default "en"); ISO 639-2/639-3 aliases accepted (e.g. "spa")
 
 
 class GetObsNotesOptions(TypedDict, total=False):
     """Options for get_obs_notes — fetch OBS Translation Notes."""
-    reference: str             # Required — OBS story:frame, e.g. "1:1"
-    language: Optional[str]    # BCP-47 code (default "en")
+    reference: str             # Required — e.g. "1:1", "3:1-3", "3", "1:0", "front", "OBS 3:1-3"
+    language: Optional[str]    # BCP-47 (default "en"); ISO 639-2/639-3 aliases accepted (e.g. "spa")
 
 
 class GetObsQuestionsOptions(TypedDict, total=False):
     """Options for get_obs_questions — fetch OBS Translation Questions."""
-    reference: str             # Required — OBS story:frame, e.g. "1:1"
-    language: Optional[str]    # BCP-47 code (default "en")
+    reference: str             # Required — e.g. "1:1", "3:1-3", "3", "1:0", "front", "OBS 3:1-3"
+    language: Optional[str]    # BCP-47 (default "en"); ISO 639-2/639-3 aliases accepted (e.g. "spa")
 
 
 # Shared MCP shapes

@@ -237,31 +237,43 @@ export interface SearchArticlesOptions {
 
 export interface GetObsStoryOptions {
   /**
-   * OBS story:frame reference, e.g. "1:1" (story 1, frame 1),
-   * "1:0" (story 1 title), "front" (front matter).
-   * Story numbers run from 1 to 50.
+   * OBS story:frame reference.
+   * Examples: "1:1" (single frame), "3:1-3" (frames 1–3 inclusive), "3" (whole story),
+   * "1:0" (story title), "front" (front matter). Optional "OBS" prefix ("OBS 3:1-3").
+   * Story numbers 1–50; frames are 1-indexed.
    */
   reference: string;
-  /** BCP-47 language code (default: "en") */
+  /**
+   * BCP-47 language code (default: "en").
+   * ISO 639-2/639-3 aliases accepted (e.g. "spa" → "es", may resolve to "es-419").
+   */
   language?: string;
 }
 
 export interface GetObsNotesOptions {
   /**
-   * OBS story:frame reference, e.g. "1:1".
-   * Omit the frame to get all notes for a story (e.g. "1").
+   * OBS story:frame reference.
+   * Examples: "1:1" (single frame), "3:1-3" (frames 1–3 inclusive), "3" (whole story),
+   * "1:0" (story title), "front" (front matter). Optional "OBS" prefix ("OBS 3:1-3").
    */
   reference: string;
-  /** BCP-47 language code (default: "en") */
+  /**
+   * BCP-47 language code (default: "en").
+   * ISO 639-2/639-3 aliases accepted (e.g. "spa" → "es", may resolve to "es-419").
+   */
   language?: string;
 }
 
 export interface GetObsQuestionsOptions {
   /**
-   * OBS story:frame reference, e.g. "1:1".
-   * Omit the frame to get all questions for a story (e.g. "1").
+   * OBS story:frame reference.
+   * Examples: "1:1" (single frame), "3:1-3" (frames 1–3 inclusive), "3" (whole story),
+   * "1:0" (story title), "front" (front matter). Optional "OBS" prefix ("OBS 3:1-3").
    */
   reference: string;
-  /** BCP-47 language code (default: "en") */
+  /**
+   * BCP-47 language code (default: "en").
+   * ISO 639-2/639-3 aliases accepted (e.g. "spa" → "es", may resolve to "es-419").
+   */
   language?: string;
 }

@@ -22,10 +22,17 @@ export const REFERENCE_DESCRIPTION =
 export const LANGUAGE_DESCRIPTION =
   "BCP-47 language code for the resource/response the user wants " +
   '(e.g. "hi", "es", "es-419", "fr", "pt-BR", "en"). ' +
+  'ISO 639-2/639-3 bibliographic codes are also accepted (e.g. "spa" for Spanish → catalog "es"; may further resolve to "es-419"). ' +
+  "Prefer BCP-47 when known; run list_languages for codes. " +
   'CRITICAL: pass the user\'s requested language — do NOT omit this or use "en" ' +
   "when they asked for another language (Hindi, Spanish, etc.). " +
   "Gateway languages often have their own TW/TA on Door43; English is only correct when the user wants English. " +
-  'Schema default is "en" only when language is omitted. Run list_languages for valid codes.';
+  'Schema default is "en" only when language is omitted.';
+
+export const OBS_REFERENCE_DESCRIPTION =
+  'Examples: "1:1" (single frame), "3:1-3" (frames 1–3 inclusive), "3" (whole story), "1:0" (story title), "front" (front matter). ' +
+  'Optional "OBS" prefix ("OBS 3:1-3"). Story numbers 1–50; frames are 1-indexed. ' +
+  'Inverted ranges (e.g. "3:5-2") are invalid.';
 
 export const FORMAT_DESCRIPTION =
   'Output format: "text" for plain prose, "json" for structured data (default), "md" for Markdown.';

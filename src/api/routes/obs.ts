@@ -5,8 +5,11 @@
  *   GET /api/v1/obs-questions — translation questions for a story:frame
  *
  * Query params (all routes): reference=<story:frame>&language=<lang>
- *   reference: OBS reference — "1:1", "1:0", "front", "obs 1:1"
- *   language:  BCP-47 code  — "en", "es", "fr", etc.
+ *   reference: OBS reference — "1:1" (single frame), "3:1-3" (frames 1–3 inclusive),
+ *     "3" (whole story), "1:0" (story title), "front" (front matter).
+ *     Optional "OBS" prefix ("OBS 3:1-3"). Story numbers 1–50; frames are 1-indexed.
+ *   language:  BCP-47 code (e.g. "en", "es", "es-419") or ISO 639-2/639-3 alias
+ *     (e.g. "spa" → catalog "es", may resolve to "es-419").
  */
 
 import type { RouteContext } from "../worker.js";

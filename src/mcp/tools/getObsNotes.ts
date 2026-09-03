@@ -5,6 +5,7 @@
 import { z } from "zod";
 import {
   languageParam,
+  OBS_REFERENCE_DESCRIPTION,
   ok,
   notAvailable,
   withNotAvailableOutput,
@@ -18,10 +19,7 @@ const inputSchema = z.object({
   reference: z
     .string()
     .min(1)
-    .describe(
-      'OBS story:frame reference, e.g. "1:1", "1:0", "front". ' +
-        "Omit the frame to get notes for an entire story.",
-    ),
+    .describe(`An OBS story:frame reference. ${OBS_REFERENCE_DESCRIPTION}`),
   language: languageParam,
 });
 

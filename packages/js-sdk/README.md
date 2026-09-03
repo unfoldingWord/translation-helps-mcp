@@ -146,11 +146,19 @@ All methods return `MCPToolResult` (`content`, optional `structuredContent`, opt
 
 #### Open Bible Stories (OBS)
 
-| Method                  | Options                        | Description                                                           |
-| ----------------------- | ------------------------------ | --------------------------------------------------------------------- |
-| `getObsStory(opts)`     | `reference` (req), `language?` | OBS story text and frames for a story:frame reference (e.g. `"1:1"`). |
-| `getObsNotes(opts)`     | `reference` (req), `language?` | OBS Translation Notes for a story:frame reference.                    |
-| `getObsQuestions(opts)` | `reference` (req), `language?` | OBS Translation Questions for a story:frame reference.                |
+Reference examples: `"1:1"` (single frame), `"3:1-3"` (frames 1–3), `"3"` (whole story).
+Language accepts BCP-47 (`"es"`) or ISO 639-2/639-3 aliases (`"spa"`).
+
+```typescript
+const story = await client.getObsStory({ reference: "3:1-3", language: "spa" });
+const notes = await client.getObsNotes({ reference: "3:1-3", language: "spa" });
+```
+
+| Method                  | Options                        | Description                                                             |
+| ----------------------- | ------------------------------ | ----------------------------------------------------------------------- |
+| `getObsStory(opts)`     | `reference` (req), `language?` | OBS story text and frames for a story:frame reference (e.g. `"3:1-3"`). |
+| `getObsNotes(opts)`     | `reference` (req), `language?` | OBS Translation Notes for a story:frame reference.                      |
+| `getObsQuestions(opts)` | `reference` (req), `language?` | OBS Translation Questions for a story:frame reference.                  |
 
 ### Migration from legacy tools
 
