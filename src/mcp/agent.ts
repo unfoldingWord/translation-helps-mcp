@@ -19,6 +19,7 @@ import {
   type TranslationHelpsError,
 } from "../core/errors.js";
 import { SERVER_INSTRUCTIONS } from "./instructions.js";
+import { strictToolSchema } from "./jsonSchema.js";
 import { normalizeToolArgs } from "./normalizeToolArgs.js";
 import { ApiClientError } from "./apiClient.js";
 
@@ -154,18 +155,18 @@ export class TranslationHelpsMCP extends McpAgent<Env> {
         handler,
       } = tool;
 
-      // Extract ZodRawShape: handle both ZodObject and ZodEffects
-      const schemaShape =
-        inputSchema instanceof z.ZodEffects
-          ? (inputSchema.innerType() as z.ZodObject<z.ZodRawShape>).shape
-          : (inputSchema as z.ZodObject<z.ZodRawShape>).shape;
+      // zod 4: `.refine()` no longer wraps in ZodEffects, so `.shape` is
+      // always present on the tool's input schema.
+      const schemaShape = (inputSchema as z.ZodObject<z.ZodRawShape>).shape;
 
       this.server.registerTool(
         name,
         {
           title: annotations.title,
           description,
-          inputSchema: schemaShape as Record<string, z.ZodTypeAny>,
+          // Wrapped (not passed as a bare shape) so tools/list keeps
+          // `additionalProperties: false` under zod 4 — see strictToolSchema.
+          inputSchema: strictToolSchema(schemaShape),
           ...(outputSchema ? { outputSchema } : {}),
           annotations: {
             readOnlyHint: annotations.readOnlyHint,
@@ -174,7 +175,12 @@ export class TranslationHelpsMCP extends McpAgent<Env> {
               : {}),
           },
         },
-        async (params: Record<string, unknown>) => {
+        // `inputSchema` is now a schema rather than a raw shape (see
+        // strictToolSchema), so the SDK types the callback arg as `unknown`
+        // instead of inferring it from the shape. The runtime value is the
+        // parsed args object, which is what this handler reads.
+        async (rawParams: unknown) => {
+          const params = rawParams as Record<string, unknown>;
           const requestId = crypto.randomUUID();
           const start = Date.now();
           let errorCode = "OK";
@@ -286,11 +292,17 @@ export class TranslationHelpsMCP extends McpAgent<Env> {
 
     // Register prompts
     for (const prompt of PROMPTS) {
+      // `argsSchema` is a loose `Record<string, ZodTypeAny>`, so the SDK cannot
+      // infer concrete argument names and types the callback as
+      // `ShapeOutput<...>`. Our handlers read string fields off the parsed
+      // args, which is what the SDK passes at runtime; the cast bridges the
+      // inference gap without changing behaviour.
+      type PromptCallback = Parameters<typeof this.server.prompt>[3];
       this.server.prompt(
         prompt.name,
         prompt.description,
         prompt.argsSchema,
-        prompt.handler,
+        prompt.handler as unknown as PromptCallback,
       );
     }
   }

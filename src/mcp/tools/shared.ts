@@ -58,10 +58,9 @@ export const formatParam = z
 // Tool module interface
 // ---------------------------------------------------------------------------
 
-// Accept both ZodObject and ZodEffects (for schemas that use .refine())
-export type AnyZodSchema =
-  | z.ZodObject<z.ZodRawShape>
-  | z.ZodEffects<z.ZodObject<z.ZodRawShape>>;
+// zod 4 removed ZodEffects: `.refine()` returns the same ZodObject (and keeps
+// `.shape`), so a plain ZodObject covers refined schemas too.
+export type AnyZodSchema = z.ZodObject<z.ZodRawShape>;
 
 export interface ToolModule<TInput extends AnyZodSchema> {
   /** Stable MCP tool name (snake_case). */
@@ -143,7 +142,7 @@ export function withNotAvailableOutput(
 export const metaOutputSchema = z
   .object({
     cache: z.string().optional(),
-    timings: z.record(z.number()).optional(),
+    timings: z.record(z.string(), z.number()).optional(),
   })
   .optional();
 
