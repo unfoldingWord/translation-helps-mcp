@@ -19,6 +19,7 @@ import {
   type TranslationHelpsError,
 } from "../core/errors.js";
 import { SERVER_INSTRUCTIONS } from "./instructions.js";
+import { strictToolSchema } from "./jsonSchema.js";
 import { normalizeToolArgs } from "./normalizeToolArgs.js";
 import { ApiClientError } from "./apiClient.js";
 
@@ -163,7 +164,9 @@ export class TranslationHelpsMCP extends McpAgent<Env> {
         {
           title: annotations.title,
           description,
-          inputSchema: schemaShape as Record<string, z.ZodTypeAny>,
+          // Wrapped (not passed as a bare shape) so tools/list keeps
+          // `additionalProperties: false` under zod 4 — see strictToolSchema.
+          inputSchema: strictToolSchema(schemaShape),
           ...(outputSchema ? { outputSchema } : {}),
           annotations: {
             readOnlyHint: annotations.readOnlyHint,
@@ -172,7 +175,12 @@ export class TranslationHelpsMCP extends McpAgent<Env> {
               : {}),
           },
         },
-        async (params: Record<string, unknown>) => {
+        // `inputSchema` is now a schema rather than a raw shape (see
+        // strictToolSchema), so the SDK types the callback arg as `unknown`
+        // instead of inferring it from the shape. The runtime value is the
+        // parsed args object, which is what this handler reads.
+        async (rawParams: unknown) => {
+          const params = rawParams as Record<string, unknown>;
           const requestId = crypto.randomUUID();
           const start = Date.now();
           let errorCode = "OK";

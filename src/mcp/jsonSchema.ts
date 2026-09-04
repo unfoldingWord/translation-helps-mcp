@@ -28,3 +28,25 @@ export function toJsonSchema(schema: z.ZodType): unknown {
     },
   });
 }
+
+/**
+ * Wrap a tool's Zod raw shape for `McpServer.registerTool`.
+ *
+ * Passing a bare shape lets the SDK build a plain `z.object()`, and SDK 1.30's
+ * zod 4 path (`zod/v4-mini`'s `toJSONSchema`) omits `additionalProperties`
+ * for those — so `tools/list` would advertise OPEN objects where the zod 3
+ * path advertised closed ones (#42 review).
+ *
+ * `.meta()` sets the emitted JSON Schema keyword WITHOUT changing parse
+ * semantics: the object still accepts-and-strips unknown keys, exactly as
+ * before. `z.strictObject()` would also emit the keyword but would start
+ * THROWING on unknown keys, undoing the argument tolerance of #24/#28.
+ *
+ * Only INPUT schemas need this. The SDK serializes `outputSchema` with
+ * `io: "output"`, which already emits `additionalProperties: false` because an
+ * object's output is exactly its declared keys — verified 13/13 both before
+ * and after this change.
+ */
+export function strictToolSchema(shape: z.ZodRawShape): z.ZodType {
+  return z.object(shape).meta({ additionalProperties: false });
+}
