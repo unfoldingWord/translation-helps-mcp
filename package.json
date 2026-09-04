@@ -34,7 +34,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.15.1",
     "@translation-helps/door43": "*",
-    "agents": "^0.0.97",
+    "agents": "0.2.0",
     "fflate": "^0.8.3",
     "zod": "^3.22.4"
   },
