@@ -51,7 +51,7 @@ const outputSchema = withNotAvailableOutput({
   language: z.string().optional(),
   id: z.union([z.string(), z.null()]).optional(),
   phrase: z.union([z.string(), z.null()]).optional(),
-  notes: z.array(z.record(z.unknown())).optional(),
+  notes: z.array(z.record(z.string(), z.unknown())).optional(),
   meta: metaOutputSchema,
 });
 

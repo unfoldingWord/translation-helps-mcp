@@ -16,7 +16,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env as privateEnv } from '$env/dynamic/private';
-import { zodToJsonSchema } from 'zod-to-json-schema';
+import { toJsonSchema } from '$mcp/jsonSchema.js';
 import { withBase } from '$lib/paths.js';
 import { canRunToolsInProcess, runToolInProcess } from '$lib/server/runTool.js';
 import { MCP_TOOLS, TOOL_REGISTRY } from '$mcp/toolRegistry.js';
@@ -25,9 +25,7 @@ function buildDescriptor(tool: { name: string; description: string; inputSchema:
 	return {
 		name: tool.name,
 		description: tool.description,
-		inputSchema: zodToJsonSchema(tool.inputSchema as Parameters<typeof zodToJsonSchema>[0], {
-			$refStrategy: 'none'
-		})
+		inputSchema: toJsonSchema(tool.inputSchema as Parameters<typeof toJsonSchema>[0])
 	};
 }
 

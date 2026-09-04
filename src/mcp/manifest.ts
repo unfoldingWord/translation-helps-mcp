@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { toJsonSchema } from "./jsonSchema.js";
 import { MCP_TOOLS } from "./toolRegistry.js";
 import { PROMPTS } from "./prompts/index.js";
 
@@ -420,12 +420,7 @@ export interface McpManifest {
 
 function schemaOf(tool: { inputSchema: unknown }): unknown {
   try {
-    return zodToJsonSchema(
-      tool.inputSchema as Parameters<typeof zodToJsonSchema>[0],
-      {
-        $refStrategy: "none",
-      },
-    );
+    return toJsonSchema(tool.inputSchema as z.ZodType);
   } catch {
     return { type: "object" };
   }
@@ -444,15 +439,11 @@ function outputSchemaOf(tool: { outputSchema?: unknown }): unknown | undefined {
           (v) => v && typeof v === "object" && "parse" in (v as object),
         )
       ) {
-        return zodToJsonSchema(z.object(raw as z.ZodRawShape), {
-          $refStrategy: "none",
-        });
+        return toJsonSchema(z.object(raw as z.ZodRawShape));
       }
     }
     if (raw && typeof raw === "object" && "parse" in raw) {
-      return zodToJsonSchema(raw as Parameters<typeof zodToJsonSchema>[0], {
-        $refStrategy: "none",
-      });
+      return toJsonSchema(raw as z.ZodType);
     }
     return raw;
   } catch {

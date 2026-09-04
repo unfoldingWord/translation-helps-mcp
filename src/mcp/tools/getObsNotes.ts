@@ -28,7 +28,7 @@ export type GetObsNotesParams = z.infer<typeof inputSchema>;
 const outputSchema = withNotAvailableOutput({
   reference: z.string().optional(),
   language: z.string().optional(),
-  notes: z.array(z.record(z.unknown())).optional(),
+  notes: z.array(z.record(z.string(), z.unknown())).optional(),
 });
 
 export const getObsNotesTool: ToolModule<typeof inputSchema> = {

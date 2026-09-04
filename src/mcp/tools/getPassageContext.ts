@@ -50,7 +50,7 @@ const outputSchema = withNotAvailableOutput({
   book: z.string().optional(),
   chapter: z.string().optional(),
   scope: z.string().optional(),
-  context: z.array(z.record(z.unknown())).optional(),
+  context: z.array(z.record(z.string(), z.unknown())).optional(),
   availability: z.array(resourceAvailabilityItemSchema).optional(),
   notesError: z.string().optional(),
   availabilityError: z.string().optional(),

@@ -32,7 +32,7 @@ export type GetPassageQuestionsParams = z.infer<typeof inputSchema>;
 const outputSchema = withNotAvailableOutput({
   reference: z.string().optional(),
   language: z.string().optional(),
-  questions: z.array(z.record(z.unknown())).optional(),
+  questions: z.array(z.record(z.string(), z.unknown())).optional(),
   meta: metaOutputSchema,
 });
 

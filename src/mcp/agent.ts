@@ -154,11 +154,9 @@ export class TranslationHelpsMCP extends McpAgent<Env> {
         handler,
       } = tool;
 
-      // Extract ZodRawShape: handle both ZodObject and ZodEffects
-      const schemaShape =
-        inputSchema instanceof z.ZodEffects
-          ? (inputSchema.innerType() as z.ZodObject<z.ZodRawShape>).shape
-          : (inputSchema as z.ZodObject<z.ZodRawShape>).shape;
+      // zod 4: `.refine()` no longer wraps in ZodEffects, so `.shape` is
+      // always present on the tool's input schema.
+      const schemaShape = (inputSchema as z.ZodObject<z.ZodRawShape>).shape;
 
       this.server.registerTool(
         name,
@@ -286,11 +284,17 @@ export class TranslationHelpsMCP extends McpAgent<Env> {
 
     // Register prompts
     for (const prompt of PROMPTS) {
+      // `argsSchema` is a loose `Record<string, ZodTypeAny>`, so the SDK cannot
+      // infer concrete argument names and types the callback as
+      // `ShapeOutput<...>`. Our handlers read string fields off the parsed
+      // args, which is what the SDK passes at runtime; the cast bridges the
+      // inference gap without changing behaviour.
+      type PromptCallback = Parameters<typeof this.server.prompt>[3];
       this.server.prompt(
         prompt.name,
         prompt.description,
         prompt.argsSchema,
-        prompt.handler,
+        prompt.handler as unknown as PromptCallback,
       );
     }
   }
