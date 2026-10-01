@@ -18,6 +18,7 @@ import {
   XRayTrace,
 } from "../types/dcs.js";
 import { USER_AGENT } from "../utils/httpClient.js";
+import { languageListName } from "../utils/language-mapping.js";
 import { logger } from "../utils/logger.js";
 
 export interface DCSClientConfig {
@@ -365,7 +366,7 @@ export class DCSApiClient {
           languages.push({
             id: lang.lc,
             code: lang.lc,
-            name: lang.ln || lang.ang || lang.lc, // ln = local name, ang = anglicized name
+            name: languageListName(lang.ln, lang.ang, lang.lc),
             romanizedName: lang.ang, // ang = anglicized/romanized name
             direction: lang.ld || "ltr", // ld = language direction
             region: lang.lr, // lr = language region
