@@ -9,7 +9,10 @@ import { logger } from "../utils/logger.js";
 import { buildMetadata } from "../utils/metadata-builder.js";
 import { handleMCPError } from "../utils/mcp-error-handler.js";
 import { proxyFetch } from "../utils/httpClient.js";
-import { mapLanguageToCatalogCode } from "../utils/language-mapping.js";
+import {
+  languageListName,
+  mapLanguageToCatalogCode,
+} from "../utils/language-mapping.js";
 import { getKVCache } from "../functions/kv-cache.js";
 import { EdgeXRayTracer } from "../functions/edge-xray.js";
 import { TopicParam } from "../schemas/common-params.js";
@@ -28,9 +31,9 @@ export type ListLanguagesArgs = z.infer<typeof ListLanguagesArgs>;
 
 interface LanguageItem {
   code: string; // e.g., "en", "es-419"
-  name: string; // e.g., "English", "Spanish"
-  displayName?: string; // Full display name
-  romanizedName?: string; // Anglicized/romanized name
+  name: string; // Anglicized name the model can match, e.g. "Bengali, Bangla"
+  displayName?: string; // Native-script name, e.g. "বাংলা"
+  romanizedName?: string; // Same English name as `name` when Door43 sent `ang`
   direction?: string; // "ltr" or "rtl"
   region?: string;
   homeCountry?: string;
@@ -180,7 +183,7 @@ export async function handleListLanguages(args: ListLanguagesArgs): Promise<{
 
         languages.push({
           code: catalogCode,
-          name: lang.ln || lang.ang || lang.lc,
+          name: languageListName(lang.ln, lang.ang, catalogCode),
           displayName: lang.ln || lang.ang || lang.lc,
           romanizedName: lang.ang,
           direction: lang.ld || "ltr",

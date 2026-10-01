@@ -18,3 +18,23 @@ export function mapLanguageToCatalogCode(language: string): string {
   };
   return languageMap[language] || language;
 }
+
+/**
+ * Label for a catalog language in tool results.
+ *
+ * Door43 stores the English name in `ang` ("Bengali, Bangla", "Hindi") and the
+ * native-script name in `ln` ("বাংলা", "हिन्दी"). Models decide a language is
+ * missing by scanning `name` for the English word, so `name` must be `ang`.
+ * Falls back to the native name, then the code, when `ang` is absent.
+ */
+export function languageListName(
+  localName: string | undefined,
+  anglicizedName: string | undefined,
+  code: string,
+): string {
+  const anglicized = anglicizedName?.trim();
+  if (anglicized) return anglicized;
+  const local = localName?.trim();
+  if (local) return local;
+  return code;
+}
