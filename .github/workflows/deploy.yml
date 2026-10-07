@@ -1,15 +1,13 @@
-name: Deploy to Cloudflare Pages
+name: Test Cloudflare Pages build
 
+# Production is deployed by Cloudflare's own Git integration (the "Cloudflare Pages" check on
+# main), so this workflow only checks that a PR builds and routes. It needs no Cloudflare secrets.
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
 jobs:
-  # Test builds on PR
   test-build:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
 
     steps:
@@ -39,31 +37,3 @@ jobs:
             -H "Accept: text/event-stream" http://localhost:8788/api/mcp)
           [ "$status" = "405" ] || (echo "GET /api/mcp expected 405, got $status" && exit 1)
           pkill -f "wrangler"
-
-  # Deploy to production on main branch
-  deploy-cloudflare:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: "ui/package-lock.json"
-
-      - name: Install dependencies
-        run: cd ui && npm install
-
-      - name: Build for Cloudflare
-        run: cd ui && npm run build
-
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy ui/.svelte-kit/cloudflare --project-name=translation-helps-mcp
