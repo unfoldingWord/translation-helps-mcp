@@ -495,17 +495,17 @@ export const API_MANIFEST: ApiManifest = {
         frames: [
           {
             index: 1,
-            imageUrl: "https://cdn.door43.org/obs/en/obs/01/01.jpg",
+            imageUrl: "https://cdn.door43.org/obs/jpg/360px/obs-en-03-01.jpg",
             text: "A long time ago, the world had become very wicked…",
           },
           {
             index: 2,
-            imageUrl: "https://cdn.door43.org/obs/en/obs/01/02.jpg",
+            imageUrl: "https://cdn.door43.org/obs/jpg/360px/obs-en-03-02.jpg",
             text: "God saw that the people on earth were very wicked…",
           },
           {
             index: 3,
-            imageUrl: "https://cdn.door43.org/obs/en/obs/01/03.jpg",
+            imageUrl: "https://cdn.door43.org/obs/jpg/360px/obs-en-03-03.jpg",
             text: "So God decided to send a great flood…",
           },
         ],
