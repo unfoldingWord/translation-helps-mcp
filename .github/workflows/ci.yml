@@ -1,14 +1,38 @@
 name: CI
 
+# v2 lives on the long-lived `v2` branch (main is the v1 Pages app), so PRs into
+# v2 are checked here. The checks are separate jobs so that a type error does
+# not hide the lint, test and build results.
 on:
   push:
-    branches: [main, "feature/**"]
+    branches: [main, v2, "feature/**"]
   pull_request:
-    branches: [main]
+    branches: [main, v2]
 
 jobs:
-  test-build:
-    name: Typecheck · Lint · Test · Build
+  lint-test:
+    name: Lint · Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install root deps
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test:ci
+
+  typecheck:
+    name: Typecheck
     runs-on: ubuntu-latest
 
     steps:
@@ -25,11 +49,28 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Lint
-        run: npm run lint
+      - name: Install web deps
+        run: npm ci
+        working-directory: web
 
-      - name: Test
-        run: npm run test:ci
+      - name: Check web types
+        run: npx svelte-check --tsconfig ./tsconfig.json
+        working-directory: web
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install root deps
+        run: npm ci
 
       - name: Install web deps
         run: npm ci
@@ -37,8 +78,4 @@ jobs:
 
       - name: Build web
         run: npm run build
-        working-directory: web
-
-      - name: Check web types
-        run: npx svelte-check --tsconfig ./tsconfig.json
         working-directory: web
