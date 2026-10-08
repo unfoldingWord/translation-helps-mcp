@@ -8,7 +8,6 @@
  */
 
 import { McpAgent } from "agents/mcp";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { VERSION, SERVER_NAME } from "../core/version.js";
 import { logger } from "../core/logger.js";
@@ -20,7 +19,7 @@ import {
 } from "../core/errors.js";
 import { SERVER_INSTRUCTIONS } from "./instructions.js";
 import { strictToolSchema } from "./jsonSchema.js";
-import { normalizeToolArgs } from "./normalizeToolArgs.js";
+import { NormalizingMcpServer } from "./normalizingMcpServer.js";
 import { ApiClientError } from "./apiClient.js";
 
 // Tool registry — single source of truth for MCP tools
@@ -97,51 +96,10 @@ function mcpNotAvailable(message: string): {
 }
 
 export class TranslationHelpsMCP extends McpAgent<Env> {
-  server = new McpServer(
+  server = new NormalizingMcpServer(
     { name: SERVER_NAME, version: VERSION },
     { instructions: SERVER_INSTRUCTIONS },
   );
-
-  /**
-   * Intercept JSON-RPC `tools/call` requests to normalize LLM-generated
-   * arguments BEFORE the SDK validates them against the tool's Zod schema.
-   * This ensures synonyms (word_id, article_id, etc.) and decomposed references
-   * ({book, chapter, verse}) are accepted without Zod rejection.
-   */
-  override async fetch(request: Request): Promise<Response> {
-    if (request.method === "POST") {
-      try {
-        const cloned = request.clone();
-        const body = (await cloned.json()) as Record<string, unknown>;
-        if (
-          body.method === "tools/call" &&
-          body.params &&
-          typeof body.params === "object"
-        ) {
-          const params = body.params as { name?: string; arguments?: unknown };
-          if (params.name) {
-            const normalized = normalizeToolArgs(
-              params.name,
-              params.arguments ?? {},
-            );
-            const newBody = {
-              ...body,
-              params: { ...params, arguments: normalized },
-            };
-            const newRequest = new Request(request.url, {
-              method: request.method,
-              headers: request.headers,
-              body: JSON.stringify(newBody),
-            });
-            return super.fetch(newRequest);
-          }
-        }
-      } catch {
-        // Could not parse/intercept — pass through unchanged.
-      }
-    }
-    return super.fetch(request);
-  }
 
   async init(): Promise<void> {
     // Register every tool with full metadata: title, outputSchema, annotations

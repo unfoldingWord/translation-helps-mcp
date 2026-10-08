@@ -78,8 +78,17 @@ produce the exact parameter names defined in tool schemas:
 - **Language aliases**: `language_code`, `lang` → `language`
 - **Null coercion**: `null` or array-typed `arguments` objects are treated as `{}`
 
-This normalization happens in `src/mcp/normalizeToolArgs.ts` before Zod
-validation, so tools never see malformed inputs.
+The rules live in `src/mcp/normalizeToolArgs.ts` and run before Zod
+validation on both tool entry points:
+
+- **`/v2/mcp`** (and its `/mcp` alias): `NormalizingMcpServer`
+  (`src/mcp/normalizingMcpServer.ts`) rewrites `tools/call` arguments at the MCP
+  transport layer, before the SDK validates them against the tool schema. The
+  published schemas (and `tools/list` output) are unchanged. If a request has an
+  unexpected shape, it is passed through as-is and an `mcp:normalize_skipped`
+  warning is logged.
+- **`/v2/api/tool`**: `src/worker.ts` calls `normalizeToolArgs` directly before
+  running the tool.
 
 ## Architecture
 
