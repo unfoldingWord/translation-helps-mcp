@@ -202,7 +202,10 @@ export interface CatalogEntry {
 
 export interface LanguageEntry {
   code: string;
+  /** The language's own name, often in its own script (catalog `ln`). */
   name: string;
+  /** The catalog's English name (`ang`), e.g. "Bengali, Bangla"; absent when the catalog has none. */
+  englishName?: string;
   direction?: "ltr" | "rtl";
 }
 
@@ -472,6 +475,7 @@ async function fetchAndStoreListLanguages(
         name: String(
           item["language_title"] ?? item["ln"] ?? item["lang"] ?? "",
         ),
+        englishName: item["ang"] ? String(item["ang"]) : undefined,
         direction:
           (item["ld"] ?? item["direction"]) === "rtl"
             ? "rtl"

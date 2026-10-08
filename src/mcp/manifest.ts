@@ -34,8 +34,8 @@ export const TOOL_DOC_META: Record<string, ToolDocMeta> = {
       limit: 50,
       offset: 0,
       languages: [
-        { code: "en", name: "English" },
-        { code: "es-419", name: "Español (Latinoamérica)" },
+        { code: "en", name: "English", englishName: "English" },
+        { code: "bn", name: "বাংলা", englishName: "Bengali, Bangla" },
       ],
       requestId: "req_…",
     },

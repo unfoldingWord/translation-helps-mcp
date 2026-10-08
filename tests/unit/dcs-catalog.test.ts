@@ -123,6 +123,26 @@ describe("listLanguages", () => {
     expect(langs[1]).toMatchObject({ code: "es", name: "Español" });
   });
 
+  it("keeps the catalog's English name beside the native one", async () => {
+    mockFetch({
+      "catalog/list/languages": {
+        ok: true,
+        data: [
+          { lc: "bn", ln: "বাংলা", ang: "Bengali, Bangla", ld: "ltr" },
+          { lc: "xx", ln: "Example", ld: "ltr" },
+        ],
+      },
+    });
+
+    const langs = await listLanguages();
+    expect(langs[0]).toMatchObject({
+      code: "bn",
+      name: "বাংলা",
+      englishName: "Bengali, Bangla",
+    });
+    expect(langs[1].englishName).toBeUndefined();
+  });
+
   it("uses KV cache on second call", async () => {
     const kv: Record<string, string> = {};
     const kvStore = {

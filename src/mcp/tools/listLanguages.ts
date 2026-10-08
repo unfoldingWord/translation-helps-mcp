@@ -14,7 +14,7 @@ const inputSchema = z.object({
     .string()
     .optional()
     .describe(
-      'Optional substring filter on language code or name. E.g. "es" shows Spanish variants.',
+      'Optional substring filter on language code, name or English name. E.g. "es" shows Spanish variants; "Bengali" finds bn.',
     ),
   limit: z
     .number()
@@ -49,7 +49,14 @@ const outputSchema = withNotAvailableOutput({
     .array(
       z.object({
         code: z.string(),
-        name: z.string().optional(),
+        name: z
+          .string()
+          .optional()
+          .describe("The language's own name, often in its own script."),
+        englishName: z
+          .string()
+          .optional()
+          .describe("English name of the language, when the catalog has one."),
       }),
     )
     .optional(),
@@ -61,7 +68,8 @@ export const listLanguagesTool: ToolModule<typeof inputSchema> = {
   description:
     "List language codes available in the Door43 catalog for unfoldingWord resources. " +
     "Use this to discover valid BCP-47 codes before calling get_passage, list_resources, or other tools. " +
-    'Returns `{ code, name }` entries; use the `filter` parameter to narrow results (e.g. filter "es" for Spanish variants). ' +
+    "Returns `{ code, name, englishName }` entries: `name` is the language's own name, often in its own script, and `englishName` its English name. " +
+    'Use the `filter` parameter to narrow results by code or by either name (e.g. filter "es" for Spanish variants, "Bengali" for bn). ' +
     "Limitation: lists languages that have at least one resource — not all languages have every resource type.",
   inputSchema,
   outputSchema,
@@ -74,7 +82,12 @@ export const listLanguagesTool: ToolModule<typeof inputSchema> = {
   ) {
     const client = new ApiClient(env);
     const data = await client.get<{
-      languages: Array<{ code: string; name?: string; direction?: string }>;
+      languages: Array<{
+        code: string;
+        name?: string;
+        englishName?: string;
+        direction?: string;
+      }>;
     }>("/api/v1/languages");
 
     let languages = data.languages ?? [];
@@ -82,7 +95,9 @@ export const listLanguagesTool: ToolModule<typeof inputSchema> = {
       const f = params.filter.toLowerCase();
       languages = languages.filter(
         (l) =>
-          l.code.toLowerCase().includes(f) || l.name?.toLowerCase().includes(f),
+          l.code.toLowerCase().includes(f) ||
+          l.name?.toLowerCase().includes(f) ||
+          l.englishName?.toLowerCase().includes(f),
       );
     }
     const total_count = languages.length;
@@ -95,7 +110,11 @@ export const listLanguagesTool: ToolModule<typeof inputSchema> = {
         has_more,
         limit: params.limit,
         offset: params.offset,
-        languages: page.map(({ code, name }) => ({ code, name })),
+        languages: page.map(({ code, name, englishName }) => ({
+          code,
+          name,
+          ...(englishName ? { englishName } : {}),
+        })),
         requestId,
       },
       `${page.length} of ${total_count} languages`,
