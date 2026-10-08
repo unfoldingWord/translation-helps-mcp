@@ -150,8 +150,8 @@ describe("plain McpServer tools/call (negative control)", () => {
       arguments: { word_id: "kt/love", language: "en" },
     });
     expect(result.isError).toBe(true);
-    const text =
-      result.content[0]?.type === "text" ? result.content[0].text : "";
+    const content = result.content as Array<{ type: string; text?: string }>;
+    const text = content[0]?.type === "text" ? (content[0].text ?? "") : "";
     expect(text).toContain("-32602");
     expect(recorded.get_word_article).toBeUndefined();
   });
