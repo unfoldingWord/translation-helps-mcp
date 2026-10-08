@@ -311,7 +311,7 @@ export const TOOL_DOC_META: Record<string, ToolDocMeta> = {
       frames: [
         {
           index: 1,
-          imageUrl: "https://cdn.door43.org/obs/en/obs/01/01.jpg",
+          imageUrl: "https://cdn.door43.org/obs/jpg/360px/obs-en-03-01.jpg",
           text: "A long time ago…",
         },
         { index: 2, imageUrl: null, text: "God saw that the people…" },
