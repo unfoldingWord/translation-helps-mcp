@@ -26,6 +26,17 @@ import { PARAMETER_GROUPS } from "./parameters/groups.js";
 import type { UnifiedParameterDef } from "./parameters/types.js";
 
 /**
+ * The body of a response the endpoint already formatted (format=md|text), or
+ * null when there is none. UnifiedMCPHandler wraps a non-JSON body as
+ * `{ text, raw }`; a formatter that only looks for structured fields would
+ * report such a body as "not found" (issue #34).
+ */
+function preformattedBody(data: any): string | null {
+  const body = typeof data === "string" ? data : data?.raw;
+  return typeof body === "string" && body.trim() !== "" ? body : null;
+}
+
+/**
  * Tool Response Formatters
  * These format REST API responses for MCP text output
  */
@@ -51,7 +62,9 @@ export const ToolFormatters = {
         notes = notes.concat(data[field]);
       }
     }
-    if (notes.length === 0) return "No translation notes found";
+    if (notes.length === 0) {
+      return preformattedBody(data) ?? "No translation notes found";
+    }
 
     return notes
       .map((note: any, index: number) => {
@@ -80,7 +93,7 @@ export const ToolFormatters = {
     const questions =
       data.items || data.translationQuestions || data.questions || [];
     if (!Array.isArray(questions) || questions.length === 0) {
-      return "No translation questions found";
+      return preformattedBody(data) ?? "No translation questions found";
     }
     return questions
       .map((q: any, index: number) => {
