@@ -142,6 +142,29 @@ export function formatScriptureResponse(data: any, options: FormatterOptions): s
 }
 
 /**
+ * The title of a book or chapter introduction note ("Book introduction"),
+ * which has no quote to be named by; undefined for any other item.
+ */
+function contextTitleOf(item: any): string | undefined {
+	const type = typeof item.contextType === 'string' ? item.contextType : '';
+	return type ? `${type.charAt(0).toUpperCase()}${type.slice(1)} introduction` : undefined;
+}
+
+/**
+ * The article a note points to, so a caller can fetch it next: a Scripture
+ * note carries it as `externalReference` (`ta` is Translation Academy, `tw` a
+ * Translation Word) where an OBS note has the raw `SupportReference`.
+ */
+function followUpOf(item: any): { label: string; path: string } | undefined {
+	const reference = item.externalReference;
+	if (!reference || typeof reference.path !== 'string' || reference.path === '') {
+		return undefined;
+	}
+	const labels: Record<string, string> = { ta: 'Translation Academy', tw: 'Translation Word' };
+	return { label: labels[reference.target] ?? 'See also', path: reference.path };
+}
+
+/**
  * Format translation helps response (notes, questions, words)
  */
 export function formatTranslationHelpsResponse(
@@ -200,6 +223,9 @@ export function formatTranslationHelpsResponse(
 			if (!title && item.Quote) {
 				title = item.Quote;
 			}
+			if (!title) {
+				title = contextTitleOf(item);
+			}
 			if (!title && item.ID) {
 				title = `${item.ID}`;
 			}
@@ -229,6 +255,11 @@ export function formatTranslationHelpsResponse(
 
 			if (item.SupportReference || item.supportReference) {
 				markdown += `**Support Reference**: ${item.SupportReference || item.supportReference}\n\n`;
+			}
+
+			const followUp = followUpOf(item);
+			if (followUp) {
+				markdown += `**${followUp.label}**: ${followUp.path}\n\n`;
 			}
 
 			if (item.Quote) {
@@ -296,6 +327,9 @@ export function formatTranslationHelpsResponse(
 			if (!title && item.Quote) {
 				title = item.Quote;
 			}
+			if (!title) {
+				title = contextTitleOf(item);
+			}
 			if (!title && item.ID) {
 				title = `${item.ID}`;
 			}
@@ -316,6 +350,11 @@ export function formatTranslationHelpsResponse(
 			// Additional fields for translation notes/questions
 			if (item.SupportReference || item.supportReference) {
 				text += `Support: ${item.SupportReference || item.supportReference}\n`;
+			}
+
+			const followUp = followUpOf(item);
+			if (followUp) {
+				text += `${followUp.label}: ${followUp.path}\n`;
 			}
 
 			if (item.ID && title !== item.ID) {
@@ -540,6 +579,21 @@ export function formatResponse(data: any, options: FormatterOptions): string | o
 		typeof data.content === 'string'
 	) {
 		return data.content;
+	}
+
+	// Scripture translation notes come as verseNotes + contextNotes instead of
+	// one `items` array, so the checks below missed them and the result was
+	// printed as JSON in a code block (issue #54). They are helps like the
+	// others: verse notes first, then the book and chapter introductions.
+	if (
+		options.format !== 'json' &&
+		!data.items &&
+		(Array.isArray(data.verseNotes) || Array.isArray(data.contextNotes))
+	) {
+		return formatTranslationHelpsResponse(
+			{ ...data, items: [...(data.verseNotes ?? []), ...(data.contextNotes ?? [])] },
+			options
+		);
 	}
 
 	// Check for translation helps (notes, questions, words)
