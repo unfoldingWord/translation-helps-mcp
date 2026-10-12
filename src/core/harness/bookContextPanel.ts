@@ -22,6 +22,8 @@ export type ContextNoteLike = {
   title?: string;
   id?: string;
   chapter?: string;
+  /** "intro" for a book or chapter introduction; not read here, but part of what callers pass. */
+  verse?: string;
 };
 
 export function extractContextNoteText(n: ContextNoteLike): string {

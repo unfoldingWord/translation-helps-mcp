@@ -41,7 +41,12 @@ describe("InMemoryKVStore", () => {
 
 describe("BundleCache", () => {
   const makeBundle = (ref: string): Bundle => ({
-    scripture: { text: `Scripture for ${ref}`, format: "plain" },
+    scripture: {
+      versions: [
+        { resourceType: "ult", text: `Scripture for ${ref}`, source: "test" },
+      ],
+      format: "plain",
+    },
     notes: [],
     tw: [],
     ta: [],
@@ -60,7 +65,7 @@ describe("BundleCache", () => {
     cache.set("en", "JHN 3:16", bundle);
     const hit = cache.get("en", "JHN 3:16");
     expect(hit).not.toBeNull();
-    expect(hit!.scripture.text).toBe("Scripture for JHN 3:16");
+    expect(hit!.scripture.versions[0].text).toBe("Scripture for JHN 3:16");
     expect(hit!.metadata.cacheStatus).toBe("memory");
   });
 
@@ -88,7 +93,7 @@ describe("BundleCache", () => {
     const cache2 = new BundleCache();
     const hit = await cache2.getFromKv(kv, "en", "ROM 3:23");
     expect(hit).not.toBeNull();
-    expect(hit!.scripture.text).toBe("Scripture for ROM 3:23");
+    expect(hit!.scripture.versions[0].text).toBe("Scripture for ROM 3:23");
     expect(hit!.metadata.cacheStatus).toBe("edge");
   });
 });
@@ -129,7 +134,12 @@ describe("search_articles lexical scoring (unit)", () => {
   }
 
   it("scores perfect title match high", () => {
-    const score = scoreArticle("metonymy", "translate/figs-metonymy", "Metonymy", "translate");
+    const score = scoreArticle(
+      "metonymy",
+      "translate/figs-metonymy",
+      "Metonymy",
+      "translate",
+    );
     expect(score).toBeGreaterThan(0.5);
   });
 
@@ -139,7 +149,12 @@ describe("search_articles lexical scoring (unit)", () => {
   });
 
   it("scores partial match between 0 and 1", () => {
-    const score = scoreArticle("figurative language", "translate/figs-metaphor", "Metaphor", "translate");
+    const score = scoreArticle(
+      "figurative language",
+      "translate/figs-metaphor",
+      "Metaphor",
+      "translate",
+    );
     expect(score).toBeGreaterThanOrEqual(0);
     expect(score).toBeLessThanOrEqual(1);
   });

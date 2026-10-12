@@ -32,8 +32,8 @@ import {
   buildQuizClearedMarker,
   buildQuizPanelMarker,
   gradeAnswer,
-  type QuizItem,
 } from "../../src/core/harness/QuizAgents.js";
+import type { QuizItem } from "../../src/core/harness/intent.js";
 
 function mockLlm(
   result: string | (() => Promise<string>) | Error,

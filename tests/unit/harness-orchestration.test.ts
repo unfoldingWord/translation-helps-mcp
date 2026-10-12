@@ -59,9 +59,11 @@ describe("ContextHarness orchestration", () => {
   it("run() returns a HarnessResult with a response string", async () => {
     const { fn } = makeStubCallTool();
     const llm = makeStubLLM("Test answer about John 3:16.");
-    const harness = new ContextHarness(llm, fn, { language: "en" });
+    const harness = new ContextHarness(llm, fn);
 
-    const result = await harness.run("What does John 3:16 mean?");
+    const result = await harness.run("What does John 3:16 mean?", {
+      language: "en",
+    });
 
     expect(result).toBeDefined();
     expect(typeof result.response).toBe("string");
@@ -71,9 +73,11 @@ describe("ContextHarness orchestration", () => {
   it("run() returns an intent field", async () => {
     const { fn } = makeStubCallTool();
     const llm = makeStubLLM("Passage answer");
-    const harness = new ContextHarness(llm, fn, { language: "en" });
+    const harness = new ContextHarness(llm, fn);
 
-    const result = await harness.run("Explain Romans 8:28");
+    const result = await harness.run("Explain Romans 8:28", {
+      language: "en",
+    });
     expect(typeof result.intent).toBe("string");
     expect(result.intent.length).toBeGreaterThan(0);
   });
@@ -81,9 +85,11 @@ describe("ContextHarness orchestration", () => {
   it("run() records toolCalls when emit is absent", async () => {
     const { fn } = makeStubCallTool();
     const llm = makeStubLLM("Answer");
-    const harness = new ContextHarness(llm, fn, { language: "en" });
+    const harness = new ContextHarness(llm, fn);
 
-    const result = await harness.run("List available languages");
+    const result = await harness.run("List available languages", {
+      language: "en",
+    });
     // toolCalls may be an array (possibly empty for open_ended intent)
     expect(
       Array.isArray(result.toolCalls) || result.toolCalls === undefined,
@@ -94,15 +100,15 @@ describe("ContextHarness orchestration", () => {
     const { fn } = makeStubCallTool();
     const llm = makeStubLLM("Answer with emit");
     const statusMessages: string[] = [];
-    const harness = new ContextHarness(llm, fn, {
+    const harness = new ContextHarness(llm, fn);
+
+    await harness.run("What is John 3:16?", {
       language: "en",
       emit: {
         status: (t) => statusMessages.push(t),
         token: vi.fn(),
       },
     });
-
-    await harness.run("What is John 3:16?");
     // Status messages may or may not be emitted depending on intent,
     // but the harness must not throw.
     expect(Array.isArray(statusMessages)).toBe(true);

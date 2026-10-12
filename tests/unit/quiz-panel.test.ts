@@ -54,7 +54,7 @@ import {
   type QuizItem,
 } from "../../src/core/harness/intent.js";
 import type { EnrichedBundle } from "../../src/core/harness/budgeter.js";
-import type { LLMProvider } from "../../src/core/rag/types.js";
+import type { LLMProvider } from "../../src/core/rag/providers/LLMProvider.js";
 
 const assistant = (content: string): ConversationMessage => ({
   role: "assistant",
@@ -660,7 +660,7 @@ describe("quiz retry after fail", () => {
       `old\n${buildQuizRetryMarker({ level: "book", book: "TIT" }, "TIT")}`,
     );
     const current = assistant(
-      `new\n${buildQuizRetryMarker({ level: "ch", book: "JON", chapter: "1" }, "JON 1")}`,
+      `new\n${buildQuizRetryMarker({ level: "chapter", book: "JON", chapter: "1" }, "JON 1")}`,
     );
     expect(extractPendingQuizRetry([stale, user("ok"), current])).toEqual({
       level: "chapter",
