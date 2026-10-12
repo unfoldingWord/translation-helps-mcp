@@ -269,6 +269,17 @@ export function getMCPToolDefinitions(): MCPToolDefinition[] {
         .passthrough(),
     },
     {
+      name: "fetch_obs_translation_word_links",
+      description:
+        "Fetch the key terms flagged in an Open Bible Stories (OBS) reference: the words as they stand in the story " +
+        "and the translationWord article each points to (`externalReference.path`, which `fetch_translation_word` takes as `path`). " +
+        "Pass `reference` in the OBS story:frame scheme (e.g. 1:1), NOT Bible book chapter:verse. " +
+        "All Door43 organizations are searched automatically.",
+      inputSchema: FetchObsHelpsArgs.omit({ reference: true })
+        .extend(OBS_REFERENCE_TOLERANCE_FIELDS)
+        .passthrough(),
+    },
+    {
       name: "list_tools",
       description:
         "List all available MCP tools with their schemas and descriptions. Use this to discover what translation helps tools are available.",

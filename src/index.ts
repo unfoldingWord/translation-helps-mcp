@@ -124,6 +124,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "fetch_obs_study_questions":
         return await handleFetchObsHelps("sq", args as FetchObsHelpsArgs);
 
+      case "fetch_obs_translation_word_links":
+        return await handleFetchObsHelps("twl", args as FetchObsHelpsArgs);
+
       case "list_languages":
         return await handleListLanguages(
           args as z.infer<typeof ListLanguagesArgs>,

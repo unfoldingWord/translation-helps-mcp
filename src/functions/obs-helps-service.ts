@@ -1,14 +1,16 @@
 /**
  * OBS Helps Service (issue #32)
  *
- * One shared implementation for the four OBS helps resources — they differ
- * only by DCS subject, repo, and two nearly-identical TSV layouts:
+ * One shared implementation for the five OBS helps resources — they differ
+ * only by DCS subject, repo, and three TSV layouts:
  *
- *   tn → tn_OBS.tsv  (Reference ID Tags SupportReference Quote Occurrence Note)
- *   sn → sn_OBS.tsv  (same columns as tn)
- *   tq → tq_OBS.tsv  (Reference ID Tags Quote Occurrence Question Response)
- *   sq → sq_OBS.tsv  (same columns as tq; carries `front` rows and frame
- *                     ranges like 1:1-8)
+ *   tn  → tn_OBS.tsv   (Reference ID Tags SupportReference Quote Occurrence Note)
+ *   sn  → sn_OBS.tsv   (same columns as tn)
+ *   tq  → tq_OBS.tsv   (Reference ID Tags Quote Occurrence Question Response)
+ *   sq  → sq_OBS.tsv   (same columns as tq; carries `front` rows and frame
+ *                       ranges like 1:1-8)
+ *   twl → twl_OBS.tsv  (Reference ID Tags OrigWords Occurrence TWLink; the key
+ *                       terms of each frame, issue #35)
  *
  * Each is ONE TSV per language covering all 50 stories, so rows are filtered
  * by story:frame overlap (obs-tsv-filter.ts) rather than per-book lookup.
@@ -25,12 +27,17 @@ import {
 } from "./obs-reference-parser.js";
 import { filterOBSTSVRows } from "./obs-tsv-filter.js";
 
-export type OBSHelpsType = "tn" | "tq" | "sn" | "sq";
+export type OBSHelpsType = "tn" | "tq" | "sn" | "sq" | "twl";
 
 const HELPS_META: Record<
   OBSHelpsType,
-  { subject: string; label: string; kind: "notes" | "questions" }
+  { subject: string; label: string; kind: "notes" | "questions" | "links" }
 > = {
+  twl: {
+    subject: "TSV OBS Translation Words Links",
+    label: "OBS translation word links",
+    kind: "links",
+  },
   tn: {
     subject: "TSV OBS Translation Notes",
     label: "OBS translation notes",
@@ -58,8 +65,9 @@ export interface OBSHelpsResult {
   language: string;
   resourceType: OBSHelpsType;
   /** Matched rows: notes keep TSV casing (Note/Quote); questions are lowercased
-   *  (question/response) to match the shapes the shared formatters read. */
-  items: Array<Record<string, string>>;
+   *  (question/response) to match the shapes the shared formatters read; word
+   *  links have the shape of the Scripture ones (see toOBSWordLink). */
+  items: Array<Record<string, unknown>>;
   citation: {
     resource: string;
     organization: string;
@@ -74,6 +82,34 @@ export interface OBSHelpsResult {
     organization: string;
     license: string;
     totalItems: number;
+  };
+}
+
+/**
+ * One row of twl_OBS.tsv as a word link, in the shape the Scripture word links
+ * use (`/api/fetch-translation-word-links`): the words in the story as `quote`
+ * and the translationWord article as `externalReference`, whose `path` is what
+ * `fetch_translation_word` takes. A row whose TWLink is not an
+ * `rc://…/tw/dict/…` link is kept without an article rather than dropped.
+ */
+export function toOBSWordLink(
+  row: Record<string, string>,
+): Record<string, unknown> {
+  const path = (row.TWLink || "").match(/rc:\/\/[^/]+\/tw\/dict\/(.+)/)?.[1];
+  const category = path?.match(/^bible\/([^/]+)\//)?.[1];
+  return {
+    id: row.ID,
+    reference: row.Reference,
+    tags: row.Tags || "",
+    quote: row.OrigWords || "",
+    occurrence: parseInt(row.Occurrence || "1", 10) || 1,
+    ...(path && {
+      externalReference: {
+        target: "tw",
+        path,
+        ...(category && { category }),
+      },
+    }),
   };
 }
 
@@ -148,26 +184,29 @@ export async function fetchOBSHelps(options: {
     );
   }
 
-  const items = matched.map((row) =>
-    meta.kind === "questions"
-      ? {
-          reference: row.Reference,
-          id: row.ID,
-          tags: row.Tags || "",
-          quote: row.Quote || "",
-          occurrence: row.Occurrence || "",
-          question: row.Question || "",
-          response: row.Response || "",
-        }
-      : {
-          Reference: row.Reference,
-          ID: row.ID,
-          Tags: row.Tags || "",
-          SupportReference: row.SupportReference || "",
-          Quote: row.Quote || "",
-          Occurrence: row.Occurrence || "",
-          Note: row.Note || "",
-        },
+  const items = matched.map(
+    (row): Record<string, unknown> =>
+      meta.kind === "links"
+        ? toOBSWordLink(row)
+        : meta.kind === "questions"
+          ? {
+              reference: row.Reference,
+              id: row.ID,
+              tags: row.Tags || "",
+              quote: row.Quote || "",
+              occurrence: row.Occurrence || "",
+              question: row.Question || "",
+              response: row.Response || "",
+            }
+          : {
+              Reference: row.Reference,
+              ID: row.ID,
+              Tags: row.Tags || "",
+              SupportReference: row.SupportReference || "",
+              Quote: row.Quote || "",
+              Occurrence: row.Occurrence || "",
+              Note: row.Note || "",
+            },
   );
 
   const owner = result.organization || "unfoldingWord";

@@ -1491,6 +1491,7 @@ export class ZipResourceFetcher2 {
     tq: "TSV OBS Translation Questions",
     sn: "TSV OBS Study Notes",
     sq: "TSV OBS Study Questions",
+    twl: "TSV OBS Translation Words Links",
   };
 
   /**
@@ -1663,13 +1664,13 @@ export class ZipResourceFetcher2 {
   }
 
   /**
-   * Get the raw single-file OBS helps TSV (issue #32): tn_OBS.tsv / tq_OBS.tsv /
-   * sn_OBS.tsv / sq_OBS.tsv. Unlike Bible helps there is ONE TSV per language,
-   * so this returns the whole file; reference filtering lives in
-   * src/functions/obs-tsv-filter.ts.
+   * Get the raw single-file OBS helps TSV (issues #32, #35): tn_OBS.tsv /
+   * tq_OBS.tsv / sn_OBS.tsv / sq_OBS.tsv / twl_OBS.tsv. Unlike Bible helps
+   * there is ONE TSV per language, so this returns the whole file; reference
+   * filtering lives in src/functions/obs-tsv-filter.ts.
    */
   async getOBSTSVContent(
-    resourceType: "tn" | "tq" | "sn" | "sq",
+    resourceType: "tn" | "tq" | "sn" | "sq" | "twl",
     language: string,
     organization: string,
   ): Promise<{

@@ -220,8 +220,9 @@ export function formatTranslationHelpsResponse(
 			if (!title && item.noteType) {
 				title = `Note (${item.noteType})`;
 			}
-			if (!title && item.Quote) {
-				title = item.Quote;
+			// Word links carry the quoted words in lowercase `quote` (issue #35).
+			if (!title && (item.Quote || item.quote)) {
+				title = item.Quote || item.quote;
 			}
 			if (!title) {
 				title = contextTitleOf(item);
@@ -324,8 +325,9 @@ export function formatTranslationHelpsResponse(
 			if (!title && item.noteType) {
 				title = `Note (${item.noteType})`;
 			}
-			if (!title && item.Quote) {
-				title = item.Quote;
+			// Word links carry the quoted words in lowercase `quote` (issue #35).
+			if (!title && (item.Quote || item.quote)) {
+				title = item.Quote || item.quote;
 			}
 			if (!title) {
 				title = contextTitleOf(item);
