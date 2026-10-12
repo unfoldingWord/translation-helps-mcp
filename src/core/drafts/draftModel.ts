@@ -35,7 +35,7 @@ export interface DraftSegment extends DraftSegmentMeta {
  */
 export function isDraftableMeta(
   meta: DraftSegmentMeta | null | undefined,
-): boolean {
+): meta is DraftSegmentMeta & { verseStart: string } {
   if (!meta?.book || meta.chapter == null || meta.chapter === "") return false;
   if (!meta.verseStart) return false;
   const start = parseInt(meta.verseStart, 10);

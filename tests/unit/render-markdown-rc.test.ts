@@ -8,7 +8,7 @@ import {
   rcLinkKind,
   renderMarkdown,
   stripHiddenMarkers,
-} from "../../web/src/lib/renderMarkdown.ts";
+} from "../../web/src/lib/renderMarkdown.js";
 
 describe("Door43 markdown / rc:// wiki-links", () => {
   it("turns [[rc://…]] into a labeled markdown link", () => {
