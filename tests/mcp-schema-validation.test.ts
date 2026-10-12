@@ -143,7 +143,7 @@ describe("MCP Tools Schema Validation", () => {
     }
   });
 
-  it("should expose the five OBS tools with story:frame reference schemas (issue #32)", () => {
+  it("should expose the six OBS tools with story:frame reference schemas (issues #32, #35)", () => {
     const tools = getMCPToolsList();
     const toolMap = new Map(tools.map((t) => [t.name, t]));
 
@@ -153,6 +153,7 @@ describe("MCP Tools Schema Validation", () => {
       "fetch_obs_translation_questions",
       "fetch_obs_study_notes",
       "fetch_obs_study_questions",
+      "fetch_obs_translation_word_links",
     ];
 
     for (const toolName of obsTools) {

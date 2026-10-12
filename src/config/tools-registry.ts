@@ -509,6 +509,26 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     ],
   },
 
+  {
+    mcpName: "fetch_obs_translation_word_links",
+    displayName: "Fetch OBS Translation Word Links",
+    endpoint: "fetch-obs-translation-word-links",
+    description:
+      'Fetch the key terms flagged in an Open Bible Stories reference (story:frame, e.g. "1:1"): the words as they stand in the story and the translationWord article each points to. Pass an article\'s path to fetch_translation_word to read it. All Door43 organizations are searched automatically.',
+    category: "Open Bible Stories",
+    parameters: PARAMETER_GROUPS.obs.parameters,
+    requiredParams: ["reference"],
+    formatter: ToolFormatters.words,
+    examples: [
+      {
+        title: "Key terms of a frame",
+        parameters: { reference: "1:1", language: "en" },
+        expectedResponse:
+          "The key terms of story 1, frame 1, each with its translationWord article path",
+      },
+    ],
+  },
+
   // ============================================================
   // TEST/MOCKUP TOOLS
   // ============================================================

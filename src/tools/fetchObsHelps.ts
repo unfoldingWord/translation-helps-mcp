@@ -1,8 +1,9 @@
 /**
- * Fetch OBS Helps Tools (issue #32)
- * One shared handler for the four OBS helps tools — translation notes (tn),
- * translation questions (tq), study notes (sn), study questions (sq). They
- * differ only by resource type; all take an OBS story:frame reference.
+ * Fetch OBS Helps Tools (issues #32, #35)
+ * One shared handler for the five OBS helps tools — translation notes (tn),
+ * translation questions (tq), study notes (sn), study questions (sq),
+ * translation word links (twl). They differ only by resource type; all take
+ * an OBS story:frame reference.
  */
 
 import { z } from "zod";
@@ -29,6 +30,7 @@ const TOOL_NAMES: Record<OBSHelpsType, string> = {
   tq: "fetch_obs_translation_questions",
   sn: "fetch_obs_study_notes",
   sq: "fetch_obs_study_questions",
+  twl: "fetch_obs_translation_word_links",
 };
 
 /**

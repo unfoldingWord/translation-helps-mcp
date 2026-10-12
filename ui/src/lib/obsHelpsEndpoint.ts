@@ -1,8 +1,8 @@
 /**
- * Shared factory for the four OBS helps endpoints (issue #32):
+ * Shared factory for the five OBS helps endpoints (issues #32, #35):
  * fetch-obs-translation-notes / -translation-questions / -study-notes /
- * -study-questions. They differ only by resource type — same OBS story:frame
- * reference handling, same error mapping.
+ * -study-questions / -translation-word-links. They differ only by resource
+ * type — same OBS story:frame reference handling, same error mapping.
  */
 
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
