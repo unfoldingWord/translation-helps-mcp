@@ -58,7 +58,10 @@ export type {
 } from "./resources/dcsClient.js";
 
 // ZIP fetcher
-export { ZipResourceFetcher2 } from "./resources/ZipResourceFetcher2.js";
+export {
+  ZipResourceFetcher2,
+  zipFetcherCacheStats,
+} from "./resources/ZipResourceFetcher2.js";
 export type {
   ZipCacheSource,
   ZipEnv,

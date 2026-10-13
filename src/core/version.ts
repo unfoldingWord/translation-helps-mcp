@@ -5,6 +5,6 @@
  *   - The website footer
  *   - Both SDKs (via Changesets release pipeline)
  */
-export const VERSION = "2.1.2";
+export const VERSION = "2.1.3";
 
 export const SERVER_NAME = "translation-helps-mcp";
