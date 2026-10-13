@@ -16,7 +16,7 @@ import {
 } from "./helpers.js";
 import { catalogSearch } from "@translation-helps/door43";
 import type { CatalogEntry } from "@translation-helps/door43";
-import { extractVerses } from "@translation-helps/door43";
+import { extractVerses, usfmExtent } from "@translation-helps/door43";
 import type {
   ScriptureVersion,
   ScriptureVersionRole,
@@ -155,6 +155,8 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
 
     const fetcher = makeFetcher(env, execCtx);
     const zipSources: ZipCacheSource[] = [];
+    // How far the book goes in each version that has it but not the passage.
+    const extents: BookExtent[] = [];
 
     const tZip = Date.now();
     const settled = await Promise.allSettled(
@@ -171,7 +173,10 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
         if (!usfm) return null;
 
         const text = extractVerses(usfm, chapter, verseStart, verseEnd, format);
-        if (text === null) return null;
+        if (text === null) {
+          extents.push(usfmExtent(usfm, chapter));
+          return null;
+        }
         const abbrev = entry.abbreviation ?? entry.repo.replace(/^[a-z]+_/, "");
         const role: ScriptureVersionRole = isOriginal
           ? "original"
@@ -198,7 +203,14 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
     if (versions.length === 0) {
       return {
         ok: false,
-        message: `Book "${book}" not found in any scripture resource for "${language}"`,
+        message: missingPassageMessage({
+          reference,
+          book,
+          chapter,
+          verseStart,
+          language,
+          extents,
+        }),
       };
     }
 
@@ -236,6 +248,44 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+type BookExtent = ReturnType<typeof usfmExtent>;
+
+/**
+ * Why no version had the passage, in words the caller can act on. `extents`
+ * holds how far the book goes in each version that has the book: when it is
+ * empty the book itself is missing; otherwise the chapter or the verse is past
+ * the end, and saying which keeps a model from concluding the book is absent.
+ */
+export function missingPassageMessage(args: {
+  reference: string;
+  book: string;
+  chapter: string;
+  verseStart?: string;
+  language: string;
+  extents: BookExtent[];
+}): string {
+  const { reference, book, chapter, verseStart, language, extents } = args;
+  if (extents.length === 0) {
+    return `Book "${book}" not found in any scripture resource for "${language}"`;
+  }
+
+  const chapters = Math.max(...extents.map((e) => e.chapters));
+  const lastVerse = Math.max(...extents.map((e) => e.lastVerse ?? 0));
+  if (lastVerse === 0) {
+    return (
+      `"${reference}" does not exist: ${book} has ${chapters} ` +
+      `chapter${chapters === 1 ? "" : "s"}, so there is no chapter ${chapter}.`
+    );
+  }
+  if (verseStart && parseInt(verseStart, 10) > lastVerse) {
+    return (
+      `"${reference}" does not exist: ${book} ${chapter} has ${lastVerse} ` +
+      `verses, so there is no verse ${verseStart}.`
+    );
+  }
+  return `"${reference}" has no text in any scripture resource for "${language}", though ${book} ${chapter} exists there.`;
+}
 
 /**
  * Prefer one literal (ULT/GLT) + one simplified (UST/GST), unfoldingWord first.

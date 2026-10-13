@@ -103,3 +103,35 @@ export function extractVerses(
   if (!extracted) return null;
   return format === "usfm" ? extracted : stripUsfm(extracted);
 }
+
+// ---------------------------------------------------------------------------
+// usfmExtent
+// ---------------------------------------------------------------------------
+
+/**
+ * How far a book goes: its last chapter and, when `chapter` exists in it, the
+ * last verse of that chapter. Lets a caller say why `extractVerses` found
+ * nothing ("John has 21 chapters") instead of only that it found nothing.
+ *
+ * @param usfm     Raw USFM text of one book
+ * @param chapter  Chapter number as string ("3")
+ */
+export function usfmExtent(
+  usfm: string,
+  chapter: string,
+): { chapters: number; lastVerse: number | null } {
+  const numbers = (text: string, re: RegExp): number[] =>
+    [...text.matchAll(re)].map((m) => parseInt(m[1], 10));
+
+  const chapters = Math.max(0, ...numbers(usfm, /\\c\s+(\d+)/g));
+
+  const chapterIdx = usfm.search(new RegExp(`\\\\c\\s+${chapter}\\b`));
+  if (chapterIdx < 0) return { chapters, lastVerse: null };
+  const rest = usfm.slice(chapterIdx + 1);
+  const nextIdx = rest.search(/\\c\s+\d+/);
+  const chapterText = nextIdx < 0 ? rest : rest.slice(0, nextIdx);
+
+  // A verse bridge ("\v 3-4") ends at its second number.
+  const verses = numbers(chapterText, /\\v\s+(?:\d+-)?(\d+)/g);
+  return { chapters, lastVerse: verses.length ? Math.max(...verses) : null };
+}
