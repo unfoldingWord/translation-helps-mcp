@@ -50,20 +50,44 @@ const R2_KEY_PREFIX = "zips/";
 // Node.js / Workers process lifetime. They are the fastest layer (no I/O)
 // and work even when R2 bindings are unavailable (e.g. vite dev).
 //
+// Together they must leave room inside a Worker's 128 MB for the request being
+// served: 40 MB of archives, 24 MB of texts (12 M characters at two bytes each,
+// which is what Hebrew and Greek make of a string) and the few small archives
+// kept inflated, against some 40 MB a cold scripture request needs at its peak.
+//
 // Key: ZIP URL   Value: raw bytes
 const ZIP_PROCESS_CACHE = new Map<string, Uint8Array>();
 // Key: `${url}::${filePath}`   Value: extracted text
 const TEXT_PROCESS_CACHE = new Map<string, string>();
 // Single-flight: concurrent callers for the same URL share one download.
 const ZIP_IN_FLIGHT = new Map<string, Promise<Uint8Array>>();
-// Cache full unzipSync result per buffer so N extractions inflate once.
+// What an archive holds, read from its directory without inflating anything.
+const ZIP_DIRECTORY = new WeakMap<Uint8Array, ZipDirectory>();
+// The whole inflated archive, for archives small enough to keep that way.
 const UNZIP_CACHE = new WeakMap<Uint8Array, Unzipped>();
 
-// Byte-based memory cap (~60 MB) for the zip process cache.
-const ZIP_CACHE_MAX_BYTES = 60_000_000;
+interface ZipDirectory {
+  names: string[];
+  /** Size of every entry together once inflated. */
+  inflatedBytes: number;
+}
+
+// Byte-based memory cap for the zip process cache.
+const ZIP_CACHE_MAX_BYTES = 40_000_000;
 let totalCachedZipBytes = 0;
 
+/**
+ * An archive up to this size inflated is inflated whole and kept, so reading
+ * its many small files (word and academy articles) costs one inflation. A
+ * larger one gives up one file at a time: the English ULT is 77 MB inflated
+ * and the UST 89 MB, and a scripture request reads a book from both.
+ */
+const WHOLE_ARCHIVE_MAX_BYTES = 4_000_000;
+
 const PROCESS_CACHE_MAX_TEXTS = 200;
+// A count alone does not bound memory: one book of aligned USFM is 5 M characters.
+const TEXT_CACHE_MAX_CHARS = 12_000_000;
+let totalCachedTextChars = 0;
 
 function evictOldestZip() {
   while (
@@ -78,11 +102,52 @@ function evictOldestZip() {
   }
 }
 
-function evictIfNeeded<V>(map: Map<string, V>, max: number) {
-  if (map.size >= max) {
-    const firstKey = map.keys().next().value;
-    if (firstKey !== undefined) map.delete(firstKey);
+function dropText(key: string) {
+  const text = TEXT_PROCESS_CACHE.get(key);
+  if (text === undefined) return;
+  TEXT_PROCESS_CACHE.delete(key);
+  totalCachedTextChars -= text.length;
+}
+
+/** Keep a text (or "" for a known miss), pushing out the oldest to stay within both limits. */
+function cacheText(key: string, text: string) {
+  dropText(key);
+  // A text over the limit would push everything out and still not fit.
+  if (text.length > TEXT_CACHE_MAX_CHARS) return;
+  TEXT_PROCESS_CACHE.set(key, text);
+  totalCachedTextChars += text.length;
+  while (
+    TEXT_PROCESS_CACHE.size > PROCESS_CACHE_MAX_TEXTS ||
+    totalCachedTextChars > TEXT_CACHE_MAX_CHARS
+  ) {
+    const oldest = TEXT_PROCESS_CACHE.keys().next().value;
+    if (oldest === undefined || oldest === key) break;
+    dropText(oldest);
   }
+}
+
+/** What the in-process caches hold right now. For tests and diagnostics. */
+export function zipFetcherCacheStats(): {
+  zips: number;
+  zipBytes: number;
+  texts: number;
+  textChars: number;
+} {
+  return {
+    zips: ZIP_PROCESS_CACHE.size,
+    zipBytes: totalCachedZipBytes,
+    texts: TEXT_PROCESS_CACHE.size,
+    textChars: totalCachedTextChars,
+  };
+}
+
+/** Whether an archive entry is the file asked for: by its path, or under the archive's root folder. */
+function entryMatches(entryName: string, normalizedPath: string): boolean {
+  return (
+    entryName === normalizedPath ||
+    entryName.endsWith("/" + normalizedPath) ||
+    entryName === normalizedPath.replace(/^.*?\//, "")
+  );
 }
 
 function r2KeyFromUrl(url: string): string {
@@ -90,8 +155,9 @@ function r2KeyFromUrl(url: string): string {
 }
 
 // Map from buffer reference back to source URL (enables URL-keyed text cache
-// without changing the public extractFileFromZip signature).
-const bufferUrlMap = new Map<Uint8Array, string>();
+// without changing the public extractFileFromZip signature). Weak, so that an
+// archive pushed out of the cache is freed and not held here for good.
+const bufferUrlMap = new WeakMap<Uint8Array, string>();
 
 export class ZipResourceFetcher2 {
   private env?: ZipEnv;
@@ -197,14 +263,43 @@ export class ZipResourceFetcher2 {
   }
 
   /**
-   * Unzip once per buffer; subsequent extractions reuse the cached map.
+   * Read an archive's directory once per buffer: the entry names and how much
+   * they come to inflated. Nothing is inflated to find out.
    */
-  private unzipCached(zipBuffer: Uint8Array): Unzipped {
-    const cached = UNZIP_CACHE.get(zipBuffer);
+  private directoryOf(zipBuffer: Uint8Array): ZipDirectory {
+    const cached = ZIP_DIRECTORY.get(zipBuffer);
     if (cached) return cached;
-    const files = unzipSync(zipBuffer);
-    UNZIP_CACHE.set(zipBuffer, files);
-    return files;
+    const directory: ZipDirectory = { names: [], inflatedBytes: 0 };
+    unzipSync(zipBuffer, {
+      filter: (entry) => {
+        directory.names.push(entry.name);
+        directory.inflatedBytes += entry.originalSize;
+        return false;
+      },
+    });
+    ZIP_DIRECTORY.set(zipBuffer, directory);
+    return directory;
+  }
+
+  /**
+   * Inflate one entry. A small archive is inflated whole on first use and
+   * kept; a large one inflates only the entry asked for, each time.
+   */
+  private inflateEntry(
+    zipBuffer: Uint8Array,
+    entryName: string,
+  ): Uint8Array | undefined {
+    if (this.directoryOf(zipBuffer).inflatedBytes > WHOLE_ARCHIVE_MAX_BYTES) {
+      return unzipSync(zipBuffer, {
+        filter: (entry) => entry.name === entryName,
+      })[entryName];
+    }
+    let files = UNZIP_CACHE.get(zipBuffer);
+    if (!files) {
+      files = unzipSync(zipBuffer);
+      UNZIP_CACHE.set(zipBuffer, files);
+    }
+    return files[entryName];
   }
 
   /**
@@ -214,8 +309,7 @@ export class ZipResourceFetcher2 {
    */
   listZipEntries(zipBuffer: Uint8Array): string[] {
     try {
-      const files = this.unzipCached(zipBuffer);
-      return Object.keys(files);
+      return [...this.directoryOf(zipBuffer).names];
     } catch {
       // Fallback: walk local file headers
       return this._listViaLocalHeaders(zipBuffer);
@@ -315,8 +409,7 @@ export class ZipResourceFetcher2 {
 
     const kvHit = await this.readFileKv(zipUrl, normalizedPath);
     if (kvHit !== undefined && kvHit !== null) {
-      evictIfNeeded(TEXT_PROCESS_CACHE, PROCESS_CACHE_MAX_TEXTS);
-      TEXT_PROCESS_CACHE.set(memKey, kvHit);
+      cacheText(memKey, kvHit);
       this.lastCacheSource = "kv";
       return kvHit;
     }
@@ -352,8 +445,7 @@ export class ZipResourceFetcher2 {
     if (!zipUrl.startsWith("buf:")) {
       const kvHit = await this.readFileKv(zipUrl, filePath.replace(/^\//, ""));
       if (kvHit !== undefined && kvHit !== null) {
-        evictIfNeeded(TEXT_PROCESS_CACHE, PROCESS_CACHE_MAX_TEXTS);
-        TEXT_PROCESS_CACHE.set(cacheKey, kvHit);
+        cacheText(cacheKey, kvHit);
         this.lastCacheSource = "kv";
         return kvHit;
       }
@@ -362,26 +454,19 @@ export class ZipResourceFetcher2 {
     const normalizedPath = filePath.replace(/^\//, "");
 
     try {
-      // Use cached unzip — handles Go/streaming zips, inflate once per buffer
-      const files = this.unzipCached(zipBuffer);
-
-      // Try exact match first, then trailing-segment match
-      let matchedData: Uint8Array | undefined;
-      for (const entryName of Object.keys(files)) {
-        if (
-          entryName === normalizedPath ||
-          entryName.endsWith("/" + normalizedPath) ||
-          entryName === normalizedPath.replace(/^.*?\//, "")
-        ) {
-          matchedData = files[entryName];
-          break;
-        }
-      }
+      // fflate reads the central directory, so Go/streaming zips work. The
+      // first entry that matches is the file; only what is needed is inflated.
+      const entryName = this.directoryOf(zipBuffer).names.find((name) =>
+        entryMatches(name, normalizedPath),
+      );
+      const matchedData =
+        entryName === undefined
+          ? undefined
+          : this.inflateEntry(zipBuffer, entryName);
 
       if (matchedData !== undefined) {
         const text = new TextDecoder().decode(matchedData);
-        evictIfNeeded(TEXT_PROCESS_CACHE, PROCESS_CACHE_MAX_TEXTS);
-        TEXT_PROCESS_CACHE.set(cacheKey, text);
+        cacheText(cacheKey, text);
         if (!zipUrl.startsWith("buf:")) {
           this.persistFileKv(zipUrl, normalizedPath, text);
         }
@@ -393,8 +478,7 @@ export class ZipResourceFetcher2 {
     }
 
     // Cache the miss
-    evictIfNeeded(TEXT_PROCESS_CACHE, PROCESS_CACHE_MAX_TEXTS);
-    TEXT_PROCESS_CACHE.set(cacheKey, "");
+    cacheText(cacheKey, "");
     return null;
   }
 
@@ -426,12 +510,7 @@ export class ZipResourceFetcher2 {
 
       const dataOffset = offset + 30 + fileNameLen + extraLen;
 
-      const entryMatches =
-        entryName === normalizedPath ||
-        entryName.endsWith("/" + normalizedPath) ||
-        entryName === normalizedPath.replace(/^.*?\//, "");
-
-      if (entryMatches) {
+      if (entryMatches(entryName, normalizedPath)) {
         const compressed = zipBuffer.slice(
           dataOffset,
           dataOffset + compressedSize,
@@ -468,8 +547,7 @@ export class ZipResourceFetcher2 {
           );
         }
 
-        evictIfNeeded(TEXT_PROCESS_CACHE, PROCESS_CACHE_MAX_TEXTS);
-        TEXT_PROCESS_CACHE.set(cacheKey, text);
+        cacheText(cacheKey, text);
         const sep = cacheKey.indexOf("::");
         if (sep > 0 && !cacheKey.startsWith("buf:")) {
           this.persistFileKv(
@@ -484,8 +562,7 @@ export class ZipResourceFetcher2 {
       offset = dataOffset + compressedSize;
     }
 
-    evictIfNeeded(TEXT_PROCESS_CACHE, PROCESS_CACHE_MAX_TEXTS);
-    TEXT_PROCESS_CACHE.set(cacheKey, "");
+    cacheText(cacheKey, "");
     return null;
   }
 }
