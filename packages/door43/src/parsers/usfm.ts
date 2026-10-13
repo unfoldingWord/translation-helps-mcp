@@ -80,24 +80,24 @@ export function extractVerses(
   const start = parseInt(verseStart, 10);
   const end = verseEnd ? parseInt(verseEnd, 10) : start;
 
-  const lines = chapterText.split("\n");
-  const out: string[] = [];
-  let inRange = false;
+  // A verse runs from its marker to the next verse's. The marker need not
+  // start its line: poetry is written "\q1 \v 4 …", and then the markers that
+  // open the line belong to the verse. A bridge ("\v 13-14") is both verses.
+  const markers = [...chapterText.matchAll(/\\v\s+(\d+)(?:-(\d+))?/g)];
+  const startOf = markers.map((marker) => {
+    const at = marker.index ?? 0;
+    const lineStart = chapterText.lastIndexOf("\n", at) + 1;
+    const lead = chapterText.slice(lineStart, at);
+    return /^(?:\\[a-z]+\d*\s*)*$/.test(lead) ? lineStart : at;
+  });
 
-  for (const line of lines) {
-    const vMatch = line.match(/^\\v\s+(\d+)/);
-    if (vMatch) {
-      const vNum = parseInt(vMatch[1], 10);
-      if (vNum >= start && vNum <= end) {
-        inRange = true;
-      } else if (vNum > end) {
-        break;
-      } else {
-        inRange = false;
-      }
-    }
-    if (inRange) out.push(line);
-  }
+  const out: string[] = [];
+  markers.forEach((marker, i) => {
+    const first = parseInt(marker[1], 10);
+    const last = marker[2] ? parseInt(marker[2], 10) : first;
+    if (first > end || last < start) return;
+    out.push(chapterText.slice(startOf[i], startOf[i + 1]).trimEnd());
+  });
 
   const extracted = out.join("\n").trim();
   if (!extracted) return null;
