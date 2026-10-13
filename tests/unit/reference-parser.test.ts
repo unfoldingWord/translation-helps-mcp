@@ -134,3 +134,86 @@ describe("parseReference (existing behaviour)", () => {
     expect(ref.isValid).toBe(false);
   });
 });
+
+describe("one-chapter books", () => {
+  it("reads a bare number as a verse of chapter 1", () => {
+    const cases: [string, string, string][] = [
+      ["Obadiah 4", "OBA", "4"],
+      ["Philemon 6", "PHM", "6"],
+      ["2 John 5", "2JN", "5"],
+      ["3 John 15", "3JN", "15"],
+      ["Jude 3", "JUD", "3"],
+    ];
+    for (const [reference, book, verse] of cases) {
+      const result = parseReferenceForTool(reference);
+      expect(result, reference).toEqual({
+        book,
+        chapter: "1",
+        verseStart: verse,
+        verseEnd: undefined,
+      });
+    }
+  });
+
+  it("reads a bare range as verses of chapter 1, not as chapters", () => {
+    const result = parseReferenceForTool("Jude 3-5");
+    expect(result).toEqual({
+      book: "JUD",
+      chapter: "1",
+      verseStart: "3",
+      verseEnd: "5",
+    });
+    expect(parseReferenceForTool("Philemon 1-7")).toEqual({
+      book: "PHM",
+      chapter: "1",
+      verseStart: "1",
+      verseEnd: "7",
+    });
+  });
+
+  it("accepts the codes, abbreviations and Spanish names of those books", () => {
+    for (const reference of ["JUD 3", "jud 3", "Judas 3"]) {
+      const result = parseReferenceForTool(reference);
+      expect(result?.book, reference).toBe("JUD");
+      expect(result?.chapter, reference).toBe("1");
+      expect(result?.verseStart, reference).toBe("3");
+    }
+    expect(parseReferenceForTool("3JN 15")?.verseStart).toBe("15");
+    expect(parseReferenceForTool("Filemon 6")?.verseStart).toBe("6");
+    expect(parseReferenceForTool("Abdias 4")?.verseStart).toBe("4");
+  });
+
+  it("keeps 'Jude 1' as the whole chapter", () => {
+    const result = parseReferenceForTool("Jude 1");
+    expect(result?.chapter).toBe("1");
+    expect(result?.verseStart).toBeUndefined();
+  });
+
+  it("leaves a reference that names its chapter as written", () => {
+    expect(parseReferenceForTool("Jude 1:3")).toEqual({
+      book: "JUD",
+      chapter: "1",
+      verseStart: "3",
+      verseEnd: undefined,
+    });
+    // A chapter that does not exist is the caller's mistake to report, not ours to guess at.
+    expect(parseReferenceForTool("Jude 2:3")?.chapter).toBe("2");
+  });
+
+  it("does not touch books with more than one chapter", () => {
+    const john = parseReferenceForTool("John 3");
+    expect(john?.chapter).toBe("3");
+    expect(john?.verseStart).toBeUndefined();
+    // 1 John has five chapters; only 2 John and 3 John have one.
+    expect(parseReferenceForTool("1 John 3")?.chapter).toBe("3");
+    expect(parseReferenceForTool("Genesis 1-3")?.endChapter).toBe("3");
+  });
+
+  it("gives parseReference callers the same reading", () => {
+    const ref = parseReference("Jude 3-5");
+    expect(ref.chapter).toBe(1);
+    expect(ref.verse).toBe(3);
+    expect(ref.endVerse).toBe(5);
+    expect(ref.endChapter).toBeUndefined();
+  });
+});

@@ -49,10 +49,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Install web deps
-        run: npm ci
-        working-directory: web
-
+      # No `npm ci` inside web here. The root install already covers the web
+      # workspace, and installing again from web replaces the root
+      # node_modules with the web workspace's own dependencies only, which
+      # removes `agents`: the web type check reaches src/mcp/agent.ts and
+      # could then not resolve `agents/mcp`.
       - name: Check web types
         run: npx svelte-check --tsconfig ./tsconfig.json
         working-directory: web

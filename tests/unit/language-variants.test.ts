@@ -221,8 +221,8 @@ describe("resolveCatalogLanguage", () => {
       subject: "Aligned Bible",
     });
     // Should not call listLanguages since es-419 already has a hyphen
-    const languageListCalls = fetchSpy.mock.calls.filter(([url]: [string]) =>
-      url.includes("list/languages"),
+    const languageListCalls = fetchSpy.mock.calls.filter((call) =>
+      String(call[0]).includes("list/languages"),
     );
     expect(languageListCalls).toHaveLength(0);
     expect(language).toBe("es-419");

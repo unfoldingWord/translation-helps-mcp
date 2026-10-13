@@ -14,6 +14,10 @@
  *   cd web && npm run dev
  */
 
+// A module of its own: with no import or export TypeScript treats this file as a
+// global script, and its `main` collides with the one in the other script.
+export {};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
