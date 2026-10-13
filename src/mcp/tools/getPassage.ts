@@ -10,6 +10,9 @@
  *   - `literal`    word-for-word form (e.g. ULT/GLT)
  *   - `simplified` meaning-based (e.g. UST/GST)
  *   - `original`   Hebrew/Greek source (UHB/UGNT) — always included
+ *   - `other`      another version of the language, standing in when the
+ *                  literal or the simplified one does not have the book;
+ *                  `versionsNote` then says which was replaced
  *
  * For book/chapter background + what resources exist, call `get_passage_context`.
  */
@@ -56,15 +59,17 @@ const outputSchema = withNotAvailableOutput({
       }),
     )
     .optional(),
+  versionsNote: z.string().optional(),
   meta: metaOutputSchema,
 });
 
 export const getPassageTool: ToolModule<typeof inputSchema> = {
   name: "get_passage",
   description:
-    "STEP 1a (orient — text): Fetch the scripture TEXT for a passage — ALL available versions in one call. " +
+    "STEP 1a (orient — text): Fetch the scripture TEXT for a passage — the literal, the simplified and the original version in one call. " +
     "Returns `versions[]`, each labeled by `role`: `literal` (word-for-word, e.g. ULT), " +
     "`simplified` (meaning-based, e.g. UST), and `original` (Hebrew/Greek source, always included). " +
+    "When the literal or the simplified version does not have the book yet, another version of the language stands in with `role:other` and `versionsNote` says which was replaced: tell the reader. " +
     "Use `role:literal` to translate form and `role:simplified` to translate meaning; compare against `role:original` for the source wording. " +
     'Optional `format`: "text" (default) or "usfm" for raw markup. ' +
     "Call this FIRST when studying or translating a passage — it also warms the server cache for all subsequent steps. " +
@@ -86,6 +91,7 @@ export const getPassageTool: ToolModule<typeof inputSchema> = {
       chapter?: string;
       verse?: string | null;
       versions: ScriptureVersion[];
+      versionsNote?: string;
       meta?: { cache?: string; timings?: Record<string, number> };
     }>("/api/v1/scripture", { reference, language, format });
 
@@ -110,6 +116,7 @@ export const getPassageTool: ToolModule<typeof inputSchema> = {
         chapter: data.chapter,
         verse: data.verse ?? null,
         versions,
+        ...(data.versionsNote ? { versionsNote: data.versionsNote } : {}),
         ...(cache || data.meta?.timings
           ? {
               meta: {
@@ -120,7 +127,8 @@ export const getPassageTool: ToolModule<typeof inputSchema> = {
           : {}),
       },
       mapApiCacheStatus(cache),
-      `${versions.length} scripture version(s) for ${reference}${cache ? ` [${cache}]` : ""}`,
+      `${versions.length} scripture version(s) for ${reference}${cache ? ` [${cache}]` : ""}` +
+        (data.versionsNote ? `. ${data.versionsNote}` : ""),
     );
   },
 };

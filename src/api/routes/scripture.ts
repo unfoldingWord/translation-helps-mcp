@@ -21,7 +21,10 @@ import type {
   ScriptureVersion,
   ScriptureVersionRole,
 } from "@translation-helps/door43";
-import { resolveScriptureVersionRole } from "@translation-helps/door43";
+import {
+  ingredientCoversBook,
+  resolveScriptureVersionRole,
+} from "@translation-helps/door43";
 import type { ZipCacheSource } from "@translation-helps/door43";
 import {
   coalesceInFlight,
@@ -143,10 +146,15 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
       };
     }
 
-    // Cap fan-out: one literal + one simplified (prefer unfoldingWord), unless ?all=1
+    // Cap fan-out: one literal + one simplified (prefer unfoldingWord), unless
+    // ?all=1. Either way a version whose catalog entry says it lacks the book
+    // is not fetched.
     const cappedEntries = includeAll
-      ? entries
-      : pickPrimaryScriptureEntries(entries);
+      ? entries.filter((e) => hasBook(e, book))
+      : pickPrimaryScriptureEntries(entries, book);
+    const versionsNote = includeAll
+      ? null
+      : describeStandIns(entries, cappedEntries, book, language);
 
     const allEntries = [
       ...cappedEntries.map((e) => ({ entry: e, isOriginal: false })),
@@ -222,6 +230,7 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
       verse: verseStr ?? null,
       format,
       versions,
+      ...(versionsNote ? { versionsNote } : {}),
     };
     putCachedJson(env.TRANSLATION_HELPS_CACHE, cacheKey, payload, execCtx);
     return {
@@ -287,45 +296,86 @@ export function missingPassageMessage(args: {
   return `"${reference}" has no text in any scripture resource for "${language}", though ${book} ${chapter} exists there.`;
 }
 
-/**
- * Prefer one literal (ULT/GLT) + one simplified (UST/GST), unfoldingWord first.
- * Falls back to first remaining "other" Bible if a role is missing.
- */
-function pickPrimaryScriptureEntries(entries: CatalogEntry[]): CatalogEntry[] {
-  const scored = entries.map((entry) => {
-    const abbrev = (
-      entry.abbreviation ?? entry.repo.replace(/^[a-z]+_/, "")
-    ).toLowerCase();
-    const role = resolveScriptureVersionRole(abbrev);
-    const uwBonus = entry.owner === "unfoldingWord" ? 0 : 1;
-    return { entry, abbrev, role, uwBonus };
-  });
+/** How many gateway-language versions a request gets unless it asks for all. */
+const PRIMARY_VERSIONS = 2;
 
-  const pickRole = (role: ScriptureVersionRole): CatalogEntry | undefined => {
-    const matches = scored
-      .filter((s) => s.role === role)
-      .sort((a, b) => a.uwBonus - b.uwBonus);
-    return matches[0]?.entry;
-  };
+function abbrevOf(entry: CatalogEntry): string {
+  return (
+    entry.abbreviation ?? entry.repo.replace(/^[a-z]+_/, "")
+  ).toLowerCase();
+}
+
+/**
+ * Whether a version can have the book. One whose catalog entry lists its
+ * books and leaves this one out cannot (the published ULT has no Isaiah yet);
+ * one that lists no books is given the benefit of the doubt.
+ */
+function hasBook(entry: CatalogEntry, book: string): boolean {
+  return ingredientCoversBook(entry.ingredients, book) !== false;
+}
+
+/**
+ * One literal (ULT/GLT) and one simplified (UST/GST), unfoldingWord first.
+ * With `book`, only versions that have the book are considered, and a place
+ * left empty goes to another version that has it, so a book the literal or
+ * the simplified version lacks still comes back in the reader's language.
+ */
+export function pickPrimaryScriptureEntries(
+  entries: CatalogEntry[],
+  book?: string,
+): CatalogEntry[] {
+  const scored = entries
+    .filter((entry) => book === undefined || hasBook(entry, book))
+    .map((entry) => ({
+      entry,
+      role: resolveScriptureVersionRole(abbrevOf(entry)),
+      uwBonus: entry.owner === "unfoldingWord" ? 0 : 1,
+    }))
+    // Stable: unfoldingWord's first, the catalog's order within each group.
+    .sort((a, b) => a.uwBonus - b.uwBonus);
 
   const picked: CatalogEntry[] = [];
-  const literal = pickRole("literal");
-  const simplified = pickRole("simplified");
-  if (literal) picked.push(literal);
-  if (simplified) picked.push(simplified);
-
-  // If either role is missing, include the best remaining entry so the caller
-  // still gets at least one gateway translation.
-  if (picked.length === 0 && scored.length > 0) {
-    const best = [...scored].sort((a, b) => a.uwBonus - b.uwBonus)[0];
-    picked.push(best.entry);
-  } else if (picked.length === 1 && scored.length > 1) {
-    const used = new Set(picked);
-    const fallback = scored.find((s) => !used.has(s.entry));
-    if (fallback) picked.push(fallback.entry);
+  for (const role of ["literal", "simplified"] as const) {
+    const match = scored.find((s) => s.role === role);
+    if (match) picked.push(match.entry);
   }
-
+  for (const { entry } of scored) {
+    if (picked.length >= PRIMARY_VERSIONS) break;
+    if (!picked.includes(entry)) picked.push(entry);
+  }
   return picked;
+}
+
+/**
+ * Says so when the versions a caller would expect do not have the book:
+ * which ones, and what was given in their place, if anything. Null when the
+ * usual literal and simplified versions were used.
+ */
+export function describeStandIns(
+  entries: CatalogEntry[],
+  picked: CatalogEntry[],
+  book: string,
+  language: string,
+): string | null {
+  const label = (entry: CatalogEntry) => {
+    const abbrev = abbrevOf(entry);
+    const role = resolveScriptureVersionRole(abbrev);
+    return role === "other"
+      ? abbrev.toUpperCase()
+      : `${abbrev.toUpperCase()} (${role})`;
+  };
+  const list = (group: CatalogEntry[]) => group.map(label).join(" and ");
+
+  // What the caller would get if every version had every book.
+  const usual = pickPrimaryScriptureEntries(entries);
+  const lacking = usual.filter((entry) => !picked.includes(entry));
+  if (lacking.length === 0) return null;
+
+  const verb = lacking.length === 1 ? "does" : "do";
+  const standIns = picked.filter((entry) => !usual.includes(entry));
+  return standIns.length > 0
+    ? `The ${list(lacking)} ${verb} not include ${book} yet; the ${list(standIns)} ${standIns.length === 1 ? "is" : "are"} given in ${lacking.length === 1 ? "its" : "their"} place.`
+    : `The ${list(lacking)} ${verb} not include ${book} yet, and no other "${language}" version has it.`;
 }
 
 function aggregateZipSources(

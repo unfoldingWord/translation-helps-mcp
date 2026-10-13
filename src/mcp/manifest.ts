@@ -122,6 +122,7 @@ export const TOOL_DOC_META: Record<string, ToolDocMeta> = {
     },
     responseNotes: [
       '`role` is typically "literal" | "simplified" | "original".',
+      'When the literal or the simplified version does not have the book yet, another version of the language stands in with `role: "other"`, and `versionsNote` says which was replaced and by what.',
       "Also warms caches for later workflow steps (notes / word-links / questions).",
       "Missing scripture for language/book → RESOURCE_NOT_AVAILABLE soft-fail (isError:false), not a hard error.",
     ],
