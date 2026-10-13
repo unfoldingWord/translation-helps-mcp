@@ -338,12 +338,31 @@ export function parseReference(referenceString: string): ParsedReference {
 
   // Return the result or default
   return (
-    result || {
+    (result && asOneChapterBook(result)) || {
       book: normalizedInput,
       originalText,
       isValid: Boolean(cleaned),
     }
   );
+}
+
+/** Books that are a single chapter long, by USFM code. */
+const ONE_CHAPTER_BOOKS = new Set(["OBA", "PHM", "2JN", "3JN", "JUD"]);
+
+/**
+ * In a one-chapter book a number without a colon is a verse: "Jude 3" is
+ * Jude 1:3 and "Jude 3-5" is Jude 1:3-5, because no chapter 3 exists to be
+ * meant. "Jude 1" stays the whole chapter, which is the whole book.
+ */
+function asOneChapterBook(ref: ParsedReference): ParsedReference {
+  if (ref.chapter === undefined || ref.verse !== undefined) return ref;
+  if (!ONE_CHAPTER_BOOKS.has(bookNameToUsfm(ref.book))) return ref;
+
+  const { endChapter, ...rest } = ref;
+  if (endChapter !== undefined) {
+    return { ...rest, chapter: 1, verse: ref.chapter, endVerse: endChapter };
+  }
+  return ref.chapter > 1 ? { ...rest, chapter: 1, verse: ref.chapter } : ref;
 }
 
 /**
