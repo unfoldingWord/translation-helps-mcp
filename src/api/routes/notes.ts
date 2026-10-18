@@ -32,6 +32,7 @@ import {
   putCachedJson,
   responseCacheKey,
 } from "./responseCache.js";
+import { notesFromViews, packViewsOf } from "./packViews.js";
 
 export async function handleNotes(ctx: RouteContext): Promise<Response> {
   const { url, env, execCtx } = ctx;
@@ -49,7 +50,32 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
     book,
     chapter,
     verseStart,
+    verseEnd,
   } = ref;
+
+  // The language packs' views first: the notes with their words already found, in a few KB.
+  const views = packViewsOf(env);
+  if (views) {
+    const fromPack = await notesFromViews(views, {
+      language: requestedLanguage,
+      book,
+      chapter,
+      verseStart,
+      verseEnd,
+    });
+    if (fromPack) {
+      return json({
+        reference,
+        language: fromPack.language,
+        book,
+        chapter,
+        verse: verseStart ?? null,
+        notes: fromPack.notes,
+        sources: fromPack.sources,
+        meta: { cache: "pack" },
+      });
+    }
+  }
 
   const cacheKey = responseCacheKey(
     "notes",

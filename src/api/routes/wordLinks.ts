@@ -31,6 +31,7 @@ import {
   putCachedJson,
   responseCacheKey,
 } from "./responseCache.js";
+import { packViewsOf, wordLinksFromViews } from "./packViews.js";
 
 export async function handleWordLinks(ctx: RouteContext): Promise<Response> {
   const { url, env, execCtx } = ctx;
@@ -48,7 +49,32 @@ export async function handleWordLinks(ctx: RouteContext): Promise<Response> {
     book,
     chapter,
     verseStart,
+    verseEnd,
   } = ref;
+
+  // The language packs' views first: the links with their words already found, in a few KB.
+  const views = packViewsOf(env);
+  if (views) {
+    const fromPack = await wordLinksFromViews(views, {
+      language: requestedLanguage,
+      book,
+      chapter,
+      verseStart,
+      verseEnd,
+    });
+    if (fromPack) {
+      return json({
+        reference,
+        language: fromPack.language,
+        book,
+        chapter,
+        verse: verseStart ?? null,
+        wordLinks: fromPack.wordLinks,
+        sources: fromPack.sources,
+        meta: { cache: "pack" },
+      });
+    }
+  }
 
   const cacheKey = responseCacheKey(
     "word-links",
