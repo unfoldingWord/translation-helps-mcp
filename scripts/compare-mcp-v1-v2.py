@@ -17,6 +17,7 @@ Tool name mapping (v1 ≠ v2 surface):
   get_note                → fetch_translation_notes / get_note
   get_questions           → fetch_translation_questions / get_questions
   get_word_article        → fetch_translation_word / get_word_article
+  get_word_links          → fetch_translation_word_links / get_passage_index (words)
   search_articles         → (v2-only) / search_articles
   get_obs_story           → fetch_obs / get_obs_story
   get_obs_notes           → fetch_obs_translation_notes / get_obs_notes
@@ -26,6 +27,7 @@ Usage:
   py -3.11 scripts/compare-mcp-v1-v2.py
   py -3.11 scripts/compare-mcp-v1-v2.py --out .scratch-mcp-compare
   py -3.11 scripts/compare-mcp-v1-v2.py --fail-on-diverge
+  py -3.11 scripts/compare-mcp-v1-v2.py --matrix parity --workers 4
   npm run compare:mcp
 
 Exit codes:
@@ -41,9 +43,11 @@ import hashlib
 import json
 import re
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -89,7 +93,10 @@ def parse_mcp_body(raw: bytes) -> dict[str, Any]:
 
 
 class McpClient:
-    def __init__(self, endpoint: str, label: str, timeout: float = 120.0):
+    def __init__(
+        self, endpoint: str, label: str, timeout: float = 120.0, verbose: bool = True
+    ):
+        self.verbose = verbose
         self.endpoint = endpoint
         self.label = label
         self.timeout = timeout
@@ -97,6 +104,8 @@ class McpClient:
         self._id = 0
         self.server_info: dict[str, Any] = {}
         self.tool_names: set[str] = set()
+        self.last_size: int = 0
+        self.rate_limited: int = 0
 
     def _next_id(self) -> int:
         self._id += 1
@@ -108,6 +117,22 @@ class McpClient:
         params: dict[str, Any] | None = None,
         *,
         notification: bool = False,
+    ) -> tuple[dict[str, Any], float, int]:
+        """POST one JSON-RPC message, waiting out up to three HTTP 429s (v2 allows 90/min)."""
+        for attempt in range(4):
+            parsed, elapsed, status = self._request_once(method, params, notification)
+            if status != 429 or attempt == 3:
+                break
+            self.rate_limited += 1
+            wait = re.search(r"Retry after (\d+)s", json.dumps(parsed))
+            time.sleep(int(wait.group(1)) + 1 if wait else 5)
+        return parsed, elapsed, status
+
+    def _request_once(
+        self,
+        method: str,
+        params: dict[str, Any] | None,
+        notification: bool,
     ) -> tuple[dict[str, Any], float, int]:
         payload: dict[str, Any] = {"jsonrpc": "2.0", "method": method}
         if not notification:
@@ -128,6 +153,7 @@ class McpClient:
             self.endpoint, data=data, headers=headers, method="POST"
         )
         t0 = time.perf_counter()
+        self.last_size = 0
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 status = int(resp.status)
@@ -135,9 +161,11 @@ class McpClient:
                 if sid:
                     self.session_id = sid
                 body = resp.read()
+                self.last_size = len(body)
         except urllib.error.HTTPError as e:
             elapsed = (time.perf_counter() - t0) * 1000
             body = e.read() or b""
+            self.last_size = len(body)
             try:
                 parsed = parse_mcp_body(body) if body else {"error": {"message": str(e)}}
             except Exception:
@@ -178,6 +206,8 @@ class McpClient:
             self.request("notifications/initialized", {}, notification=True)
         except Exception:
             pass
+        if not self.verbose:
+            return
         print(
             f"[{self.label}] initialized "
             f"{self.server_info.get('name')}@{self.server_info.get('version')} "
@@ -194,7 +224,8 @@ class McpClient:
         tools = (parsed.get("result") or {}).get("tools") or []
         names = [t.get("name") for t in tools if isinstance(t, dict) and t.get("name")]
         self.tool_names = set(names)
-        print(f"[{self.label}] tools/list -> {len(names)} tools ({elapsed:.0f}ms)")
+        if self.verbose:
+            print(f"[{self.label}] tools/list -> {len(names)} tools ({elapsed:.0f}ms)")
         return names
 
     def call_tool(
@@ -413,7 +444,7 @@ def passage_sample(data: dict[str, Any]) -> tuple[int, list[str], str]:
 
 
 def note_count(data: dict[str, Any]) -> int:
-    for key in ("notes", "items", "translationNotes"):
+    for key in ("notes", "verseNotes", "items", "translationNotes"):
         val = data.get(key)
         if isinstance(val, list):
             # Prefer verse-level when tagged
@@ -431,6 +462,18 @@ def note_count(data: dict[str, Any]) -> int:
         for k in ("notes", "items", "total"):
             if isinstance(counts.get(k), int):
                 return int(counts[k])
+    return 0
+
+
+def term_count(data: dict[str, Any]) -> int:
+    """Translation Words links: v1 `items` (word links TSV) vs v2 `words` (passage index)."""
+    for key in ("words", "items", "links"):
+        val = data.get(key)
+        if isinstance(val, list):
+            return len(val)
+    counts = data.get("counts")
+    if isinstance(counts, dict) and isinstance(counts.get("linksFound"), int):
+        return int(counts["linksFound"])
     return 0
 
 
@@ -555,6 +598,8 @@ def fingerprint(logical: str, data: Any, err: str | None) -> dict[str, Any]:
             fp["intro_count"] = len(intros) if intros else n
     elif logical == "get_questions":
         fp["question_count"] = question_count(data)
+    elif logical == "get_word_links":
+        fp["term_count"] = term_count(data)
     elif logical == "get_word_article":
         fp.update(article_fingerprint(data))
     elif logical == "search_articles":
@@ -591,6 +636,7 @@ def summarize_fp(fp: dict[str, Any]) -> str:
         "note_count",
         "intro_count",
         "question_count",
+        "term_count",
         "result_count",
         "frame_count",
         "body_len",
@@ -623,7 +669,7 @@ def compare_fps(a: dict[str, Any] | None, b: dict[str, Any] | None) -> str:
         err_side = b if a_ok else a
         empty_counts = [
             empty.get(k)
-            for k in ("note_count", "question_count", "intro_count", "result_count", "frame_count", "version_count", "body_len")
+            for k in ("note_count", "question_count", "term_count", "intro_count", "result_count", "frame_count", "version_count", "body_len")
             if k in empty
         ]
         if empty_counts and all(v == 0 or v is None for v in empty_counts):
@@ -663,7 +709,8 @@ def compare_fps(a: dict[str, Any] | None, b: dict[str, Any] | None) -> str:
         return "diverge"
 
     # Resources: compare shared core helps abbreviations, ignore extras (OBS/original).
-    if "types" in a and "types" in b:
+    # get_note/get_passage_context also carry `types` (often empty); only list_resources has type_count.
+    if "type_count" in a and "type_count" in b:
         core = {
             "ult",
             "ust",
@@ -730,6 +777,7 @@ def compare_fps(a: dict[str, Any] | None, b: dict[str, Any] | None) -> str:
     soft_keys = {
         "note_count",
         "question_count",
+        "term_count",
         "intro_count",
         "result_count",
         "body_len",
@@ -929,6 +977,112 @@ def build_cases() -> list[Case]:
     return cases
 
 
+# References that have broken v2 before: one-chapter books (#59), poetry (#61),
+# books the ULT/UST release lacks (#64), and a range across chapters.
+PARITY_REFS = (
+    "JHN 3:16",
+    "TIT 1:1",
+    "PSA 23",
+    "ISA 53:5",
+    "JUD 3",
+    "3JN 15",
+    "RUT 1:16",
+    "MAT 5:13-16",
+    "LUK 23:50-24:12",
+)
+PARITY_LANGS = ("en", "es-419", "pt-br", "fr", "hi", "bn", "ar", "sw", "id")
+PARITY_OBS = ("1", "3:5", "50")
+
+
+def build_parity_cases() -> list[Case]:
+    """The v1→v2 cut-over matrix (translation-helps-mcp #67)."""
+    cases: list[Case] = []
+    for lang in PARITY_LANGS:
+        cases.append(
+            Case(
+                id=f"list_resources:{lang}",
+                logical="list_resources",
+                params={"language": lang},
+                v1=SideCall("list_resources_for_language", {"language": lang}),
+                v2=SideCall("list_resources", {"language": lang}),
+            )
+        )
+        for ref in PARITY_REFS:
+            p = {"language": lang, "reference": ref}
+            cases.extend(
+                [
+                    Case(
+                        id=f"get_passage:{lang}:{ref}",
+                        logical="get_passage",
+                        params=p,
+                        v1=SideCall("fetch_scripture", {**p, "format": "json"}),
+                        v2=SideCall("get_passage", p),
+                    ),
+                    Case(
+                        id=f"get_note:{lang}:{ref}",
+                        logical="get_note",
+                        params=p,
+                        v1=SideCall(
+                            "fetch_translation_notes",
+                            {**p, "format": "json", "includeIntro": False},
+                        ),
+                        v2=SideCall("get_note", p),
+                    ),
+                    Case(
+                        id=f"get_questions:{lang}:{ref}",
+                        logical="get_questions",
+                        params=p,
+                        v1=SideCall("fetch_translation_questions", {**p, "format": "json"}),
+                        v2=SideCall("get_questions", p),
+                    ),
+                    Case(
+                        id=f"get_word_links:{lang}:{ref}",
+                        logical="get_word_links",
+                        params=p,
+                        v1=SideCall("fetch_translation_word_links", {**p, "format": "json"}),
+                        v2=SideCall("get_passage_index", p),
+                    ),
+                ]
+            )
+        for ref in PARITY_OBS:
+            p = {"language": lang, "reference": ref}
+            story = ref.split(":")[0]
+            cases.extend(
+                [
+                    Case(
+                        id=f"get_obs_story:{lang}:{ref}",
+                        logical="get_obs_story",
+                        params=p,
+                        v1=SideCall("fetch_obs", p),
+                        v2=SideCall("get_obs_story", p),
+                    ),
+                    Case(
+                        id=f"get_obs_notes:{lang}:{ref}",
+                        logical="get_obs_notes",
+                        params=p,
+                        v1=SideCall("fetch_obs_translation_notes", p),
+                        v2=SideCall("get_obs_notes", p),
+                    ),
+                    Case(
+                        id=f"get_obs_questions:{lang}:{story}",
+                        logical="get_obs_questions",
+                        params={"language": lang, "reference": story},
+                        v1=SideCall(
+                            "fetch_obs_translation_questions",
+                            {"language": lang, "reference": story},
+                        ),
+                        v2=SideCall(
+                            "get_obs_questions", {"language": lang, "reference": story}
+                        ),
+                    ),
+                ]
+            )
+    return cases
+
+
+MATRICES = {"default": build_cases, "parity": build_parity_cases}
+
+
 # ---------------------------------------------------------------------------
 # Run + report
 # ---------------------------------------------------------------------------
@@ -940,6 +1094,7 @@ class SideResult:
     args: dict[str, Any]
     http_status: int | None = None
     latency_ms: float | None = None
+    size_bytes: int | None = None
     transport_ok: bool = False
     error: str | None = None
     summary: str = ""
@@ -1000,6 +1155,7 @@ def run_side(
         args=call.args,
         http_status=status,
         latency_ms=round(elapsed, 1),
+        size_bytes=client.last_size,
         transport_ok=transport_ok,
         error=err,
         summary=summary,
@@ -1009,6 +1165,67 @@ def run_side(
 
 def side_to_dict(s: SideResult) -> dict[str, Any]:
     return asdict(s)
+
+
+def fmt_ms(s: SideResult) -> str:
+    return "-" if s.skipped or s.latency_ms is None else f"{s.latency_ms:.0f}"
+
+
+def fmt_kb(s: SideResult) -> str:
+    return "-" if s.skipped or s.size_bytes is None else f"{s.size_bytes / 1024:.1f}"
+
+
+def median(vals: list[float]) -> float | None:
+    vals = sorted(vals)
+    if not vals:
+        return None
+    mid = len(vals) // 2
+    return vals[mid] if len(vals) % 2 else (vals[mid - 1] + vals[mid]) / 2
+
+
+CONTENT_KEYS = ("type_count", "version_count", "note_count", "question_count", "term_count", "frame_count", "result_count", "body_len")
+
+
+def has_content(s: SideResult) -> bool:
+    """Answered without error and returned something: an empty success is not content."""
+    fp = s.fingerprint
+    if s.skipped or not fp or not fp.get("ok"):
+        return False
+    return any(isinstance(fp.get(k), int) and fp[k] > 0 for k in CONTENT_KEYS)
+
+
+def by_logical_table(results: list[CaseResult]) -> list[str]:
+    """One row per tool: verdicts, how often each side answered, median latency and size."""
+    groups: dict[str, list[CaseResult]] = {}
+    for r in results:
+        groups.setdefault(r.logical, []).append(r)
+
+    def med(rs: list[CaseResult], side: str, attr: str, scale: float = 1.0) -> str:
+        vals = [
+            getattr(getattr(r, side), attr) / scale
+            for r in rs
+            if not getattr(r, side).skipped and getattr(getattr(r, side), attr) is not None
+        ]
+        m = median(vals)
+        return "-" if m is None else (f"{m:.0f}" if scale == 1.0 else f"{m:.1f}")
+
+    out = [
+        "## By tool",
+        "",
+        "| Logical | Cases | match | diverge | other | content v1 | content v2 | median ms v1 / v2 | median KB v1 / v2 |",
+        "|---------|------:|------:|--------:|------:|------:|------:|------------------:|------------------:|",
+    ]
+    for logical, rs in groups.items():
+        match = sum(r.verdict == "match" for r in rs)
+        diverge = sum(r.verdict == "diverge" for r in rs)
+        out.append(
+            f"| `{logical}` | {len(rs)} | {match} | {diverge} | {len(rs) - match - diverge} "
+            f"| {sum(has_content(r.v1) for r in rs)} | {sum(has_content(r.v2) for r in rs)} "
+            f"| {med(rs, 'v1', 'latency_ms')} / {med(rs, 'v2', 'latency_ms')} "
+            f"| {med(rs, 'v1', 'size_bytes', 1024)} / {med(rs, 'v2', 'size_bytes', 1024)} |"
+        )
+    out.append("")
+    return out
 
 
 def write_reports(
@@ -1055,15 +1272,17 @@ def write_reports(
         + ", ".join(f"**{k}**={v}" for k, v in sorted(counts.items()))
     )
     lines.append("")
+    lines.extend(by_logical_table(results))
     lines.append("## Summary table")
     lines.append("")
-    lines.append("| Case | Logical | Verdict | v1 | v2 |")
-    lines.append("|------|---------|---------|----|----|")
+    lines.append("| Case | Verdict | v1 | v2 | ms v1 / v2 | KB v1 / v2 |")
+    lines.append("|------|---------|----|----|-----------:|-----------:|")
     for r in results:
         v1s = r.v1.summary.replace("|", "\\|")
         v2s = r.v2.summary.replace("|", "\\|")
         lines.append(
-            f"| `{r.id}` | `{r.logical}` | **{r.verdict}** | {v1s} | {v2s} |"
+            f"| `{r.id}` | **{r.verdict}** | {v1s} | {v2s} "
+            f"| {fmt_ms(r.v1)} / {fmt_ms(r.v2)} | {fmt_kb(r.v1)} / {fmt_kb(r.v2)} |"
         )
 
     divergences = [r for r in results if r.verdict in {"diverge", "both-error"}]
@@ -1078,10 +1297,10 @@ def write_reports(
             lines.append("")
             lines.append(f"- Params: `{json.dumps(r.params, ensure_ascii=False)}`")
             lines.append(
-                f"- v1 `{r.v1.tool}` ({r.v1.latency_ms}ms): {r.v1.summary}"
+                f"- v1 `{r.v1.tool}` ({fmt_ms(r.v1)} ms, {fmt_kb(r.v1)} KB): {r.v1.summary}"
             )
             lines.append(
-                f"- v2 `{r.v2.tool}` ({r.v2.latency_ms}ms): {r.v2.summary}"
+                f"- v2 `{r.v2.tool}` ({fmt_ms(r.v2)} ms, {fmt_kb(r.v2)} KB): {r.v2.summary}"
             )
             lines.append("")
 
@@ -1175,6 +1394,18 @@ def main(argv: list[str] | None = None) -> int:
         help="Optional max cases (0 = all)",
     )
     parser.add_argument(
+        "--matrix",
+        choices=sorted(MATRICES),
+        default="default",
+        help="Case set: default (en/es/hi smoke) or parity (the #67 cut-over matrix)",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="Cases run in parallel, each worker with its own v1/v2 sessions (default 1)",
+    )
+    parser.add_argument(
         "--recompare",
         metavar="JSON",
         help="Re-score an existing compare-report.json without live calls",
@@ -1213,53 +1444,43 @@ def main(argv: list[str] | None = None) -> int:
     if transport_failed:
         return 1
 
-    cases = build_cases()
+    cases = MATRICES[args.matrix]()
     if args.limit and args.limit > 0:
         cases = cases[: args.limit]
 
+    # One session pair per thread: the clients keep a session id and request counter.
+    local = threading.local()
+
+    def clients() -> tuple[McpClient, McpClient]:
+        if not hasattr(local, "pair"):
+            a = McpClient(v1_url, "v1", verbose=False)
+            b = McpClient(v2_url, "v2", verbose=False)
+            for c in (a, b):
+                c.initialize()
+                c.list_tools()
+            local.pair = (a, b)
+        return local.pair
+
+    def evaluate(case: Case) -> CaseResult:
+        c1, c2 = (v1, v2) if args.workers <= 1 else clients()
+        return judge(case, run_side(c1, case.v1, case.logical), run_side(c2, case.v2, case.logical))
+
     results: list[CaseResult] = []
-    for i, case in enumerate(cases, 1):
-        print(f"\n[{i}/{len(cases)}] {case.id}")
-        s1 = run_side(v1, case.v1, case.logical)
-        s2 = run_side(v2, case.v2, case.logical)
-
-        if not s1.transport_ok and not s1.skipped:
-            print(f"  v1 TRANSPORT FAIL status={s1.http_status} {s1.error}")
-            transport_failed = True
-        if not s2.transport_ok and not s2.skipped:
-            print(f"  v2 TRANSPORT FAIL status={s2.http_status} {s2.error}")
-            transport_failed = True
-
-        if s1.skipped and not s2.skipped:
-            verdict = "v2-only"
-            fp1, fp2 = None, s2.fingerprint
-        elif s2.skipped and not s1.skipped:
-            verdict = "v1-only"
-            fp1, fp2 = s1.fingerprint, None
-        elif s1.skipped and s2.skipped:
-            verdict = "both-error"
-            fp1 = fp2 = None
-        else:
-            fp1, fp2 = s1.fingerprint, s2.fingerprint
-            verdict = compare_fps(fp1, fp2)
-
-        print(f"  v1: {s1.summary}")
-        print(f"  v2: {s2.summary}")
-        print(f"  -> {verdict}")
-
-        results.append(
-            CaseResult(
-                id=case.id,
-                logical=case.logical,
-                params=case.params,
-                v1=s1,
-                v2=s2,
-                verdict=verdict,
-            )
-        )
+    with ThreadPoolExecutor(max_workers=max(1, args.workers)) as pool:
+        for i, r in enumerate(pool.map(evaluate, cases), 1):
+            print(f"\n[{i}/{len(cases)}] {r.id}")
+            for label, s in (("v1", r.v1), ("v2", r.v2)):
+                if not s.transport_ok and not s.skipped:
+                    print(f"  {label} TRANSPORT FAIL status={s.http_status} {s.error}")
+                    transport_failed = True
+            print(f"  v1: {r.v1.summary}")
+            print(f"  v2: {r.v2.summary}")
+            print(f"  -> {r.verdict}")
+            results.append(r)
 
     meta = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "matrix": args.matrix,
         "v1_url": v1_url,
         "v2_url": v2_url,
         "v1_server": f"{v1.server_info.get('name')}@{v1.server_info.get('version')}",
@@ -1283,6 +1504,25 @@ def main(argv: list[str] | None = None) -> int:
     ):
         return 2
     return 0
+
+
+def judge(case: Case, s1: SideResult, s2: SideResult) -> CaseResult:
+    if s1.skipped and not s2.skipped:
+        verdict = "v2-only"
+    elif s2.skipped and not s1.skipped:
+        verdict = "v1-only"
+    elif s1.skipped and s2.skipped:
+        verdict = "both-error"
+    else:
+        verdict = compare_fps(s1.fingerprint, s2.fingerprint)
+    return CaseResult(
+        id=case.id,
+        logical=case.logical,
+        params=case.params,
+        v1=s1,
+        v2=s2,
+        verdict=verdict,
+    )
 
 
 if __name__ == "__main__":
