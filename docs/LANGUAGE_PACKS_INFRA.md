@@ -1,6 +1,6 @@
 # Language packs: infrastructure checklist
 
-Nothing here is created yet. Do the steps in order, one at a time. Each step needs Abel's yes before anyone runs it.
+Step 1 is done; nothing after it exists yet. Do the steps in order, one at a time. Each step needs Abel's yes before anyone runs it.
 Staging first (steps 2–8 with the staging names), then production (step 9). Step 1 creates both buckets at once.
 
 Account: unfoldingWord, `5a3ffd86280d3ed086be76d955829242`.
@@ -9,16 +9,16 @@ Deploys come only from the `v2` branch. v1 (`main`, Pages) is not touched.
 **Merge order.** Every v2 deploy binds both buckets (`wrangler.toml` and `wrangler.api.toml` name
 `language-packs-staging` and `language-packs`), and a deploy fails while a bound bucket does not exist. So: step 1
 first, then merge `feat/language-packs` (already PR #69) into `v2`, then this branch (`feat/language-packs-serving`).
-Neither merges before step 1 is done.
+Neither merges before step 1 is done (it is, as of 2026-10-21).
 
 ## 1. R2 buckets
 
-- [ ] Creates: `language-packs-staging` **and** `language-packs`, both now.
+- [x] Creates: `language-packs-staging` **and** `language-packs`, both now. Done 2026-10-21 (Standard storage class).
 - How: from the repo root (the `account_id` is in the wrangler files, so wrangler picks the right account):
   - `npx wrangler r2 bucket create language-packs-staging`
   - `npx wrangler r2 bucket create language-packs`
 - Verify: `npx wrangler r2 bucket list` shows both buckets.
-- Approved by Abel: ☐
+- Approved by Abel: ☑ 2026-10-21
 
 ## 2. R2 API token
 
