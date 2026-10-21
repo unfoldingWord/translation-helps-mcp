@@ -11,6 +11,8 @@
  *     stale-while-revalidate freshness.
  */
 
+import type { WaitUntilHost } from "../platform.js";
+
 const GITEA_API = "https://git.door43.org/api/v1";
 const GITEA_BASE = "https://git.door43.org";
 
@@ -58,8 +60,29 @@ function parseCatalogCache<T>(raw: string): { data: T; stale: boolean } | null {
   }
 }
 
-/** In-process cache for catalog search results (survives across tool invocations). */
-const CATALOG_PROCESS_CACHE = new Map<string, CatalogEntry[]>();
+/**
+ * In-process cache for catalog search results (survives across tool invocations). Expires after an hour so a
+ * long-lived isolate still sees new Door43 releases, which the packs freshness check depends on.
+ */
+const CATALOG_PROCESS_CACHE = new Map<
+  string,
+  { at: number; entries: CatalogEntry[] }
+>();
+const CATALOG_PROCESS_TTL_MS = 3600 * 1000;
+
+function processCacheGet(key: string): CatalogEntry[] | undefined {
+  const hit = CATALOG_PROCESS_CACHE.get(key);
+  if (!hit) return undefined;
+  if (Date.now() - hit.at > CATALOG_PROCESS_TTL_MS) {
+    CATALOG_PROCESS_CACHE.delete(key);
+    return undefined;
+  }
+  return hit.entries;
+}
+
+function processCacheSet(key: string, entries: CatalogEntry[]): void {
+  CATALOG_PROCESS_CACHE.set(key, { at: Date.now(), entries });
+}
 
 /** Clear the process-level catalog cache. Used in tests to prevent cross-test pollution. */
 export function clearCatalogProcessCache(): void {
@@ -198,6 +221,10 @@ export interface CatalogEntry {
     preprod?: { branch_or_tag_name?: string; zipball_url?: string };
     latest?: { branch_or_tag_name?: string; zipball_url?: string };
   };
+  /** The row's language code, e.g. `es-419`. */
+  language?: string;
+  /** The release's identity in bt-synergy's `resourceContentStamp` format: `tag#published_at`. */
+  stamp?: string;
 }
 
 export interface LanguageEntry {
@@ -226,6 +253,8 @@ interface CatalogApiEntry {
   stage?: string;
   branch_or_tag_name?: string;
   zipball_url?: string;
+  released?: string;
+  release?: { tag_name?: string; published_at?: string };
   ingredients?: Array<{
     identifier?: string;
     path?: string;
@@ -308,14 +337,23 @@ async function kvPut(
   }
 }
 
-/** Fire-and-forget KV write — never blocks the response critical path. */
+/**
+ * Fire-and-forget KV write — never blocks the response critical path. With a context the write is handed to
+ * `waitUntil`, since a Worker may cancel a bare promise once its response is sent.
+ */
 function kvPutBackground(
   kv: CatalogKVCache | null | undefined,
   key: string,
   value: string,
   ttlSeconds = CATALOG_CACHE_TTL_S,
+  ctx?: WaitUntilHost,
 ): void {
-  void kvPut(kv, key, value, ttlSeconds);
+  background(kvPut(kv, key, value, ttlSeconds), ctx);
+}
+
+function background(work: Promise<void>, ctx?: WaitUntilHost): void {
+  if (ctx) ctx.waitUntil(work);
+  else void work;
 }
 
 // ---------------------------------------------------------------------------
@@ -331,6 +369,8 @@ export interface CatalogSearchOptions {
   stage?: "prod" | "preprod" | "latest";
   /** Pass false only in exceptional cases (tests). Default true = tc-ready applied. */
   kv?: CatalogKVCache | null;
+  /** Keeps background KV writes and refreshes alive after the response (a Worker's ExecutionContext). */
+  ctx?: WaitUntilHost;
 }
 
 /**
@@ -353,7 +393,7 @@ export async function catalogSearch(
   const cacheKey = `catalog:search:${url}`;
 
   // L0: in-process cache
-  const processHit = CATALOG_PROCESS_CACHE.get(cacheKey);
+  const processHit = processCacheGet(cacheKey);
   if (processHit) return processHit;
 
   // L1: KV cache (stale-while-revalidate)
@@ -361,21 +401,22 @@ export async function catalogSearch(
   if (cached) {
     const parsed = parseCatalogCache<CatalogEntry[]>(cached);
     if (parsed) {
-      CATALOG_PROCESS_CACHE.set(cacheKey, parsed.data);
+      processCacheSet(cacheKey, parsed.data);
       if (parsed.stale) {
-        void refreshCatalogSearch(url, cacheKey, opts.kv);
+        background(refreshCatalogSearch(url, cacheKey, opts.kv, opts.ctx), opts.ctx);
       }
       return parsed.data;
     }
   }
 
-  return fetchAndStoreCatalogSearch(url, cacheKey, opts.kv);
+  return fetchAndStoreCatalogSearch(url, cacheKey, opts.kv, opts.ctx);
 }
 
 async function fetchAndStoreCatalogSearch(
   url: string,
   cacheKey: string,
   kv: CatalogKVCache | null | undefined,
+  ctx?: WaitUntilHost,
 ): Promise<CatalogEntry[]> {
   let resp: CatalogSearchResponse;
   try {
@@ -390,8 +431,8 @@ async function fetchAndStoreCatalogSearch(
   }
 
   const entries = (resp.data ?? []).map(mapApiEntry);
-  CATALOG_PROCESS_CACHE.set(cacheKey, entries);
-  kvPutBackground(kv, cacheKey, wrapCatalogCache(entries));
+  processCacheSet(cacheKey, entries);
+  kvPutBackground(kv, cacheKey, wrapCatalogCache(entries), undefined, ctx);
   return entries;
 }
 
@@ -399,12 +440,36 @@ async function refreshCatalogSearch(
   url: string,
   cacheKey: string,
   kv: CatalogKVCache | null | undefined,
+  ctx?: WaitUntilHost,
 ): Promise<void> {
   try {
-    await fetchAndStoreCatalogSearch(url, cacheKey, kv);
+    await fetchAndStoreCatalogSearch(url, cacheKey, kv, ctx);
   } catch {
     // Background refresh — ignore failures
   }
+}
+
+function sanitizeStampPart(value: string): string {
+  return value.replace(/[:|@]/g, "_");
+}
+
+/**
+ * bt-synergy's `resourceContentStamp` for a catalog hit, whose release is the hit's `release` and whose version is
+ * its tag: packs record their sources this way, so the freshness check can compare the two as strings.
+ */
+function catalogStamp(raw: {
+  release?: { tag_name?: string; published_at?: string };
+  branch_or_tag_name?: string;
+}): string {
+  const tag =
+    raw.release?.tag_name?.trim() || raw.branch_or_tag_name?.trim() || "";
+  const published = raw.release?.published_at?.trim() || "";
+  if (tag && published) {
+    return `${sanitizeStampPart(tag)}#${sanitizeStampPart(published)}`;
+  }
+  if (tag) return sanitizeStampPart(tag);
+  if (published) return sanitizeStampPart(published);
+  return "nostamp";
 }
 
 /** Map a raw CatalogApiEntry to our CatalogEntry shape. */
@@ -430,6 +495,8 @@ function mapApiEntry(raw: CatalogApiEntry): CatalogEntry {
           }
         : undefined,
     },
+    language: raw.language,
+    stamp: catalogStamp(raw),
   };
 }
 

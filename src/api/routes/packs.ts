@@ -27,6 +27,10 @@ import {
   type BuildEnv,
   type BuildOutcome,
 } from "../../packs/dispatch.js";
+import {
+  checkFreshness,
+  type PackCatalogEntry,
+} from "../../packs/freshness.js";
 import { VARIANTS } from "./packViews.js";
 
 export type PacksEnv = {
@@ -43,6 +47,7 @@ export type Eligibility = "yes" | "no" | "unknown";
 export type PacksDeps = {
   isEligible: (language: string, env: PacksEnv) => Promise<Eligibility>;
   requestBuild: typeof requestBuild;
+  checkFreshness: typeof checkFreshness;
 };
 
 type Outcome =
@@ -336,7 +341,21 @@ async function respond(
   }
 
   const served = await serve(request, bucket, target);
-  if (served) return served;
+  if (served) {
+    if (target.route === "entry" && request.method === "GET") {
+      // After the answer: the phone gets the entry it has now, and a newer pack is built for its next visit.
+      ctx.waitUntil(
+        deps.checkFreshness({
+          env,
+          ctx,
+          compat: target.compat,
+          language: target.lang,
+          entry: () => readEntry(bucket, target.key),
+        }),
+      );
+    }
+    return served;
+  }
   if (target.route === "pack") {
     return plain(404, "missing", { error: "pack not found" });
   }
@@ -420,7 +439,21 @@ export async function isEligibleLanguage(
   }
 }
 
-const DEFAULT_DEPS: PacksDeps = { isEligible: isEligibleLanguage, requestBuild };
+/** Read again rather than taken from the answer: a 304 has no body, and a 200's body is streamed to the phone. */
+async function readEntry(
+  bucket: R2Bucket,
+  key: string,
+): Promise<PackCatalogEntry | null> {
+  const object = await bucket.get(key);
+  if (!object) return null;
+  return (await new Response(object.body).json()) as PackCatalogEntry;
+}
+
+const DEFAULT_DEPS: PacksDeps = {
+  isEligible: isEligibleLanguage,
+  requestBuild,
+  checkFreshness,
+};
 
 /** `path` is what follows `/v2/packs/`, still percent-encoded. */
 export async function handlePacks(

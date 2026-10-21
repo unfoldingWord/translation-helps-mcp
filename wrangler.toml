@@ -62,6 +62,11 @@ vars = { NODE_ENV = "production", BASE_PATH = "/v2", API_BASE_URL = "https://tra
 #   worker:  translation-helps-mcp-v2
 # Until then, use workers.dev: https://translation-helps-mcp-v2.unfoldingword.workers.dev/v2/
 
+# Daily pack builds of es-419 and en (src/packs/freshness.ts runDailyBuilds). Production only: staging builds are
+# asked for by hand.
+[env.production.triggers]
+crons = ["17 6 * * *"]
+
 [[env.production.kv_namespaces]]
 binding = "TRANSLATION_HELPS_CACHE"
 id = "a0b2bcf08829441e932230cb06cb5e07"

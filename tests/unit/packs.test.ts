@@ -133,6 +133,8 @@ function setup(
   const pending: Promise<unknown>[] = [];
   const builds: Array<{ compat: string; language: string; reason: string }> =
     [];
+  const checks: Array<{ compat: string; language: string; entry: unknown }> =
+    [];
   const env: PacksEnv = {
     LANGUAGE_PACKS: bucket,
     TRANSLATION_HELPS_CACHE: {} as KVNamespace,
@@ -157,6 +159,10 @@ function setup(
       builds.push({ compat: o.compat, language: o.language, reason: o.reason });
       return opts.build ?? "dispatched";
     },
+    checkFreshness: async (o) => {
+      const entry = typeof o.entry === "function" ? await o.entry() : o.entry;
+      checks.push({ compat: o.compat, language: o.language, entry });
+    },
   };
   async function call(path: string, init: RequestInit = {}) {
     const request = new Request(`https://tc-helps.example/v2/packs/${path}`, {
@@ -167,7 +173,7 @@ function setup(
     await Promise.all(pending);
     return res;
   }
-  return { call, points, builds, gets };
+  return { call, points, builds, gets, checks };
 }
 
 beforeEach(() => {
@@ -314,6 +320,33 @@ describe("GET /v2/packs/<compat>/<lang> (the entry)", () => {
     expect(res.status).toBe(404);
     expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(builds).toEqual([]);
+  });
+});
+
+describe("the freshness check", () => {
+  it("runs after an entry is served, with the entry the bucket holds", async () => {
+    const { call, checks } = setup();
+    await call(`${COMPAT}/es`);
+    expect(checks).toEqual([{ compat: COMPAT, language: "es-419", entry: ENTRY }]);
+  });
+
+  it("runs after an entry's 304 too, which is how phones ask", async () => {
+    const { call, checks } = setup();
+    const res = await call(`${COMPAT}/es-419`, {
+      headers: { "If-None-Match": '"e1"' },
+    });
+    expect(res.status).toBe(304);
+    expect(checks).toEqual([{ compat: COMPAT, language: "es-419", entry: ENTRY }]);
+  });
+
+  it("does not run for a pack, a HEAD, or a language with no entry", async () => {
+    const { call, checks } = setup({ objects: {} });
+    await call(`${COMPAT}/es-419`);
+    const full = setup();
+    await full.call(`${COMPAT}/es-419/${SHA}`);
+    await full.call(`${COMPAT}/es-419`, { method: "HEAD" });
+    expect(checks).toEqual([]);
+    expect(full.checks).toEqual([]);
   });
 });
 
