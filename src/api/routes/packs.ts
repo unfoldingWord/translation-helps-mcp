@@ -387,7 +387,8 @@ async function respond(
     });
   }
   // Awaited: this runs only until the language's first build is asked for, and the phone should learn whether one
-  // is coming at all.
+  // is coming at all. The lowercase code, not Door43's spelling: the workflow keys catalog/, packs/ and status/ by
+  // the code it is given, and this route reads them lowercased (Door43's catalog search ignores case).
   const build = await deps.requestBuild({
     env,
     compat: target.compat,

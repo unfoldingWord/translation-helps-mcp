@@ -36,7 +36,7 @@ dataset = "translation_helps_metrics"
 
 [env.production]
 name = "translation-helps-api-v2"
-vars = { NODE_ENV = "production", PACKS_TARGET = "production" }
+vars = { NODE_ENV = "production" }
 
 [[env.production.kv_namespaces]]
 binding = "TRANSLATION_HELPS_CACHE"
@@ -55,7 +55,7 @@ binding = "ANALYTICS"
 dataset = "translation_helps_metrics"
 
 [env.preview]
-vars = { NODE_ENV = "development", PACKS_TARGET = "staging" }
+vars = { NODE_ENV = "development" }
 
 [[env.preview.kv_namespaces]]
 binding = "TRANSLATION_HELPS_CACHE"

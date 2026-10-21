@@ -541,6 +541,14 @@ describe("analytics", () => {
     },
   );
 
+  it("asks for the build under the lowercase code it keys the bucket by, whatever case the phone used", async () => {
+    // tc-study writes catalog/, packs/ and status/ under the code it is dispatched with, and this route reads
+    // them lowercased: a code in Door43's case would build where nothing ever reads.
+    const { call, builds } = setup({ eligible: ["pt-br"] });
+    await call(`${COMPAT}/PT-BR`);
+    expect(builds).toEqual([{ compat: COMPAT, language: "pt-br", reason: "missing" }]);
+  });
+
   it("writes one point for a 202 preparing", async () => {
     const { call, points } = setup({ eligible: ["fr"] });
     await call(`${COMPAT}/fr`);
@@ -577,6 +585,12 @@ describe("isEligibleLanguage (the default check)", () => {
   it("reads the resource id from the repo name when the abbreviation is missing", async () => {
     catalog.languages = [{ code: "pt-br", name: "Português" }];
     catalog.bibles = { "pt-br": [{ name: "pt-br_blt" }] };
+    expect(await isEligibleLanguage("pt-br", env)).toBe("yes");
+  });
+
+  it("finds a language Door43 lists in another case (its catalog search ignores case too)", async () => {
+    catalog.languages = [{ code: "PT-BR", name: "Português" }];
+    catalog.bibles = { "PT-BR": [{ name: "pt-br_blt", abbreviation: "blt" }] };
     expect(await isEligibleLanguage("pt-br", env)).toBe("yes");
   });
 
