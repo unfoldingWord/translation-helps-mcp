@@ -307,8 +307,14 @@ Not code. A checklist in `docs/LANGUAGE_PACKS_INFRA.md` (this repo), done in ord
 
 ### Task 7 (MCP + infra, Abel confirms): staging end to end, then production
 
+Only v2 consumes packs. v1 (branch `main`, the Pages app BT Servant uses in production) is not changed: it is to be
+retired in favour of v2. Every deploy below is of the v2 Workers, from a checkout of the **`v2` branch**
+(`scripts/deploy-v2-production.sh`, or `wrangler deploy --config wrangler.api.toml --env <env>` then
+`--config wrangler.toml --env <env>`), never from `main`. Here "production" is the v2 Workers' production env (the one
+BT Servant's staging talks to); "preview" is the v2 Workers' preview env.
+
 - [ ] **Staging:**
-  1. Deploy `translation-helps-mcp-v2` and `translation-helps-api-v2` with `--env preview`.
+  1. Deploy `translation-helps-mcp-v2` and `translation-helps-api-v2` with `--env preview`, from `v2`.
   2. Dispatch the workflow with `target: staging` for es-419.
   3. Check that `GET https://translation-helps-mcp-v2-preview.<subdomain>.workers.dev/v2/packs/<compat>/es-419`
      returns the entry.
@@ -322,7 +328,7 @@ Not code. A checklist in `docs/LANGUAGE_PACKS_INFRA.md` (this repo), done in ord
      status, `ETag` and `Access-Control-*` headers, the second time too (served from Pages' cache).
 - [ ] **Production, each step confirmed by Abel:**
   1. Items 1–5 of Task 3 for production.
-  2. Deploy both Workers `--env production`.
+  2. Deploy both Workers `--env production`, from `v2`.
   3. Dispatch es-419 and en.
   4. Start the backfill: a script `scripts/packs-backfill.ts` that lists eligible languages and dispatches at most 20
      a day through `requestBuild` (run by hand daily, or from the cron after es-419/en).
@@ -330,7 +336,7 @@ Not code. A checklist in `docs/LANGUAGE_PACKS_INFRA.md` (this repo), done in ord
 
 ---
 
-**Deviation from the spec, for Abel to confirm:** the spec put the workflow in the MCP repository. A workflow can
+**Deviation from the spec, confirmed by Abel (2026-10-21):** the spec put the workflow in the MCP repository. A workflow can
 only be dispatched from its repository's default branch. The MCP's default branch is `main`, while this work lives
 on `v2`. The generator lives in tc-study (default `master`). Keeping the workflow next to the generator avoids a
 cross-repo checkout, and `--generator` becomes `github.sha` exactly. The Worker dispatches it with a GitHub App
