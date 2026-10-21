@@ -56,7 +56,7 @@ Engine, cron triggers), Vitest 3 (MCP repo), bun test (tc-study).
 - **Eligible language:** listed by `listLanguages` (tc-ready, prod), and its catalog search has an `Aligned Bible`
   whose resource id ends in `lt`.
 - **Dispatch guard:**
-  - no dispatch while `status` is `running` and less than 3 h old;
+  - no dispatch while `status` is `running` and less than 5.5 h old (the workflow job times out at 300 min);
   - none for 24 h after `failed`;
   - none when `failures >= 3` (until reset by hand);
   - at most 20 dispatches a day (soft, KV counter);
@@ -92,8 +92,8 @@ Engine, cron triggers), Vitest 3 (MCP repo), bun test (tc-study).
    an entry names.
 2. **Range requests past the end, or `If-None-Match` with a stale etag:** 416 or 200 respectively, never a 500.
    Task 4 tests both.
-3. **The workflow crashes before writing `failed`:** `status` stays `running`. The 3-hour rule lets the next request
-   dispatch again. Task 5 tests a 4-hour-old `running`.
+3. **The workflow crashes before writing `failed`:** `status` stays `running`. The 5.5-hour rule lets the next request
+   dispatch again. Task 5 tests a 5-hour-old `running` (held) and a 6-hour-old one (dispatched).
 4. **Door43 is down during the freshness check:** no dispatch, the existing entry is served. Task 6 tests a catalog
    search that throws.
 5. **A language code in a different case or a variant** (`es` → `es-419`, `ES-419`): normalized with the existing
