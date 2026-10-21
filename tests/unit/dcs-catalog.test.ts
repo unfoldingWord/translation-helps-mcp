@@ -613,6 +613,19 @@ describe("catalogSearch stamps each row like bt-synergy's resourceContentStamp",
   });
 });
 
+describe("catalogSearch limit", () => {
+  it("adds limit only when a caller asks for it", async () => {
+    mockFetch({ "catalog/search": { ok: true, data: [] } });
+    await catalogSearch({ lang: "es-419", limit: 500 });
+    await catalogSearch({ lang: "en" });
+    const urls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.map(
+      (c) => c[0] as string,
+    );
+    expect(urls[0]).toContain("limit=500");
+    expect(urls[1]).not.toContain("limit=");
+  });
+});
+
 describe("the isolate's catalog cache", () => {
   afterEach(() => {
     vi.useRealTimers();

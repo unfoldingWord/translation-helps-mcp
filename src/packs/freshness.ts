@@ -40,6 +40,10 @@ type Search = (
 ) => Promise<CatalogEntry[]>;
 
 const CHECK_TTL_S = 3600;
+/** bt-synergy's SEARCH_LIMIT (resource-pipeline discover/readCatalogSearch.ts), so both see the same rows. */
+const SEARCH_LIMIT = 500;
+/** Lexicons are stamped in a build as sha10#commitDate, never a catalog tag#published, so they would always differ. */
+const NOT_CATALOG_STAMPED = new Set(["uhl", "ugl"]);
 export const DAILY_LANGUAGES = ["es-419", "en"] as const;
 
 /** Only keys both maps have count: a source the catalog no longer lists says nothing about the pack's age. */
@@ -63,13 +67,19 @@ export function currentStamps(
     const id = row.name.includes("_")
       ? row.name.split("_").slice(1).join("_")
       : row.name;
+    if (NOT_CATALOG_STAMPED.has(id)) continue;
     stamps[`${row.owner}/${row.language || language}/${id}`] = row.stamp;
   }
   return stamps;
 }
 
 const defaultSearch: Search = (language, env, ctx) =>
-  catalogSearch({ lang: language, kv: env.TRANSLATION_HELPS_CACHE, ctx });
+  catalogSearch({
+    lang: language,
+    kv: env.TRANSLATION_HELPS_CACHE,
+    ctx,
+    limit: SEARCH_LIMIT,
+  });
 
 /**
  * Never throws: it runs in `waitUntil` after the entry has been served. The hour is claimed before Door43 is asked,
@@ -89,6 +99,8 @@ export async function checkFreshness(o: {
   const { env, compat, language } = o;
   const now = o.now ?? new Date();
   const kv = env.TRANSLATION_HELPS_CACHE;
+  // Only the current compat can be rebuilt (see CURRENT_PACK_COMPAT).
+  if (compat !== CURRENT_PACK_COMPAT) return;
   const key = `packs:fresh:${compat}:${language}`;
   try {
     // KV is eventually consistent, so two isolates may both check within the hour; that only costs a search.
@@ -114,7 +126,7 @@ export async function checkFreshness(o: {
     if (build === "dispatched") {
       env.ANALYTICS?.writeDataPoint({
         indexes: ["pack"],
-        blobs: ["pack", "entry", language, "stale-dispatched"],
+        blobs: ["pack", "freshness", language, "stale-dispatched"],
         doubles: [0],
       });
     }

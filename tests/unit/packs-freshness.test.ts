@@ -4,7 +4,7 @@
  * rebuilt every day by the cron, which refreshes the originals and lexicons the hourly check never looks at.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { CatalogEntry } from "@translation-helps/door43";
 import {
   checkFreshness,
@@ -16,7 +16,20 @@ import {
 } from "../../src/packs/freshness";
 import { CURRENT_PACK_COMPAT, type BuildOutcome } from "../../src/packs/dispatch";
 
+// Only the default search reads the catalog; the other tests inject their own.
+const door43 = vi.hoisted(() => ({
+  searches: [] as Array<{ lang?: string; limit?: number }>,
+}));
+vi.mock("@translation-helps/door43", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  catalogSearch: async (o: { lang?: string; limit?: number }) => {
+    door43.searches.push({ lang: o.lang, limit: o.limit });
+    return [];
+  },
+}));
+
 const COMPAT = "f1.1-u2.3.0-p6000230-q8-a11-t1";
+const OLD_COMPAT = "f1.1-u2.3.0-p6000229-q8-a11-t1";
 const NOW = new Date("2026-10-21T10:00:00Z");
 const MINUTE = 60_000;
 
@@ -82,6 +95,9 @@ describe("currentStamps", () => {
           row("es-419_tw", "v5#2026-01-01T00_00_00Z", "es-419_obt"),
           { ...row("es-419_tn", "nostamp") },
           { owner: "es-419_gl", repo: "es-419_tq", name: "es-419_tq", ingredients: [] },
+          // Lexicon stamps in a build are sha10#commitDate, never a catalog tag#published.
+          row("es-419_uhl", "v1#2026-01-01T00_00_00Z"),
+          row("es-419_ugl", "v1#2026-01-01T00_00_00Z"),
         ],
         "es-419",
       ),
@@ -141,9 +157,22 @@ function setup(opts: { rows?: CatalogEntry[]; searchThrows?: boolean } = {}) {
       return "dispatched";
     },
   };
-  const check = (now = NOW, e: PackCatalogEntry | (() => Promise<PackCatalogEntry | null>) = entry(BUILT)) =>
-    checkFreshness({ env, ctx, compat: COMPAT, language: "es-419", entry: e, now, ...deps });
-  return { check, values, puts, searches, builds, points, pending };
+  const check = (
+    now = NOW,
+    e: PackCatalogEntry | (() => Promise<PackCatalogEntry | null>) = entry(BUILT),
+    compat = COMPAT,
+  ) => checkFreshness({ env, ctx, compat, language: "es-419", entry: e, now, ...deps });
+  const checkWithDefaultSearch = () =>
+    checkFreshness({
+      env,
+      ctx,
+      compat: COMPAT,
+      language: "es-419",
+      entry: entry(BUILT),
+      now: NOW,
+      requestBuild: deps.requestBuild,
+    });
+  return { check, checkWithDefaultSearch, values, puts, searches, builds, points, pending };
 }
 
 describe("checkFreshness", () => {
@@ -153,7 +182,7 @@ describe("checkFreshness", () => {
     expect(s.searches).toEqual(["es-419"]);
     expect(s.builds).toEqual([{ compat: COMPAT, language: "es-419", reason: "stale" }]);
     expect(s.points.map((p) => p.blobs)).toEqual([
-      ["pack", "entry", "es-419", "stale-dispatched"],
+      ["pack", "freshness", "es-419", "stale-dispatched"],
     ]);
   });
 
@@ -181,6 +210,21 @@ describe("checkFreshness", () => {
     const s = setup({ searchThrows: true });
     await expect(s.check()).resolves.toBeUndefined();
     expect(s.builds).toEqual([]);
+  });
+
+  it("does nothing for an old compat: no throttle, no search, no build (the workflow cannot build it)", async () => {
+    const s = setup({ rows: [row("es-419_glt", "v43#2026-10-20T09_00_00Z")] });
+    await s.check(NOW, entry(BUILT), OLD_COMPAT);
+    expect(s.puts).toEqual([]);
+    expect(s.searches).toEqual([]);
+    expect(s.builds).toEqual([]);
+  });
+
+  it("asks the catalog for as many rows as bt-synergy's discovery does", async () => {
+    door43.searches.length = 0;
+    const s = setup();
+    await s.checkWithDefaultSearch();
+    expect(door43.searches).toEqual([{ lang: "es-419", limit: 500 }]);
   });
 
   it("reads the entry only once the hour allows a check (a 304 carries no body)", async () => {

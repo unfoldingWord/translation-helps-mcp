@@ -22,6 +22,7 @@ import {
 import { enforceRateLimit } from "../../core/rateLimit.js";
 import {
   COMPAT_RE,
+  CURRENT_PACK_COMPAT,
   LANGUAGE_RE,
   requestBuild,
   type BuildEnv,
@@ -58,6 +59,7 @@ type Outcome =
   | `unavailable-${BuildOutcome}`
   | "eligibility-unknown"
   | "not-eligible"
+  | "old-compat"
   | "unsatisfiable"
   | "bad-request"
   | "preflight"
@@ -376,6 +378,13 @@ async function respond(
   }
   if (eligible === "no") {
     return plain(404, "not-eligible", { error: "no packs for this language" });
+  }
+  // The workflow only builds the current compat; asking for an older one would loop. The app must update.
+  if (target.compat !== CURRENT_PACK_COMPAT) {
+    return plain(404, "old-compat", {
+      state: "unavailable",
+      reason: "old-compat",
+    });
   }
   // Awaited: this runs only until the language's first build is asked for, and the phone should learn whether one
   // is coming at all.

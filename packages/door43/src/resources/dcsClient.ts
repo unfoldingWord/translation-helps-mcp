@@ -253,7 +253,6 @@ interface CatalogApiEntry {
   stage?: string;
   branch_or_tag_name?: string;
   zipball_url?: string;
-  released?: string;
   release?: { tag_name?: string; published_at?: string };
   ingredients?: Array<{
     identifier?: string;
@@ -367,6 +366,8 @@ export interface CatalogSearchOptions {
   abbreviation?: string;
   owner?: string;
   stage?: "prod" | "preprod" | "latest";
+  /** Rows per page; Door43's default applies when omitted. */
+  limit?: number;
   /** Pass false only in exceptional cases (tests). Default true = tc-ready applied. */
   kv?: CatalogKVCache | null;
   /** Keeps background KV writes and refreshes alive after the response (a Worker's ExecutionContext). */
@@ -388,6 +389,7 @@ export async function catalogSearch(
   if (opts.abbreviation) extra.abbreviation = opts.abbreviation;
   if (opts.owner) extra.owner = opts.owner;
   if (opts.stage) extra.stage = opts.stage;
+  if (opts.limit !== undefined) extra.limit = String(opts.limit);
 
   const url = buildCatalogUrl("catalog/search", extra);
   const cacheKey = `catalog:search:${url}`;

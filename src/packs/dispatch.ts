@@ -53,9 +53,13 @@ export const LANGUAGE_RE = /^[a-z]{2,3}(-[A-Za-z0-9]{1,8})*$/;
 export const COMPAT_RE = /^f\d+\.\d+-u[\w.]+-p\d+-q\d+-a\d+-t\d+$/;
 
 /**
- * The compatibility folder the workflow builds into today; the daily cron asks for builds under it. Must equal
- * tc-study's `compatKeyOf(PACK_FORMAT_VERSION, PACK_VERSIONS)` (bt-synergy, packages/language-pack), and changes
- * whenever that does.
+ * The compatibility folder the workflow builds into today, and the only one that may ask for a build: the workflow
+ * builds whatever compat its own code computes, so a build asked for any other compat would never land and would be
+ * asked for again every time the running guard expired, using up the daily cap.
+ *
+ * Must equal tc-study's `compatKeyOf(PACK_FORMAT_VERSION, PACK_VERSIONS)` (bt-synergy, packages/language-pack).
+ * After a bump in tc-study, change it here and redeploy v2; until then, phones on the old compat keep the packs they
+ * have and nothing loops.
  */
 export const CURRENT_PACK_COMPAT = "f1.1-u2.3.0-p6000230-q8-a11-t1";
 

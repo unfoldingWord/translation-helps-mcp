@@ -33,6 +33,8 @@ vi.mock("@translation-helps/door43", async (importOriginal) => ({
 }));
 
 const COMPAT = "f1.1-u2.3.0-p6000230-q8-a11-t1";
+/** A compat older phones still ask for; the workflow can no longer build it. */
+const OLD_COMPAT = "f1.1-u2.3.0-p6000229-q8-a11-t1";
 const SHA = "a".repeat(64);
 const ORIGINALS_SHA = "b".repeat(64);
 const ENTRY_KEY = `catalog/${COMPAT}/es-419.json`;
@@ -270,6 +272,17 @@ describe("GET /v2/packs/<compat>/<lang> (the entry)", () => {
     expect(builds).toEqual([
       { compat: COMPAT, language: "fr", reason: "missing" },
     ]);
+  });
+
+  it("answers 404 old-compat, not stored, and asks for no build when an old compat has no entry", async () => {
+    const { call, builds, points } = setup({ eligible: ["fr"] });
+    const res = await call(`${OLD_COMPAT}/fr`);
+    expect(res.status).toBe(404);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(await res.json()).toEqual({ state: "unavailable", reason: "old-compat" });
+    expect(builds).toEqual([]);
+    expect(points[0]?.blobs?.[3]).toBe("old-compat");
   });
 
   it.each(["dispatched", "running", "cooling", "capped"] as const)(
