@@ -94,12 +94,14 @@ Engine, cron triggers), Vitest 3 (MCP repo), bun test (tc-study).
 ### Task 1 (tc-study): the workflow, and the English measurement
 
 **Files:**
+
 - Create: `.github/workflows/language-packs.yml`
 - Create: `scripts/packs-status.ts` (writes `status/<compat>/<lang>.json` through the same `r2Bucket` as
   publish-language)
 - Test: `packages/resource-pipeline/src/language/packsStatus.test.ts`
 
 **Interfaces:**
+
 - Consumes: plan 1's `publish-language` CLI (`--lang --work --generator --macula --lexicons-ref [--no-upload]`, last
   stdout line = PublishResult JSON, exit 0/1/2), `r2Bucket`, `compatKeyOf(PACK_FORMAT_VERSION, PACK_VERSIONS)`.
 - Produces: `packsStatus(o: { bucket: PackBucket; compat: string; language: string; state: 'running'|'ok'|'failed'; run: string; now?: Date }): Promise<void>`. `failures` is incremented on `failed`, reset on `ok`, kept on `running`.
@@ -136,10 +138,12 @@ Engine, cron triggers), Vitest 3 (MCP repo), bun test (tc-study).
 ### Task 2 (tc-study): the sample-output check
 
 **Files:**
+
 - Create: `packages/resource-pipeline/src/language/sampleOutput.test.ts`
 - Create: `packages/resource-pipeline/src/language/sample-output.json` (`{ compat, hash }`)
 
 **Interfaces:**
+
 - Consumes: the Ruth 4:5 fixtures and warm path of `src/helps/ketivQere.test.ts`, and `PACK_VERSIONS`.
 
 - [ ] **Step 1: The test**
@@ -170,11 +174,12 @@ Not code. A checklist in `docs/LANGUAGE_PACKS_INFRA.md` (this repo), done in ord
    `translation-helps-mcp-v2`. Without it, `/v2/*` goes through the workers.dev fallback, which still works.
 
 - [ ] Write the checklist. Then, with Abel, do items 1–3 for staging only, and confirm with
-  `publish-language --dry-run` against staging.
+      `publish-language --dry-run` against staging.
 
 ### Task 4 (MCP): pack routes
 
 **Files:**
+
 - Create: `src/api/routes/packs.ts`
 - Modify: `src/worker.ts` (route `/v2/packs/` before the SvelteKit fallthrough, `:122-124`; add
   `LANGUAGE_PACKS: R2Bucket` to `Env`, `:42-57`)
@@ -183,6 +188,7 @@ Not code. A checklist in `docs/LANGUAGE_PACKS_INFRA.md` (this repo), done in ord
 - Test: `tests/unit/packs.test.ts`
 
 **Interfaces:**
+
 - Produces:
   - `handlePacks(request: Request, env: PacksEnv, ctx: ExecutionContext, path: string): Promise<Response>`, where
     `PacksEnv = { LANGUAGE_PACKS?: R2Bucket; TRANSLATION_HELPS_CACHE: KVNamespace; ANALYTICS?: AnalyticsEngineDataset } & DispatchEnv`
@@ -191,7 +197,7 @@ Not code. A checklist in `docs/LANGUAGE_PACKS_INFRA.md` (this repo), done in ord
     `packViews.ts:43-48`, and validates with the regex.
 
 - [ ] **Step 1: Failing tests, with a fake R2** (`get(key, { range, onlyIf })` returning
-  `{ body, size, etag, range, httpEtag }` or null) **and a fake KV**:
+      `{ body, size, etag, range, httpEtag }` or null) **and a fake KV**:
   - `GET /v2/packs/<compat>/es-419` returns the entry, `no-cache`, ETag.
   - The same request with a matching `If-None-Match` gives 304.
   - `GET …/es-419/<sha>`:
@@ -217,10 +223,12 @@ Not code. A checklist in `docs/LANGUAGE_PACKS_INFRA.md` (this repo), done in ord
 ### Task 5 (MCP): dispatch
 
 **Files:**
+
 - Create: `src/packs/dispatch.ts`, `src/packs/githubApp.ts`
 - Test: `tests/unit/packs-dispatch.test.ts`, `tests/unit/github-app.test.ts`
 
 **Interfaces:**
+
 - Produces:
   - `type DispatchEnv = { GITHUB_APP_ID?: string; GITHUB_APP_PRIVATE_KEY?: string; GITHUB_APP_INSTALLATION_ID?: string; PACKS_TARGET?: 'staging'|'production' }`
   - `installationToken(env: DispatchEnv, kv: KVNamespace, now?: Date): Promise<string>`: an RS256 JWT through
@@ -247,6 +255,7 @@ Not code. A checklist in `docs/LANGUAGE_PACKS_INFRA.md` (this repo), done in ord
 ### Task 6 (MCP): freshness check and the daily cron
 
 **Files:**
+
 - Modify: `packages/door43/src/resources/dcsClient.ts`:
   - `mapApiEntry` (`:411-434`) keeps `released`/`published_at` and the release tag as `stamp`, computed like
     `resourceContentStamp`;
@@ -258,6 +267,7 @@ Not code. A checklist in `docs/LANGUAGE_PACKS_INFRA.md` (this repo), done in ord
 - Test: `tests/unit/packs-freshness.test.ts`; extend `tests/unit/dcs-catalog.test.ts`
 
 **Interfaces:**
+
 - Produces:
   - `isStale(entry: PackCatalogEntry, current: Record<string, string>): boolean`: compares only the keys of
     `entry.build.stamps` that `current` has.
