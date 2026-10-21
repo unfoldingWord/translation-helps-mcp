@@ -28,7 +28,7 @@ export type BuildOutcome =
   | "invalid"
   | "error";
 
-type BuildStatus = {
+export type BuildStatus = {
   state: "running" | "ok" | "failed";
   at: string;
   failures: number;
@@ -65,6 +65,16 @@ export const CURRENT_PACK_COMPAT = "f1.1-u2.3.0-p6000230-q8-a11-t1";
 
 function statusKey(compat: string, language: string): string {
   return `status/${compat}/${language}.json`;
+}
+
+/** The build status the workflow (or a dispatch's `running` mark) left for a language; null when none parses. */
+export async function readBuildStatus(
+  bucket: R2Bucket,
+  compat: string,
+  language: string,
+): Promise<BuildStatus | null> {
+  const object = await bucket.get(statusKey(compat, language));
+  return parseStatus(object ? await object.text() : null);
 }
 
 /** Same reading as the workflow's packsStatus: anything malformed counts as no status. */
@@ -107,6 +117,7 @@ type BuildRequest = {
   env: BuildEnv;
   compat: string;
   language: string;
+  /** `daily` is the cron's own work: bounded by the bucket's languages, so it neither waits for nor uses the cap. */
   reason: "missing" | "stale" | "daily";
   now?: Date;
   fetch?: typeof fetch;
@@ -150,22 +161,30 @@ async function guardedDispatch(o: BuildRequest): Promise<BuildOutcome> {
   const held = guard(previous, now);
   if (held) return held;
 
+  // Past the guard, a `running` status is stale: that run died without writing its result (before its tools were
+  // built, or killed with the runner), so it counts as a failure, or a language that always dies early would be
+  // dispatched every 5.5 h forever.
+  let failures = previous?.failures ?? 0;
+  if (previous?.state === "running") {
+    failures += 1;
+    if (failures >= MAX_FAILURES) {
+      const stopped: BuildStatus = {
+        ...previous,
+        state: "failed",
+        at: now.toISOString(),
+        failures,
+      };
+      await bucket.put(key, JSON.stringify(stopped), STATUS_METADATA);
+      return "stopped";
+    }
+  }
+
   // Best effort both ways: KV is eventually consistent and allows one write per second per key, so the cap is
   // soft by a few dispatches and a failed read or write never blocks a build.
   const counterKey = `packs:dispatch:${now.toISOString().slice(0, 10)}`;
-  let count = 0;
-  try {
-    count = Number.parseInt((await kv.get(counterKey)) ?? "0", 10) || 0;
-  } catch {
-    // Counted as 0.
-  }
-  if (count >= DAILY_CAP) return "capped";
-  try {
-    await kv.put(counterKey, String(count + 1), {
-      expirationTtl: COUNTER_TTL_S,
-    });
-  } catch {
-    // Ignored.
+  const counted = o.reason !== "daily";
+  if (counted && (await readCounter(kv, counterKey)) >= DAILY_CAP) {
+    return "capped";
   }
 
   // Marked before GitHub is called: a run that dies before the workflow writes its own status still holds the
@@ -173,14 +192,13 @@ async function guardedDispatch(o: BuildRequest): Promise<BuildOutcome> {
   const running: BuildStatus = {
     state: "running",
     at: now.toISOString(),
-    failures: previous?.failures ?? 0,
+    failures,
     run: "dispatched",
   };
   const mark = await bucket.put(key, JSON.stringify(running), STATUS_METADATA);
 
   try {
-    await dispatchWorkflow(env, kv, now, fetchImpl, language);
-    return "dispatched";
+    await dispatchWorkflow(env, kv, now, fetchImpl, language, compat);
   } catch (err) {
     console.error(
       `[packs] dispatch for ${compat}/${language} (${o.reason}) failed:`,
@@ -188,6 +206,27 @@ async function guardedDispatch(o: BuildRequest): Promise<BuildOutcome> {
     );
     await restoreStatus(bucket, key, previousRaw, mark?.etag);
     return "error";
+  }
+
+  // Only a dispatch GitHub accepted uses up the cap; a GitHub outage must not spend the day.
+  if (counted) {
+    const count = await readCounter(kv, counterKey);
+    try {
+      await kv.put(counterKey, String(count + 1), {
+        expirationTtl: COUNTER_TTL_S,
+      });
+    } catch {
+      // Ignored.
+    }
+  }
+  return "dispatched";
+}
+
+async function readCounter(kv: KVNamespace, key: string): Promise<number> {
+  try {
+    return Number.parseInt((await kv.get(key)) ?? "0", 10) || 0;
+  } catch {
+    return 0;
   }
 }
 
@@ -197,6 +236,7 @@ async function dispatchWorkflow(
   now: Date,
   fetchImpl: typeof fetch,
   language: string,
+  compat: string,
 ): Promise<void> {
   const post = async () =>
     fetchImpl(WORKFLOW_DISPATCH, {
@@ -211,6 +251,8 @@ async function dispatchWorkflow(
           language,
           mode: "publish",
           target: env.PACKS_TARGET ?? "staging",
+          // The workflow stops (and marks this compat failed) when its code builds another one.
+          compat,
         },
       }),
     });

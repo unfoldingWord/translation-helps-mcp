@@ -183,7 +183,7 @@ describe("requestBuild guard", () => {
     expect(await t.run()).toBe("running");
   });
 
-  it("dispatches again when a build has been `running` for more than 5.5 h", async () => {
+  it("dispatches again when a build has been `running` for more than 5.5 h, counting the dead run as a failure", async () => {
     const t = setup({
       status: {
         state: "running",
@@ -194,6 +194,47 @@ describe("requestBuild guard", () => {
     });
     expect(await t.run()).toBe("dispatched");
     expect(t.fetchImpl).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(t.r2.text(STATUS_KEY) ?? "")).toMatchObject({
+      state: "running",
+      failures: 1,
+    });
+  });
+
+  it("stops a language whose runs die before writing a result, after three stale `running` marks in a row", async () => {
+    // A token cached for the whole span, so only the dispatches reach fetch.
+    const t = setup({
+      kv: {
+        [TOKEN_KEY]: JSON.stringify({
+          token: "ghs_cached",
+          until: NOW.getTime() + 72 * 3_600_000,
+        }),
+      },
+    });
+    const at = (h: number) => new Date(NOW.getTime() + h * 3_600_000);
+    // Each run dies early: only the Worker's own mark is ever in the bucket.
+    expect(await t.run({ now: at(0) })).toBe("dispatched");
+    expect(await t.run({ now: at(6) })).toBe("dispatched");
+    expect(await t.run({ now: at(12) })).toBe("dispatched");
+    expect(await t.run({ now: at(18) })).toBe("stopped");
+    expect(await t.run({ now: at(48) })).toBe("stopped");
+    expect(t.fetchImpl).toHaveBeenCalledTimes(3);
+    expect(JSON.parse(t.r2.text(STATUS_KEY) ?? "")).toMatchObject({
+      state: "failed",
+      failures: 3,
+    });
+  });
+
+  it("does not count a running mark that is still fresh, nor a failed one, as one more failure", async () => {
+    const t = setup({
+      status: {
+        state: "failed",
+        at: hoursAgo(25),
+        failures: 1,
+        run: "https://run/1",
+      },
+    });
+    expect(await t.run()).toBe("dispatched");
+    expect(JSON.parse(t.r2.text(STATUS_KEY) ?? "").failures).toBe(1);
   });
 
   it("cools down for 24 h after a failure", async () => {
@@ -240,6 +281,12 @@ describe("requestBuild guard", () => {
     expect(t.fetchImpl).not.toHaveBeenCalled();
   });
 
+  it("lets the cron's daily builds through a full cap, without counting them", async () => {
+    const t = setup({ kv: { [COUNTER_KEY]: "20" } });
+    expect(await t.run({ reason: "daily" })).toBe("dispatched");
+    expect(t.kv.store.get(COUNTER_KEY)).toBe("20");
+  });
+
   it("is unconfigured without the App secrets, and fetches nothing", async () => {
     const t = setup({ secrets: false });
     expect(await t.run()).toBe("unconfigured");
@@ -282,7 +329,12 @@ describe("requestBuild dispatch", () => {
     expect(init.method).toBe("POST");
     expect(JSON.parse(String(init.body))).toEqual({
       ref: "master",
-      inputs: { language: LANG, mode: "publish", target: "staging" },
+      inputs: {
+        language: LANG,
+        mode: "publish",
+        target: "staging",
+        compat: COMPAT,
+      },
     });
     const headers = new Headers(init.headers);
     expect(headers.get("Authorization")).toBe("Bearer ghs_cached");
@@ -336,6 +388,27 @@ describe("requestBuild dispatch", () => {
     expect(t.kv.store.get(COUNTER_KEY)).toBe("5");
     const put = t.kv.puts.find((p) => p.key === COUNTER_KEY);
     expect(put?.options).toEqual({ expirationTtl: 2 * 24 * 3600 });
+  });
+
+  it("does not spend the day's cap on a dispatch GitHub refuses", async () => {
+    const t = setup({ kv: { [COUNTER_KEY]: "4" } });
+    t.fetchImpl.mockImplementation(
+      async () => new Response("nope", { status: 500 }),
+    );
+    expect(await t.run()).toBe("error");
+    expect(t.kv.store.get(COUNTER_KEY)).toBe("4");
+  });
+
+  it("counts only once GitHub has accepted the dispatch", async () => {
+    const t = setup({ kv: { [COUNTER_KEY]: "4" } });
+    let counterAtCall: string | undefined;
+    t.fetchImpl.mockImplementation(async () => {
+      counterAtCall = t.kv.store.get(COUNTER_KEY);
+      return new Response(null, { status: 204 });
+    });
+    expect(await t.run()).toBe("dispatched");
+    expect(counterAtCall).toBe("4");
+    expect(t.kv.store.get(COUNTER_KEY)).toBe("5");
   });
 
   it("puts the previous status back and answers `error` when GitHub refuses", async () => {
