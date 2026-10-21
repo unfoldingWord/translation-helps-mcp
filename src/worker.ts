@@ -146,7 +146,7 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
-    ctx.waitUntil(runDailyBuilds(env));
+    ctx.waitUntil(runDailyBuilds(env, ctx));
   },
 };
 

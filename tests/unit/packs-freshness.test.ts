@@ -10,6 +10,7 @@ import {
   checkFreshness,
   currentStamps,
   isStale,
+  newestDifferingRelease,
   runDailyBuilds,
   type FreshnessEnv,
   type PackCatalogEntry,
@@ -125,14 +126,21 @@ function fakeKv() {
   return { kv: kv as unknown as KVNamespace, values, puts };
 }
 
-function setup(opts: { rows?: CatalogEntry[]; searchThrows?: boolean } = {}) {
+function setup(opts: { rows?: CatalogEntry[]; searchThrows?: boolean; status?: unknown } = {}) {
   const { kv, values, puts } = fakeKv();
   const searches: string[] = [];
   const builds: Array<{ compat: string; language: string; reason: string }> = [];
   const points: Array<{ blobs?: string[] }> = [];
   const pending: Promise<unknown>[] = [];
+  const statusKey = `status/${COMPAT}/es-419.json`;
   const env: FreshnessEnv = {
     TRANSLATION_HELPS_CACHE: kv,
+    LANGUAGE_PACKS: {
+      async get(key: string) {
+        if (key !== statusKey || opts.status === undefined) return null;
+        return { text: async () => JSON.stringify(opts.status) };
+      },
+    } as unknown as R2Bucket,
     ANALYTICS: {
       writeDataPoint: (p: { blobs?: string[] }) => void points.push(p),
     } as unknown as AnalyticsEngineDataset,
@@ -161,7 +169,8 @@ function setup(opts: { rows?: CatalogEntry[]; searchThrows?: boolean } = {}) {
     now = NOW,
     e: PackCatalogEntry | (() => Promise<PackCatalogEntry | null>) = entry(BUILT),
     compat = COMPAT,
-  ) => checkFreshness({ env, ctx, compat, language: "es-419", entry: e, now, ...deps });
+    reason?: "stale" | "daily",
+  ) => checkFreshness({ env, ctx, compat, language: "es-419", entry: e, now, reason, ...deps });
   const checkWithDefaultSearch = () =>
     checkFreshness({
       env,
@@ -239,20 +248,200 @@ describe("checkFreshness", () => {
     expect(reads).toBe(1);
     expect(s.builds).toHaveLength(1);
   });
+
+  it("passes the cron's reason on, so its builds bypass the daily cap", async () => {
+    const s = setup({ rows: [row("es-419_glt", "v43#2026-10-20T09_00_00Z")] });
+    await s.check(NOW, entry(BUILT), COMPAT, "daily");
+    expect(s.builds).toEqual([
+      { compat: COMPAT, language: "es-419", reason: "daily" },
+    ]);
+  });
 });
+
+describe("checkFreshness when the last build already saw the release (loop breaker)", () => {
+  const NEWER_GLT = [row("es-419_glt", "v43#2026-10-20T09_00_00Z")];
+
+  it("asks for nothing when an ok build finished after the newest differing release, and says so", async () => {
+    const s = setup({
+      rows: NEWER_GLT,
+      status: {
+        state: "ok",
+        at: "2026-10-20T11:00:00.000Z",
+        failures: 0,
+        run: "https://run/9",
+      },
+    });
+    await s.check();
+    expect(s.builds).toEqual([]);
+    expect(s.points.map((p) => p.blobs)).toEqual([
+      ["pack", "freshness", "es-419", "stale-seen"],
+    ]);
+  });
+
+  it("still asks when the ok build is older than the release", async () => {
+    const s = setup({
+      rows: NEWER_GLT,
+      status: {
+        state: "ok",
+        at: "2026-10-20T08:00:00.000Z",
+        failures: 0,
+        run: "https://run/9",
+      },
+    });
+    await s.check();
+    expect(s.builds).toHaveLength(1);
+  });
+
+  it("still asks when the last build failed, however recent", async () => {
+    const s = setup({
+      rows: NEWER_GLT,
+      status: {
+        state: "failed",
+        at: "2026-10-21T09:00:00.000Z",
+        failures: 1,
+        run: "https://run/9",
+      },
+    });
+    await s.check();
+    expect(s.builds).toHaveLength(1);
+  });
+
+  it("still asks when no differing stamp carries a date to compare", async () => {
+    const s = setup({
+      rows: [row("es-419_glt", "v43")],
+      status: {
+        state: "ok",
+        at: "2026-10-21T09:00:00.000Z",
+        failures: 0,
+        run: "https://run/9",
+      },
+    });
+    await s.check();
+    expect(s.builds).toHaveLength(1);
+  });
+});
+
+describe("newestDifferingRelease", () => {
+  it("reads the newest published date of the differing keys, from the catalog's stamps, with : restored", () => {
+    expect(
+      newestDifferingRelease(entry(BUILT), {
+        "es-419_gl/es-419/glt": "v43#2026-10-20T09_00_00Z",
+        "es-419_gl/es-419/tn": "v11#2026-09-01T00_00_00Z",
+        // Same stamp: not a difference, however new.
+        "unfoldingWord/hbo/uhb": "v2.1.31#2024-01-01T00_00_00Z",
+      }),
+    ).toBe(Date.parse("2026-10-20T09:00:00Z"));
+  });
+
+  it("skips stamps with no date after # and answers null when none has one", () => {
+    expect(
+      newestDifferingRelease(entry(BUILT), {
+        "es-419_gl/es-419/glt": "v43",
+        "es-419_gl/es-419/tn": "v11#not-a-date",
+      }),
+    ).toBeNull();
+  });
+});
+
+/** A bucket with catalog entries under the given keys, listed `pageSize` at a time like R2's cursor pages. */
+function catalogBucket(keys: string[], pageSize = 2) {
+  const lists: Array<{ prefix?: string; cursor?: string }> = [];
+  const bucket = {
+    async list(o: { prefix?: string; cursor?: string }) {
+      lists.push(o);
+      const matching = keys.filter((k) => k.startsWith(o.prefix ?? ""));
+      const start = Number(o.cursor ?? "0");
+      const objects = matching
+        .slice(start, start + pageSize)
+        .map((key) => ({ key }));
+      const next = start + pageSize;
+      return next < matching.length
+        ? { objects, truncated: true, cursor: String(next) }
+        : { objects, truncated: false };
+    },
+    async get(key: string) {
+      return keys.includes(key) ? { json: async () => entry(BUILT) } : null;
+    },
+  };
+  return { bucket: bucket as unknown as R2Bucket, lists };
+}
 
 describe("runDailyBuilds (the cron)", () => {
   it("asks for a daily build of es-419 and en under the current compat", async () => {
-    const builds: Array<{ compat: string; language: string; reason: string }> = [];
+    const builds: Array<{ compat: string; language: string; reason: string }> =
+      [];
     const env = { TRANSLATION_HELPS_CACHE: {} as KVNamespace };
-    await runDailyBuilds(env, async (o) => {
-      builds.push({ compat: o.compat, language: o.language, reason: o.reason });
-      return "dispatched";
+    await runDailyBuilds(env, {} as ExecutionContext, {
+      requestBuild: async (o) => {
+        builds.push({
+          compat: o.compat,
+          language: o.language,
+          reason: o.reason,
+        });
+        return "dispatched";
+      },
     });
     expect(builds).toEqual([
       { compat: CURRENT_PACK_COMPAT, language: "es-419", reason: "daily" },
       { compat: CURRENT_PACK_COMPAT, language: "en", reason: "daily" },
     ]);
     expect(CURRENT_PACK_COMPAT).toBe(COMPAT);
+  });
+
+  it("then checks every other language in the bucket under the current compat, page after page, as the cron", async () => {
+    const { bucket, lists } = catalogBucket([
+      `catalog/${COMPAT}/en.json`,
+      `catalog/${COMPAT}/es-419.json`,
+      `catalog/${COMPAT}/fr.json`,
+      `catalog/${COMPAT}/originals.json`,
+      `catalog/${COMPAT}/pt-br.json`,
+      `catalog/${COMPAT}/sw.json`,
+      `catalog/${OLD_COMPAT}/de.json`,
+    ]);
+    const checks: Array<{ language: string; reason?: string; entry: unknown }> =
+      [];
+    const env = {
+      TRANSLATION_HELPS_CACHE: {} as KVNamespace,
+      LANGUAGE_PACKS: bucket,
+    };
+    await runDailyBuilds(env, {} as ExecutionContext, {
+      requestBuild: async () => "dispatched",
+      checkFreshness: async (o) => {
+        const e = typeof o.entry === "function" ? await o.entry() : o.entry;
+        checks.push({
+          language: o.language,
+          reason: o.reason,
+          entry: e?.language,
+        });
+        expect(o.compat).toBe(CURRENT_PACK_COMPAT);
+      },
+    });
+    expect(checks).toEqual([
+      { language: "fr", reason: "daily", entry: "es-419" },
+      { language: "pt-br", reason: "daily", entry: "es-419" },
+      { language: "sw", reason: "daily", entry: "es-419" },
+    ]);
+    expect(lists.every((l) => l.prefix === `catalog/${COMPAT}/`)).toBe(true);
+    expect(lists.length).toBeGreaterThan(1);
+  });
+
+  it("goes through the real check, so the hourly throttle and the build guard apply", async () => {
+    const { bucket } = catalogBucket([`catalog/${COMPAT}/fr.json`]);
+    const { kv, values } = fakeKv();
+    values.set(`packs:fresh:${COMPAT}:fr`, NOW.toISOString());
+    const builds: string[] = [];
+    await runDailyBuilds(
+      { TRANSLATION_HELPS_CACHE: kv, LANGUAGE_PACKS: bucket },
+      {} as ExecutionContext,
+      {
+        now: new Date(NOW.getTime() + 10 * MINUTE),
+        requestBuild: async (o) => {
+          builds.push(o.language);
+          return "dispatched";
+        },
+      },
+    );
+    // fr was checked ten minutes ago: the sweep leaves it alone.
+    expect(builds).toEqual(["es-419", "en"]);
   });
 });

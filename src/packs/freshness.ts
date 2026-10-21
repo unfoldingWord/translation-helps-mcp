@@ -7,6 +7,8 @@
 import { catalogSearch, type CatalogEntry } from "@translation-helps/door43";
 import {
   CURRENT_PACK_COMPAT,
+  LANGUAGE_RE,
+  readBuildStatus,
   requestBuild,
   type BuildEnv,
   type BuildOutcome,
@@ -56,6 +58,28 @@ export function isStale(
   );
 }
 
+/**
+ * The latest release date among the sources whose stamps differ, read from the catalog's side (`tag#published_at`,
+ * with `:` turned into `_` by the stamp). Stamps with no date after `#` say nothing and are skipped; null when none
+ * has one.
+ */
+export function newestDifferingRelease(
+  entry: PackCatalogEntry,
+  current: Record<string, string>,
+): number | null {
+  let newest: number | null = null;
+  for (const [key, stamp] of Object.entries(entry.build.stamps)) {
+    const now = current[key];
+    if (now === undefined || now === stamp) continue;
+    const hash = now.lastIndexOf("#");
+    if (hash < 0) continue;
+    const published = Date.parse(now.slice(hash + 1).replaceAll("_", ":"));
+    if (Number.isNaN(published)) continue;
+    newest = newest === null ? published : Math.max(newest, published);
+  }
+  return newest;
+}
+
 /** Keyed as bt-synergy's catalogIdentity keys a hit: owner/language/repo name after the first `_`. */
 export function currentStamps(
   rows: CatalogEntry[],
@@ -95,6 +119,8 @@ export async function checkFreshness(o: {
   now?: Date;
   search?: Search;
   requestBuild?: typeof requestBuild;
+  /** `daily` when the cron sweeps the bucket (see requestBuild's cap). */
+  reason?: "stale" | "daily";
 }): Promise<void> {
   const { env, compat, language } = o;
   const now = o.now ?? new Date();
@@ -113,13 +139,38 @@ export async function checkFreshness(o: {
     const entry = typeof o.entry === "function" ? await o.entry() : o.entry;
     if (!entry?.build?.stamps) return;
     const rows = await (o.search ?? defaultSearch)(language, env, o.ctx);
-    if (!isStale(entry, currentStamps(rows, language))) return;
+    const current = currentStamps(rows, language);
+    if (!isStale(entry, current)) return;
+
+    // A build that finished after the newest differing release has already seen it and found nothing to publish
+    // (publish-language compares its own stamps): when the two stamp derivations disagree on a key, asking again
+    // would loop until the cap.
+    if (env.LANGUAGE_PACKS) {
+      const newest = newestDifferingRelease(entry, current);
+      const status = await readBuildStatus(
+        env.LANGUAGE_PACKS,
+        compat,
+        language,
+      );
+      const builtAt = status?.state === "ok" ? Date.parse(status.at) : NaN;
+      if (newest !== null && !Number.isNaN(builtAt) && builtAt > newest) {
+        console.log(
+          `[packs] stale ${compat}/${language}: already seen by the build of ${status?.at}`,
+        );
+        env.ANALYTICS?.writeDataPoint({
+          indexes: ["pack"],
+          blobs: ["pack", "freshness", language, "stale-seen"],
+          doubles: [0],
+        });
+        return;
+      }
+    }
 
     const build: BuildOutcome = await (o.requestBuild ?? requestBuild)({
       env,
       compat,
       language,
-      reason: "stale",
+      reason: o.reason ?? "stale",
       now,
     });
     console.log(`[packs] stale ${compat}/${language}: ${build}`);
@@ -135,18 +186,82 @@ export async function checkFreshness(o: {
   }
 }
 
-/** The cron's work: es-419 and en are rebuilt daily, which also refreshes the shared originals and lexicons. */
+/**
+ * The cron's work: es-419 and en are rebuilt daily, which also refreshes the shared originals and lexicons; then
+ * every other language with an entry under the current compat gets the same freshness check a phone's visit gives
+ * it, so a new Door43 release is built even for a language nobody opened that day.
+ */
 export async function runDailyBuilds(
-  env: BuildEnv,
-  build: typeof requestBuild = requestBuild,
+  env: FreshnessEnv,
+  ctx: ExecutionContext,
+  deps: {
+    requestBuild?: typeof requestBuild;
+    checkFreshness?: typeof checkFreshness;
+    now?: Date;
+  } = {},
 ): Promise<void> {
+  const build = deps.requestBuild ?? requestBuild;
   for (const language of DAILY_LANGUAGES) {
     const outcome = await build({
       env,
       compat: CURRENT_PACK_COMPAT,
       language,
       reason: "daily",
+      now: deps.now,
     });
     console.log(`[packs] daily build of ${language}: ${outcome}`);
   }
+
+  const bucket = env.LANGUAGE_PACKS;
+  if (!bucket) return;
+  const check = deps.checkFreshness ?? checkFreshness;
+  try {
+    for await (const language of publishedLanguages(
+      bucket,
+      CURRENT_PACK_COMPAT,
+    )) {
+      if ((DAILY_LANGUAGES as readonly string[]).includes(language)) continue;
+      await check({
+        env,
+        ctx,
+        compat: CURRENT_PACK_COMPAT,
+        language,
+        entry: () => readCatalogEntry(bucket, CURRENT_PACK_COMPAT, language),
+        now: deps.now,
+        requestBuild: build,
+        reason: "daily",
+      });
+    }
+  } catch (err) {
+    console.error(`[packs] daily freshness sweep stopped:`, err);
+  }
+}
+
+/** The languages with an entry under `catalog/<compat>/`, page by page (originals.json is not a language). */
+async function* publishedLanguages(
+  bucket: R2Bucket,
+  compat: string,
+): AsyncGenerator<string> {
+  const prefix = `catalog/${compat}/`;
+  let cursor: string | undefined;
+  do {
+    const page = await bucket.list({ prefix, cursor });
+    for (const object of page.objects) {
+      const name = object.key.slice(prefix.length);
+      if (!name.endsWith(".json")) continue;
+      const language = name.slice(0, -".json".length);
+      if (language === "originals" || !LANGUAGE_RE.test(language)) continue;
+      yield language;
+    }
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+}
+
+async function readCatalogEntry(
+  bucket: R2Bucket,
+  compat: string,
+  language: string,
+): Promise<PackCatalogEntry | null> {
+  const object = await bucket.get(`catalog/${compat}/${language}.json`);
+  return object ? ((await object.json()) as PackCatalogEntry) : null;
 }
