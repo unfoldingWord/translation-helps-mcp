@@ -40,9 +40,19 @@ Engine, cron triggers), Vitest 3 (MCP repo), bun test (tc-study).
 - **Pack responses:**
   - entry: `application/json`, `Cache-Control: no-cache`, ETag = the R2 etag, 304 on `If-None-Match`;
   - pack: `application/zip`, `Cache-Control: public, max-age=31536000, immutable`, Range → 206;
-  - CORS allows `GET, HEAD, OPTIONS` and headers `Range, If-None-Match`, and exposes
+  - CORS: `Access-Control-Allow-Origin: *` (the Pages cache in front does not vary by Origin), allows
+    `GET, HEAD, OPTIONS` and headers `Range, If-None-Match`, and exposes
     `ETag, Content-Range, Content-Length, Accept-Ranges`;
-  - an eligible language with no entry → `202 {"state":"preparing"}`.
+  - an eligible language with no entry → `202 {"state":"preparing"}`, `Cache-Control: no-store`;
+  - every 4xx (404 not eligible, 400 bad path, 416) carries `Cache-Control: no-store`.
+- **Two layers in front of the Worker on `tc-helps.mcp.servant.bible`** (main's Pages app proxies `/v2/*` through
+  `ui/src/hooks.server.ts`; checked against adapter-cloudflare 4.9.0):
+  - Pages' own cache answers repeated GETs of anything with a public `Cache-Control` before the proxy runs. Packs
+    (immutable) are served from it after the first download, Range/HEAD/`If-None-Match` included, so the Worker's
+    analytics and rate limit don't see those: count downloads as first fetches per edge, not per phone.
+  - SvelteKit turns a 200 whose ETag equals `If-None-Match` into its own 304 and drops the `Access-Control-*`
+    headers. The pack routes therefore answer 304 themselves, with CORS and R2's `httpEtag` (quoted), and never a
+    200 for a matching `If-None-Match`.
 - **Eligible language:** listed by `listLanguages` (tc-ready, prod), and its catalog search has an `Aligned Bible`
   whose resource id ends in `lt`.
 - **Dispatch guard:**
@@ -199,7 +209,8 @@ Not code. A checklist in `docs/LANGUAGE_PACKS_INFRA.md` (this repo), done in ord
 - [ ] **Step 1: Failing tests, with a fake R2** (`get(key, { range, onlyIf })` returning
       `{ body, size, etag, range, httpEtag }` or null) **and a fake KV**:
   - `GET /v2/packs/<compat>/es-419` returns the entry, `no-cache`, ETag.
-  - The same request with a matching `If-None-Match` gives 304.
+  - The same request with a matching `If-None-Match` gives 304 with the CORS headers and the quoted `httpEtag`
+    (also when the client sends the etag unquoted).
   - `GET …/es-419/<sha>`:
     - returns 200 `application/zip` immutable;
     - with `Range: bytes=0-99`, 206 with `Content-Range`;
@@ -207,8 +218,10 @@ Not code. A checklist in `docs/LANGUAGE_PACKS_INFRA.md` (this repo), done in ord
   - `es` resolves to `es-419`.
   - `../x` gives 400.
   - OPTIONS gives 204 with the CORS of Global Constraints.
-  - A missing entry for an eligible language gives 202 and calls the dispatcher (Task 5, injected).
-  - A missing entry for a non-eligible language gives 404.
+  - A missing entry for an eligible language gives 202 with `no-store` and calls the dispatcher (Task 5, injected).
+  - A missing entry for a non-eligible language gives 404 with `no-store`; `../x` (400) and a range past the end
+    (416) carry `no-store` too.
+  - Every response carries `Access-Control-Allow-Origin: *`.
   - Every response writes one analytics point.
 - [ ] **Step 2: Run them to verify they fail**
   - Run: `npx vitest run tests/unit/packs.test.ts`
@@ -303,6 +316,10 @@ Not code. A checklist in `docs/LANGUAGE_PACKS_INFRA.md` (this repo), done in ord
      open question on unsigned headers.
   5. Download the pack with a Range request.
   6. Run `npx tsx scripts/compare-pack-views.ts` against the staging views.
+  7. Through the real host, since workers.dev skips the Pages proxy and its cache: against
+     `https://tc-helps.mcp.servant.bible/v2/packs/…` (production Worker, a test language entry), send HEAD, a Range
+     GET, a GET with `If-None-Match`, and an OPTIONS with an `Origin` header, each twice; every answer keeps its
+     status, `ETag` and `Access-Control-*` headers, the second time too (served from Pages' cache).
 - [ ] **Production, each step confirmed by Abel:**
   1. Items 1–5 of Task 3 for production.
   2. Deploy both Workers `--env production`.
