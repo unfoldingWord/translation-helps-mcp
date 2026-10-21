@@ -40,7 +40,7 @@ export function packViewsOf(env: Env): PackViews | null {
 }
 
 /** Regional variants a language's views may be under (es → es-419), as the catalog lookup does. */
-const VARIANTS: Record<string, string[]> = {
+export const VARIANTS: Record<string, string[]> = {
   es: ["es-419"],
   pt: ["pt-br"],
   zh: ["zh-hans", "zh-tw"],

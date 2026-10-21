@@ -49,8 +49,8 @@ const STATUS_METADATA = {
 };
 
 // Callers normalize these already; checked again because both end up in bucket keys and workflow inputs.
-const LANGUAGE_RE = /^[a-z]{2,3}(-[A-Za-z0-9]{1,8})*$/;
-const COMPAT_RE = /^f\d+\.\d+-u[\w.]+-p\d+-q\d+-a\d+-t\d+$/;
+export const LANGUAGE_RE = /^[a-z]{2,3}(-[A-Za-z0-9]{1,8})*$/;
+export const COMPAT_RE = /^f\d+\.\d+-u[\w.]+-p\d+-q\d+-a\d+-t\d+$/;
 
 function statusKey(compat: string, language: string): string {
   return `status/${compat}/${language}.json`;
