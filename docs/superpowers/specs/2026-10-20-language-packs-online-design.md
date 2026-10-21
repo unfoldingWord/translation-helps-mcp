@@ -28,8 +28,14 @@ This design adds all three, at the lowest running cost that stays effective.
 
 ## Decisions taken
 
-- **Packs live in unfoldingWord's Cloudflare account** (R2), and the MCP both reads them and serves them. Nothing is
-  created there without Abel's confirmation.
+- **Packs live in unfoldingWord's Cloudflare account** (account `5a3ffd86…`, where the MCP and API Workers run).
+  unfoldingWord has agreed (20-10-2026). Testing uses a staging bucket and the Workers' staging environments in the
+  same account, so nothing has to move afterwards.
+- **People reach them at `tc-helps.mcp.servant.bible/v2/...`**, the host that already serves the MCP v2. It is a
+  custom domain of the Pages project `translation-helps-mcp-945`; the zone `servant.bible` is on Epik's name servers,
+  not on Cloudflare, so R2 cannot serve it directly (an R2 custom domain needs the zone in the account). Packs are
+  therefore streamed from R2 by the Worker under that host. At a few downloads a week per phone the cost is
+  negligible; serving straight from R2 waits until a zone is in the account.
 - **Eligible languages:**
   - Those the MCP and tc-study's Read page already list: resources marked `tc-ready`, stage `prod`, in the Door43
     catalog.
@@ -38,8 +44,11 @@ This design adds all three, at the lowest running cost that stays effective.
   - No other language triggers generation.
 - **Generation is automatic:**
   - **es-419 and en** are checked daily.
-  - **Every other eligible language** is generated the first time someone asks for it, and again when Door43
-    publishes a newer release of one of its resources.
+  - **Every other eligible language** is generated once in a **backfill** spread over days (at most 20 a day), and
+    again when Door43 publishes a newer release of one of its resources. GitHub minutes are free and a language takes
+    10–30 MB of R2, so tens of languages stay within R2's free 10 GB, and the MCP answers every language from packs
+    from the start.
+  - **A language asked for before its turn** is generated then, as in the backfill.
   - **Manual runs** stay possible for any language.
 - **Generation runs in GitHub Actions**, free on this public repository.
   - A standard runner has 4 CPUs, 16 GB of memory and a 6-hour job limit.
@@ -47,6 +56,11 @@ This design adds all three, at the lowest running cost that stays effective.
   - Cloudflare Containers would work too, but bill by the minute.
 - **Nothing changes for the person in Servos until they choose.** The app tells them what is new and how big it is;
   they decide to download it.
+- **The generator is pinned to tc-study's `main`.** `feat/language-pack` (unfoldingWord/tc-study, formerly
+  bt-synergy) is merged first, after a look at tc-study's highlights in the browser (pending since 18-10); the
+  workflow then pins a commit of `main`, not of an unmerged branch.
+- **Where the routes live:** `/api/v1/...` is the API Worker (`translation-helps-api-v2`); `/v2/mcp` is the MCP
+  Worker. Pack routes go where the host reaches: under `tc-helps.mcp.servant.bible/v2/` (see part 4).
 
 ## Two ideas the rest depends on
 
@@ -141,12 +155,13 @@ v1/<lang>/...                                      MCP views (layout unchanged)
 - Views are overwritten in place, so for a few minutes after a build they mix old and new chapters. That is accepted:
   the MCP's answers then come from one of two correct builds.
 
-### 4. MCP
+### 4. MCP and API Workers
 
-- **New routes:**
-  - `GET /api/v1/packs/<compat>/<lang>` returns the catalog entry, with `no-cache` and an ETag (an unchanged entry
-    costs a 304).
-  - `GET /api/v1/packs/<compat>/<lang>/<sha256>` returns the pack, streamed from R2, with Range and `If-None-Match`
+- **New routes**, under `https://tc-helps.mcp.servant.bible/v2/packs/` (first step of the plan: confirm how `/v2/*`
+  reaches the MCP Worker on that host, and add `/v2/packs/*` the same way; the API Worker's code is reused there):
+  - `GET /v2/packs/<compat>/<lang>` returns the catalog entry, with `no-cache` and an ETag (an unchanged entry costs a
+    304).
+  - `GET /v2/packs/<compat>/<lang>/<sha256>` returns the pack, streamed from R2, with Range and `If-None-Match`
     (`bucket.get(key, { range, onlyIf })`) and `immutable` caching.
   - Either route on an eligible language with no entry dispatches a build and answers `202` («preparing»).
 - **CORS:** allow `Range` and `If-None-Match`, and HEAD; expose `ETag`, `Content-Range`, `Content-Length` and
@@ -164,8 +179,11 @@ v1/<lang>/...                                      MCP views (layout unchanged)
   - The workflow's concurrency group, not KV, prevents duplicate runs.
 - **GitHub credentials:** a GitHub App with only `actions:write` on this repository (a fine-grained personal token
   expires and needs rotating).
-- **Configuration:** the bucket is bound in the base config and in every `[env.*]` of `wrangler.api.toml` (Wrangler
-  does not inherit bindings).
+- **Configuration:** the bucket is bound in the base config and in every `[env.*]` of both wrangler files (Wrangler
+  does not inherit bindings); staging binds `language-packs-staging`.
+- **Measuring:** each pack and view request writes one data point to the existing `ANALYTICS` binding: language,
+  route, and whether a pack was there, missing or stale. It shows which languages people use and whether the system
+  works, at no extra cost.
 
 ### 5. Servos
 
@@ -194,7 +212,8 @@ v1/<lang>/...                                      MCP views (layout unchanged)
 - **Cleaning:** after a replacement, the rows keyed by the old stamps are deleted. Today they stay forever.
 - **Not built yet:** a language with no entry yet shows «Se está preparando; vuelva a mirar más tarde».
 - **Configuration:**
-  - the catalog's address is a setting, so a test bucket can stand in for unfoldingWord's;
+  - the catalog's address defaults to `https://tc-helps.mcp.servant.bible/v2/packs/` and is a setting, so staging
+    can stand in for it;
   - the Tauri CSP `connect-src` adds the pack host.
 
 ## Failures
@@ -232,14 +251,15 @@ v1/<lang>/...                                      MCP views (layout unchanged)
 
 ## Order of work
 
-1. **Generator runnable in CI**, and the English measurement (a one-off run). Everything else waits on knowing
+1. **tc-study:** check its highlights in the browser and merge `feat/language-pack` into `main`.
+2. **Generator runnable in CI**, and the English measurement (a one-off run). Everything else waits on knowing
    whether English fits.
-2. **Compatibility key, build id and catalog entry** in bt-synergy; streaming import in the language-pack package.
-3. **Workflow and the test bucket**, in Abel's personal account.
-4. **MCP routes, freshness check and dispatch.**
-5. **Servos:** the offer card, ordered and resumable downloads, cleaning.
-6. **unfoldingWord's account:** create the bucket and the GitHub App, bind them, open the PR. Each step is confirmed
-   first.
+3. **Compatibility key, build id and catalog entry** in the generator; streaming import in the language-pack package.
+4. **unfoldingWord's account, staging first:** the buckets (`language-packs-staging`, `language-packs`), the R2 token
+   and the GitHub App; the workflow against staging.
+5. **Worker routes, freshness check, dispatch and measuring**, deployed to staging.
+6. **Servos:** the offer card, ordered and resumable downloads, cleaning; end to end against staging.
+7. **Production:** bind `language-packs`, deploy, start the backfill, schedule es-419 and en.
 
 ## Later, not now
 
@@ -251,4 +271,5 @@ v1/<lang>/...                                      MCP views (layout unchanged)
 - **Attribution inside each zip** (`ATTRIBUTION` file), and the license in the public catalog. The content is
   CC BY-SA and MACULA CC BY 4.0, and the change is indicated. Catalog rows already carry licenses and Servos shows
   credits; lexicon rows' licenses are unconfirmed.
-- **A custom domain on unfoldingWord's zone,** since some networks block `*.workers.dev`.
+- **Serving packs straight from R2** through a custom domain, once a zone (for example `servant.bible`, moved to
+  Cloudflare) is in the account: no Worker invocation per download, and Cloudflare's cache near the phone.
