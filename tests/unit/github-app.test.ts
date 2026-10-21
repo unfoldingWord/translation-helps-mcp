@@ -7,6 +7,7 @@ import { createPrivateKey } from "node:crypto";
 import { describe, it, expect, vi } from "vitest";
 import {
   appJwt,
+  forgetInstallationToken,
   installationToken,
   type DispatchEnv,
 } from "../../src/packs/githubApp";
@@ -173,6 +174,34 @@ describe("installationToken", () => {
       fetchImpl as unknown as typeof fetch,
     );
     expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("still returns the token when KV cannot cache it, or cannot be read", async () => {
+    const { env, fetchImpl, kv } = await setup();
+    const failing = {
+      ...kv,
+      get: async () => {
+        throw new Error("KV get failed");
+      },
+      put: async () => {
+        throw new Error("KV PUT failed: 429");
+      },
+    } as unknown as KVNamespace;
+    const token = await installationToken(
+      env,
+      failing,
+      NOW,
+      fetchImpl as unknown as typeof fetch,
+    );
+    expect(token).toBe("ghs_test");
+  });
+
+  it("forgets a cached token on request", async () => {
+    const { env, fetchImpl, kv, store } = await setup();
+    await installationToken(env, kv, NOW, fetchImpl as unknown as typeof fetch);
+    expect(store.size).toBe(1);
+    await forgetInstallationToken(env, kv);
+    expect(store.size).toBe(0);
   });
 
   it("throws when GitHub refuses, and caches nothing", async () => {

@@ -6,6 +6,7 @@
 
 import {
   GITHUB_API,
+  forgetInstallationToken,
   githubHeaders,
   installationToken,
   type DispatchEnv,
@@ -24,6 +25,7 @@ export type BuildOutcome =
   | "stopped"
   | "capped"
   | "unconfigured"
+  | "invalid"
   | "error";
 
 type BuildStatus = {
@@ -45,6 +47,10 @@ const WORKFLOW_DISPATCH = `${GITHUB_API}/repos/unfoldingWord/tc-study/actions/wo
 const STATUS_METADATA = {
   httpMetadata: { contentType: "application/json", cacheControl: "no-cache" },
 };
+
+// Callers normalize these already; checked again because both end up in bucket keys and workflow inputs.
+const LANGUAGE_RE = /^[a-z]{2,3}(-[A-Za-z0-9]{1,8})*$/;
+const COMPAT_RE = /^f\d+\.\d+-u[\w.]+-p\d+-q\d+-a\d+-t\d+$/;
 
 function statusKey(compat: string, language: string): string {
   return `status/${compat}/${language}.json`;
@@ -86,14 +92,32 @@ function guard(status: BuildStatus | null, now: Date): BuildOutcome | null {
   return null;
 }
 
-export async function requestBuild(o: {
+type BuildRequest = {
   env: BuildEnv;
   compat: string;
   language: string;
   reason: "missing" | "stale" | "daily";
   now?: Date;
   fetch?: typeof fetch;
-}): Promise<BuildOutcome> {
+};
+
+/** Never throws: the packs route calls it on a phone's request and only needs an outcome to report. */
+export async function requestBuild(o: BuildRequest): Promise<BuildOutcome> {
+  if (!LANGUAGE_RE.test(o.language) || !COMPAT_RE.test(o.compat)) {
+    return "invalid";
+  }
+  try {
+    return await guardedDispatch(o);
+  } catch (err) {
+    console.error(
+      `[packs] build request for ${o.compat}/${o.language} failed:`,
+      err,
+    );
+    return "error";
+  }
+}
+
+async function guardedDispatch(o: BuildRequest): Promise<BuildOutcome> {
   const { env, compat, language } = o;
   const now = o.now ?? new Date();
   const fetchImpl = o.fetch ?? fetch;
@@ -109,22 +133,29 @@ export async function requestBuild(o: {
   }
 
   const key = statusKey(compat, language);
-  let previousRaw: string | null;
-  try {
-    const object = await bucket.get(key);
-    previousRaw = object ? await object.text() : null;
-  } catch {
-    return "error";
-  }
+  const object = await bucket.get(key);
+  const previousRaw = object ? await object.text() : null;
   const previous = parseStatus(previousRaw);
   const held = guard(previous, now);
   if (held) return held;
 
-  // Best effort: KV is eventually consistent, so the cap is soft by a few dispatches.
+  // Best effort both ways: KV is eventually consistent and allows one write per second per key, so the cap is
+  // soft by a few dispatches and a failed read or write never blocks a build.
   const counterKey = `packs:dispatch:${now.toISOString().slice(0, 10)}`;
-  const count = Number.parseInt((await kv.get(counterKey)) ?? "0", 10) || 0;
+  let count = 0;
+  try {
+    count = Number.parseInt((await kv.get(counterKey)) ?? "0", 10) || 0;
+  } catch {
+    // Counted as 0.
+  }
   if (count >= DAILY_CAP) return "capped";
-  await kv.put(counterKey, String(count + 1), { expirationTtl: COUNTER_TTL_S });
+  try {
+    await kv.put(counterKey, String(count + 1), {
+      expirationTtl: COUNTER_TTL_S,
+    });
+  } catch {
+    // Ignored.
+  }
 
   // Marked before GitHub is called: a run that dies before the workflow writes its own status still holds the
   // language for RUNNING_STALE_MS instead of being dispatched again on the next request.
@@ -134,17 +165,35 @@ export async function requestBuild(o: {
     failures: previous?.failures ?? 0,
     run: "dispatched",
   };
-  try {
-    await bucket.put(key, JSON.stringify(running), STATUS_METADATA);
-  } catch {
-    return "error";
-  }
+  const mark = await bucket.put(key, JSON.stringify(running), STATUS_METADATA);
 
   try {
-    const token = await installationToken(env, kv, now, fetchImpl);
-    const res = await fetchImpl(WORKFLOW_DISPATCH, {
+    await dispatchWorkflow(env, kv, now, fetchImpl, language);
+    return "dispatched";
+  } catch (err) {
+    console.error(
+      `[packs] dispatch for ${compat}/${language} (${o.reason}) failed:`,
+      err,
+    );
+    await restoreStatus(bucket, key, previousRaw, mark?.etag);
+    return "error";
+  }
+}
+
+async function dispatchWorkflow(
+  env: BuildEnv,
+  kv: KVNamespace,
+  now: Date,
+  fetchImpl: typeof fetch,
+  language: string,
+): Promise<void> {
+  const post = async () =>
+    fetchImpl(WORKFLOW_DISPATCH, {
       method: "POST",
-      headers: { ...githubHeaders(token), "Content-Type": "application/json" },
+      headers: {
+        ...githubHeaders(await installationToken(env, kv, now, fetchImpl)),
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         ref: "master",
         inputs: {
@@ -154,23 +203,47 @@ export async function requestBuild(o: {
         },
       }),
     });
-    if (!res.ok) throw new Error(`GitHub workflow dispatch: ${res.status}`);
-    return "dispatched";
-  } catch (err) {
-    console.error(
-      `[packs] dispatch for ${compat}/${language} (${o.reason}) failed:`,
-      err,
-    );
-    try {
-      if (previousRaw === null) await bucket.delete(key);
-      else await bucket.put(key, previousRaw, STATUS_METADATA);
-    } catch (restoreErr) {
-      // The `running` mark stays; the guard lets the language go again after RUNNING_STALE_MS.
-      console.error(
-        `[packs] could not restore the status of ${compat}/${language}:`,
-        restoreErr,
+
+  let res = await post();
+  // A cached token GitHub no longer accepts (revoked, App reinstalled) would otherwise fail every dispatch until
+  // its KV entry expires: drop it and try once more with a freshly minted one.
+  if (res.status === 401) {
+    await res.body?.cancel();
+    await forgetInstallationToken(env, kv);
+    res = await post();
+    if (res.status === 401) await forgetInstallationToken(env, kv);
+  }
+  if (!res.ok) {
+    await res.body?.cancel();
+    throw new Error(`GitHub workflow dispatch: ${res.status}`);
+  }
+}
+
+/** Puts back what was there before the `running` mark, unless the workflow has written a newer status since. */
+async function restoreStatus(
+  bucket: R2Bucket,
+  key: string,
+  previousRaw: string | null,
+  markEtag: string | undefined,
+): Promise<void> {
+  try {
+    if (previousRaw === null) {
+      // R2 has no conditional delete; the window between head and delete is milliseconds.
+      const current = await bucket.head(key);
+      if (current && (markEtag === undefined || current.etag === markEtag)) {
+        await bucket.delete(key);
+      }
+    } else {
+      await bucket.put(
+        key,
+        previousRaw,
+        markEtag === undefined
+          ? STATUS_METADATA
+          : { ...STATUS_METADATA, onlyIf: { etagMatches: markEtag } },
       );
     }
-    return "error";
+  } catch (err) {
+    // The `running` mark stays; the guard lets the language go again after RUNNING_STALE_MS.
+    console.error(`[packs] could not restore ${key}:`, err);
   }
 }

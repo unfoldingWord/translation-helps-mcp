@@ -154,8 +154,15 @@ export async function installationToken(
   if (!appId || !privateKey || !installation)
     throw new Error("GitHub App secrets are not configured");
 
+  // The cache only saves a round trip; KV trouble must never cost the token itself.
   const key = tokenKey(installation);
-  const cached = readCached(await kv.get(key), now);
+  let raw: string | null = null;
+  try {
+    raw = await kv.get(key);
+  } catch {
+    // A miss.
+  }
+  const cached = readCached(raw, now);
   if (cached) return cached;
 
   const jwt = await appJwt(appId, privateKey, now);
@@ -166,7 +173,10 @@ export async function installationToken(
       headers: githubHeaders(jwt),
     },
   );
-  if (!res.ok) throw new Error(`GitHub installation token: ${res.status}`);
+  if (!res.ok) {
+    await res.body?.cancel();
+    throw new Error(`GitHub installation token: ${res.status}`);
+  }
   const body = (await res.json()) as { token?: unknown };
   if (typeof body.token !== "string")
     throw new Error("GitHub installation token: no token in the answer");
@@ -175,6 +185,23 @@ export async function installationToken(
     token: body.token,
     until: now.getTime() + TOKEN_TTL_S * 1000,
   };
-  await kv.put(key, JSON.stringify(entry), { expirationTtl: TOKEN_TTL_S });
+  try {
+    await kv.put(key, JSON.stringify(entry), { expirationTtl: TOKEN_TTL_S });
+  } catch {
+    // Minted again next time.
+  }
   return body.token;
+}
+
+/** For a token GitHub rejected (revoked, or the App reinstalled) before its cache entry expired. */
+export async function forgetInstallationToken(
+  env: DispatchEnv,
+  kv: KVNamespace,
+): Promise<void> {
+  if (!env.GITHUB_APP_INSTALLATION_ID) return;
+  try {
+    await kv.delete(tokenKey(env.GITHUB_APP_INSTALLATION_ID));
+  } catch {
+    // The entry expires on its own within 50 min.
+  }
 }

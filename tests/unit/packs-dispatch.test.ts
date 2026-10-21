@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { requestBuild, type BuildEnv } from "../../src/packs/dispatch";
 
 const NOW = new Date("2026-10-21T12:00:00Z");
-const COMPAT = "1";
+const COMPAT = "f1.1-u2.3.0-p6000230-q8-a11-t1";
 const LANG = "es-419";
 const STATUS_KEY = `status/${COMPAT}/${LANG}.json`;
 const COUNTER_KEY = "packs:dispatch:2026-10-21";
@@ -15,16 +15,43 @@ const TOKEN_KEY = "packs:github-token:678";
 const DISPATCH_URL =
   "https://api.github.com/repos/unfoldingWord/tc-study/actions/workflows/language-packs.yml/dispatches";
 
+/** A real App key, for the tests that mint a fresh installation token. */
+async function testKeyPem(): Promise<string> {
+  const pair = await crypto.subtle.generateKey(
+    {
+      name: "RSASSA-PKCS1-v1_5",
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: "SHA-256",
+    },
+    true,
+    ["sign", "verify"],
+  );
+  const der = await crypto.subtle.exportKey("pkcs8", pair.privateKey);
+  const b64 = Buffer.from(der).toString("base64");
+  return `-----BEGIN PRIVATE KEY-----\n${b64}\n-----END PRIVATE KEY-----\n`;
+}
+
 function hoursAgo(h: number): string {
   return new Date(NOW.getTime() - h * 3_600_000).toISOString();
 }
 
-function fakeKv(initial: Record<string, string> = {}) {
+/** `failing` makes every get or put on keys starting with that prefix reject, like KV's 1-write/s 429. */
+function fakeKv(
+  initial: Record<string, string> = {},
+  failing: { get?: string; put?: string } = {},
+) {
   const store = new Map(Object.entries(initial));
   const puts: Array<{ key: string; value: string; options: unknown }> = [];
   const kv = {
-    get: async (key: string) => store.get(key) ?? null,
+    get: async (key: string) => {
+      if (failing.get !== undefined && key.startsWith(failing.get))
+        throw new Error("KV get failed");
+      return store.get(key) ?? null;
+    },
     put: async (key: string, value: string, options?: unknown) => {
+      if (failing.put !== undefined && key.startsWith(failing.put))
+        throw new Error("KV PUT failed: 429 Too Many Requests");
       store.set(key, value);
       puts.push({ key, value, options });
     },
@@ -33,26 +60,46 @@ function fakeKv(initial: Record<string, string> = {}) {
   return { kv: kv as unknown as KVNamespace, store, puts };
 }
 
+/** An R2 bucket with etags, conditional puts (`onlyIf.etagMatches`) and head. */
 function fakeBucket(initial: Record<string, string> = {}) {
-  const store = new Map(Object.entries(initial));
+  const store = new Map<string, { text: string; etag: string }>();
+  let version = 0;
+  const write = (key: string, text: string) => {
+    const etag = `etag-${++version}`;
+    store.set(key, { text, etag });
+    return { key, etag };
+  };
+  for (const [key, text] of Object.entries(initial)) write(key, text);
   const puts: Array<{ key: string; body: string; options: unknown }> = [];
   const bucket = {
     get: async (key: string) => {
-      const text = store.get(key);
-      return text === undefined
+      const entry = store.get(key);
+      return entry === undefined
         ? null
         : {
-            text: async () => text,
-            json: async () => JSON.parse(text) as unknown,
+            etag: entry.etag,
+            text: async () => entry.text,
+            json: async () => JSON.parse(entry.text) as unknown,
           };
     },
-    put: async (key: string, body: string, options?: unknown) => {
-      store.set(key, body);
+    head: async (key: string) => {
+      const entry = store.get(key);
+      return entry === undefined ? null : { key, etag: entry.etag };
+    },
+    put: async (
+      key: string,
+      body: string,
+      options?: { onlyIf?: { etagMatches?: string } },
+    ) => {
+      const match = options?.onlyIf?.etagMatches;
+      if (match !== undefined && store.get(key)?.etag !== match) return null;
       puts.push({ key, body, options });
+      return write(key, body);
     },
     delete: async (key: string) => void store.delete(key),
   };
-  return { bucket: bucket as unknown as R2Bucket, store, puts };
+  const text = (key: string) => store.get(key)?.text;
+  return { bucket: bucket as unknown as R2Bucket, text, write, puts };
 }
 
 /** A configured env whose installation token is already cached, so only the dispatch call reaches fetch. */
@@ -61,7 +108,9 @@ function setup(
     status?: unknown;
     rawStatus?: string;
     kv?: Record<string, string>;
+    kvFailing?: { get?: string; put?: string };
     secrets?: boolean;
+    privateKey?: string;
   } = {},
 ) {
   const r2 = fakeBucket(
@@ -71,19 +120,22 @@ function setup(
         ? { [STATUS_KEY]: JSON.stringify(o.status) }
         : {},
   );
-  const kv = fakeKv({
-    [TOKEN_KEY]: JSON.stringify({
-      token: "ghs_cached",
-      until: NOW.getTime() + 30 * 60_000,
-    }),
-    ...o.kv,
-  });
+  const kv = fakeKv(
+    {
+      [TOKEN_KEY]: JSON.stringify({
+        token: "ghs_cached",
+        until: NOW.getTime() + 30 * 60_000,
+      }),
+      ...o.kv,
+    },
+    o.kvFailing,
+  );
   const secrets =
     o.secrets === false
       ? {}
       : {
           GITHUB_APP_ID: "12345",
-          GITHUB_APP_PRIVATE_KEY: "unused-while-cached",
+          GITHUB_APP_PRIVATE_KEY: o.privateKey ?? "unused-while-cached",
           GITHUB_APP_INSTALLATION_ID: "678",
         };
   const env: BuildEnv = {
@@ -205,7 +257,7 @@ describe("requestBuild guard", () => {
   it("treats an unparsable status as none", async () => {
     const t = setup({ rawStatus: "{not json" });
     expect(await t.run()).toBe("dispatched");
-    expect(JSON.parse(t.r2.store.get(STATUS_KEY) ?? "")).toMatchObject({
+    expect(JSON.parse(t.r2.text(STATUS_KEY) ?? "")).toMatchObject({
       state: "running",
       failures: 0,
     });
@@ -260,7 +312,7 @@ describe("requestBuild dispatch", () => {
     });
     let statusAtCall: unknown = null;
     t.fetchImpl.mockImplementation(async () => {
-      statusAtCall = JSON.parse(t.r2.store.get(STATUS_KEY) ?? "null");
+      statusAtCall = JSON.parse(t.r2.text(STATUS_KEY) ?? "null");
       return new Response(null, { status: 204 });
     });
     expect(await t.run()).toBe("dispatched");
@@ -298,7 +350,7 @@ describe("requestBuild dispatch", () => {
       async () => new Response("nope", { status: 422 }),
     );
     expect(await t.run()).toBe("error");
-    expect(t.r2.store.get(STATUS_KEY)).toBe(previous);
+    expect(t.r2.text(STATUS_KEY)).toBe(previous);
   });
 
   it("removes its `running` mark when there was no status and GitHub cannot be reached", async () => {
@@ -307,6 +359,121 @@ describe("requestBuild dispatch", () => {
       throw new Error("network down");
     });
     expect(await t.run()).toBe("error");
-    expect(t.r2.store.has(STATUS_KEY)).toBe(false);
+    expect(t.r2.text(STATUS_KEY)).toBeUndefined();
+  });
+
+  it("does not overwrite a status the workflow wrote after the mark", async () => {
+    const previous = JSON.stringify({
+      state: "failed",
+      at: hoursAgo(30),
+      failures: 1,
+      run: "https://run/1",
+    });
+    const newer = JSON.stringify({
+      state: "running",
+      at: NOW.toISOString(),
+      failures: 1,
+      run: "https://run/2",
+    });
+    const t = setup({ rawStatus: previous });
+    t.fetchImpl.mockImplementation(async () => {
+      t.r2.write(STATUS_KEY, newer);
+      return new Response("nope", { status: 500 });
+    });
+    expect(await t.run()).toBe("error");
+    expect(t.r2.text(STATUS_KEY)).toBe(newer);
+  });
+
+  it("does not delete a status the workflow wrote after the mark", async () => {
+    const newer = JSON.stringify({
+      state: "running",
+      at: NOW.toISOString(),
+      failures: 0,
+      run: "https://run/2",
+    });
+    const t = setup();
+    t.fetchImpl.mockImplementation(async () => {
+      t.r2.write(STATUS_KEY, newer);
+      throw new Error("network down");
+    });
+    expect(await t.run()).toBe("error");
+    expect(t.r2.text(STATUS_KEY)).toBe(newer);
+  });
+
+  it("drops a cached token GitHub rejects and retries once with a fresh one", async () => {
+    const t = setup({ privateKey: await testKeyPem() });
+    const dispatchAuths: string[] = [];
+    t.fetchImpl.mockImplementation((async (url: string, init: RequestInit) => {
+      if (url.endsWith("/access_tokens")) {
+        return Response.json({ token: "ghs_fresh" }, { status: 201 });
+      }
+      const auth = new Headers(init.headers).get("Authorization") ?? "";
+      dispatchAuths.push(auth);
+      return new Response(null, {
+        status: auth === "Bearer ghs_cached" ? 401 : 204,
+      });
+    }) as unknown as () => Promise<Response>);
+    expect(await t.run()).toBe("dispatched");
+    expect(dispatchAuths).toEqual(["Bearer ghs_cached", "Bearer ghs_fresh"]);
+    expect(JSON.parse(t.kv.store.get(TOKEN_KEY) ?? "{}").token).toBe(
+      "ghs_fresh",
+    );
+  });
+
+  it("gives up after one retry when the fresh token is rejected too", async () => {
+    const t = setup({ privateKey: await testKeyPem() });
+    let dispatches = 0;
+    t.fetchImpl.mockImplementation((async (url: string) => {
+      if (url.endsWith("/access_tokens")) {
+        return Response.json({ token: "ghs_fresh" }, { status: 201 });
+      }
+      dispatches++;
+      return new Response(null, { status: 401 });
+    }) as unknown as () => Promise<Response>);
+    expect(await t.run()).toBe("error");
+    expect(dispatches).toBe(2);
+    expect(t.kv.store.has(TOKEN_KEY)).toBe(false);
+    expect(t.r2.text(STATUS_KEY)).toBeUndefined();
+  });
+});
+
+describe("requestBuild never throws", () => {
+  beforeEach(
+    () => void vi.spyOn(console, "error").mockImplementation(() => {}),
+  );
+  afterEach(() => vi.restoreAllMocks());
+
+  it("dispatches when the day counter cannot be written (KV 429)", async () => {
+    const t = setup({ kvFailing: { put: "packs:dispatch:" } });
+    expect(await t.run()).toBe("dispatched");
+  });
+
+  it("dispatches when the day counter cannot be read", async () => {
+    const t = setup({ kvFailing: { get: "packs:dispatch:" } });
+    expect(await t.run()).toBe("dispatched");
+  });
+
+  it("dispatches when the fresh token cannot be cached", async () => {
+    const t = setup({
+      kv: { [TOKEN_KEY]: "" },
+      kvFailing: { put: "packs:github-token:" },
+    });
+    t.fetchImpl.mockImplementation((async (url: string) =>
+      url.endsWith("/access_tokens")
+        ? Response.json({ token: "ghs_fresh" }, { status: 201 })
+        : new Response(null, {
+            status: 204,
+          })) as unknown as () => Promise<Response>);
+    const env = { ...t.env, GITHUB_APP_PRIVATE_KEY: await testKeyPem() };
+    expect(await t.run({ env })).toBe("dispatched");
+  });
+
+  it("answers `invalid` for a malformed language or compat, touching nothing", async () => {
+    const t = setup();
+    expect(await t.run({ language: "../es" })).toBe("invalid");
+    expect(await t.run({ compat: "1" })).toBe("invalid");
+    expect(t.fetchImpl).not.toHaveBeenCalled();
+    expect(t.r2.puts).toHaveLength(0);
+    expect(t.kv.puts).toHaveLength(0);
   });
 });
