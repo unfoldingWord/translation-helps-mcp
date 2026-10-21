@@ -25,6 +25,7 @@ import {
   LANGUAGE_RE,
   requestBuild,
   type BuildEnv,
+  type BuildOutcome,
 } from "../../packs/dispatch.js";
 import { VARIANTS } from "./packViews.js";
 
@@ -35,9 +36,12 @@ export type PacksEnv = {
   RATE_LIMIT_RPM?: string;
 } & BuildEnv;
 
+/** `unknown` when Door43 could not answer, which must not read as a definite no. */
+export type Eligibility = "yes" | "no" | "unknown";
+
 /** What the route needs from Door43 and GitHub; tests pass fakes. */
 export type PacksDeps = {
-  isEligible: (language: string, env: PacksEnv) => Promise<boolean>;
+  isEligible: (language: string, env: PacksEnv) => Promise<Eligibility>;
   requestBuild: typeof requestBuild;
 };
 
@@ -45,7 +49,9 @@ type Outcome =
   | "hit"
   | "not-modified"
   | "missing"
-  | "preparing"
+  | `preparing-${BuildOutcome}`
+  | `unavailable-${BuildOutcome}`
+  | "eligibility-unknown"
   | "not-eligible"
   | "unsatisfiable"
   | "bad-request"
@@ -83,7 +89,10 @@ const CONTENT_TYPE = {
 } as const;
 const SHA256_RE = /^[0-9a-f]{64}$/;
 
-/** Lowercases, resolves the regional variant packs are built under (es → es-419), and validates. */
+/**
+ * Lowercases, resolves the regional variant packs are built under (es → es-419), and validates. The mapping is
+ * deliberate, the same variants the views reader uses: a bare `es` pack is never served.
+ */
 export function normalizePackLanguage(code: string): string | null {
   const lower = code.toLowerCase();
   const resolved = VARIANTS[lower]?.[0] ?? lower;
@@ -332,26 +341,55 @@ async function respond(
     return plain(404, "missing", { error: "pack not found" });
   }
 
-  let eligible = false;
+  let eligible: Eligibility = "unknown";
   try {
     eligible = await deps.isEligible(target.lang, env);
   } catch (err) {
     console.error(`[packs] eligibility of ${target.lang} unknown:`, err);
   }
-  if (!eligible) {
+  if (eligible === "unknown") {
+    return plain(
+      503,
+      "eligibility-unknown",
+      { state: "unavailable" },
+      { "Retry-After": "300" },
+    );
+  }
+  if (eligible === "no") {
     return plain(404, "not-eligible", { error: "no packs for this language" });
   }
-  // The phone only needs to know a build is coming; the dispatch (token, GitHub call) finishes after the answer.
-  ctx.waitUntil(
-    deps.requestBuild({
-      env,
-      compat: target.compat,
-      language: target.lang,
-      reason: "missing",
-    }),
+  // Awaited: this runs only until the language's first build is asked for, and the phone should learn whether one
+  // is coming at all.
+  const build = await deps.requestBuild({
+    env,
+    compat: target.compat,
+    language: target.lang,
+    reason: "missing",
+  });
+  console.log(`[packs] build for ${target.compat}/${target.lang}: ${build}`);
+  if (PREPARING.has(build)) {
+    return plain(
+      202,
+      `preparing-${build}`,
+      { state: "preparing" },
+      { "Retry-After": "600" },
+    );
+  }
+  return plain(
+    503,
+    `unavailable-${build}`,
+    { state: "unavailable", reason: build },
+    { "Retry-After": "3600" },
   );
-  return plain(202, "preparing", { state: "preparing" });
 }
+
+/** Build outcomes after which a pack is on its way; the others need a person (or configuration) first. */
+const PREPARING: ReadonlySet<BuildOutcome> = new Set([
+  "dispatched",
+  "running",
+  "cooling",
+  "capped",
+]);
 
 function resourceId(entry: CatalogEntry): string {
   return (entry.abbreviation || entry.name.split("_").pop() || "").toLowerCase();
@@ -361,18 +399,25 @@ function resourceId(entry: CatalogEntry): string {
 export async function isEligibleLanguage(
   language: string,
   env: PacksEnv,
-): Promise<boolean> {
+): Promise<Eligibility> {
   const kv = env.TRANSLATION_HELPS_CACHE;
-  const listed = (await listLanguages(kv)).find(
-    (l) => l.code.toLowerCase() === language,
-  );
-  if (!listed) return false;
-  const bibles = await catalogSearch({
-    lang: listed.code,
-    subject: "Aligned Bible",
-    kv,
-  });
-  return bibles.some((e) => resourceId(e).endsWith("lt"));
+  try {
+    // listLanguages answers [] when Door43 fails, and the catalog is never really empty.
+    const languages = await listLanguages(kv);
+    if (languages.length === 0) return "unknown";
+    const listed = languages.find((l) => l.code.toLowerCase() === language);
+    if (!listed) return "no";
+    // catalogSearch rethrows Door43's 5xx; a network failure still reads as no bible (and as "no" here).
+    const bibles = await catalogSearch({
+      lang: listed.code,
+      subject: "Aligned Bible",
+      kv,
+    });
+    return bibles.some((e) => resourceId(e).endsWith("lt")) ? "yes" : "no";
+  } catch (err) {
+    console.error(`[packs] eligibility of ${language} unknown:`, err);
+    return "unknown";
+  }
 }
 
 const DEFAULT_DEPS: PacksDeps = { isEligible: isEligibleLanguage, requestBuild };

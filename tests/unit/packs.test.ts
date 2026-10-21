@@ -18,12 +18,18 @@ import type { BuildOutcome } from "../../src/packs/dispatch";
 const catalog = vi.hoisted(() => ({
   languages: [] as Array<{ code: string; name: string }>,
   bibles: {} as Record<string, Array<{ name: string; abbreviation?: string }>>,
+  searchFails: false,
 }));
 vi.mock("@translation-helps/door43", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   listLanguages: async () => catalog.languages,
-  catalogSearch: async (o: { lang?: string; subject?: string }) =>
-    o.subject === "Aligned Bible" ? (catalog.bibles[o.lang ?? ""] ?? []) : [],
+  catalogSearch: async (o: { lang?: string; subject?: string }) => {
+    // Like dcsClient, which rethrows Door43's 5xx.
+    if (catalog.searchFails) throw new Error("HTTP 503 from DCS");
+    return o.subject === "Aligned Bible"
+      ? (catalog.bibles[o.lang ?? ""] ?? [])
+      : [];
+  },
 }));
 
 const COMPAT = "f1.1-u2.3.0-p6000230-q8-a11-t1";
@@ -117,6 +123,8 @@ function setup(
   opts: {
     objects?: Record<string, Stored>;
     eligible?: string[];
+    eligibility?: "unknown" | "throws";
+    build?: BuildOutcome;
     rpm?: string;
   } = {},
 ) {
@@ -140,10 +148,14 @@ function setup(
   } as unknown as ExecutionContext;
   const eligible = new Set(opts.eligible ?? ["es-419"]);
   const deps: PacksDeps = {
-    isEligible: async (language) => eligible.has(language),
+    isEligible: async (language) => {
+      if (opts.eligibility === "throws") throw new Error("Door43 down");
+      if (opts.eligibility === "unknown") return "unknown";
+      return eligible.has(language) ? "yes" : "no";
+    },
     requestBuild: async (o): Promise<BuildOutcome> => {
       builds.push({ compat: o.compat, language: o.language, reason: o.reason });
-      return "dispatched";
+      return opts.build ?? "dispatched";
     },
   };
   async function call(path: string, init: RequestInit = {}) {
@@ -158,7 +170,12 @@ function setup(
   return { call, points, builds, gets };
 }
 
-beforeEach(() => resetRateLimitStoreForTests());
+beforeEach(() => {
+  resetRateLimitStoreForTests();
+  catalog.languages = [];
+  catalog.bibles = {};
+  catalog.searchFails = false;
+});
 
 describe("normalizePackLanguage", () => {
   it("lowercases and resolves regional variants the way the views do", () => {
@@ -242,11 +259,54 @@ describe("GET /v2/packs/<compat>/<lang> (the entry)", () => {
     expect(res.status).toBe(202);
     expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(res.headers.get("Retry-After")).toBe("600");
     expect(await res.json()).toEqual({ state: "preparing" });
     expect(builds).toEqual([
       { compat: COMPAT, language: "fr", reason: "missing" },
     ]);
   });
+
+  it.each(["dispatched", "running", "cooling", "capped"] as const)(
+    "answers 202 preparing when the build request is %s",
+    async (build) => {
+      const { call, points } = setup({ eligible: ["fr"], build });
+      const res = await call(`${COMPAT}/fr`);
+      expect(res.status).toBe(202);
+      expect(res.headers.get("Cache-Control")).toBe("no-store");
+      expect(res.headers.get("Retry-After")).toBe("600");
+      expect(await res.json()).toEqual({ state: "preparing" });
+      expect(points[0]?.blobs?.[3]).toBe(`preparing-${build}`);
+    },
+  );
+
+  it.each(["stopped", "unconfigured", "error", "invalid"] as const)(
+    "answers 503 unavailable, not stored, when the build request is %s",
+    async (build) => {
+      const { call, points } = setup({ eligible: ["fr"], build });
+      const res = await call(`${COMPAT}/fr`);
+      expect(res.status).toBe(503);
+      expect(res.headers.get("Cache-Control")).toBe("no-store");
+      expect(res.headers.get("Retry-After")).toBe("3600");
+      expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+      expect(await res.json()).toEqual({ state: "unavailable", reason: build });
+      expect(points[0]?.blobs?.[3]).toBe(`unavailable-${build}`);
+    },
+  );
+
+  it.each(["unknown", "throws"] as const)(
+    "answers 503 unavailable, not stored, and asks for no build when eligibility is %s",
+    async (eligibility) => {
+      const { call, builds, points } = setup({ eligibility });
+      const res = await call(`${COMPAT}/fr`);
+      expect(res.status).toBe(503);
+      expect(res.headers.get("Cache-Control")).toBe("no-store");
+      expect(res.headers.get("Retry-After")).toBe("300");
+      expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+      expect(await res.json()).toEqual({ state: "unavailable" });
+      expect(builds).toEqual([]);
+      expect(points[0]?.blobs?.[3]).toBe("eligibility-unknown");
+    },
+  );
 
   it("answers 404, not stored, and asks for no build when the language is not eligible", async () => {
     const { call, builds } = setup();
@@ -439,7 +499,7 @@ describe("analytics", () => {
     const { call, points } = setup({ eligible: ["fr"] });
     await call(`${COMPAT}/fr`);
     expect(points.map((p) => p.blobs)).toEqual([
-      ["pack", "entry", "fr", "preparing"],
+      ["pack", "entry", "fr", "preparing-dispatched"],
     ]);
   });
 });
@@ -462,15 +522,26 @@ describe("isEligibleLanguage (the default check)", () => {
       fr: [{ name: "fr_f10", abbreviation: "f10" }],
       it: [{ name: "it_ult", abbreviation: "ult" }],
     };
-    expect(await isEligibleLanguage("es-419", env)).toBe(true);
-    expect(await isEligibleLanguage("fr", env), "no literal bible").toBe(false);
-    expect(await isEligibleLanguage("de", env), "no bible").toBe(false);
-    expect(await isEligibleLanguage("it", env), "not listed").toBe(false);
+    expect(await isEligibleLanguage("es-419", env)).toBe("yes");
+    expect(await isEligibleLanguage("fr", env), "no literal bible").toBe("no");
+    expect(await isEligibleLanguage("de", env), "no bible").toBe("no");
+    expect(await isEligibleLanguage("it", env), "not listed").toBe("no");
   });
 
   it("reads the resource id from the repo name when the abbreviation is missing", async () => {
     catalog.languages = [{ code: "pt-br", name: "Português" }];
     catalog.bibles = { "pt-br": [{ name: "pt-br_blt" }] };
-    expect(await isEligibleLanguage("pt-br", env)).toBe(true);
+    expect(await isEligibleLanguage("pt-br", env)).toBe("yes");
+  });
+
+  it("does not know when Door43 lists no language at all (dcsClient returns [] on failure)", async () => {
+    catalog.languages = [];
+    expect(await isEligibleLanguage("es-419", env)).toBe("unknown");
+  });
+
+  it("does not know when the catalog search fails", async () => {
+    catalog.languages = [{ code: "es-419", name: "Español" }];
+    catalog.searchFails = true;
+    expect(await isEligibleLanguage("es-419", env)).toBe("unknown");
   });
 });

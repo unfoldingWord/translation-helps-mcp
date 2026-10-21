@@ -55,7 +55,7 @@ BASE_PATH = "/v2"
 
 [env.production]
 name = "translation-helps-mcp-v2"
-vars = { NODE_ENV = "production", BASE_PATH = "/v2", API_BASE_URL = "https://translation-helps-api-v2.unfoldingword.workers.dev" }
+vars = { NODE_ENV = "production", BASE_PATH = "/v2", API_BASE_URL = "https://translation-helps-api-v2.unfoldingword.workers.dev", PACKS_TARGET = "production" }
 # Custom hostname routes require the zone on this Cloudflare account.
 # Pages v1 stays at tc-helps.mcp.servant.bible/; attach /v2* in the dashboard when ready:
 #   pattern: tc-helps.mcp.servant.bible/v2*
@@ -87,7 +87,7 @@ binding = "API"
 service = "translation-helps-api-v2"
 
 [env.preview]
-vars = { NODE_ENV = "development", BASE_PATH = "/v2" }
+vars = { NODE_ENV = "development", BASE_PATH = "/v2", PACKS_TARGET = "staging" }
 
 [[env.preview.kv_namespaces]]
 binding = "TRANSLATION_HELPS_CACHE"
