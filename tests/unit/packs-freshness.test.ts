@@ -15,7 +15,10 @@ import {
   type FreshnessEnv,
   type PackCatalogEntry,
 } from "../../src/packs/freshness";
-import { CURRENT_PACK_COMPAT, type BuildOutcome } from "../../src/packs/dispatch";
+import {
+  CURRENT_PACK_COMPAT,
+  type BuildOutcome,
+} from "../../src/packs/dispatch";
 
 // Only the default search reads the catalog; the other tests inject their own.
 const door43 = vi.hoisted(() => ({
@@ -41,7 +44,11 @@ function entry(stamps: Record<string, string>): PackCatalogEntry {
     compat: COMPAT,
     build: { id: "0123456789abcdef", generator: "abc", stamps },
     createdAt: "2026-10-20T00:00:00Z",
-    pack: { path: `packs/${COMPAT}/es-419/x.langpack.zip`, bytes: 1, sha256: "x" },
+    pack: {
+      path: `packs/${COMPAT}/es-419/x.langpack.zip`,
+      bytes: 1,
+      sha256: "x",
+    },
     resources: [],
   };
 }
@@ -54,7 +61,14 @@ const BUILT = {
 };
 
 function row(name: string, stamp: string, owner = "es-419_gl"): CatalogEntry {
-  return { owner, repo: name, name, language: "es-419", stamp, ingredients: [] };
+  return {
+    owner,
+    repo: name,
+    name,
+    language: "es-419",
+    stamp,
+    ingredients: [],
+  };
 }
 
 describe("isStale", () => {
@@ -95,7 +109,12 @@ describe("currentStamps", () => {
           row("es-419_obs-tq", "v2#2026-05-09T10_43_35Z"),
           row("es-419_tw", "v5#2026-01-01T00_00_00Z", "es-419_obt"),
           { ...row("es-419_tn", "nostamp") },
-          { owner: "es-419_gl", repo: "es-419_tq", name: "es-419_tq", ingredients: [] },
+          {
+            owner: "es-419_gl",
+            repo: "es-419_tq",
+            name: "es-419_tq",
+            ingredients: [],
+          },
           // Lexicon stamps in a build are sha10#commitDate, never a catalog tag#published.
           row("es-419_uhl", "v1#2026-01-01T00_00_00Z"),
           row("es-419_ugl", "v1#2026-01-01T00_00_00Z"),
@@ -126,10 +145,17 @@ function fakeKv() {
   return { kv: kv as unknown as KVNamespace, values, puts };
 }
 
-function setup(opts: { rows?: CatalogEntry[]; searchThrows?: boolean; status?: unknown } = {}) {
+function setup(
+  opts: {
+    rows?: CatalogEntry[];
+    searchThrows?: boolean;
+    status?: unknown;
+  } = {},
+) {
   const { kv, values, puts } = fakeKv();
   const searches: string[] = [];
-  const builds: Array<{ compat: string; language: string; reason: string }> = [];
+  const builds: Array<{ compat: string; language: string; reason: string }> =
+    [];
   const points: Array<{ blobs?: string[] }> = [];
   const pending: Promise<unknown>[] = [];
   const statusKey = `status/${COMPAT}/es-419.json`;
@@ -167,10 +193,22 @@ function setup(opts: { rows?: CatalogEntry[]; searchThrows?: boolean; status?: u
   };
   const check = (
     now = NOW,
-    e: PackCatalogEntry | (() => Promise<PackCatalogEntry | null>) = entry(BUILT),
+    e: PackCatalogEntry | (() => Promise<PackCatalogEntry | null>) = entry(
+      BUILT,
+    ),
     compat = COMPAT,
     reason?: "stale" | "daily",
-  ) => checkFreshness({ env, ctx, compat, language: "es-419", entry: e, now, reason, ...deps });
+  ) =>
+    checkFreshness({
+      env,
+      ctx,
+      compat,
+      language: "es-419",
+      entry: e,
+      now,
+      reason,
+      ...deps,
+    });
   const checkWithDefaultSearch = () =>
     checkFreshness({
       env,
@@ -181,7 +219,16 @@ function setup(opts: { rows?: CatalogEntry[]; searchThrows?: boolean; status?: u
       now: NOW,
       requestBuild: deps.requestBuild,
     });
-  return { check, checkWithDefaultSearch, values, puts, searches, builds, points, pending };
+  return {
+    check,
+    checkWithDefaultSearch,
+    values,
+    puts,
+    searches,
+    builds,
+    points,
+    pending,
+  };
 }
 
 describe("checkFreshness", () => {
@@ -189,7 +236,9 @@ describe("checkFreshness", () => {
     const s = setup({ rows: [row("es-419_glt", "v43#2026-10-20T09_00_00Z")] });
     await s.check();
     expect(s.searches).toEqual(["es-419"]);
-    expect(s.builds).toEqual([{ compat: COMPAT, language: "es-419", reason: "stale" }]);
+    expect(s.builds).toEqual([
+      { compat: COMPAT, language: "es-419", reason: "stale" },
+    ]);
     expect(s.points.map((p) => p.blobs)).toEqual([
       ["pack", "freshness", "es-419", "stale-dispatched"],
     ]);
@@ -209,7 +258,10 @@ describe("checkFreshness", () => {
     await s.check(new Date(NOW.getTime() + 59 * MINUTE));
     expect(s.searches).toHaveLength(1);
     expect(s.builds).toHaveLength(1);
-    expect(s.puts[0]).toEqual({ key: `packs:fresh:${COMPAT}:es-419`, ttl: 3600 });
+    expect(s.puts[0]).toEqual({
+      key: `packs:fresh:${COMPAT}:es-419`,
+      ttl: 3600,
+    });
 
     await s.check(new Date(NOW.getTime() + 61 * MINUTE));
     expect(s.searches).toHaveLength(2);
@@ -261,12 +313,67 @@ describe("checkFreshness", () => {
 describe("checkFreshness when the last build already saw the release (loop breaker)", () => {
   const NEWER_GLT = [row("es-419_glt", "v43#2026-10-20T09_00_00Z")];
 
-  it("asks for nothing when an ok build finished after the newest differing release, and says so", async () => {
+  it("asks for nothing when an ok build started after the newest differing release, and says so", async () => {
     const s = setup({
       rows: NEWER_GLT,
       status: {
         state: "ok",
         at: "2026-10-20T11:00:00.000Z",
+        failures: 0,
+        run: "https://run/9",
+        started: "2026-10-20T10:00:00.000Z",
+      },
+    });
+    await s.check();
+    expect(s.builds).toEqual([]);
+    expect(s.points.map((p) => p.blobs)).toEqual([
+      ["pack", "freshness", "es-419", "stale-seen"],
+    ]);
+  });
+
+  it("still asks when the release was published while the ok build ran (after started, before at)", async () => {
+    const s = setup({
+      rows: NEWER_GLT,
+      status: {
+        state: "ok",
+        at: "2026-10-20T11:00:00.000Z",
+        failures: 0,
+        run: "https://run/9",
+        started: "2026-10-20T08:00:00.000Z",
+      },
+    });
+    await s.check();
+    expect(s.builds).toHaveLength(1);
+    expect(s.points.map((p) => p.blobs)).not.toContainEqual([
+      "pack",
+      "freshness",
+      "es-419",
+      "stale-seen",
+    ]);
+  });
+
+  it("with no started, still asks when the release is within the job timeout before at", async () => {
+    const s = setup({
+      rows: NEWER_GLT,
+      status: {
+        state: "ok",
+        // 300 min before is 06:00, earlier than the 09:00 release: the run may have begun before it.
+        at: "2026-10-20T11:00:00.000Z",
+        failures: 0,
+        run: "https://run/9",
+      },
+    });
+    await s.check();
+    expect(s.builds).toHaveLength(1);
+  });
+
+  it("with no started, asks for nothing when the release is older than at minus the job timeout", async () => {
+    const s = setup({
+      rows: NEWER_GLT,
+      status: {
+        state: "ok",
+        // 300 min before is 09:30, later than the 09:00 release: any run ending then began after it.
+        at: "2026-10-20T14:30:00.000Z",
         failures: 0,
         run: "https://run/9",
       },
@@ -276,6 +383,21 @@ describe("checkFreshness when the last build already saw the release (loop break
     expect(s.points.map((p) => p.blobs)).toEqual([
       ["pack", "freshness", "es-419", "stale-seen"],
     ]);
+  });
+
+  it("with a started that does not parse, falls back to the job timeout", async () => {
+    const s = setup({
+      rows: NEWER_GLT,
+      status: {
+        state: "ok",
+        at: "2026-10-20T11:00:00.000Z",
+        failures: 0,
+        run: "https://run/9",
+        started: "soon",
+      },
+    });
+    await s.check();
+    expect(s.builds).toHaveLength(1);
   });
 
   it("still asks when the ok build is older than the release", async () => {

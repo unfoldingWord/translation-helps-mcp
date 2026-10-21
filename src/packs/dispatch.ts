@@ -33,6 +33,11 @@ export type BuildStatus = {
   at: string;
   failures: number;
   run: string;
+  /**
+   * When the workflow's build began reading Door43 (its own `running` write sets it; `ok` and `failed` keep it).
+   * The Worker's `running` mark at dispatch has none: the build has not started yet.
+   */
+  started?: string;
 };
 
 const HOUR_MS = 3_600_000;
@@ -94,6 +99,7 @@ function parseStatus(raw: string | null): BuildStatus | null {
         at: s.at,
         failures: s.failures,
         run: typeof s.run === "string" ? s.run : "",
+        ...(typeof s.started === "string" ? { started: s.started } : {}),
       };
     }
   } catch {

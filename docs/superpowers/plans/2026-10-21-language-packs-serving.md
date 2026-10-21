@@ -31,7 +31,10 @@ Engine, cron triggers), Vitest 3 (MCP repo), bun test (tc-study).
   - `packs/<compat>/<lang>/<sha256>.langpack.zip`
   - `packs/<compat>/originals/<sha256>.langpack.zip`
   - `v1/<lang>/...`
-- **Build state:** new, `status/<compat>/<lang>.json` = `{ state: 'running' | 'ok' | 'failed', at: ISO, failures: number, run: url }`.
+- **Build state:** new, `status/<compat>/<lang>.json` = `{ state: 'running' | 'ok' | 'failed', at: ISO, failures: number, run: url, started?: ISO }`;
+  `started` is set by the workflow's `running` write (right before the build reads Door43) and kept by `ok`/`failed`;
+  the Worker's own `running` mark at dispatch has none. The freshness loop breaker compares a release with `started`
+  (or, when absent, `at` minus the 300-min job timeout), never with `at`.
 - **Buckets:**
   - `language-packs-staging` (bound in `[env.preview]`) and `language-packs` (bound in `[env.production]`), in account
     `5a3ffd86…`;

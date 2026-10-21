@@ -154,6 +154,12 @@ once a staging build of es-419 has published:
 
 ## Operations
 
+- **Build status** (`status/<compat>/<lang>.json`):
+  `{ state: 'running' | 'ok' | 'failed', at, failures, run, started? }`. `at` is when the status was written (the
+  end of the run for `ok`/`failed`); `started` is when the workflow's build began reading Door43, set by its `running`
+  write and kept by `ok`/`failed`. The Worker's own `running` mark at dispatch has no `started`. A Door43 release
+  newer than the pack is taken as already seen (no `stale` build, `stale-seen` in Analytics) only when an `ok` build
+  started after it; with no `started`, the Worker uses `at` minus 300 min (the job timeout) instead.
 - **Reset a stopped language** (three failures in a row; the route answers `503 {state:'unavailable', reason:
 'stopped'}`): fix the cause, then either delete its status,
   `npx wrangler r2 object delete <bucket>/status/<compat>/<lang>.json --remote`, or dispatch the workflow by hand for

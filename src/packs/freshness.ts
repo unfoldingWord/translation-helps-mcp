@@ -12,6 +12,7 @@ import {
   requestBuild,
   type BuildEnv,
   type BuildOutcome,
+  type BuildStatus,
 } from "./dispatch.js";
 
 /** Copied from bt-synergy packages/language-pack/src/catalog.ts (schema 1), only the fields read here. */
@@ -47,6 +48,20 @@ const SEARCH_LIMIT = 500;
 /** Lexicons are stamped in a build as sha10#commitDate, never a catalog tag#published, so they would always differ. */
 const NOT_CATALOG_STAMPED = new Set(["uhl", "ugl"]);
 export const DAILY_LANGUAGES = ["es-419", "en"] as const;
+/** The workflow job's `timeout-minutes`: no build runs longer, so an ok run ended at most this long after it began. */
+const JOB_TIMEOUT_MS = 300 * 60_000;
+
+/**
+ * The moment from which an `ok` build had seen Door43: its `started`. A status written before `started` existed (or
+ * with one that does not parse) falls back to `at` minus the job timeout, the earliest the run could have begun, so
+ * it can never take a release published during its run as seen. NaN for any other state.
+ */
+export function okBuildSawDoor43At(status: BuildStatus | null): number {
+  if (status?.state !== "ok") return NaN;
+  const started = Date.parse(status.started ?? "");
+  if (!Number.isNaN(started)) return started;
+  return Date.parse(status.at) - JOB_TIMEOUT_MS;
+}
 
 /** Only keys both maps have count: a source the catalog no longer lists says nothing about the pack's age. */
 export function isStale(
@@ -142,9 +157,9 @@ export async function checkFreshness(o: {
     const current = currentStamps(rows, language);
     if (!isStale(entry, current)) return;
 
-    // A build that finished after the newest differing release has already seen it and found nothing to publish
+    // A build that started after the newest differing release has already seen it and found nothing to publish
     // (publish-language compares its own stamps): when the two stamp derivations disagree on a key, asking again
-    // would loop until the cap.
+    // would loop until the cap. Its start, not its end (`at`): a release published while it ran was never read.
     if (env.LANGUAGE_PACKS) {
       const newest = newestDifferingRelease(entry, current);
       const status = await readBuildStatus(
@@ -152,10 +167,10 @@ export async function checkFreshness(o: {
         compat,
         language,
       );
-      const builtAt = status?.state === "ok" ? Date.parse(status.at) : NaN;
-      if (newest !== null && !Number.isNaN(builtAt) && builtAt > newest) {
+      const sawAt = okBuildSawDoor43At(status);
+      if (newest !== null && !Number.isNaN(sawAt) && sawAt > newest) {
         console.log(
-          `[packs] stale ${compat}/${language}: already seen by the build of ${status?.at}`,
+          `[packs] stale ${compat}/${language}: already seen by the build started ${status?.started ?? `before ${status?.at}`}`,
         );
         env.ANALYTICS?.writeDataPoint({
           indexes: ["pack"],
