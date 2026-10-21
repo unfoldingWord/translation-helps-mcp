@@ -246,8 +246,8 @@ v1/<lang>/...                                      MCP views (layout unchanged)
   - the sha256 check;
   - cleaning old rows;
   - opening the originals on a low-memory Android phone;
-  - an end-to-end run in the browser, first against a test bucket in Abel's personal account, then against
-    unfoldingWord's.
+  - an end-to-end run in the browser against staging (`language-packs-staging` and the Workers' staging
+    environments), then against production.
 
 ## Order of work
 
