@@ -66,7 +66,7 @@ export const COMPAT_RE = /^f\d+\.\d+-u[\w.]+-p\d+-q\d+-a\d+-t\d+$/;
  * After a bump in tc-study, change it here and redeploy v2; until then, phones on the old compat keep the packs they
  * have and nothing loops.
  */
-export const CURRENT_PACK_COMPAT = "f1.1-u2.3.0-p6000230-q8-a11-t1";
+export const CURRENT_PACK_COMPAT = "f1.1-u2.3.0-p6000230-q9-a12-t1";
 
 function statusKey(compat: string, language: string): string {
   return `status/${compat}/${language}.json`;
