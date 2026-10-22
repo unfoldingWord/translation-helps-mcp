@@ -1,7 +1,8 @@
 /**
  * Packs follow Door43. Every entry hit may check, at most once an hour per language, whether the tc-ready catalog
- * has a newer release of anything the pack was built from, and asks for a `stale` build when it does. Originals and
- * lexicons are not in a language's catalog search, so they are left to the daily builds of es-419 and en.
+ * has a newer release of anything the pack was built from, and asks for a `stale` build when it does. The daily cron
+ * runs the same check for every published language. Originals and lexicons are not in a language's catalog search:
+ * a change to them alone is built with the language's next release, or by hand, until fingerprints come.
  */
 
 import { catalogSearch, type CatalogEntry } from "@translation-helps/door43";
@@ -47,7 +48,6 @@ const CHECK_TTL_S = 3600;
 const SEARCH_LIMIT = 500;
 /** Lexicons are stamped in a build as sha10#commitDate, never a catalog tag#published, so they would always differ. */
 const NOT_CATALOG_STAMPED = new Set(["uhl", "ugl"]);
-export const DAILY_LANGUAGES = ["es-419", "en"] as const;
 /** The workflow job's `timeout-minutes`: no build runs longer, so an ok run ended at most this long after it began. */
 const JOB_TIMEOUT_MS = 300 * 60_000;
 
@@ -202,11 +202,13 @@ export async function checkFreshness(o: {
 }
 
 /**
- * The cron's work: es-419 and en are rebuilt daily, which also refreshes the shared originals and lexicons; then
- * every other language with an entry under the current compat gets the same freshness check a phone's visit gives
- * it, so a new Door43 release is built even for a language nobody opened that day.
+ * The cron's work: every language with an entry under the current compat, es-419 and en like any other, gets the
+ * same freshness check a phone's visit gives it, so a new Door43 release is built even for a language nobody opened
+ * that day. The sweep builds nothing by itself: releases are monthly at most, and a daily build would mostly rebuild
+ * what did not change. Until fingerprints come (the parts design), a change to the lexicons or MACULA alone waits for
+ * the language's next release, or a build asked for by hand.
  */
-export async function runDailyBuilds(
+export async function runDailySweep(
   env: FreshnessEnv,
   ctx: ExecutionContext,
   deps: {
@@ -216,17 +218,6 @@ export async function runDailyBuilds(
   } = {},
 ): Promise<void> {
   const build = deps.requestBuild ?? requestBuild;
-  for (const language of DAILY_LANGUAGES) {
-    const outcome = await build({
-      env,
-      compat: CURRENT_PACK_COMPAT,
-      language,
-      reason: "daily",
-      now: deps.now,
-    });
-    console.log(`[packs] daily build of ${language}: ${outcome}`);
-  }
-
   const bucket = env.LANGUAGE_PACKS;
   if (!bucket) return;
   const check = deps.checkFreshness ?? checkFreshness;
@@ -235,7 +226,6 @@ export async function runDailyBuilds(
       bucket,
       CURRENT_PACK_COMPAT,
     )) {
-      if ((DAILY_LANGUAGES as readonly string[]).includes(language)) continue;
       await check({
         env,
         ctx,
