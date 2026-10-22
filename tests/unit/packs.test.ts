@@ -80,7 +80,9 @@ function fakeBucket(objects: Record<string, Stored>) {
             ? Math.max(0, size - range.suffix)
             : (range.offset ?? 0);
         if (start >= size || ("suffix" in range && range.suffix === 0)) {
-          throw new Error("get: The requested range is not satisfiable (10039)");
+          throw new Error(
+            "get: The requested range is not satisfiable (10039)",
+          );
         }
         const length =
           "suffix" in range ? size - start : (range.length ?? size - start);
@@ -195,7 +197,15 @@ describe("normalizePackLanguage", () => {
   });
 
   it("rejects anything that is not a language code", () => {
-    for (const bad of ["", "x", "../x", "es/419", "es%2F419", "es_419", "originals"]) {
+    for (const bad of [
+      "",
+      "x",
+      "../x",
+      "es/419",
+      "es%2F419",
+      "es_419",
+      "originals",
+    ]) {
       expect(normalizePackLanguage(bad), bad).toBeNull();
     }
   });
@@ -280,7 +290,10 @@ describe("GET /v2/packs/<compat>/<lang> (the entry)", () => {
     expect(res.status).toBe(404);
     expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
-    expect(await res.json()).toEqual({ state: "unavailable", reason: "old-compat" });
+    expect(await res.json()).toEqual({
+      state: "unavailable",
+      reason: "old-compat",
+    });
     expect(builds).toEqual([]);
     expect(points[0]?.blobs?.[3]).toBe("old-compat");
   });
@@ -340,7 +353,9 @@ describe("the freshness check", () => {
   it("runs after an entry is served, with the entry the bucket holds", async () => {
     const { call, checks } = setup();
     await call(`${COMPAT}/es`);
-    expect(checks).toEqual([{ compat: COMPAT, language: "es-419", entry: ENTRY }]);
+    expect(checks).toEqual([
+      { compat: COMPAT, language: "es-419", entry: ENTRY },
+    ]);
   });
 
   it("runs after an entry's 304 too, which is how phones ask", async () => {
@@ -349,7 +364,9 @@ describe("the freshness check", () => {
       headers: { "If-None-Match": '"e1"' },
     });
     expect(res.status).toBe(304);
-    expect(checks).toEqual([{ compat: COMPAT, language: "es-419", entry: ENTRY }]);
+    expect(checks).toEqual([
+      { compat: COMPAT, language: "es-419", entry: ENTRY },
+    ]);
   });
 
   it("does not run for a pack, a HEAD, or a language with no entry", async () => {
@@ -521,11 +538,23 @@ describe("requests the route refuses", () => {
 describe("analytics", () => {
   it.each([
     [`${COMPAT}/es-419`, {}, "entry", "es-419", "hit"],
-    [`${COMPAT}/es`, { headers: { "If-None-Match": "e1" } }, "entry", "es-419", "not-modified"],
+    [
+      `${COMPAT}/es`,
+      { headers: { "If-None-Match": "e1" } },
+      "entry",
+      "es-419",
+      "not-modified",
+    ],
     [`${COMPAT}/fr`, {}, "entry", "fr", "not-eligible"],
     [`${COMPAT}/es-419/${SHA}`, {}, "pack", "es-419", "hit"],
     [`${COMPAT}/es-419/${"c".repeat(64)}`, {}, "pack", "es-419", "missing"],
-    [`${COMPAT}/es-419/${SHA}`, { headers: { Range: "bytes=5000-" } }, "pack", "es-419", "unsatisfiable"],
+    [
+      `${COMPAT}/es-419/${SHA}`,
+      { headers: { Range: "bytes=5000-" } },
+      "pack",
+      "es-419",
+      "unsatisfiable",
+    ],
     ["../x", {}, "invalid", "", "bad-request"],
     [`${COMPAT}/es-419`, { method: "OPTIONS" }, "entry", "es-419", "preflight"],
   ] as const)(
@@ -546,7 +575,9 @@ describe("analytics", () => {
     // them lowercased: a code in Door43's case would build where nothing ever reads.
     const { call, builds } = setup({ eligible: ["pt-br"] });
     await call(`${COMPAT}/PT-BR`);
-    expect(builds).toEqual([{ compat: COMPAT, language: "pt-br", reason: "missing" }]);
+    expect(builds).toEqual([
+      { compat: COMPAT, language: "pt-br", reason: "missing" },
+    ]);
   });
 
   it("writes one point for a 202 preparing", async () => {
@@ -557,7 +588,6 @@ describe("analytics", () => {
     ]);
   });
 });
-
 
 describe("isEligibleLanguage (the default check)", () => {
   const env = { TRANSLATION_HELPS_CACHE: {} as KVNamespace } as PacksEnv;
@@ -580,6 +610,24 @@ describe("isEligibleLanguage (the default check)", () => {
     expect(await isEligibleLanguage("fr", env), "no literal bible").toBe("no");
     expect(await isEligibleLanguage("de", env), "no bible").toBe("no");
     expect(await isEligibleLanguage("it", env), "not listed").toBe("no");
+  });
+
+  it("reads the resource id from the repo name, not the abbreviation, as the build does (es-419_glt is «tpl»)", async () => {
+    // Door43's real es-419 rows: the literal text's abbreviation is in Spanish (Texto Puente Literal).
+    catalog.languages = [{ code: "es-419", name: "Español" }];
+    catalog.bibles = {
+      "es-419": [
+        { name: "es-419_glt", abbreviation: "tpl" },
+        { name: "es-419_gst", abbreviation: "gst" },
+      ],
+    };
+    expect(await isEligibleLanguage("es-419", env)).toBe("yes");
+  });
+
+  it("a simple text whose abbreviation ends in lt is not a literal one", async () => {
+    catalog.languages = [{ code: "xx", name: "X" }];
+    catalog.bibles = { xx: [{ name: "xx_gst", abbreviation: "xlt" }] };
+    expect(await isEligibleLanguage("xx", env)).toBe("no");
   });
 
   it("reads the resource id from the repo name when the abbreviation is missing", async () => {
