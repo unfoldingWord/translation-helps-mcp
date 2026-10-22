@@ -52,7 +52,8 @@ MACULA) 23 MB. Shared resources dominate the first download; a book's own helps 
   - the build reads `content/*.json` at the repository root (the es-419 layout, with lemma, Strong, part of speech and
     senses), so it finds none of them today.
 
-  The reader turns `brief`/`long` into one entry with one sense. English Words will show less than Spanish until a
+  The reader stores each entry unchanged at `{key}/content/{number}.json`, where Servos reads it; Servos already shows
+  a plain lexicon file (`brief` and `long`, no `entries`; `servos/src/lexicon/lexicon.ts`). English Words will show less than Spanish until a
   richer English lexicon exists; `unfoldingWord/en_ugl` is Markdown source (`content/G48620/01.md`), and converting it
   is a separate project.
 

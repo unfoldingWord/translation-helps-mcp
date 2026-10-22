@@ -218,14 +218,14 @@ v1/<lang>/...                                      MCP views (layout unchanged)
 
 ## Failures
 
-| What fails | What happens |
-|---|---|
-| A build (Door43 down, memory, a bug) | The catalog is untouched: the previous pack (or none) stays, and the MCP keeps its Door43 path. The run's log stays in Actions; KV records the failure. |
-| A Door43 resource incomplete | It is left out and named in the entry, as today (Esther has only the literal text). |
-| The download on a phone | Resumed with Range next time; discarded if the sha256 does not match. No automatic retry. |
-| Opening the pack (app closed, phone off) | Already handled: the next start says the pack must be received again. |
-| No connection, or the MCP unreachable | Nothing visible; Servos checks again the next day or when the connection returns. |
-| An app too old for the current packs | It keeps the last packs of its compatibility key; when none exist, it says to update the app before downloading. |
+| What fails                               | What happens                                                                                                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A build (Door43 down, memory, a bug)     | The catalog is untouched: the previous pack (or none) stays, and the MCP keeps its Door43 path. The run's log stays in Actions; KV records the failure. |
+| A Door43 resource incomplete             | It is left out and named in the entry, as today (Esther has only the literal text).                                                                     |
+| The download on a phone                  | Resumed with Range next time; discarded if the sha256 does not match. No automatic retry.                                                               |
+| Opening the pack (app closed, phone off) | Already handled: the next start says the pack must be received again.                                                                                   |
+| No connection, or the MCP unreachable    | Nothing visible; Servos checks again the next day or when the connection returns.                                                                       |
+| An app too old for the current packs     | It keeps the last packs of its compatibility key; when none exist, it says to update the app before downloading.                                        |
 
 ## Testing
 
