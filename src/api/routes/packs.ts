@@ -420,8 +420,12 @@ const PREPARING: ReadonlySet<BuildOutcome> = new Set([
   "capped",
 ]);
 
+/**
+ * The resource id from the repo name (`es-419_glt` → `glt`), as tc-study's build takes it. The abbreviation is
+ * the publisher's own and may be in the language: es-419_glt's is `tpl` (Texto Puente Literal).
+ */
 function resourceId(entry: CatalogEntry): string {
-  return (entry.abbreviation || entry.name.split("_").pop() || "").toLowerCase();
+  return (entry.name.split("_").pop() || "").toLowerCase();
 }
 
 /** Listed by the tc-ready, prod catalog, with a literal Aligned Bible (glt, ult…) to build the pack from. */
