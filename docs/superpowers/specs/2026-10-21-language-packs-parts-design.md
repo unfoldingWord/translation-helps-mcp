@@ -1,6 +1,6 @@
 # Language packs in parts: build only what changed, download only what changed
 
-Date: 2026-10-21. Status: design, for review. Builds on `2026-10-20-language-packs-online-design.md` (plan 2, merged
+Date: 2026-10-21. Status: approved by Abel (2026-10-22). Builds on `2026-10-20-language-packs-online-design.md` (plan 2, merged
 into `v2` as #69–#72) and changes its pack format, its build and its update rule.
 
 ## Why
@@ -45,9 +45,17 @@ MACULA) 23 MB. Shared resources dominate the first download; a book's own helps 
   which the Read page also finds without the topic. TW and TA always need `tc-ready`, also when OBS asks for them.
   Today the OBS helps search lets any TW in, which put the unmaintained fork `es-419_obt/es-419_tw` and
   `WycliffeAssociates/en_tw` (both without the topic) into packs.
-- **English lexicons come from `test_org`** (`test_org/en_ugl`, `test_org/en_uhl`). The build takes them from the
-  literal text's owner today, so it needs an owner option. `test_org/en_ugl` is 748 KB against unfoldingWord's 28 MB:
-  check it is complete before switching.
+- **English lexicons come from `test_org`**, as translationCore takes them. The build takes them from the literal
+  text's owner today, so it needs an owner option, and it needs a reader for translationCore's layout:
+  - `test_org/en_uhl` (identical to `unfoldingWord/en_uhl`): 8,674 entries at `resources/en/lexicons/uhl/v0/content/*.json`;
+  - `test_org/en_ugl`: 5,408 entries at `ugl/v0/content/*.json`, each with only `brief` and `long` (last changed 2021);
+  - the build reads `content/*.json` at the repository root (the es-419 layout, with lemma, Strong, part of speech and
+    senses), so it finds none of them today.
+
+  The reader turns `brief`/`long` into one entry with one sense. English Words will show less than Spanish until a
+  richer English lexicon exists; `unfoldingWord/en_ugl` is Markdown source (`content/G48620/01.md`), and converting it
+  is a separate project.
+
 - **In Servos the project's book is downloaded when the project is created;** "the whole language" is an option in
   settings, with its size shown. Related books are not computed: texts are cheap enough to take whole when asked.
 - **Updates download by themselves on fast Wi-Fi;** on mobile data, a slow connection or with data saver on, Servos
@@ -81,8 +89,18 @@ stay; only where they fall in the literal text changes. The phone downloads a fe
 **Why titles are their own part:** today TA and TW titles come from the whole TA and TW. As parts they are about
 5 KB (TA) and 20 KB (TW), and a corrected title changes only them. A note is joined with its title when shown.
 
-The group boundaries for TW, TA, lexicons and OBS are a starting point; the English measurement (§4) sets them so no
-part is much over ~1 MB.
+**Groups never move an item.** If groups were cut by size or alphabetically, one new article would shift every later
+boundary, every later part would get a new sha256 and phones would download them all again. So each item's group is a
+fixed function of its name or number:
+
+- TW: folder (`kt`, `names`, `other`) × a bucket from a hash of the article's file name, among a fixed number of
+  buckets (8 to start);
+- TA: by manual; `translate`, the largest, also in hash buckets;
+- lexicons: by Strong number range, a thousand at a time (G1–G999, G1000–G1999…); Strong numbers never move;
+- OBS: ten stories at a time.
+
+The aim is about 250 KB a part. The bucket counts are set from the English measurement (§4) and are part of the compat
+key, since changing them moves items.
 
 ## 2. Fingerprints and when to build
 
@@ -90,9 +108,14 @@ part is much over ~1 MB.
    resource's latest release. MACULA and lexicons have no releases: their latest commit is read. If no tag and no
    commit moved, nothing else happens.
 2. **Trees.** For each moved resource, `GET /api/v1/repos/{owner}/{repo}/git/trees/{tag}?recursive=true&per_page=10000`
-   gives every file with its blob sha in one request (en_tw: 966 entries, not truncated). Files are mapped to parts by
-   path (`08-RUT.usfm`, `tn_RUT.tsv`, `bible/kt/*.md`, `translate/<article>/title.md`). A `truncated` answer is read
-   page by page.
+   gives every file with its blob sha (en_tw: 966 entries in one request). Files are mapped to parts by path
+   (`08-RUT.usfm`, `tn_RUT.tsv`, `bible/kt/*.md`, `translate/<article>/title.md`). Large repositories come back
+   `truncated` (`unfoldingWord/en_ugl`, over 9,000 files, does): those are read page by page, with that repository as
+   a test fixture. If a tree cannot be read whole, the resource counts as changed: rebuilding too much is safe,
+   missing a change is not.
+   **A file's hash is its git blob sha**, which is computed from the file's bytes (`sha1("blob <size>\0" + bytes)`).
+   The Worker reads it from the tree without downloading anything; the build and tc-study's app compute the same value
+   from the bytes they already hold. All three reach the same fingerprint independently.
 3. **The manifest, normalized.** It says which books a resource has, its title and direction, so it is not ignored:
    its fingerprint is taken without `dublin_core.version`, `modified`, `issued` and the version numbers in `relation`.
    A version bump alone does not change it.
@@ -116,7 +139,9 @@ always has the same sha256, so an unchanged part is never uploaded or downloaded
 between languages: originals and MACULA by book, English lexicons for every language that uses them.
 
 **Derived keys lose the release.** Quote and alignment keys name what they were computed from by fingerprint instead
-of by release stamp, so identical content keeps its keys.
+of by release stamp, so identical content keeps its keys. tc-study's app shares that code and adopts the same keys,
+with no parameter keeping the old ones: the app gains the same thing (a release with unchanged content costs it no
+recomputation), and two key schemes in one code path would double what has to be tested.
 
 **The list:** `catalog/<compat>/<language>.json` (schema 2), no-cache, written last:
 
@@ -190,8 +215,8 @@ not uploaded.
 Each with its own plan and PRs, in this order:
 
 1. **Immediate fixes** (small, before anything is deployed):
-   - discovery: the OBS exception covers only OBS's own helps (drops the TW forks); a lexicon owner option
-     (`test_org` for English);
+   - discovery: the OBS exception covers only OBS's own helps (drops the TW forks);
+   - lexicons: an owner option (`test_org` for English) and a reader for translationCore's layout (`brief`/`long`);
    - Worker: drop the unconditional daily builds of es-419 and en; the daily sweep only checks releases;
    - the tc-study commit (`generator`) leaves the build id, so an unrelated commit rebuilds nothing.
 2. **Parts and the per-book build** (tc-study, the largest): deterministic parts, fingerprints from Door43 trees,
@@ -208,8 +233,4 @@ language (INFRA step 9) waits for parts: building a hundred languages in `f1.1` 
 
 ## Open points
 
-- Group boundaries for TW, TA, lexicons and OBS: set from the English measurement.
-- Whether `test_org/en_ugl` is complete.
-- Whether Door43's tree answer is ever `truncated` for the largest repositories (en_tw is not, at 966 entries).
-- Derived keys without the release (§3) are computed by code tc-study's app shares: its own cache keys change too.
-  Delivery 2 decides whether the app adopts them or keeps release-stamped keys behind a parameter.
+- The bucket counts for TW and TA (§1): set from the English measurement in delivery 2.
