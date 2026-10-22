@@ -1,7 +1,7 @@
 /**
  * A pack follows Door43: an entry hit checks, at most once an hour per language, whether the tc-ready catalog has a
- * newer release of anything the pack was built from, and asks for a build when it does. es-419 and en are also
- * rebuilt every day by the cron, which refreshes the originals and lexicons the hourly check never looks at.
+ * newer release of anything the pack was built from, and asks for a build when it does. The daily cron runs the same
+ * check for every published language, es-419 and en like any other; it builds nothing by itself.
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -11,7 +11,7 @@ import {
   currentStamps,
   isStale,
   newestDifferingRelease,
-  runDailyBuilds,
+  runDailySweep,
   type FreshnessEnv,
   type PackCatalogEntry,
 } from "../../src/packs/freshness";
@@ -488,29 +488,8 @@ function catalogBucket(keys: string[], pageSize = 2) {
   return { bucket: bucket as unknown as R2Bucket, lists };
 }
 
-describe("runDailyBuilds (the cron)", () => {
-  it("asks for a daily build of es-419 and en under the current compat", async () => {
-    const builds: Array<{ compat: string; language: string; reason: string }> =
-      [];
-    const env = { TRANSLATION_HELPS_CACHE: {} as KVNamespace };
-    await runDailyBuilds(env, {} as ExecutionContext, {
-      requestBuild: async (o) => {
-        builds.push({
-          compat: o.compat,
-          language: o.language,
-          reason: o.reason,
-        });
-        return "dispatched";
-      },
-    });
-    expect(builds).toEqual([
-      { compat: CURRENT_PACK_COMPAT, language: "es-419", reason: "daily" },
-      { compat: CURRENT_PACK_COMPAT, language: "en", reason: "daily" },
-    ]);
-    expect(CURRENT_PACK_COMPAT).toBe(COMPAT);
-  });
-
-  it("then checks every other language in the bucket under the current compat, page after page, as the cron", async () => {
+describe("runDailySweep (the cron)", () => {
+  it("checks every published language in the bucket, es-419 and en like any other, page after page", async () => {
     const { bucket, lists } = catalogBucket([
       `catalog/${COMPAT}/en.json`,
       `catalog/${COMPAT}/es-419.json`,
@@ -522,12 +501,16 @@ describe("runDailyBuilds (the cron)", () => {
     ]);
     const checks: Array<{ language: string; reason?: string; entry: unknown }> =
       [];
+    const builds: string[] = [];
     const env = {
       TRANSLATION_HELPS_CACHE: {} as KVNamespace,
       LANGUAGE_PACKS: bucket,
     };
-    await runDailyBuilds(env, {} as ExecutionContext, {
-      requestBuild: async () => "dispatched",
+    await runDailySweep(env, {} as ExecutionContext, {
+      requestBuild: async (o) => {
+        builds.push(o.language);
+        return "dispatched";
+      },
       checkFreshness: async (o) => {
         const e = typeof o.entry === "function" ? await o.entry() : o.entry;
         checks.push({
@@ -539,12 +522,38 @@ describe("runDailyBuilds (the cron)", () => {
       },
     });
     expect(checks).toEqual([
+      { language: "en", reason: "daily", entry: "es-419" },
+      { language: "es-419", reason: "daily", entry: "es-419" },
       { language: "fr", reason: "daily", entry: "es-419" },
       { language: "pt-br", reason: "daily", entry: "es-419" },
       { language: "sw", reason: "daily", entry: "es-419" },
     ]);
+    // Builds come only from a check that finds a newer release, never from the sweep itself.
+    expect(builds).toEqual([]);
     expect(lists.every((l) => l.prefix === `catalog/${COMPAT}/`)).toBe(true);
     expect(lists.length).toBeGreaterThan(1);
+    expect(CURRENT_PACK_COMPAT).toBe(COMPAT);
+  });
+
+  it("a language with no published entry is not built by the sweep: its first request builds it", async () => {
+    const { bucket } = catalogBucket([]);
+    const builds: string[] = [];
+    const checks: string[] = [];
+    await runDailySweep(
+      { TRANSLATION_HELPS_CACHE: {} as KVNamespace, LANGUAGE_PACKS: bucket },
+      {} as ExecutionContext,
+      {
+        requestBuild: async (o) => {
+          builds.push(o.language);
+          return "dispatched";
+        },
+        checkFreshness: async (o) => {
+          checks.push(o.language);
+        },
+      },
+    );
+    expect(checks).toEqual([]);
+    expect(builds).toEqual([]);
   });
 
   it("goes through the real check, so the hourly throttle and the build guard apply", async () => {
@@ -552,7 +561,7 @@ describe("runDailyBuilds (the cron)", () => {
     const { kv, values } = fakeKv();
     values.set(`packs:fresh:${COMPAT}:fr`, NOW.toISOString());
     const builds: string[] = [];
-    await runDailyBuilds(
+    await runDailySweep(
       { TRANSLATION_HELPS_CACHE: kv, LANGUAGE_PACKS: bucket },
       {} as ExecutionContext,
       {
@@ -563,7 +572,7 @@ describe("runDailyBuilds (the cron)", () => {
         },
       },
     );
-    // fr was checked ten minutes ago: the sweep leaves it alone.
-    expect(builds).toEqual(["es-419", "en"]);
+    // fr was checked ten minutes ago: the sweep leaves it alone, and asks for nothing else.
+    expect(builds).toEqual([]);
   });
 });

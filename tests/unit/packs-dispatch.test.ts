@@ -281,7 +281,7 @@ describe("requestBuild guard", () => {
     expect(t.fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("lets the cron's daily builds through a full cap, without counting them", async () => {
+  it("lets builds the cron's check asks for through a full cap, without counting them", async () => {
     const t = setup({ kv: { [COUNTER_KEY]: "20" } });
     expect(await t.run({ reason: "daily" })).toBe("dispatched");
     expect(t.kv.store.get(COUNTER_KEY)).toBe("20");

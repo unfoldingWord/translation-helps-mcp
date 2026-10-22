@@ -80,7 +80,8 @@ Neither merges before step 1 is done (it is, as of 2026-10-21).
 - Verify: `npx wrangler secret list --config wrangler.toml --env <env>` shows the three names.
 - Already in wrangler (no action): `PACKS_TARGET` on `translation-helps-mcp-v2` (preview → staging, production →
   production), binding `LANGUAGE_PACKS` (base and preview → `language-packs-staging`, production → `language-packs`),
-  cron `17 6 * * *` in production only.
+  cron `17 6 * * *` in production only (it checks every published language for a newer Door43 release and builds
+  nothing by itself).
 - Approved by Abel: ☐
 
 ## 6. Deploy and Pages check
