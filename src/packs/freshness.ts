@@ -256,15 +256,24 @@ export async function runDailySweep(
   }
 }
 
-/** The languages with an entry under `catalog/<compat>/`, page by page (originals.json is not a language). */
-async function* publishedLanguages(
+/**
+ * The languages with an entry under `catalog/<compat>/`, page by page (originals.json is not a language). A parts
+ * compat lists with `delimiter: "/"`, so its `originals/` folder (one list per originals build) is not walked; the f1.1
+ * sweep lists as it always has.
+ */
+export async function* publishedLanguages(
   bucket: R2Bucket,
   compat: string,
+  o: { delimiter?: "/" } = {},
 ): AsyncGenerator<string> {
   const prefix = `catalog/${compat}/`;
   let cursor: string | undefined;
   do {
-    const page = await bucket.list({ prefix, cursor });
+    const page = await bucket.list(
+      o.delimiter
+        ? { prefix, cursor, delimiter: o.delimiter }
+        : { prefix, cursor },
+    );
     for (const object of page.objects) {
       const name = object.key.slice(prefix.length);
       if (!name.endsWith(".json")) continue;
