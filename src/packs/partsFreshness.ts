@@ -210,8 +210,10 @@ export async function checkPartsFreshness(o: {
   if (compat !== CURRENT_PARTS_COMPAT) return "not-current";
   if (!partsDispatchEnabled(env)) return "parts-off";
   const tag = `[packs] parts ${compat}/${language}`;
+  // Inputs the observation left out, named on every result after it.
+  let leftOut = "";
   const done = (result: PartsCheck, detail = ""): PartsCheck => {
-    console.log(`${tag}: ${result}${detail}`);
+    console.log(`${tag}: ${result}${detail}${leftOut}`);
     point(env, language, `parts-${result === "seen" ? "stale-seen" : result}`);
     return result;
   };
@@ -240,6 +242,10 @@ export async function checkPartsFreshness(o: {
       now,
     });
     if ("unknown" in observed) return done("unknown", ` (${observed.unknown})`);
+    if (observed.unreadable?.length) {
+      // Left out, so not compared: a key only in the list is never a change.
+      leftOut = `; not compared, unreadable: ${observed.unreadable.join("; ")}`;
+    }
 
     const builder = await readPartsBuilder(bucket);
     if (builder && builder.compat !== compat) {

@@ -152,45 +152,68 @@ const LEXICON_IDS = ["uhl", "ugl"] as const;
 const LEXICONS_REF = "master";
 
 /** tc-study `cli/companions.ts` `MACULA_KEYS`: both get the one stamp. */
-const MACULA_KEYS = ["Biblica/hbo/macula", "Biblica/el-x-koine/macula"];
+export const MACULA_KEYS: readonly string[] = [
+  "Biblica/hbo/macula",
+  "Biblica/el-x-koine/macula",
+];
 const MACULA_REPO = "idiomaspuentes/taller";
 const MACULA_PATHS = ["public/trees", "public/referents"];
 
 /** The same originals and MACULA for every language: read once an hour, not once per language. */
 const SHARED_TTL_S = 3600;
+/**
+ * A shared reading with an input left out is read again after this long: soon enough that a passing failure does not
+ * hide a release for the hour, late enough that one cron run (five checks) asks Door43 or GitHub only once.
+ */
+const PARTIAL_TTL_S = 600;
 const ORIGINALS_CACHE = "packs:originals";
 const MACULA_CACHE = "packs:macula";
 
-export type Observed = { stamps: Record<string, string> } | { unknown: string };
+/**
+ * What the build would read, as Door43 and GitHub have it now. An input that cannot be read is left out of `stamps`
+ * and named in `unreadable`: a key only in the list is never a change, so leaving one out cannot ask for a build,
+ * and the other inputs are still compared. `unknown` only when the language's own search fails or has no row of it.
+ */
+export type Observed =
+  | { stamps: Record<string, string>; unreadable?: string[] }
+  | { unknown: string };
 
-/** Thrown for anything that makes the observation unknown; its message is the reason logged. */
-class Unknown extends Error {}
+/** What a reader got, and why anything it would have read was left out. */
+type Reading<T> = { value: T; unreadable: string[] };
 
-type Shared<T> = { at: string; value: T };
+/** Thrown for an input that cannot be read; its message is the reason logged. */
+class Unreadable extends Error {}
+
+const reason = (err: unknown) =>
+  err instanceof Unreadable ? err.message : String(err);
+
+type Shared<T> = { at: string; reading: Reading<T> };
 
 async function cached<T>(
   kv: KVNamespace,
   key: string,
   now: Date,
-  read: () => Promise<T>,
-): Promise<T> {
+  read: () => Promise<Reading<T>>,
+): Promise<Reading<T>> {
   try {
     const hit = JSON.parse((await kv.get(key)) ?? "null") as Shared<T> | null;
     const at = Date.parse(hit?.at ?? "");
-    if (hit && !Number.isNaN(at) && now.getTime() - at < SHARED_TTL_S * 1000) {
-      return hit.value;
+    const reading = hit?.reading;
+    if (reading && Array.isArray(reading.unreadable) && !Number.isNaN(at)) {
+      const ttl = reading.unreadable.length ? PARTIAL_TTL_S : SHARED_TTL_S;
+      if (now.getTime() - at < ttl * 1000) return reading;
     }
   } catch {
     // A miss.
   }
-  const value = await read();
+  const reading = await read();
   try {
-    const entry: Shared<T> = { at: now.toISOString(), value };
+    const entry: Shared<T> = { at: now.toISOString(), reading };
     await kv.put(key, JSON.stringify(entry), { expirationTtl: SHARED_TTL_S });
   } catch {
     // Read again next time.
   }
-  return value;
+  return reading;
 }
 
 type RawOriginalHit = {
@@ -203,40 +226,50 @@ type RawOriginalHit = {
  * UHB and UGNT as tc-study's `discover/originalLanguageCatalog.ts` finds them: Door43ApiClient.searchCatalog with
  * owner, lang, subject, `stage=prod` and `limit=1`, without the tc-ready topic `catalogSearch` always adds. Stamped
  * as `createResourceMetadata` builds the row (tag `release.tag_name ?? tag_name`, date `release.published_at ||
- * released`), then `resourceContentStamp`.
+ * released`), then `resourceContentStamp`. Each original is read on its own: one Door43 cannot give is left out.
  */
 async function originalStamps(
   fetchImpl: typeof fetch,
-): Promise<Record<string, string>> {
+): Promise<Reading<Record<string, string>>> {
   const stamps: Record<string, string> = {};
+  const unreadable: string[] = [];
   await Promise.all(
     ORIGINALS.map(async ({ key, lang, subject }) => {
-      const query = new URLSearchParams();
-      query.append("owner", "unfoldingWord");
-      query.append("lang", lang);
-      query.append("subject", subject);
-      query.append("stage", "prod");
-      query.append("limit", "1");
-      const res = await fetchImpl(`${DOOR43}/api/v1/catalog/search?${query}`, {
-        headers: { Accept: "application/json" },
-      });
-      if (!res.ok) {
-        await res.body?.cancel();
-        throw new Unknown(`Door43 answered ${res.status} for ${key}`);
+      try {
+        const query = new URLSearchParams();
+        query.append("owner", "unfoldingWord");
+        query.append("lang", lang);
+        query.append("subject", subject);
+        query.append("stage", "prod");
+        query.append("limit", "1");
+        const res = await fetchImpl(
+          `${DOOR43}/api/v1/catalog/search?${query}`,
+          { headers: { Accept: "application/json" } },
+        );
+        if (!res.ok) {
+          await res.body?.cancel();
+          throw new Unreadable(`Door43 answered ${res.status} for ${key}`);
+        }
+        const body = (await res.json()) as { ok?: boolean; data?: unknown };
+        const hit = (
+          body?.ok && Array.isArray(body.data) ? body.data[0] : undefined
+        ) as RawOriginalHit | undefined;
+        const tag = hit?.release?.tag_name ?? hit?.tag_name;
+        if (!hit || !tag) {
+          throw new Unreadable(`Door43 has no release of ${key}`);
+        }
+        stamps[key] = contentStamp(
+          tag,
+          hit.release?.published_at || hit.released || "",
+        );
+      } catch (err) {
+        unreadable.push(
+          err instanceof Unreadable ? err.message : `${key}: ${String(err)}`,
+        );
       }
-      const body = (await res.json()) as { ok?: boolean; data?: unknown };
-      const hit = (
-        body?.ok && Array.isArray(body.data) ? body.data[0] : undefined
-      ) as RawOriginalHit | undefined;
-      const tag = hit?.release?.tag_name ?? hit?.tag_name;
-      if (!hit || !tag) throw new Unknown(`Door43 has no release of ${key}`);
-      stamps[key] = contentStamp(
-        tag,
-        hit.release?.published_at || hit.released || "",
-      );
     }),
   );
-  return stamps;
+  return { value: stamps, unreadable: unreadable.sort() };
 }
 
 type RawCommit = {
@@ -248,56 +281,79 @@ type RawCommit = {
 /**
  * The lexicons at master, as tc-study's `resolveLexicon` reads them: the first commit Door43 lists, dated `created`,
  * else the committer's date. Only a repository that answers 404 is no lexicon, as there; a repository without the ref,
- * or anything else that gives no commit and date, is unknown, where tc-study's build would fail.
+ * or anything else that gives no commit and date, is unreadable (where tc-study's build would fail) and left out.
  */
 async function lexiconStamps(
   language: string,
   owner: string,
   fetchImpl: typeof fetch,
-): Promise<Record<string, string>> {
+): Promise<Reading<Record<string, string>>> {
   const stamps: Record<string, string> = {};
+  const unreadable: string[] = [];
   await Promise.all(
     LEXICON_IDS.map(async (id) => {
       const repo = `${encodeURIComponent(owner)}/${encodeURIComponent(`${language}_${id}`)}`;
-      const info = await fetchImpl(`${DOOR43}/api/v1/repos/${repo}`, {
-        headers: { Accept: "application/json" },
-      });
-      await info.body?.cancel();
-      // Only a repository Door43 lacks is no lexicon; one without the ref fails tc-study's build.
-      if (info.status === 404) return;
-      if (!info.ok) {
-        throw new Unknown(`Door43 answered ${info.status} for ${repo}`);
-      }
-      const res = await fetchImpl(
-        `${DOOR43}/api/v1/repos/${repo}/commits?sha=${LEXICONS_REF}&limit=1&stat=false&files=false&verification=false`,
-        { headers: { Accept: "application/json" } },
-      );
-      if (!res.ok) {
-        await res.body?.cancel();
-        throw new Unknown(
-          `${repo} has no ref ${LEXICONS_REF} (Door43 answered ${res.status})`,
+      try {
+        const info = await fetchImpl(`${DOOR43}/api/v1/repos/${repo}`, {
+          headers: { Accept: "application/json" },
+        });
+        await info.body?.cancel();
+        // Only a repository Door43 lacks is no lexicon; one without the ref fails tc-study's build.
+        if (info.status === 404) return;
+        if (!info.ok) {
+          throw new Unreadable(`Door43 answered ${info.status} for ${repo}`);
+        }
+        const res = await fetchImpl(
+          `${DOOR43}/api/v1/repos/${repo}/commits?sha=${LEXICONS_REF}&limit=1&stat=false&files=false&verification=false`,
+          { headers: { Accept: "application/json" } },
+        );
+        if (!res.ok) {
+          await res.body?.cancel();
+          throw new Unreadable(
+            `${repo} has no ref ${LEXICONS_REF} (Door43 answered ${res.status})`,
+          );
+        }
+        const [commit] = (await res.json()) as RawCommit[];
+        const date = commit?.created ?? commit?.commit?.committer?.date;
+        if (!commit?.sha || !date) {
+          throw new Unreadable(`${repo} has no commit at ${LEXICONS_REF}`);
+        }
+        stamps[`${owner}/${language}/${id}`] = lexiconStampOf({
+          sha: commit.sha,
+          date,
+        });
+      } catch (err) {
+        unreadable.push(
+          err instanceof Unreadable ? err.message : `${repo}: ${String(err)}`,
         );
       }
-      const [commit] = (await res.json()) as RawCommit[];
-      const date = commit?.created ?? commit?.commit?.committer?.date;
-      if (!commit?.sha || !date) {
-        throw new Unknown(`${repo} has no commit at ${LEXICONS_REF}`);
-      }
-      stamps[`${owner}/${language}/${id}`] = lexiconStampOf({
-        sha: commit.sha,
-        date,
-      });
     }),
   );
-  return stamps;
+  return { value: stamps, unreadable: unreadable.sort() };
 }
 
 /**
  * MACULA's commit as tc-study's `cli/maculaIdentity.ts` takes it from a clone of Taller's default branch:
  * `git log -1 -- public/trees public/referents`, the newer of the last commits touching each folder, dated by its
- * committer. With the App's installation token when the App is configured, else without one.
+ * committer. With the App's installation token when the App is configured, else without one. Unreadable (no token, a
+ * refusal, GitHub's rate limit, no dated commit) is no commit.
  */
 async function maculaCommit(
+  env: FreshnessEnv,
+  now: Date,
+  fetchImpl: typeof fetch,
+): Promise<Reading<{ sha: string; date: string } | null>> {
+  try {
+    return {
+      value: await readMaculaCommit(env, now, fetchImpl),
+      unreadable: [],
+    };
+  } catch (err) {
+    return { value: null, unreadable: [`MACULA: ${reason(err)}`] };
+  }
+}
+
+async function readMaculaCommit(
   env: FreshnessEnv,
   now: Date,
   fetchImpl: typeof fetch,
@@ -317,7 +373,7 @@ async function maculaCommit(
     try {
       headers = githubHeaders(await installationToken(env, kv, now, fetchImpl));
     } catch (err) {
-      throw new Unknown(`no GitHub token: ${String(err)}`);
+      throw new Unreadable(`no GitHub token: ${String(err)}`);
     }
   }
   const latest = await Promise.all(
@@ -331,12 +387,12 @@ async function maculaCommit(
         await res.body?.cancel();
         // A token GitHub no longer accepts is minted again on the next check.
         if (app && res.status === 401) await forgetInstallationToken(env, kv);
-        throw new Unknown(`GitHub answered ${res.status} for ${path}`);
+        throw new Unreadable(`GitHub answered ${res.status} for ${path}`);
       }
       const [commit] = (await res.json()) as RawCommit[];
       const date = commit?.commit?.committer?.date;
       if (!commit?.sha || !date || Number.isNaN(Date.parse(date))) {
-        throw new Unknown(`GitHub gave no dated commit for ${path}`);
+        throw new Unreadable(`GitHub gave no dated commit for ${path}`);
       }
       return { sha: commit.sha, date };
     }),
@@ -347,9 +403,10 @@ async function maculaCommit(
 }
 
 /**
- * Never throws. `unknown` when any input cannot be read (the search has no row of the language, which is also how a
- * Door43 network failure reads; no literal text; an original, a lexicon or MACULA unreadable): an unknown result
- * asks for no build.
+ * Never throws. `unknown` only when the language's search fails or has no row of the language (which is also how a
+ * Door43 network failure reads): then there is nothing to compare. Any other input that cannot be read (an original,
+ * a lexicon, MACULA) is left out and named in `unreadable`. A language without a literal text gets no lexicons, as
+ * the build reads them only from its literal text's owner.
  */
 export async function observeParts(o: {
   language: string;
@@ -368,28 +425,38 @@ export async function observeParts(o: {
     if (!rows.some((row) => row.language === language)) {
       return { unknown: `the catalog search has no row of ${language}` };
     }
+    // buildLanguageParts reads the lexicons only when the language has a literal text with an owner, en included.
     const literalOwner = literalOwnerOf(rows, language);
-    if (!literalOwner) return { unknown: `${language} has no literal text` };
-    const owner = LEXICON_OWNERS[language] ?? literalOwner;
+    const lexiconOwner = literalOwner
+      ? (LEXICON_OWNERS[language] ?? literalOwner)
+      : undefined;
 
     const [originals, lexicons, macula] = await Promise.all([
       cached(kv, ORIGINALS_CACHE, now, () => originalStamps(fetchImpl)),
-      lexiconStamps(language, owner, fetchImpl),
+      lexiconOwner
+        ? lexiconStamps(language, lexiconOwner, fetchImpl)
+        : { value: {}, unreadable: [] },
       cached(kv, MACULA_CACHE, now, () => maculaCommit(env, now, fetchImpl)),
     ]);
-    const maculaStamp = maculaStampOf(macula);
+    const maculaStamp = macula.value ? maculaStampOf(macula.value) : null;
+    const unreadable = [
+      ...originals.unreadable,
+      ...lexicons.unreadable,
+      ...macula.unreadable,
+    ];
     return {
       stamps: {
         ...languageStamps(rows, language),
-        ...originals,
+        ...originals.value,
         // As in the build, a lexicon's commit stamp wins over any catalog row of the same key.
-        ...lexicons,
-        ...Object.fromEntries(MACULA_KEYS.map((key) => [key, maculaStamp])),
+        ...lexicons.value,
+        ...(maculaStamp
+          ? Object.fromEntries(MACULA_KEYS.map((key) => [key, maculaStamp]))
+          : {}),
       },
+      ...(unreadable.length ? { unreadable } : {}),
     };
   } catch (err) {
-    return {
-      unknown: err instanceof Unknown ? err.message : String(err),
-    };
+    return { unknown: reason(err) };
   }
 }

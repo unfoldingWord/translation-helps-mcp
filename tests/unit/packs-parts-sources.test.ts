@@ -263,6 +263,13 @@ const LIST_STAMPS = {
   "Biblica/el-x-koine/macula": "abc1234567#2026-08-01T00_00_00.000Z",
 };
 
+/** LIST_STAMPS without the given keys: what is left when those inputs cannot be read. */
+const without = (...keys: string[]) =>
+  Object.fromEntries(
+    Object.entries(LIST_STAMPS).filter(([key]) => !keys.includes(key)),
+  );
+const MACULA = ["Biblica/hbo/macula", "Biblica/el-x-koine/macula"];
+
 describe("the stamp formats, as tc-study writes them", () => {
   it("a lexicon is its commit's first ten characters and its date, sanitized (companions.ts lexiconStampOf)", () => {
     expect(
@@ -481,10 +488,12 @@ describe("observeParts", () => {
     expect("stamps" in observed && UHL in observed.stamps).toBe(false);
   });
 
-  it("a repository that fails, or one without master (its commits 404), is unknown, not «no lexicon»", async () => {
+  it("a repository that fails, or one without master (its commits 404), is left out and named, not «no lexicon»", async () => {
+    // es-419_ugl fails: es-419_uhl and every other input are still compared.
     const repoFails = setup({ lexiconRepos: { "test_gl/es-419_ugl": 500 } });
     expect(await repoFails.observe()).toEqual({
-      unknown: expect.stringContaining("es-419_ugl"),
+      stamps: LIST_STAMPS,
+      unreadable: ["Door43 answered 500 for test_gl/es-419_ugl"],
     });
     const noMaster = setup({
       lexicons: {
@@ -492,7 +501,10 @@ describe("observeParts", () => {
       },
     });
     expect(await noMaster.observe()).toEqual({
-      unknown: expect.stringContaining("es-419_uhl has no ref master"),
+      stamps: without(UHL),
+      unreadable: [
+        "test_gl/es-419_uhl has no ref master (Door43 answered 404)",
+      ],
     });
     const commitsFail = setup({
       lexicons: {
@@ -500,8 +512,28 @@ describe("observeParts", () => {
       },
     });
     expect(await commitsFail.observe()).toEqual({
-      unknown: expect.stringContaining("es-419_uhl"),
+      stamps: without(UHL),
+      unreadable: [expect.stringContaining("es-419_uhl")],
     });
+  });
+
+  it("a lexicon Door43 cannot be reached for (a network error) is left out too", async () => {
+    const s = setup();
+    const observed = await observeParts({
+      language: LANG,
+      env: { TRANSLATION_HELPS_CACHE: s.kv },
+      ctx: { waitUntil: () => {} } as unknown as ExecutionContext,
+      now: NOW,
+      search: async () => ROWS,
+      fetch: (async (input: RequestInfo | URL) => {
+        if (String(input).includes("_uhl")) throw new TypeError("network");
+        return new Response("not found", { status: 404 });
+      }) as typeof fetch,
+    });
+    expect("stamps" in observed && UHL in observed.stamps).toBe(false);
+    expect("stamps" in observed && observed.unreadable).toContainEqual(
+      expect.stringContaining("test_gl/es-419_uhl: TypeError: network"),
+    );
   });
 
   it("a lexicon dated with an offset keeps it, only sanitized (never normalized)", async () => {
@@ -524,12 +556,15 @@ describe("observeParts", () => {
     );
   });
 
-  it("a lexicon answered with no commit, or a commit with no date, is unknown (resolveLexicon throws)", async () => {
+  it("a lexicon answered with no commit, or a commit with no date, is left out (resolveLexicon throws)", async () => {
     for (const body of [[], [{ sha: "0123456789abcdef" }]]) {
       const s = setup({
         lexicons: { "test_gl/es-419_uhl": { status: 200, body } },
       });
-      expect(await s.observe()).toEqual({ unknown: expect.any(String) });
+      expect(await s.observe()).toEqual({
+        stamps: without(UHL),
+        unreadable: ["test_gl/es-419_uhl has no commit at master"],
+      });
     }
   });
 
@@ -604,26 +639,41 @@ describe("observeParts", () => {
     expect(github.every((a) => a.auth === "Bearer ghs_cached")).toBe(true);
   });
 
-  it("GitHub refusing (403) or failing is unknown, and nothing is cached", async () => {
-    for (const status of [403, 500]) {
+  it("GitHub refusing (403, its rate limit) or failing leaves both MACULA keys out, and is asked again after 10 minutes", async () => {
+    for (const status of [403, 429, 500]) {
       const s = setup({
         github: { "public/trees": { status, body: { message: "no" } } },
       });
       expect(await s.observe()).toEqual({
-        unknown: expect.stringContaining(String(status)),
+        stamps: without(...MACULA),
+        unreadable: [`MACULA: GitHub answered ${status} for public/trees`],
       });
-      expect(s.puts.some((p) => p.key === "packs:macula")).toBe(false);
+      // The rest of the run (five checks within minutes) does not ask GitHub again...
+      const before = s.asked.length;
+      await s.observe(LANG, new Date(NOW.getTime() + 9 * MINUTE));
+      expect(
+        s.asked.slice(before).some((a) => a.url.includes("api.github.com")),
+      ).toBe(false);
+      // ...but a passing failure does not hide a MACULA commit for the hour.
+      const later = s.asked.length;
+      await s.observe(LANG, new Date(NOW.getTime() + 11 * MINUTE));
+      expect(
+        s.asked.slice(later).some((a) => a.url.includes("api.github.com")),
+      ).toBe(true);
     }
   });
 
-  it("a GitHub answer without a commit is unknown", async () => {
+  it("a GitHub answer without a commit leaves MACULA out", async () => {
     const s = setup({
       github: { "public/referents": { status: 200, body: [] } },
     });
-    expect(await s.observe()).toEqual({ unknown: expect.any(String) });
+    expect(await s.observe()).toEqual({
+      stamps: without(...MACULA),
+      unreadable: ["MACULA: GitHub gave no dated commit for public/referents"],
+    });
   });
 
-  it("an original Door43 cannot give (5xx, ok false, no row, no tag) is unknown", async () => {
+  it("an original Door43 cannot give (5xx, ok false, no row, no tag) is left out; the other one is kept", async () => {
     const answers: Answer[] = [
       { status: 502 },
       { status: 200, body: { ok: false, data: [] } },
@@ -644,7 +694,8 @@ describe("observeParts", () => {
     for (const hbo of answers) {
       const s = setup({ originals: { hbo } });
       expect(await s.observe(), JSON.stringify(hbo)).toEqual({
-        unknown: expect.any(String),
+        stamps: without(UHB),
+        unreadable: [expect.stringContaining(UHB)],
       });
     }
   });
@@ -664,9 +715,37 @@ describe("observeParts", () => {
     });
   });
 
-  it("a language without a literal text is unknown: the build would read no lexicons", async () => {
+  it("a language without a literal text has no lexicons, as the build reads them only from its owner", async () => {
     const s = setup({ rows: ROWS.filter((r) => r.name !== "es-419_glt") });
-    expect(await s.observe()).toEqual({ unknown: expect.any(String) });
+    expect(await s.observe()).toEqual({ stamps: without(UHL, GLT) });
+    expect(
+      s.asked.some((a) =>
+        a.url.startsWith("https://git.door43.org/api/v1/repos/"),
+      ),
+    ).toBe(false);
+    // en too: test_org's lexicons are read only when en has a literal text.
+    const en = setup({
+      language: "en",
+      rows: [
+        row("en_ust", "Aligned Bible", RELEASE, {
+          owner: "unfoldingWord",
+          language: "en",
+        }),
+      ],
+      lexicons: {
+        "test_org/en_uhl": { status: 200, body: [UHL_COMMIT] },
+      },
+    });
+    const observed = await en.observe();
+    expect(observed).toEqual({
+      stamps: expect.objectContaining({ "unfoldingWord/en/ust": RELEASE }),
+    });
+    expect("stamps" in observed && "test_org/en/uhl" in observed.stamps).toBe(
+      false,
+    );
+    expect(en.asked.some((a) => a.url.includes("/repos/test_org/"))).toBe(
+      false,
+    );
   });
 });
 

@@ -124,6 +124,24 @@ describe("run", () => {
     });
   });
 
+  it("an unreadable input is named, and its key, only in the list, keeps the gate shut", async () => {
+    const r = runWith(
+      ["--base", "https://preview.example.workers.dev", "--lang", "es-419"],
+      { [LIST_PATH]: LIST },
+      {
+        stamps: { [GLT]: RELEASE },
+        unreadable: ["Door43 answered 502 for unfoldingWord/hbo/uhb"],
+      },
+    );
+    expect(await r.done).toBe(1);
+    expect(JSON.parse(r.out.join("\n"))).toEqual([
+      { key: UHB, list: LIST.stamps[UHB], now: null },
+    ]);
+    expect(r.err.join("\n")).toContain(
+      "Unreadable, so not compared: Door43 answered 502 for unfoldingWord/hbo/uhb",
+    );
+  });
+
   it("a list without stamps is compared with its resources and its originals list's", async () => {
     const legacy = { ...LIST, stamps: undefined };
     const originals = {

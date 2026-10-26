@@ -12,8 +12,9 @@
  * Door43 and GitHub are read for real (GitHub without a token), with KV kept in memory for this run.
  *
  * Prints `[]` when every key agrees, else `[{key, list, now}]` (a key only in the list is listed too, though the
- * check ignores it), or `{unknown}` when an input could not be read. Exits 0 on `[]`, 1 on any difference or unknown,
- * 2 on bad arguments or an unreadable list.
+ * check ignores it), or `{unknown}` when the language's search failed. An input that could not be read (an original,
+ * a lexicon, MACULA) is named on stderr and its keys show as only in the list, so the gate does not pass without it.
+ * Exits 0 on `[]`, 1 on any difference or unknown, 2 on bad arguments or an unreadable list.
  */
 
 import { readFile as readFileFs } from "node:fs/promises";
@@ -133,6 +134,10 @@ export async function run(argv: string[], deps: Deps = {}): Promise<number> {
   if ("unknown" in observed) {
     out(JSON.stringify({ unknown: observed.unknown }, null, 2));
     return 1;
+  }
+  if (observed.unreadable?.length) {
+    // Left out, so their keys show as only in the list: the gate does not pass until they are read.
+    err(`Unreadable, so not compared: ${observed.unreadable.join("; ")}`);
   }
   const report = diffForReport(builtStamps(list, originals), observed.stamps);
   out(report.length ? JSON.stringify(report, null, 2) : "[]");

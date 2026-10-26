@@ -481,6 +481,33 @@ describe("checkPartsFreshness", () => {
     expect(s.points).toEqual([["pack", "freshness", LANG, "parts-unknown"]]);
   });
 
+  it("an input left out as unreadable is not compared, and the log names it", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const stamps = { ...STAMPS };
+    delete stamps["Biblica/hbo/macula"];
+    delete stamps["Biblica/el-x-koine/macula"];
+    const s = setup({
+      observed: {
+        stamps,
+        unreadable: ["MACULA: GitHub answered 403 for public/trees"],
+      },
+    });
+    expect(await s.check()).toBe("fresh");
+    expect(s.builds).toEqual([]);
+    expect(log.mock.calls.map((c) => String(c[0]))).toContainEqual(
+      `[packs] parts ${COMPAT}/${LANG}: fresh; not compared, unreadable: MACULA: GitHub answered 403 for public/trees`,
+    );
+    // The inputs that were read still ask for a build.
+    const moved = setup({
+      observed: {
+        stamps: { ...stamps, [GLT]: "v13#2026-10-20T09_00_00Z" },
+        unreadable: ["MACULA: GitHub answered 403 for public/trees"],
+      },
+    });
+    expect(await moved.check()).toBe("dispatched");
+    log.mockRestore();
+  });
+
   it("an old parts compat, or f1.1: nothing at all, not even the hour claimed", async () => {
     for (const compat of [OLD_PARTS_COMPAT, CURRENT_PACK_COMPAT]) {
       const s = setup();
