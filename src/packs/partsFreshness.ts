@@ -17,7 +17,7 @@ import {
   type BuildStatus,
 } from "./dispatch.js";
 import { okBuildSawDoor43At, type FreshnessEnv } from "./freshness.js";
-import { observeParts } from "./partsSources.js";
+import { MACULA_KEYS, observeParts } from "./partsSources.js";
 
 /** Copied from tc-study language-pack `parts/partsList.ts` (`PartsList`, schema 2), only the fields read here. */
 export type PartsListLite = {
@@ -98,6 +98,22 @@ export function builtStamps(
     }
   }
   return stamps;
+}
+
+/**
+ * The observed stamps a list is compared with: all of them but a MACULA key the list does not have. The build stamps
+ * a MACULA key only when MACULA has files for it (tc-study `companions.ts` `maculaCatalogRows`), while the Worker
+ * stamps both from one commit, so a MACULA key only observed is not a new input.
+ */
+export function comparedStamps(
+  built: Record<string, string>,
+  observed: Record<string, string>,
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(observed).filter(
+      ([key]) => !MACULA_KEYS.includes(key) || key in built,
+    ),
+  );
 }
 
 /**
@@ -255,9 +271,10 @@ export async function checkPartsFreshness(o: {
       );
       point(env, language, "parts-compat-drift");
     }
+    const built = builtStamps(list, originals);
     const sources = changedSources(
-      builtStamps(list, originals),
-      observed.stamps,
+      built,
+      comparedStamps(built, observed.stamps),
     );
     const code =
       builder?.compat === compat && builder.code !== list.code

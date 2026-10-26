@@ -22,6 +22,7 @@ import { pathToFileURL } from "node:url";
 import { CURRENT_PARTS_COMPAT } from "../src/packs/dispatch.js";
 import {
   builtStamps,
+  comparedStamps,
   type PartsListLite,
 } from "../src/packs/partsFreshness.js";
 import { observeParts } from "../src/packs/partsSources.js";
@@ -139,7 +140,8 @@ export async function run(argv: string[], deps: Deps = {}): Promise<number> {
     // Left out, so their keys show as only in the list: the gate does not pass until they are read.
     err(`Unreadable, so not compared: ${observed.unreadable.join("; ")}`);
   }
-  const report = diffForReport(builtStamps(list, originals), observed.stamps);
+  const built = builtStamps(list, originals);
+  const report = diffForReport(built, comparedStamps(built, observed.stamps));
   out(report.length ? JSON.stringify(report, null, 2) : "[]");
   return report.length ? 1 : 0;
 }

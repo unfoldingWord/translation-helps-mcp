@@ -124,6 +124,21 @@ describe("run", () => {
     });
   });
 
+  it("MACULA keys the list does not have are not compared, as the check does not compare them", async () => {
+    const r = runWith(
+      ["--base", "https://preview.example.workers.dev", "--lang", "es-419"],
+      { [LIST_PATH]: LIST },
+      {
+        stamps: {
+          ...LIST.stamps,
+          "Biblica/hbo/macula": "abc1234567#2026-08-01T00_00_00.000Z",
+        },
+      },
+    );
+    expect(await r.done).toBe(0);
+    expect(r.out).toEqual(["[]"]);
+  });
+
   it("an unreadable input is named, and its key, only in the list, keeps the gate shut", async () => {
     const r = runWith(
       ["--base", "https://preview.example.workers.dev", "--lang", "es-419"],

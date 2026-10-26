@@ -8,6 +8,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   builtStamps,
   changedSources,
+  comparedStamps,
   checkPartsFreshness,
   readPartsBuilder,
   type PartsListLite,
@@ -203,6 +204,20 @@ describe("changedSources and builtStamps", () => {
   });
 });
 
+describe("comparedStamps", () => {
+  it("keeps every observed key but a MACULA key the list does not have", () => {
+    const built = { [GLT]: "a", "Biblica/el-x-koine/macula": "m" };
+    expect(
+      comparedStamps(built, {
+        [GLT]: "a",
+        [TN]: "new",
+        "Biblica/hbo/macula": "m2",
+        "Biblica/el-x-koine/macula": "m2",
+      }),
+    ).toEqual({ [GLT]: "a", [TN]: "new", "Biblica/el-x-koine/macula": "m2" });
+  });
+});
+
 describe("readPartsBuilder", () => {
   it("reads status/builder.json, and takes anything malformed as no file", async () => {
     for (const [raw, expected] of [
@@ -273,6 +288,25 @@ describe("checkPartsFreshness", () => {
       }),
     });
     expect(await macula.check()).toBe("dispatched");
+  });
+
+  it("a MACULA key is compared only when the list has it: the build stamps one only when MACULA has files for it", async () => {
+    const greekOnly = { ...STAMPS };
+    delete greekOnly["Biblica/hbo/macula"];
+    const maculaMoved = moved({
+      "Biblica/hbo/macula": "f1e2d3c4b5#2026-10-20T00_00_00.000Z",
+      "Biblica/el-x-koine/macula": "f1e2d3c4b5#2026-10-20T00_00_00.000Z",
+    });
+    // The Hebrew key the list lacks is not new to it; the Greek one it has moved.
+    const s = setup({ observed: maculaMoved });
+    expect(await s.check({ list: list({ stamps: greekOnly }) })).toBe(
+      "dispatched",
+    );
+    const none = { ...greekOnly };
+    delete none["Biblica/el-x-koine/macula"];
+    const fresh = setup({ observed: maculaMoved });
+    expect(await fresh.check({ list: list({ stamps: none }) })).toBe("fresh");
+    expect(fresh.builds).toEqual([]);
   });
 
   it("the builder's code differs: a build with reason code from a phone", async () => {
