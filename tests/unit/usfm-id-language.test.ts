@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import type { CatalogEntry } from "@translation-helps/door43";
 import {
   declaredLanguageFromIdLine,
+  foreignScriptName,
   sameScriptureLanguage,
 } from "@translation-helps/door43";
 import { scriptureVersionsForBook } from "../../src/api/routes/scripture.js";
@@ -36,6 +37,23 @@ function entry(owner: string, abbrev: string, books: string[]): CatalogEntry {
 }
 
 const names = (entries: CatalogEntry[]) => entries.map((e) => e.abbreviation);
+
+const LATIN_SENTENCE =
+  "So while Yahweh was listening the men of Israel came to him in the city ";
+
+function latinBook(code: string): string {
+  return `\\id ${code} unfoldingWord® Simplified Text\n\\c 1\n\\p\n\\v 1 ${LATIN_SENTENCE.repeat(8)}`;
+}
+
+/** Arabic words only. The attributes are Latin and must not count. */
+function alignedArabic(code: string): string {
+  const words = Array.from(
+    { length: 80 },
+    () =>
+      String.raw`\w هذا|x-occurrence="1" x-occurrences="1" lemma="latinword"\w*`,
+  ).join("\n");
+  return `\\id ${code}\n\\c 1\n\\p\n\\v 1\n${words}`;
+}
 
 describe("declaredLanguageFromIdLine", () => {
   it("reads the tC language token and ignores the EN_ resource prefix", () => {
@@ -200,6 +218,88 @@ describe("scriptureVersionsForBook", () => {
     expect(result.versionsNote).toBe(
       "The UST (simplified) does not include RUT yet; the BSB is given in its place.",
     );
+  });
+
+  it("drops a tokenless Latin book when Arabic is requested and fills its place", () => {
+    const pool = [
+      entry("BSOJ", "avd", ["2SA"]),
+      entry("BSOJ", "arst", ["2SA"]),
+      entry("BSOJ", "nav", ["2SA"]),
+    ];
+    const result = scriptureVersionsForBook(pool, "2SA", "ar", (e) =>
+      e.abbreviation === "arst"
+        ? latinBook("2SA")
+        : alignedArabic(e.abbreviation?.toUpperCase() ?? "AVD"),
+    );
+    expect(foreignScriptName(latinBook("2SA"), "ar")).toBe("Arabic");
+    expect(names(result.picked)).toEqual(["avd", "nav"]);
+    expect(result.versionsNote).toBe(
+      "ARST: the book's text is not in Arabic script; the NAV is given in its place.",
+    );
+  });
+
+  it("keeps a tokenless book whose letters are in the requested script", () => {
+    const rev = alignedArabic("REV");
+    expect(foreignScriptName(rev, "ar")).toBeNull();
+    const result = scriptureVersionsForBook(
+      [entry("BSOJ", "arst", ["REV"])],
+      "REV",
+      "ar",
+      () => rev,
+    );
+    expect(names(result.picked)).toEqual(["arst"]);
+    expect(result.versionsNote).toBeNull();
+  });
+
+  it("does not apply the script signal when the expected script is Latin", () => {
+    const john = latinBook("JHN");
+    expect(foreignScriptName(john, "es-419")).toBeNull();
+    // Arabic letters would fail a Latin-script check. The signal stays off.
+    expect(foreignScriptName(alignedArabic("JHN"), "es-419")).toBeNull();
+    const glt = entry("es-419_gl", "glt", ["JHN"]);
+    const result = scriptureVersionsForBook([glt], "JHN", "es-419", () => john);
+    expect(result.picked).toEqual([glt]);
+    expect(result.versionsNote).toBeNull();
+  });
+
+  it("keeps an Arabic book that only has a few Latin names", () => {
+    const book = `${alignedArabic("GAL")} David Yahweh Israel`;
+    expect(foreignScriptName(book, "ar")).toBeNull();
+    const result = scriptureVersionsForBook(
+      [entry("BSOJ", "arst", ["GAL"])],
+      "GAL",
+      "ar",
+      () => book,
+    );
+    expect(names(result.picked)).toEqual(["arst"]);
+    expect(result.versionsNote).toBeNull();
+  });
+
+  it("keeps a tokenless book with too little text to judge the script", () => {
+    const short =
+      "\\id 2SA unfoldingWord® Simplified Text\n\\c 5\n\\p\n\\v 3 So David went";
+    expect(foreignScriptName(short, "ar")).toBeNull();
+    const result = scriptureVersionsForBook(
+      [entry("BSOJ", "arst", ["2SA"])],
+      "2SA",
+      "ar",
+      () => short,
+    );
+    expect(names(result.picked)).toEqual(["arst"]);
+    expect(result.versionsNote).toBeNull();
+  });
+
+  it("lets a declared language win over the script of the text", () => {
+    const declared = `\\id 2SA EN_AVD ar_Arabic_rtl\n\\c 1\n\\p\n\\v 1 ${"So while Yahweh was listening the men of Israel came to him. ".repeat(8)}`;
+    expect(foreignScriptName(declared, "ar")).toBeNull();
+    const result = scriptureVersionsForBook(
+      [entry("BSOJ", "arst", ["2SA"])],
+      "2SA",
+      "ar",
+      () => declared,
+    );
+    expect(names(result.picked)).toEqual(["arst"]);
+    expect(result.versionsNote).toBeNull();
   });
 
   it("omits a foreign book from the full list and says why", () => {

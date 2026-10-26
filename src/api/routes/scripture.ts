@@ -20,6 +20,7 @@ import {
   extractVerses,
   usfmExtent,
   declaredLanguageFromIdLine,
+  foreignScriptName,
   sameScriptureLanguage,
 } from "@translation-helps/door43";
 import type {
@@ -70,8 +71,8 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
     verseStr,
     format,
     includeAll ? "all" : "primary",
-    // Answers cached before a book's \id language was checked.
-    "id-lang",
+    // Answers cached before a book's \id language and script were checked.
+    "id-lang-script",
   );
 
   const cached = await getCachedJson<Record<string, unknown>>(
@@ -155,7 +156,8 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
 
     // Cap fan-out: one literal + one simplified (prefer unfoldingWord), unless
     // ?all=1. A version whose catalog entry says it lacks the book is not
-    // fetched. A book whose \id line declares another language is treated
+    // fetched. A book whose \id line declares another language, or whose
+    // letters are in another script when that line is silent, is treated
     // the same way, and the next version of that role is tried.
     const fetcher = makeFetcher(env, execCtx);
     const zipSources: ZipCacheSource[] = [];
@@ -224,11 +226,8 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
       ].map(async ({ entry, isOriginal, usfm }) => {
         if (!usfm) return null;
         // After the USFM is in hand, before the verses are taken out of it.
-        if (!isOriginal) {
-          const declared = declaredLanguageFromIdLine(usfm);
-          if (declared && !sameScriptureLanguage(language, declared)) {
-            return null;
-          }
+        if (!isOriginal && bookLanguagePhrase(usfm, language)) {
+          return null;
         }
 
         const text = extractVerses(usfm, chapter, verseStart, verseEnd, format);
@@ -430,11 +429,31 @@ export function describeStandIns(
 }
 
 /**
+ * Why `usfm` cannot stand for `language`, or null when it can.
+ * The `\id` line wins. The script of the letters is used only when that
+ * line names no language.
+ */
+export function bookLanguagePhrase(
+  usfm: string,
+  language: string,
+): string | null {
+  const declared = declaredLanguageFromIdLine(usfm);
+  if (declared) {
+    return sameScriptureLanguage(language, declared)
+      ? null
+      : `the book is in ${declared}`;
+  }
+  const script = foreignScriptName(usfm, language);
+  return script ? `the book's text is not in ${script} script` : null;
+}
+
+/**
  * One literal and one simplified version of `book`, skipping a book whose
- * `\id` line declares another language and taking the next version of
- * that role. `usfmOf` returns the book text, null when the file is missing,
- * or undefined when it has not been read yet (still eligible, so the caller
- * can fetch it). With `includeAll`, every book that passes is returned.
+ * `\id` line declares another language, or whose letters are in another
+ * script when that line is silent, and taking the next version of that role.
+ * `usfmOf` returns the book text, null when the file is missing, or undefined
+ * when it has not been read yet (still eligible, so the caller can fetch it).
+ * With `includeAll`, every book that passes is returned.
  */
 export function scriptureVersionsForBook(
   entries: CatalogEntry[],
@@ -444,14 +463,14 @@ export function scriptureVersionsForBook(
   options?: { includeAll?: boolean },
 ): { picked: CatalogEntry[]; versionsNote: string | null } {
   const includeAll = options?.includeAll === true;
-  const discarded: { entry: CatalogEntry; declared: string }[] = [];
+  const discarded: { entry: CatalogEntry; phrase: string }[] = [];
   const eligible = entries.filter((entry) => {
     if (!hasBook(entry, book)) return false;
     const usfm = usfmOf(entry);
     if (typeof usfm !== "string") return true;
-    const declared = declaredLanguageFromIdLine(usfm);
-    if (!declared || sameScriptureLanguage(language, declared)) return true;
-    discarded.push({ entry, declared });
+    const phrase = bookLanguagePhrase(usfm, language);
+    if (!phrase) return true;
+    discarded.push({ entry, phrase });
     return false;
   });
   const picked = includeAll
@@ -468,10 +487,7 @@ export function scriptureVersionsForBook(
   }
 
   const why = discarded
-    .map(
-      (item) =>
-        `${abbrevOf(item.entry).toUpperCase()}: the book is in ${item.declared}`,
-    )
+    .map((item) => `${abbrevOf(item.entry).toUpperCase()}: ${item.phrase}`)
     .join(". ");
   const usual = pickPrimaryScriptureEntries(entries);
   const standIns = picked.filter((entry) => !usual.includes(entry));

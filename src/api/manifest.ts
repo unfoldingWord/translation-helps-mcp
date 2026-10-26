@@ -105,7 +105,7 @@ export const API_MANIFEST: ApiManifest = {
       path: "/scripture",
       summary: "Scripture text for a reference",
       description:
-        "Returns scripture versions for a reference. By default one literal, one simplified, and the original language text; when the literal or the simplified version does not have the book, or the book's id line says it is in another language, another version of the language stands in and `versionsNote` says so. Pass all=1 for every available version.",
+        "Returns scripture versions for a reference. By default one literal, one simplified, and the original language text; when the literal or the simplified version does not have the book, or the book's id line says it is in another language, or the text is written in another script, another version of the language stands in and `versionsNote` says so. Pass all=1 for every available version.",
       adapts: [
         "Aligned Bible",
         "Simplified Bible",
@@ -163,7 +163,7 @@ export const API_MANIFEST: ApiManifest = {
       },
       responseNotes: [
         '`role` is one of: "literal" | "simplified" | "original", and "other" for a version standing in for one that lacks the book or returned by all=1.',
-        "`versionsNote` is present only when a stand-in was used, a book was left out because its id line names another language, or none could be found.",
+        "`versionsNote` is present only when a stand-in was used, a book was left out because its id line names another language or its text is in another script, or none could be found.",
         "With all=1, `versions` may include every catalog match (e.g. multiple gateway Bibles).",
         ...META_NOTES,
       ],

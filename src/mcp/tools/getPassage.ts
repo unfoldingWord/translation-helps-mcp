@@ -11,7 +11,8 @@
  *   - `simplified` meaning-based (e.g. UST/GST)
  *   - `original`   Hebrew/Greek source (UHB/UGNT) — always included
  *   - `other`      another version of the language, standing in when the
- *                  literal or the simplified one does not have the book;
+ *                  literal or the simplified one does not have the book,
+ *                  or the book is in another language or script;
  *                  `versionsNote` then says which was replaced
  *
  * For book/chapter background + what resources exist, call `get_passage_context`.
@@ -69,7 +70,7 @@ export const getPassageTool: ToolModule<typeof inputSchema> = {
     "STEP 1a (orient — text): Fetch the scripture TEXT for a passage — the literal, the simplified and the original version in one call. " +
     "Returns `versions[]`, each labeled by `role`: `literal` (word-for-word, e.g. ULT), " +
     "`simplified` (meaning-based, e.g. UST), and `original` (Hebrew/Greek source, always included). " +
-    "When the literal or the simplified version does not have the book yet, or its id line says the book is in another language, another version of the language stands in with `role:other` and `versionsNote` says which was replaced and why: tell the reader. " +
+    "When the literal or the simplified version does not have the book yet, or its id line says the book is in another language, or the text is written in another script, another version of the language stands in with `role:other` and `versionsNote` says which was replaced and why: tell the reader. " +
     "Use `role:literal` to translate form and `role:simplified` to translate meaning; compare against `role:original` for the source wording. " +
     'Optional `format`: "text" (default) or "usfm" for raw markup. ' +
     "Call this FIRST when studying or translating a passage — it also warms the server cache for all subsequent steps. " +
