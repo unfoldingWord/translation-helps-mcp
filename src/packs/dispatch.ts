@@ -16,6 +16,10 @@ import {
 export type BuildEnv = {
   LANGUAGE_PACKS?: R2Bucket;
   TRANSLATION_HELPS_CACHE: KVNamespace;
+  /** `on` lets the Worker ask for parts builds (see `partsDispatchEnabled`); anything else, or unset, is off. */
+  PACKS_PARTS_DISPATCH?: string;
+  /** Counted parts dispatches a day, apart from f1.1's `DAILY_CAP`. Default `PARTS_DAILY_CAP`. */
+  PACKS_PARTS_DAILY_CAP?: string;
 } & DispatchEnv;
 
 export type BuildOutcome =
@@ -26,6 +30,7 @@ export type BuildOutcome =
   | "capped"
   | "unconfigured"
   | "invalid"
+  | "parts-off"
   | "error";
 
 export type BuildStatus = {
@@ -38,6 +43,11 @@ export type BuildStatus = {
    * The Worker's `running` mark at dispatch has none: the build has not started yet.
    */
   started?: string;
+  /**
+   * The builder code a parts run built with (tc-study writes it on `ok`, parts only). The parts freshness check
+   * takes a code change as seen only by a run of that code.
+   */
+  code?: string;
 };
 
 const HOUR_MS = 3_600_000;
@@ -46,6 +56,11 @@ export const RUNNING_STALE_MS = 5.5 * HOUR_MS;
 export const FAILED_COOLDOWN_MS = 24 * HOUR_MS;
 export const MAX_FAILURES = 3;
 export const DAILY_CAP = 20;
+/**
+ * Parts dispatches have a counter and a cap of their own, so f2.0 traffic (a first visit per language, then code
+ * rebuilds) can never use up the day f1.1 phones still depend on, and the other way round.
+ */
+export const PARTS_DAILY_CAP = 20;
 const COUNTER_TTL_S = 2 * 24 * 3600;
 
 const WORKFLOW_DISPATCH = `${GITHUB_API}/repos/unfoldingWord/tc-study/actions/workflows/language-packs.yml/dispatches`;
@@ -67,6 +82,42 @@ export const COMPAT_RE = /^f\d+\.\d+-u[\w.]+-p\d+-q\d+-a\d+-t\d+$/;
  * have and nothing loops.
  */
 export const CURRENT_PACK_COMPAT = "f1.1-u2.3.0-p6000230-q9-a12-t1";
+
+/**
+ * The compatibility folder the workflow builds parts into today (`parts: true`). The same rule as for
+ * `CURRENT_PACK_COMPAT` holds: only this parts compat may ask for a build.
+ *
+ * Must equal tc-study's `compatKeyOf(PARTS_FORMAT_VERSION, PACK_VERSIONS)`, which `packs-status --print-compat
+ * --parts` prints. After a bump in tc-study, change it here and redeploy v2.
+ */
+export const CURRENT_PARTS_COMPAT = "f2.0-u2.3.0-p6000230-q9-a12-t1";
+
+/** Format 2 and later are parts: lists of content-addressed parts instead of one zip per language. */
+export function isPartsCompat(compat: string): boolean {
+  return /^f([2-9]|\d{2,})\./.test(compat);
+}
+
+/**
+ * Whether this Worker may ask for parts builds at all. Off until the workflow may publish parts to the Worker's
+ * target (staging now; production after delivery 3's Task 14), because a parts dispatch the workflow refuses
+ * would be marked failed and cool the language for nothing. The parts freshness check and the sweep check it
+ * before observing anything, and `requestBuild` checks it again.
+ */
+export function partsDispatchEnabled(env: {
+  PACKS_PARTS_DISPATCH?: string;
+}): boolean {
+  return env.PACKS_PARTS_DISPATCH === "on";
+}
+
+/** A whole count, else the default: a typo must not lift the cap or close it. `0` closes it. */
+function partsDailyCap(raw: string | undefined): number {
+  return raw !== undefined && /^\d+$/.test(raw) ? Number(raw) : PARTS_DAILY_CAP;
+}
+
+/** The compats the workflow builds today; any other would never land (see `CURRENT_PACK_COMPAT`). */
+export function isBuildableCompat(compat: string): boolean {
+  return compat === CURRENT_PACK_COMPAT || compat === CURRENT_PARTS_COMPAT;
+}
 
 function statusKey(compat: string, language: string): string {
   return `status/${compat}/${language}.json`;
@@ -100,6 +151,7 @@ function parseStatus(raw: string | null): BuildStatus | null {
         failures: s.failures,
         run: typeof s.run === "string" ? s.run : "",
         ...(typeof s.started === "string" ? { started: s.started } : {}),
+        ...(typeof s.code === "string" ? { code: s.code } : {}),
       };
     }
   } catch {
@@ -123,8 +175,11 @@ type BuildRequest = {
   env: BuildEnv;
   compat: string;
   language: string;
-  /** `daily` is the cron's own work: bounded by the bucket's languages, so it neither waits for nor uses the cap. */
-  reason: "missing" | "stale" | "daily";
+  /**
+   * `daily` is the cron's own work: bounded by the bucket's languages, so it neither waits for nor uses the cap.
+   * `code` is a rebuild for a new builder version alone; it is counted like `stale`.
+   */
+  reason: "missing" | "stale" | "code" | "daily";
   now?: Date;
   fetch?: typeof fetch;
 };
@@ -133,6 +188,9 @@ type BuildRequest = {
 export async function requestBuild(o: BuildRequest): Promise<BuildOutcome> {
   if (!LANGUAGE_RE.test(o.language) || !COMPAT_RE.test(o.compat)) {
     return "invalid";
+  }
+  if (isPartsCompat(o.compat) && !partsDispatchEnabled(o.env)) {
+    return "parts-off";
   }
   try {
     return await guardedDispatch(o);
@@ -187,9 +245,15 @@ async function guardedDispatch(o: BuildRequest): Promise<BuildOutcome> {
 
   // Best effort both ways: KV is eventually consistent and allows one write per second per key, so the cap is
   // soft by a few dispatches and a failed read or write never blocks a build.
-  const counterKey = `packs:dispatch:${now.toISOString().slice(0, 10)}`;
+  const parts = isPartsCompat(compat);
+  const day = now.toISOString().slice(0, 10);
+  // f1.1's key is the one the deployed Worker has always used.
+  const counterKey = parts
+    ? `packs:dispatch-parts:${day}`
+    : `packs:dispatch:${day}`;
+  const cap = parts ? partsDailyCap(env.PACKS_PARTS_DAILY_CAP) : DAILY_CAP;
   const counted = o.reason !== "daily";
-  if (counted && (await readCounter(kv, counterKey)) >= DAILY_CAP) {
+  if (counted && (await readCounter(kv, counterKey)) >= cap) {
     return "capped";
   }
 
@@ -259,6 +323,8 @@ async function dispatchWorkflow(
           target: env.PACKS_TARGET ?? "staging",
           // The workflow stops (and marks this compat failed) when its code builds another one.
           compat,
+          // Only for parts, so the f1.1 body stays what the deployed workflow has always been sent.
+          ...(compat === CURRENT_PARTS_COMPAT ? { parts: "true" } : {}),
         },
       }),
     });

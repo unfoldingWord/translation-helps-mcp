@@ -611,6 +611,20 @@ describe("catalogSearch stamps each row like bt-synergy's resourceContentStamp",
     const rows = await catalogSearch({ lang: "es-419" });
     expect(rows.map((r) => r.stamp)).toEqual(["v42", "nostamp"]);
   });
+
+  it("says whether the hit names a release tag, which tc-study's discovery requires", async () => {
+    mockFetch({
+      "catalog/search": {
+        ok: true,
+        data: [
+          hit({ release: { tag_name: "v42" } }),
+          hit({ name: "es-419_gst" }),
+        ],
+      },
+    });
+    const rows = await catalogSearch({ lang: "fr" });
+    expect(rows.map((r) => r.hasRelease)).toEqual([true, false]);
+  });
 });
 
 describe("catalogSearch limit", () => {
@@ -664,5 +678,35 @@ describe("the isolate's catalog cache", () => {
     expect(pending).toHaveLength(1);
     await Promise.all(pending);
     expect(puts).toHaveLength(1);
+  });
+
+  it("fresh: asks Door43 past both caches and writes no KV (the parts freshness check)", async () => {
+    mockFetch({ "catalog/search": { ok: true, data: [] } });
+    const calls = () =>
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length;
+    const kvGets: string[] = [];
+    const puts: string[] = [];
+    const kv = {
+      get: async (key: string) => {
+        kvGets.push(key);
+        return null;
+      },
+      put: async (key: string) => void puts.push(key),
+    };
+    const pending: Promise<unknown>[] = [];
+    const ctx = { waitUntil: (p: Promise<unknown>) => void pending.push(p) };
+    // A cached answer in the isolate...
+    await catalogSearch({ lang: "es-419", kv, ctx });
+    await Promise.all(pending);
+    expect(calls()).toBe(1);
+    kvGets.length = 0;
+    puts.length = 0;
+    // ...is not what a fresh search answers.
+    await catalogSearch({ lang: "es-419", kv, ctx, fresh: true });
+    await catalogSearch({ lang: "es-419", kv, ctx, fresh: true });
+    await Promise.all(pending);
+    expect(calls()).toBe(3);
+    expect(kvGets).toEqual([]);
+    expect(puts).toEqual([]);
   });
 });

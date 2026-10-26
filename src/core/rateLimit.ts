@@ -6,6 +6,7 @@
  * prevention without KV round-trips on every request.
  *
  * Configure with env RATE_LIMIT_RPM (default 90). Set to 0 to disable.
+ * A scope (e.g. the packs route's `parts`) counts in a window of its own, with its own limit and default.
  */
 
 const DEFAULT_RPM = 90;
@@ -13,7 +14,7 @@ const WINDOW_MS = 60_000;
 /** Cap Map size to avoid unbounded growth under IP churn. */
 const MAX_KEYS = 10_000;
 
-/** Isolate-local request timestamps keyed by client IP. */
+/** Isolate-local request timestamps keyed by client IP, or `${scope}:${ip}`. */
 const windows = new Map<string, number[]>();
 
 export interface RateLimitConfig {
@@ -30,10 +31,13 @@ export interface RateLimitResult {
   limit: number;
 }
 
-export function parseRateLimitRpm(raw: string | undefined): number {
-  if (raw === undefined || raw === "") return DEFAULT_RPM;
+export function parseRateLimitRpm(
+  raw: string | undefined,
+  fallback = DEFAULT_RPM,
+): number {
+  if (raw === undefined || raw === "") return fallback;
   const n = Number.parseInt(raw, 10);
-  if (!Number.isFinite(n) || n < 0) return DEFAULT_RPM;
+  if (!Number.isFinite(n) || n < 0) return fallback;
   return n;
 }
 
@@ -63,11 +67,12 @@ function evictOldestKeys(): void {
 }
 
 /**
- * Check and record one request for `ip` against the sliding window.
+ * Check and record one request for `ip` against the sliding window (the scope's own, when given).
  */
 export function checkRateLimit(
   ip: string,
   config: RateLimitConfig,
+  scope?: string,
 ): RateLimitResult {
   const limit = config.rpm;
   if (limit <= 0) {
@@ -75,7 +80,8 @@ export function checkRateLimit(
   }
 
   const now = Date.now();
-  const key = ip || "unknown";
+  const key =
+    scope === undefined ? ip || "unknown" : `${scope}:${ip || "unknown"}`;
   const timestamps = pruneStale(windows.get(key) ?? [], now);
 
   if (timestamps.length >= limit) {
@@ -144,10 +150,15 @@ export function enforceRateLimit(
   request: Request,
   rpmRaw: string | undefined,
   cors?: Record<string, string>,
+  opts: { scope?: string; fallbackRpm?: number } = {},
 ): Response | null {
-  const rpm = parseRateLimitRpm(rpmRaw);
+  const rpm = parseRateLimitRpm(rpmRaw, opts.fallbackRpm);
   if (rpm <= 0) return null;
-  const result = checkRateLimit(clientIpFromRequest(request), { rpm });
+  const result = checkRateLimit(
+    clientIpFromRequest(request),
+    { rpm },
+    opts.scope,
+  );
   if (result.allowed) return null;
   return rateLimitResponse(result, cors);
 }

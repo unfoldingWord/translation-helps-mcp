@@ -38,7 +38,7 @@ export type PackCatalogEntry = {
 
 export type FreshnessEnv = BuildEnv & { ANALYTICS?: AnalyticsEngineDataset };
 
-type Search = (
+export type Search = (
   language: string,
   env: FreshnessEnv,
   ctx: ExecutionContext,
@@ -96,30 +96,50 @@ export function newestDifferingRelease(
   return newest;
 }
 
-/** Keyed as bt-synergy's catalogIdentity keys a hit: owner/language/repo name after the first `_`. */
+/** The resource id of a catalog row, as bt-synergy's catalogIdentity takes it: the repo name after the first `_`. */
+export function catalogResourceId(row: Pick<CatalogEntry, "name">): string {
+  return row.name.includes("_")
+    ? row.name.split("_").slice(1).join("_")
+    : row.name;
+}
+
+/** Keyed as bt-synergy's catalogIdentity keys a hit: owner/language/repo name after the first `_`; null without a name. */
+export function catalogKey(
+  row: Pick<CatalogEntry, "owner" | "name" | "language">,
+  language: string,
+): string | null {
+  if (!row.name) return null;
+  return `${row.owner}/${row.language || language}/${catalogResourceId(row)}`;
+}
+
 export function currentStamps(
   rows: CatalogEntry[],
   language: string,
 ): Record<string, string> {
   const stamps: Record<string, string> = {};
   for (const row of rows) {
-    if (!row.stamp || row.stamp === "nostamp" || !row.name) continue;
-    const id = row.name.includes("_")
-      ? row.name.split("_").slice(1).join("_")
-      : row.name;
-    if (NOT_CATALOG_STAMPED.has(id)) continue;
-    stamps[`${row.owner}/${row.language || language}/${id}`] = row.stamp;
+    const key = catalogKey(row, language);
+    if (!row.stamp || row.stamp === "nostamp" || !key) continue;
+    if (NOT_CATALOG_STAMPED.has(catalogResourceId(row))) continue;
+    stamps[key] = row.stamp;
   }
   return stamps;
 }
 
-const defaultSearch: Search = (language, env, ctx) =>
+export const defaultSearch: Search = (language, env, ctx) =>
   catalogSearch({
     lang: language,
     kv: env.TRANSLATION_HELPS_CACHE,
     ctx,
     limit: SEARCH_LIMIT,
   });
+
+/**
+ * The same search asked of Door43 now, past the catalog caches (one Door43 request a check): the parts check dates a
+ * change by when it first saw it, so it must not see a release an hour late.
+ */
+export const freshSearch: Search = (language, _env, ctx) =>
+  catalogSearch({ lang: language, ctx, limit: SEARCH_LIMIT, fresh: true });
 
 /**
  * Never throws: it runs in `waitUntil` after the entry has been served. The hour is claimed before Door43 is asked,
@@ -243,15 +263,24 @@ export async function runDailySweep(
   }
 }
 
-/** The languages with an entry under `catalog/<compat>/`, page by page (originals.json is not a language). */
-async function* publishedLanguages(
+/**
+ * The languages with an entry under `catalog/<compat>/`, page by page (originals.json is not a language). A parts
+ * compat lists with `delimiter: "/"`, so its `originals/` folder (one list per originals build) is not walked; the f1.1
+ * sweep lists as it always has.
+ */
+export async function* publishedLanguages(
   bucket: R2Bucket,
   compat: string,
+  o: { delimiter?: "/" } = {},
 ): AsyncGenerator<string> {
   const prefix = `catalog/${compat}/`;
   let cursor: string | undefined;
   do {
-    const page = await bucket.list({ prefix, cursor });
+    const page = await bucket.list(
+      o.delimiter
+        ? { prefix, cursor, delimiter: o.delimiter }
+        : { prefix, cursor },
+    );
     for (const object of page.objects) {
       const name = object.key.slice(prefix.length);
       if (!name.endsWith(".json")) continue;

@@ -225,6 +225,11 @@ export interface CatalogEntry {
   language?: string;
   /** The release's identity in bt-synergy's `resourceContentStamp` format: `tag#published_at`. */
   stamp?: string;
+  /**
+   * Whether the hit names a release tag (`release.tag_name`). tc-study's discovery leaves a hit without one out, so
+   * the packs freshness check does too. Absent on rows cached before it existed.
+   */
+  hasRelease?: boolean;
 }
 
 export interface LanguageEntry {
@@ -372,6 +377,11 @@ export interface CatalogSearchOptions {
   kv?: CatalogKVCache | null;
   /** Keeps background KV writes and refreshes alive after the response (a Worker's ExecutionContext). */
   ctx?: WaitUntilHost;
+  /**
+   * Ask Door43 now, past the isolate's and KV's caches, and write no KV (the isolate's cache still takes the answer).
+   * For a check that compares what Door43 has now: a cached search may be an hour behind a release.
+   */
+  fresh?: boolean;
 }
 
 /**
@@ -393,6 +403,7 @@ export async function catalogSearch(
 
   const url = buildCatalogUrl("catalog/search", extra);
   const cacheKey = `catalog:search:${url}`;
+  if (opts.fresh) return fetchAndStoreCatalogSearch(url, cacheKey, null);
 
   // L0: in-process cache
   const processHit = processCacheGet(cacheKey);
@@ -499,6 +510,7 @@ function mapApiEntry(raw: CatalogApiEntry): CatalogEntry {
     },
     language: raw.language,
     stamp: catalogStamp(raw),
+    hasRelease: Boolean(raw.release?.tag_name),
   };
 }
 
