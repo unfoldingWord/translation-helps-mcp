@@ -79,10 +79,11 @@ Neither merges before step 1 is done (it is, as of 2026-10-21).
     `Get-Content key.pem -Raw | npx wrangler secret put GITHUB_APP_PRIVATE_KEY --config wrangler.toml --env <env>`
 - Verify: `npx wrangler secret list --config wrangler.toml --env <env>` shows the three names.
 - Already in wrangler (no action): `PACKS_TARGET` on `translation-helps-mcp-v2` (preview → staging, production →
-  production), `PACKS_PARTS_DISPATCH = "on"` in preview only (production asks for no parts builds until delivery 3's
-  Task 14; parts dispatches have their own daily cap, `PACKS_PARTS_DAILY_CAP`, default 20), binding `LANGUAGE_PACKS` (base and preview → `language-packs-staging`, production → `language-packs`),
-  cron `17 6 * * *` in production only (it checks every published language for a newer Door43 release and builds
-  nothing by itself).
+  production), binding `LANGUAGE_PACKS` (base and preview → `language-packs-staging`, production → `language-packs`),
+  and each environment's parts settings and crons ("Operations", "Parts: settings" and "Parts: crons"). In short,
+  production has only the f1.1 cron `17 6 * * *` (it checks every published language for a newer Door43 release and
+  builds nothing by itself) and no parts setting, so it asks for no parts builds until delivery 3's Task 14; preview
+  asks for parts builds (`PACKS_PARTS_DISPATCH = "on"`) and has the three parts crons.
 - Approved by Abel: ☐
 
 ## 6. Deploy and Pages check
@@ -152,16 +153,22 @@ once a staging build of es-419 has published:
       Range GET, GET with `If-None-Match`, and OPTIONS with an `Origin` header, each twice. Status, `ETag` and
       `Access-Control-*` must be identical the second time (served from Pages' cache). Repeat the step-7 checks
       (Content-Length, 416, stamps) with `BASE=https://tc-helps.mcp.servant.bible`.
+- Parts in production are delivery 3's Task 14, each step with Abel's yes: tc-study lets parts publish to production
+  (Task 13) and sets the repository variable `PACKS_PARTS_PRODUCTION`; `[env.production]` gets
+  `PACKS_PARTS_DISPATCH = "on"` and the three parts crons ("Parts: crons" for the cron limit), then
+  `PACKS_CLEANUP = "dry-run"` and, after a week of logs, `delete`. The spec (§6, "Meanwhile") has the backfill wait
+  for parts; Task 14 rewrites this step for it.
 - Approved by Abel: ☐
 
 ## Operations
 
 - **Build status** (`status/<compat>/<lang>.json`):
-  `{ state: 'running' | 'ok' | 'failed', at, failures, run, started? }`. `at` is when the status was written (the
-  end of the run for `ok`/`failed`); `started` is when the workflow's build began reading Door43, set by its `running`
-  write and kept by `ok`/`failed`. The Worker's own `running` mark at dispatch has no `started`. A Door43 release
-  newer than the pack is taken as already seen (no `stale` build, `stale-seen` in Analytics) only when an `ok` build
-  started after it; with no `started`, the Worker uses `at` minus 300 min (the job timeout) instead.
+  `{ state: 'running' | 'ok' | 'failed', at, failures, run, started?, code? }`. `at` is when the status was written
+  (the end of the run for `ok`/`failed`); `started` is when the workflow's build began reading Door43, set by its
+  `running` write and kept by `ok`/`failed`. The Worker's own `running` mark at dispatch has no `started`. A Door43
+  release newer than the pack is taken as already seen (no `stale` build, `stale-seen` in Analytics) only when an `ok`
+  build started after it; with no `started`, the Worker uses `at` minus 300 min (the job timeout) instead. `code` is
+  written only by a parts run's `ok`: the builder code it built with ("Parts: the check").
 - **Reset a stopped language** (three failures in a row; the route answers `503 {state:'unavailable', reason:
 'stopped'}`): fix the cause, then either delete its status,
   `npx wrangler r2 object delete <bucket>/status/<compat>/<lang>.json --remote`, or dispatch the workflow by hand for
@@ -175,7 +182,186 @@ once a staging build of es-419 has published:
   `src/packs/dispatch.ts` on `v2` and redeploy v2. Until then the Worker dispatches the old compat, the workflow sees
   the mismatch, marks that compat `failed` and builds nothing, and phones keep the packs they have.
 
-## Client contract (for plan 3, Servos)
+### Parts: settings
+
+Parts (`f2.0-…`, `CURRENT_PARTS_COMPAT` in `src/packs/dispatch.ts`) are served beside f1.1. These vars are in
+`wrangler.toml`; a change needs a redeploy (step 6).
+
+| Var                     | Meaning                                                                                                                                                                                                                                                         | Unset or invalid | Set today                                                    |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------ |
+| `PACKS_PARTS_DISPATCH`  | Exactly `on` lets the Worker ask for parts builds. Anything else: no parts dispatch from a phone, the check or the cron; a missing parts list answers `404 parts-off`; the check and the cron's slice read nothing. Published lists and parts are still served. | off              | preview `on`; absent from production and `[vars]` on purpose |
+| `PACKS_PARTS_DAILY_CAP` | Counted parts dispatches a day (KV `packs:dispatch-parts:<date>`), apart from f1.1's 20 (`packs:dispatch:<date>`). `0` closes counted dispatches. The cron's dispatches (reason `daily`) are not counted.                                                       | 20               | nowhere                                                      |
+| `PACKS_SWEEP`           | `parts`: the f1.1 cron (`17 6 * * *`) sweeps nothing.                                                                                                                                                                                                           | f1.1 swept       | preview `parts`                                              |
+| `PACKS_CLEANUP`         | Exactly `dry-run` (logs what it would delete, keeps the ledger) or `delete`. Anything else, `off` included, is off: no R2 call at all.                                                                                                                          | off              | preview `dry-run`; absent from production on purpose         |
+| `PARTS_CHECKS_PER_RUN`  | Parts checks in one run of the hourly slice: a whole number, `0` for none.                                                                                                                                                                                      | 5                | nowhere                                                      |
+| `PARTS_RATE_LIMIT_RPM`  | Part requests a minute per IP, in a counter of their own (lists keep `RATE_LIMIT_RPM`, 90). `0` turns it off.                                                                                                                                                   | 600              | nowhere                                                      |
+
+Production has none of them on purpose: it asks for no parts builds and deletes nothing until Task 14 adds
+`PACKS_PARTS_DISPATCH` and `PACKS_CLEANUP` with Abel's yes (`tests/unit/packs-dispatch.test.ts` and
+`packs-scheduled.test.ts` pin this).
+
+### Parts: crons
+
+The Worker picks the job by the cron string (`src/packs/scheduled.ts`); each job is its own invocation.
+
+| Cron (UTC)    | Job                                                                                                                                                                                                              | production   | preview         |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | --------------- |
+| `17 6 * * *`  | The f1.1 sweep (`runDailySweep`), as before delivery 3, unless `PACKS_SWEEP = "parts"`.                                                                                                                          | yes          | no              |
+| `7 3 * * *`   | The parts cleanup, when `PACKS_CLEANUP` is `dry-run` or `delete`.                                                                                                                                                | no (Task 14) | yes (`dry-run`) |
+| `7 4,5 * * *` | The cleanup again at 04:07 and 05:07, only when the ledger says that day's outcome was `postponed` or `aborted`.                                                                                                 | no (Task 14) | yes (`dry-run`) |
+| `37 * * * *`  | The parts slice: the published parts languages whose `fnv1a32(language) % 24` is the hour (es-419 at 22, en at 18), at most `PARTS_CHECKS_PER_RUN`, reason `daily`. Nothing is read while parts dispatch is off. | no (Task 14) | yes             |
+
+- Any other cron string (an old `17 * * * *` still deployed, a typo) does nothing and logs
+  `[packs] cron "<string>" is none of the packs jobs (…); nothing done`.
+- The Free plan allows **5 cron triggers per account**. Staging uses 3 and production 1. Task 14 must add the three
+  parts crons to `[env.production.triggers]` together with the flags: 3 + 4 = 7, over 5 on Free, so on Free staging's
+  crons would have to go (or the account be Paid). Other Workers' crons on the account count too (not checked).
+- A run is kept under the Free plan's per-invocation limits (50 outside fetches, 1,000 KV and R2 calls): a parts check
+  makes at most 14 fetches (9 after the run's first), so 5 checks a run. A slice with more languages checks 5 of them,
+  starting further along each day, and logs the rest as `left for another day`. On a Paid plan
+  `PARTS_CHECKS_PER_RUN` can be raised.
+- The slice's log line: `[packs] parts sweep <HH> UTC: <lang> <result>, …`.
+
+### Parts: the check
+
+A GET of a list under `CURRENT_PARTS_COMPAT` (200 or 304, not HEAD) and the cron's slice run the same check
+(`src/packs/partsFreshness.ts`), at most once an hour per language. It computes no fingerprint and reads no git tree or manifest: it compares the list's
+`stamps` (or, for a list without them, its resources' and its originals list's stamps) with what Door43 and GitHub
+have now, and the list's `code` with the code in `status/builder.json`. When something differs and no `ok` build has
+seen it yet, it asks for a parts build (`parts: true`), and the build decides unit by unit what to rebuild.
+
+- Log line: `[packs] parts <compat>/<lang>: <result> (<key> <built stamp|new> → <now>; code <list's> → <builder's>)`,
+  with `; not compared, unreadable: …` when an input could not be read (it is left out, so it cannot ask for a build).
+  Results: `fresh`, `seen` (an `ok` build already saw the change), `budget` (a code-only change the cron may not
+  spend today), `unknown` (the language's search failed or found no row of it), `no-list`, `error`, or the dispatch
+  outcome (`dispatched`, `running`, `cooling`, `stopped`, `capped`, `unconfigured`). Analytics: `parts-<result>`
+  (`parts-stale-seen` for `seen`).
+- Breakers: a moved stamp is seen when an `ok` build started after both the stamp's own date and the moment this Worker
+  first saw it (`packs:first-seen:*`); a code change is seen only by an `ok` status whose `code` is the builder's. The
+  dispatch guard (`running` 5.5 h, `cooling` 24 h after a failure, `stopped` after 3) applies as for f1.1.
+- Code-only rebuilds from the cron: at most 10 a day (`CODE_REBUILDS_PER_DAY`), so a code bump reaches 100 languages in
+  about 10 days. A phone's visit asks sooner, counted against `PACKS_PARTS_DAILY_CAP`. A moved stamp spends no budget.
+
+### Parts: keys
+
+| KV key                                 | What                                                                                                                                |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `packs:fresh:<compat>:<lang>`          | The check's hour (f1.1 and parts alike, each under its compat), 1 h.                                                                |
+| `packs:dispatch-parts:<date>`          | Counted parts dispatches that day (`PACKS_PARTS_DAILY_CAP`), 2 days. f1.1 keeps `packs:dispatch:<date>`.                            |
+| `packs:code-rebuilds:<date>`           | Code-only rebuilds the cron asked for that day (≤ 10), read once and written once a run, 2 days. An unreadable counter allows none. |
+| `packs:first-seen:<32 hex>`            | When this Worker first saw a stamp (the first 32 hex of `sha256("<key>\|<stamp>")`), written once, 400 days.                        |
+| `packs:originals`, `packs:macula`      | The UHB/UGNT and MACULA readings shared by every language: 1 h, 10 min when an input was left out.                                  |
+| `packs:github-token:<installation id>` | The GitHub App's installation token (also used for MACULA's commits), 50 min.                                                       |
+
+| R2 key                       | Writer                                                                             | What                                                                     |
+| ---------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `status/builder.json`        | tc-study: `packs-builder.yml`, and every parts publish run of `language-packs.yml` | `{ compat, code, commit, at }`: the code master's parts build runs with. |
+| `cleanup/parts-orphans.json` | the Worker's cleanup                                                               | The cleanup's ledger ("Parts: the cleanup").                             |
+
+### Parts: the builder file and the compat
+
+- `status/builder.json` is written by `packs-builder.yml` on every push to tc-study's `master` that touches
+  `packages/**`, `bun.lock` or `scripts/build-pack-tools.sh`, and by hand (`workflow_dispatch`): to the staging bucket
+  always, to production only when the repository variable `PACKS_PARTS_PRODUCTION` is `true`. Every parts publish
+  run from `master` writes it too ("Builder code" step), unless master has moved since the run's commit. `at` is kept
+  while the compat and code stay the same. The Worker reads `compat` and `code`; a file that does not parse is no file,
+  and asks for no code rebuild.
+- **`compat-drift`**: `builder.compat` is not this Worker's `CURRENT_PARTS_COMPAT`, so master builds a compat the
+  Worker does not ask for. The check logs it, Analytics `parts-compat-drift`, and asks for no code rebuild:
+  `[packs] parts <compat>/<lang>: compat-drift (master builds <compat>); no code rebuild`. It still compares stamps,
+  and a dispatch for a moved stamp is then refused by the workflow's Check compat, which marks that compat `failed`.
+  So it means: update `CURRENT_PARTS_COMPAT`.
+- **After a parts compat bump** in tc-study (`packs-status.ts --print-compat --parts`, in
+  `packages/resource-pipeline/cli/`, prints the new one): as for f1.1, update `CURRENT_PARTS_COMPAT` in
+  `src/packs/dispatch.ts` on `v2` and redeploy. The workflow's Check compat covers parts (it compares with
+  `--print-compat --parts`): until the redeploy, a parts dispatch of the old compat is marked `failed` and builds
+  nothing. After it, the old compat's published lists are still served, a missing one answers `404 old-compat`, and
+  the cleanup keeps every part any parts compat's list names.
+- **A stale `status/builder.json`** (`packs-builder.yml` failed after a push that changed the code): every `ok` build
+  writes master's real code, which never equals the builder file's, so checks keep asking for code rebuilds, bounded by
+  the caps (10 a day from the cron, `PACKS_PARTS_DAILY_CAP` from phones). Run `packs-builder.yml` by hand.
+
+### Parts: the cleanup
+
+Deletes parts no list has named for 30 days (`src/packs/cleanup.ts`). Only `parts/<sha256>.part.gz` and
+`catalog/<parts compat>/originals/<sha256>.json` can ever be deleted; `packs/`, `v1/`, `status/`, `cleanup/`,
+`catalog/f1.*`, every language list and every `originals.json` are out of its reach.
+
+- **Named** is what any current list names, in every parts compat: the parts of every language list and of
+  `originals.json`, the originals list each language list names and its parts, and the content-addressed copy of
+  `originals.json`.
+- **The ledger** `cleanup/parts-orphans.json`: `{ schema: 1, checked, since, outcomes }`. `since` maps each unnamed
+  key to the first run that found it unnamed; `outcomes` maps each of the last 7 UTC days to `done`, `postponed` or
+  `aborted`. A key named again, or gone, leaves `since`. If `checked` (the last finished run) is more than 3 days
+  old, every count starts again: "30 days in a row" needs runs to watch them. A ledger that does not parse also
+  restarts every count; deleting it does the same.
+- **Due**: `since` 30 days ago or more **and** R2's `uploaded` 30 days ago or more. tc-study puts a part it names
+  again when R2 wrote it more than 20 days ago (`PART_REFRESH_DAYS`), so an old `uploaded` means no build has named it
+  for 30 days. Oldest first, at most 1000 deletes a run (one R2 call); the rest wait for the next run.
+- **Stops**: `postponed` while any `status/<parts compat>/<lang>.json` is `running` and younger than 5.5 h; `aborted`
+  when any list or listing cannot be read or does not parse, when a list was added, removed or rewritten (or a status
+  turned `running`, or a parts compat appeared) between the reading and the recheck just before the deletes, or past
+  800 R2 calls in the run. A run stopped before the deletes deletes nothing and records only the day's outcome.
+- **Its log**:
+  - `[packs] cleanup (<mode>): done; <N> named, <M> unnamed, <D> due; deleted <K> (<X> MB)` (`would delete` in
+    `dry-run`), with `, <R> left for the next run` past 1000, and `; <C> R2 calls`;
+  - `[packs] cleanup (<mode>): postponed, <status key> is running`, or `aborted, <why>`;
+  - the retries: `[packs] cleanup (<mode>) retry: the day's cleanup was <outcome>` (`; nothing to retry` when it was
+    `done` or not recorded);
+  - Analytics `["pack", "cleanup", <mode>, <state>]`, doubles `[deleted, bytes, due]`.
+
+  In `dry-run`, read the counts and MB against what lists dropped before switching to `delete`.
+
+- **What to alert on** (all `console.error`):
+  - `[packs] cleanup-alert: aborted <N> days in a row (since <day>); last: <why>`: logged from the 3rd day in a row
+    that ends `aborted`. Read `<why>` and fix it. Postponed days do not count; a day that ends `done`, or a day with
+    no run, breaks the streak.
+  - `… started during the deletes; if its list names a deleted part, rebuild it with force` and
+    `<list> names <N> deleted key(s) (…); it was written during the deletes; rebuild with force`: a build raced the
+    deletes. Dispatch that language with the workflow's `force` input.
+
+### Parts: kill switches
+
+- The existing ones stop parts dispatches too: without any of the three App secrets `requestBuild` answers
+  `unconfigured` for every compat (a missing parts list answers `503 {reason:'unconfigured'}`); a suspended App makes
+  every dispatch fail (`error`, the status put back); a disabled workflow runs nothing.
+- `PACKS_PARTS_DISPATCH` removed (anything but `on`), and redeployed: no parts dispatch at all, from phones, the check
+  or the cron. Lists and parts are still served, and f1.1 is not affected.
+- `PACKS_CLEANUP` removed (or `off`, or anything but `dry-run`/`delete`), and redeployed: no cleanup run, so no delete.
+
+### Parts: publishing by hand
+
+Publish parts only through the workflow (the Worker's dispatch, or `workflow_dispatch` from `master`). The workflow
+writes `running` before it builds, and the cleanup waits for it. A local `cli/publish-language.ts --parts` with the
+`R2_*` variables writes no `running` status, so the cleanup cannot see it: only tc-study's refresh and its HEAD of
+every part before the lists protect such a run. Keep local runs to `--no-upload`.
+
+### Parts: comparing the stamps
+
+`scripts/packs-parts-stamps.ts` prints where the Worker's stamps for a language differ from a published list's (`[]`
+and exit 0 when they agree, 1 on a difference, 2 on bad arguments). Run it on files saved from R2, **before** the
+preview Worker is deployed:
+
+```bash
+npx wrangler r2 object get language-packs-staging/catalog/<compat>/<lang>.json --remote --file <lang>.json
+npx wrangler r2 object get language-packs-staging/status/builder.json --remote --file builder.json
+npx tsx scripts/packs-parts-stamps.ts --list <lang>.json --builder builder.json --lang <lang>
+```
+
+For a list without `stamps`, save its originals list the same way and pass it with `--originals`.
+`--base <Worker URL>` GETs the list from a Worker, and that GET runs the Worker's check, which can dispatch: use
+`--base` only against a Worker with `PACKS_PARTS_DISPATCH` off (not preview).
+
+### Parts: open points
+
+- The originals search sends no language on either side (`owner=unfoldingWord&subject=…&stage=prod&limit=1`, because
+  tc-study's `originalLanguageCatalog.ts` passes `lang:`, which its client ignores). Move both to `language=` later, in
+  one change, so the stamps stay identical.
+- The Free plan's 10 ms of CPU per invocation is not measured for the cleanup (JSON parsing, the sha256 of each
+  `originals.json`) on a large bucket, nor for the f1.1 sweep.
+- A stale `status/builder.json` causes code-rebuild attempts, bounded by the caps ("Parts: the builder file").
+
+## Client contract: whole packs (f1.1)
 
 Paths are under `/v2/packs/`: `<compat>/<lang>` is a language's entry, `<compat>/<lang>/<sha256>` (and
 `<compat>/originals/<sha256>`) a pack, as the entry names it.
@@ -195,6 +381,46 @@ Paths are under `/v2/packs/`: `<compat>/<lang>` is a language's entry, `<compat>
 - Download a pack in chunks of **at least 4 MB**: the rate limit is 90 requests a minute per IP, and Range responses
   are not cached by Pages, so each chunk can reach the Worker and count against the limit.
 - Every 4xx and the 202 carry `Cache-Control: no-store`; CORS allows any origin.
+
+## Client contract: parts (f2.0, Servos)
+
+Paths are under `/v2/packs/`; `<compat>` is the parts compat (`CURRENT_PARTS_COMPAT` in `src/packs/dispatch.ts`,
+`f2.0-u2.3.0-p6000230-q9-a12-t1` today).
+
+| Path                          | What                                                                   | Cache-Control                                       | Content-Type       |
+| ----------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------- | ------------------ |
+| `<compat>/<lang>`             | The language's parts list (schema 2).                                  | `no-cache`, with an `ETag`                          | `application/json` |
+| `<compat>/originals/<sha256>` | The originals list the language list names: `<list.originals.sha256>`. | `public, max-age=31536000, immutable`               | `application/json` |
+| `parts/<sha256>`              | One part, by the `sha256` of a list's `parts[]` entry.                 | `public, max-age=31536000, immutable, no-transform` | `application/gzip` |
+
+`<compat>/<lang>/<sha256>` under a parts compat is `400 {"error":"bad pack path"}`: a language's parts are under
+`parts/`. `catalog/<compat>/originals.json` (the latest originals list) is not served; follow the language list's
+`originals`.
+
+The list answers as the f1.1 entry does, as in the table above: `200` with its `ETag`, `304` (with the
+`Access-Control-*` headers), `202 {"state":"preparing"}`, the `503` answers, `404 old-compat` and
+`404 {"error":"no packs for this language"}`. One more:
+
+| Answer                                             | Meaning, and what the app does                                                                                                               |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `404 {"state":"unavailable","reason":"parts-off"}` | The app is current, but this Worker asks for no parts builds yet (production until delivery 3's Task 14). Not `old-compat`: ask again later. |
+
+- **Parts and originals lists are immutable**, named by content. A part is `application/gzip` with no
+  `Content-Encoding`, so the browser does not decode it: the app checks that the sha256 of the bytes it received is
+  the name, and only then gunzips them (JSONL rows `{"layer", "key", "value"}`). A mismatch is discarded and fetched
+  again. `HEAD` gives a part's size (`Content-Length`, which equals the list's `bytes`); `Range` is allowed (206,
+  416 past the end) for resuming.
+- **Rate limit:** parts have their own, **600 requests a minute per IP** (`PARTS_RATE_LIMIT_RPM`); lists and originals
+  lists keep 90. Past it: `429` with `Retry-After`; wait that long and go on. All of English is about 730 parts.
+- A missing part or originals list is `404` (`{"error":"part not found"}`, `{"error":"originals list not found"}`) and
+  asks for no build: a list names only what its build wrote.
+- A GET of the list (not a HEAD) lets the Worker check, at most once an hour per language, whether the list is behind
+  Door43 or the builder; a newer list comes on a later visit.
+- **After importing the parts**, the app sets the resource's `availability.offline`: the catalog row restored from the
+  list (`restoreCatalogBookkeeping`) has `catalogedAt` (the import time) and `availability.offline: false`, since the
+  list leaves `availability` out.
+- Every 4xx, 429 and the 202 carry `Cache-Control: no-store`; CORS allows any origin and exposes `ETag`,
+  `Content-Range`, `Content-Length` and `Accept-Ranges`.
 
 ## Rotation
 
