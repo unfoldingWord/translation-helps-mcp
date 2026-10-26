@@ -32,8 +32,8 @@ vi.mock("@translation-helps/door43", async (importOriginal) => ({
   },
 }));
 
-const COMPAT = "f1.1-u2.3.0-p6000230-q8-a11-t1";
-const OLD_COMPAT = "f1.1-u2.3.0-p6000229-q8-a11-t1";
+const COMPAT = "f1.1-u2.3.0-p6000230-q9-a12-t1";
+const OLD_COMPAT = "f1.1-u2.3.0-p6000229-q9-a12-t1";
 const NOW = new Date("2026-10-21T10:00:00Z");
 const MINUTE = 60_000;
 
