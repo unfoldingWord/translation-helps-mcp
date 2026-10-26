@@ -569,3 +569,100 @@ describe("getResourceZipUrlByAbbreviation", () => {
     expect(result!.zipUrl).toContain("es-419_ult");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Stamps and the isolate cache, which the packs freshness check relies on
+// ---------------------------------------------------------------------------
+
+describe("catalogSearch stamps each row like bt-synergy's resourceContentStamp", () => {
+  const hit = (extra: Record<string, unknown>) => ({
+    name: "es-419_glt",
+    owner: "es-419_gl",
+    language: "es-419",
+    subject: "Aligned Bible",
+    branch_or_tag_name: "v42",
+    ...extra,
+  });
+
+  it("joins the release tag and published_at, with : turned into _", async () => {
+    mockFetch({
+      "catalog/search": {
+        ok: true,
+        data: [
+          hit({
+            released: "2026-08-11T12:22:03Z",
+            release: { tag_name: "v42", published_at: "2026-08-11T12:22:03Z" },
+          }),
+        ],
+      },
+    });
+    const [row] = await catalogSearch({ lang: "es-419" });
+    expect(row?.stamp).toBe("v42#2026-08-11T12_22_03Z");
+    expect(row?.language).toBe("es-419");
+  });
+
+  it("falls back to the tag alone, then to nostamp", async () => {
+    mockFetch({
+      "catalog/search": {
+        ok: true,
+        data: [hit({}), hit({ name: "es-419_gst", branch_or_tag_name: undefined })],
+      },
+    });
+    const rows = await catalogSearch({ lang: "es-419" });
+    expect(rows.map((r) => r.stamp)).toEqual(["v42", "nostamp"]);
+  });
+});
+
+describe("catalogSearch limit", () => {
+  it("adds limit only when a caller asks for it", async () => {
+    mockFetch({ "catalog/search": { ok: true, data: [] } });
+    await catalogSearch({ lang: "es-419", limit: 500 });
+    await catalogSearch({ lang: "en" });
+    const urls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.map(
+      (c) => c[0] as string,
+    );
+    expect(urls[0]).toContain("limit=500");
+    expect(urls[1]).not.toContain("limit=");
+  });
+});
+
+describe("the isolate's catalog cache", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("serves a search from memory for an hour, then asks Door43 again", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-21T10:00:00Z"));
+    mockFetch({ "catalog/search": { ok: true, data: [] } });
+    const calls = () =>
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length;
+
+    await catalogSearch({ lang: "es-419" });
+    vi.setSystemTime(new Date("2026-10-21T10:59:00Z"));
+    await catalogSearch({ lang: "es-419" });
+    expect(calls()).toBe(1);
+
+    vi.setSystemTime(new Date("2026-10-21T11:01:00Z"));
+    await catalogSearch({ lang: "es-419" });
+    expect(calls()).toBe(2);
+  });
+
+  it("writes the search to KV through waitUntil when given a context", async () => {
+    mockFetch({ "catalog/search": { ok: true, data: [] } });
+    const pending: Promise<unknown>[] = [];
+    const puts: string[] = [];
+    const kv = {
+      get: async () => null,
+      put: async (key: string) => void puts.push(key),
+    };
+    await catalogSearch({
+      lang: "es-419",
+      kv,
+      ctx: { waitUntil: (p: Promise<unknown>) => void pending.push(p) },
+    });
+    expect(pending).toHaveLength(1);
+    await Promise.all(pending);
+    expect(puts).toHaveLength(1);
+  });
+});

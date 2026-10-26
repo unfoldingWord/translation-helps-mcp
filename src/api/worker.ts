@@ -9,6 +9,8 @@
 export interface Env {
   TRANSLATION_HELPS_CACHE: KVNamespace;
   ZIP_FILES: R2Bucket;
+  /** Views made with the language packs (routes/packViews.ts); without it, every answer comes from Door43. */
+  LANGUAGE_PACKS?: R2Bucket;
   ANALYTICS?: AnalyticsEngineDataset;
   /** Injected service binding in the MCP-to-API architecture (unused in api worker itself) */
   API?: Fetcher;

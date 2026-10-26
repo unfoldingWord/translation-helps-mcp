@@ -22,6 +22,13 @@ jobs:
           node-version: "20"
           cache: "npm"
 
+      # npm 10 (Node 20's own) crashes in `npm ci` with "Cannot read properties
+      # of null (reading 'edgesOut')" while resolving the optional `vite ^8`
+      # peer of agents' @rolldown/plugin-babel against the tree's vite 7.
+      # npm 11 installs the same lockfile cleanly.
+      - name: Use npm 11
+        run: npm install -g npm@11.19.1
+
       - name: Install root deps
         run: npm ci
 
@@ -42,6 +49,13 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
+
+      # npm 10 (Node 20's own) crashes in `npm ci` with "Cannot read properties
+      # of null (reading 'edgesOut')" while resolving the optional `vite ^8`
+      # peer of agents' @rolldown/plugin-babel against the tree's vite 7.
+      # npm 11 installs the same lockfile cleanly.
+      - name: Use npm 11
+        run: npm install -g npm@11.19.1
 
       - name: Install root deps
         run: npm ci
@@ -69,6 +83,13 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
+
+      # npm 10 (Node 20's own) crashes in `npm ci` with "Cannot read properties
+      # of null (reading 'edgesOut')" while resolving the optional `vite ^8`
+      # peer of agents' @rolldown/plugin-babel against the tree's vite 7.
+      # npm 11 installs the same lockfile cleanly.
+      - name: Use npm 11
+        run: npm install -g npm@11.19.1
 
       - name: Install root deps
         run: npm ci

@@ -24,6 +24,10 @@ preview_id = "3073e58cc3eb4f16958854a6ec1531e6"
 binding = "ZIP_FILES"
 bucket_name = "translation-helps-mcp-zip-persistence"
 
+[[r2_buckets]]
+binding = "LANGUAGE_PACKS"
+bucket_name = "language-packs-staging"
+
 [[analytics_engine_datasets]]
 binding = "ANALYTICS"
 dataset = "translation_helps_metrics"
@@ -51,12 +55,17 @@ BASE_PATH = "/v2"
 
 [env.production]
 name = "translation-helps-mcp-v2"
-vars = { NODE_ENV = "production", BASE_PATH = "/v2", API_BASE_URL = "https://translation-helps-api-v2.unfoldingword.workers.dev" }
+vars = { NODE_ENV = "production", BASE_PATH = "/v2", API_BASE_URL = "https://translation-helps-api-v2.unfoldingword.workers.dev", PACKS_TARGET = "production" }
 # Custom hostname routes require the zone on this Cloudflare account.
 # Pages v1 stays at tc-helps.mcp.servant.bible/; attach /v2* in the dashboard when ready:
 #   pattern: tc-helps.mcp.servant.bible/v2*
 #   worker:  translation-helps-mcp-v2
 # Until then, use workers.dev: https://translation-helps-mcp-v2.unfoldingword.workers.dev/v2/
+
+# A daily freshness check of every language in the bucket; it builds only what has a newer Door43 release
+# (src/packs/freshness.ts runDailySweep). Production only: staging builds are asked for by hand.
+[env.production.triggers]
+crons = ["17 6 * * *"]
 
 [[env.production.kv_namespaces]]
 binding = "TRANSLATION_HELPS_CACHE"
@@ -65,6 +74,10 @@ id = "a0b2bcf08829441e932230cb06cb5e07"
 [[env.production.r2_buckets]]
 binding = "ZIP_FILES"
 bucket_name = "translation-helps-mcp-zip-persistence"
+
+[[env.production.r2_buckets]]
+binding = "LANGUAGE_PACKS"
+bucket_name = "language-packs"
 
 [[env.production.analytics_engine_datasets]]
 binding = "ANALYTICS"
@@ -79,7 +92,7 @@ binding = "API"
 service = "translation-helps-api-v2"
 
 [env.preview]
-vars = { NODE_ENV = "development", BASE_PATH = "/v2" }
+vars = { NODE_ENV = "development", BASE_PATH = "/v2", PACKS_TARGET = "staging" }
 
 [[env.preview.kv_namespaces]]
 binding = "TRANSLATION_HELPS_CACHE"
@@ -89,6 +102,10 @@ preview_id = "3073e58cc3eb4f16958854a6ec1531e6"
 [[env.preview.r2_buckets]]
 binding = "ZIP_FILES"
 bucket_name = "translation-helps-mcp-zip-persistence"
+
+[[env.preview.r2_buckets]]
+binding = "LANGUAGE_PACKS"
+bucket_name = "language-packs-staging"
 
 [[env.preview.analytics_engine_datasets]]
 binding = "ANALYTICS"
