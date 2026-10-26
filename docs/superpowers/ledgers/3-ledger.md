@@ -176,3 +176,7 @@ Worker fix queued (after Review 4-6 fixes land): one cron string per job selecte
   - Ruling: `[packs] parts <lang>: analytics point not written:` lacks the compat; test `packs-parts-freshness.test.ts:838-855` restores its console mock outside `finally` — cosmetic/test hygiene.
   - Out of scope noted: `scheduled.ts:10` header comment and the plan still say "once a day"; KV writes can be higher during an outage (partial readings every 10 min) and f1.1 claims share the quota in production, so "about 40" is an upper bound.
 - Both branches complete. PRs to open (with Abel's yes): tc-study `feat/packs-builder-stamps` → `master`; MCP `feat/packs-worker-parts` → `v2` (#76 already merged in). Spec branch `docs/packs-spec-3` stacks on #77's branch chain.
+## PRs (Abel's yes, 2026-10-26)
+- tc-study #50 `feat/packs-builder-stamps` → `master` (https://github.com/unfoldingWord/tc-study/pull/50).
+- translation-helps-mcp #79 `feat/packs-worker-parts` → `v2` (https://github.com/unfoldingWord/translation-helps-mcp/pull/79).
+- Abel merges. Then Task 12 (staging), each step with his yes: Step 1 builder.json after #50's merge; the stamps gate with `--list`/`--builder` files saved from R2 before deploying preview. Open question for Abel: is #76 deployed to production v2?
