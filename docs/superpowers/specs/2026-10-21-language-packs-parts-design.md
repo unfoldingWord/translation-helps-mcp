@@ -6,6 +6,11 @@ into `v2` as #69–#72) and changes its pack format, its build and its update ru
 Updated 2026-10-24: §1 (groups), §2 (the exact fingerprint rules), §3 (the lists), §4 step 6 and the open points, as
 plan 2b-2 built them (tc-study `feat/packs-publish-parts`, 9a6ed26), for delivery 3's Worker to port.
 
+Updated 2026-10-26: §2 (steps 2, 4, 5 and 7, the `code` rule and "For the Worker"), §3 (the list's `stamps`, the
+cleanup), §6 item 3 and the open points, as delivery 3 built the Worker (translation-helps-mcp
+`feat/packs-worker-parts`, tc-study `feat/packs-builder-stamps`). The Worker ports none of the fingerprint rules: it
+compares stamps and the builder's code, and the build decides.
+
 ## Why
 
 A language pack today is one zip per language, rebuilt whole whenever any resource has a newer Door43 release.
@@ -124,8 +129,8 @@ with. tc-study's sample-output check fails when a count changes without a format
    a test fixture. If a tree cannot be read whole, the resource counts as changed: rebuilding too much is safe,
    missing a change is not.
    **A file's hash is its git blob sha**, which is computed from the file's bytes (`sha1("blob <size>\0" + bytes)`).
-   The Worker reads it from the tree without downloading anything; the build and tc-study's app compute the same value
-   from the bytes they already hold. All three reach the same fingerprint independently.
+   Door43's tree gives it without downloading anything; the build and tc-study's app compute the same value from the
+   bytes they already hold. (The Worker reads no tree: step 5.)
    The build hashes the bytes it builds from and checks them against Door43's tree at the same ref (2026-10-24): a
    path or a sha that differs (an `export-ignore`d file, an `export-subst` or `eol` rewrite in `.gitattributes`) is a
    failure and nothing is published; a tree that cannot be read whole is `unverified`, counted in the report.
@@ -134,22 +139,28 @@ with. tc-study's sample-output check fails when a count changes without a format
    A version bump alone does not change it. The exact rule is below.
 4. **Fingerprints** (2026-10-24): every part and every unit of work (`shared`, `book <b>`) has one: the sha256 of
    its input files with their blob shas, the normalized manifests, the release stamps its rows carry, its id and the
-   list's `code`. The build decides per unit; a part's own fingerprint is for 2c's views and the Worker.
-5. **Decide.** The new fingerprints are compared with those in the published list (its `units`):
-   - none changed: no build. The list is rewritten with the new release tags only (so apps show the right version and
-     credit); phones download that list and nothing else (but see the open points: the list's catalog rows carry
-     `bookBlobsRef`, which is the tag);
-   - some changed: a build is asked for;
+   list's `code`. The build decides per unit; a part's own fingerprint is for 2c's views.
+5. **Decide** (delivery 3). The build decides; the Worker only asks for a build. It compares the stamps of everything
+   the published list was built from (its `stamps`, §3, or for a list without them its resources' and its originals
+   list's) with what Door43 and GitHub have now, and the list's `code` with the code in `status/builder.json` ("For
+   the Worker", below). When one moved, it asks for a build, and the build compares the new fingerprints with the
+   list's `units` and builds only what differs:
+   - no fingerprint changed (a tags-only release, or a lexicon or MACULA commit that changes none of their files): the
+     build carries every unit and writes the list's catalog rows as its own, with the new tags (so apps show the right
+     version and credit); phones download that list and nothing else. The Worker never rewrites a list;
+   - some changed: those units are built;
    - a new book or a removed one adds or drops its parts.
 6. **The build does not trust the asker.** It recomputes every fingerprint itself and builds what does not match.
-7. **When it runs:** the Worker checks when a language is requested (at most hourly per language, as now), and a
-   daily sweep runs step 1 for every published language. `DAILY_LANGUAGES` and its unconditional daily builds go.
+7. **When it runs:** the Worker checks when a language's list is requested (at most hourly per language, as for
+   f1.1), and a cron checks every published parts language once a day, in hourly slices (the languages whose
+   `fnv1a32(language) % 24` is the hour). `DAILY_LANGUAGES` and its unconditional daily builds are gone.
 
 ### The exact rules (2026-10-24)
 
-What tc-study's code does, for delivery 3's Worker to port. The reference is tc-study
-`packages/language-pack/src/parts/{fingerprint,partInputs,partSlots}.ts` (pure, Web Crypto only: the Worker can copy
-them as they are, JavaScript regular expressions included) and `packages/resource-pipeline/src/language/`
+What tc-study's code does: the build's contract, and the app's if it ever computes fingerprints (the Worker computes
+none: "For the Worker", below). The reference is tc-study
+`packages/language-pack/src/parts/{fingerprint,partInputs,partSlots}.ts` (pure, Web Crypto only: they can be copied
+as they are, JavaScript regular expressions included) and `packages/resource-pipeline/src/language/`
 `{inputFiles,buildLanguageParts,partsCode}.ts`. The golden vectors at the end are what a port must reproduce.
 
 **Which resources.** The same as tc-study's discovery:
@@ -311,7 +322,7 @@ sha256hex(utf8(stableJson({ v: FINGERPRINT_VERSION, code, id, files, manifests, 
   depends on (`npm <name>`), and a sample of the stamp formats. Both lists carry it (`PartsList.code`). **The Worker
   reads `code` from the published language list and never recomputes it**: it cannot know the build machine's
   versions. A build reuses no previous list of another `code` (everything is rebuilt; unchanged bytes keep their
-  sha256). So a new builder version is invisible to the Worker until a build is asked for by other means.
+  sha256). So tc-study writes the code master builds with to `status/builder.json` ("For the Worker").
 
 **Groups** (the bucket hash inputs). `fnv1a32` is 32-bit FNV-1a over the text's UTF-8 bytes (offset `0x811c9dc5`, prime
 `0x01000193`, unsigned).
@@ -372,11 +383,41 @@ with `08-RUT.usfm #5`, `LICENSE.md #6`; UHB with `08-RUT.usfm #7`; TW with `bibl
 | `book rut` (TN, GLT, UHB)           | TN #1 #3, GLT #5 #6, UHB #7 | TN, GLT, UHB     |        |
 | `shared` (TW, TA, UHL, MACULA, OBS) | #8–#20, every file of each  | TW, TA, UHL, OBS | TW, TA |
 
-**For the Worker** (delivery 3): per check it needs each resource's tree at its tag, the text of each resource's
-`manifest.yaml` at its tag (the list records no manifest hash, so it is fetched, one small request per resource), the
-catalog rows (ingredients, subject, release), each lexicon's commit at `master` and its tree, and Taller's GitHub tree
-at the MACULA commit. It computes the unit fingerprints with the list's `code` and compares them with the list's
-`units`.
+**For the Worker** (delivery 3, as built 2026-10-26). The Worker computes no fingerprint and reads no tree or
+manifest (delivery 3, Decision 1): the build is the only place fingerprints are computed, so the two cannot disagree
+about one, and a check needs neither a port of the rules above nor a tree of every input (`en_uhl` alone has about
+9,000 files). Per check, at most once an hour per language, it compares two things:
+
+- **The stamps.** What the list was built from is its `stamps` (§3), or, for a list published before them, the
+  `stamp` of its `resources` and of those of the originals list it names. What Door43 and GitHub have now is computed
+  with the build's strings:
+  - the language's rows of the catalog search `topic=tc-ready&stage=prod&lang=<lang>` (row `language` equal to the
+    language, subject in the table above, not OBS by `/OBS|Open Bible Stories/i`, with a release; lexicon repositories
+    left out): `resourceContentStamp` of the row;
+  - UHB and UGNT: the hit of `catalog/search?owner=unfoldingWord&subject=<subject>&stage=prod&limit=1` (subjects
+    `Hebrew Old Testament` and `Greek New Testament`), with no `lang` and no topic, the query tc-study's build sends;
+    stamped as the build stamps its row;
+  - the lexicons of the literal text's owner (`test_org` for `en`; none without a literal text): `lexiconStampOf` the
+    commit `master` names (its `created`, else `commit.committer.date`); a repository that answers 404 is no lexicon;
+  - MACULA: `<sha[0..10]>#<new Date(date).toISOString()>`, sanitized, of the newest commit GitHub gives for
+    `public/trees` and for `public/referents` in Taller, for each MACULA key the list has.
+
+  A key whose stamp moved, or a key only now there (a new resource), is a change. A key only in the list is not: a
+  resource Door43 no longer lists stays in the list until the next build for another reason. An input the Worker
+  cannot read is left out, so it cannot ask for a build.
+
+- **The code.** The list's `code` and the `code` of `status/builder.json` (`{ compat, code, commit, at }`), which
+  tc-study writes on every push to `master` that touches the build and on every parts publish from `master`. When the
+  file's `compat` is not the Worker's `CURRENT_PARTS_COMPAT`, the Worker logs `compat-drift` and asks for no code
+  rebuild.
+
+When either differs, the Worker asks for a parts build (the workflow's `parts: true`), and the build decides (step 5).
+Every reason has a breaker, so a disagreement between the two sides costs one build, never a loop: a moved stamp is
+seen once an `ok` build started after both the stamp's date and the moment the Worker first saw it, and a code change
+once an `ok` status records that `code`. The dispatch guard (running, cooling, stopped) applies as for f1.1, parts
+dispatches have a daily cap of their own, and the cron asks for at most 10 code-only rebuilds a day.
+
+The golden vectors above stay: they are the build's contract, and the app's if it ever computes fingerprints.
 
 ## 3. Format and storage
 
@@ -406,15 +447,23 @@ recomputation), and two key schemes in one code path would double what has to be
 - `parts`: `sha256`, `bytes`, `rows`, `kind` (`book`, `alignments`, `original`, `macula`, `tw`, `ta`, `titles`,
   `lexicon`, `obs`), `resource`, `book` (lowercase) and `group` when it has them, `fingerprint` (§2), `layers`;
 - `units` (the language list only): `{ id, fingerprint }` of every unit built or carried, `shared` and `book <b>`,
-  which the next build and the Worker compare;
+  which the next build compares;
 - `originals`: `{ path, sha256 }` of the originals list this language's quote and alignment rows were made against,
   at its content address `catalog/<compat>/originals/<sha256>.json`, sha256 being that of its text. Another
-  language's run cannot overwrite it.
+  language's run cannot overwrite it;
+- `stamps` (the language list only, delivery 3): `{ <key>: <stamp> }` of every input the build read, sorted by key,
+  which the Worker compares ("For the Worker", §2). Each catalog row's `resourceContentStamp`, UHB and UGNT included
+  (`v2.1.30#2026-09-01T00_00_00Z`); each lexicon's `lexiconStampOf(commit)`, `<sha[0..10]>#<date>` (the commit's
+  `created`, else its committer date) with `:`, `|`, `@` turned to `_` (`0123456789#2026-07-01T00_00_00Z`; an offset
+  stays as Door43 wrote it, `…T02_00_00+02_00`); each MACULA key that has files,
+  `<commit[0..10]>#<new Date(%cI).toISOString()>` the same way (`abc1234567#2026-08-01T00_00_00.000Z`). A resource
+  that got no part is in it; one left out of the build is not.
+  Every `resources[].stamp` equals its `stamps[key]`. Lists written before delivery 3 have none.
 
 The originals list is a list of the same shape with `language: "originals"`, the `original` and `macula` parts and no
-`units`. Each run writes it at its content address and as `catalog/<compat>/originals.json`, the latest (last writer
-wins between languages); a reader takes the one the language list names, and a build reuses a previous list only when
-its `originals.path` is that address and the list there has that sha256.
+`units` or `stamps`. Each run writes it at its content address and as `catalog/<compat>/originals.json`, the latest
+(last writer wins between languages); a reader takes the one the language list names, and a build reuses a previous
+list only when its `originals.path` is that address and the list there has that sha256.
 
 Both lists are stable JSON (§2): parts sorted by kind, resource, book, group, their layers in the order `sot`,
 `prepared`, `quote`, `align`, `text`; resources by key, their books sorted; units by id. A run whose language list
@@ -432,12 +481,22 @@ UHB, UGNT or MACULA parts, or whose language has no aligned literal text, writes
 
 `originals.json` is also written when no previous list was read or the bucket lacks it, and left alone when this
 language's originals did not change: another language may have written newer ones since. Until the language list is
-written the bucket names the previous build, whose parts nothing deletes (cleanup is delivery 3). Parts are gzip from
-pako 2.1.0 at level 9 with mtime 0 and OS byte 255, so Bun and Node, Linux and Windows give the same bytes.
+written the bucket names the previous build, whose parts the cleanup keeps (it deletes only what no list names).
+Parts are gzip from pako 2.1.0 at level 9 with mtime 0 and OS byte 255, so Bun and Node, Linux and Windows give the
+same bytes.
 
 **New compat key `f2.0-…`.** Lists in the `f1.1` format stay until every app has moved.
 
-**Cleanup:** a part no current list names is deleted after 30 days, so nothing a phone is downloading disappears.
+**Cleanup** (delivery 3): a part no current list names is deleted after 30 days, so nothing a phone is downloading
+disappears. The 30 days count from the first daily run that found the part unnamed, kept in a ledger in the bucket
+(`cleanup/parts-orphans.json`); when no run has finished for more than 3 days, every count starts again. A part is
+also deleted only when R2 last wrote it 30 days ago or more: a build puts a part it names again when R2 wrote it more
+than 20 days ago (tc-study `PART_REFRESH_DAYS`), so an old upload means no build has named it for 30 days. Named is
+what any list of any parts compat names (an older app may still read an older compat): every part of every language
+list and of `originals.json`, the originals list each language list names, and its parts. An originals list at its
+content address that no list names follows the same rule; nothing else is ever deleted (`packs/`, `v1/`, `status/`,
+`catalog/f1.*`, every language list, every `originals.json`). A run waits while any parts build is `running`, deletes
+nothing when any list cannot be read, and looks again right before deleting. Operations: `docs/LANGUAGE_PACKS_INFRA.md`.
 
 **Requests:** the full English language is about 700 parts (66 books × ~10 kinds, plus shared). With 4 downloads at a
 time that is under a minute of round trips on a normal connection, but more than the Worker's current 90 requests a
@@ -523,8 +582,11 @@ Each with its own plan and PRs, in this order:
    English measured on a GitHub runner on 2026-10-22, with today's whole build: 46:51, 14.9 GB peak of the runner's
    16 GB, a 155.2 MB language pack. It fits, with no margin; parts come before English is published.
 
-3. **Worker and MCP v2:** fingerprint comparison before asking for a build, the parts route with cache and its own
-   rate limit, views from parts with fingerprints, cleanup after 30 days.
+3. **Worker and MCP v2** (delivery 3, built 2026-10-26, not deployed yet): the parts routes (lists `no-cache` with
+   their own 304, originals lists and parts immutable, parts with their own rate limit of 600 a minute); a parts build
+   asked for when the stamp of anything a list was built from, or the builder's code, moved (stamps, not fingerprints,
+   in the Worker); a switch and a daily cap of their own for parts dispatches; a cron that checks each parts language
+   once a day in hourly slices; and the cleanup after 30 days, `dry-run` first. Views from parts stay with 2c.
 4. **Servos online** (plan 3, now written for parts): project-book download, "the whole language", updates by
    connection, staging and apply-all-at-once.
 
@@ -536,8 +598,7 @@ language (INFRA step 9) waits for parts: building a hundred languages in `f1.1` 
 
 - The bucket counts for TW and TA (§1): pending the English sizes run (plan 2b-2, Task 11 Step 3). Today 8 and 4; a
   change bumps `PARTS_FORMAT_VERSION` (a new compat folder).
-- For delivery 3 (2026-10-24): §2 step 5's "rewrite the list with the new tags only" cannot be a plain edit of
-  `resources[].stamp`: each `metadata` holds `bookBlobsRef`, the tag `bookContentStamp` compares, and with a new tag
-  and the old `bookBlobsRef` an app would stamp a book's keys with the release, not its blob. Either a tags-only change
-  asks for a build (which carries every unit, downloads the zips and rewrites the rows), or the Worker rewrites the
-  catalog rows exactly as the build does.
+- Closed (delivery 3, Decision 2, confirmed by Abel on 2026-10-26): §2 step 5's "rewrite the list with the new tags
+  only" could not be a plain edit of `resources[].stamp`, since each `metadata` holds `bookBlobsRef`, the tag
+  `bookContentStamp` compares. A tags-only change asks for a build, which carries every unit, downloads the zips and
+  writes the rows itself; the Worker rewrites no list.
