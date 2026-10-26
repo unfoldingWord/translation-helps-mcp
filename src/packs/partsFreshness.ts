@@ -246,12 +246,20 @@ function codeSeen(status: BuildStatus | null, code: string): boolean {
   return status?.state === "ok" && status.code === code;
 }
 
+/** Never throws: a failed Analytics write must not turn a result into a crash, nor escape the crash path. */
 function point(env: FreshnessEnv, language: string, result: string): void {
-  env.ANALYTICS?.writeDataPoint({
-    indexes: ["pack"],
-    blobs: ["pack", "freshness", language, result],
-    doubles: [0],
-  });
+  try {
+    env.ANALYTICS?.writeDataPoint({
+      indexes: ["pack"],
+      blobs: ["pack", "freshness", language, result],
+      doubles: [0],
+    });
+  } catch (err) {
+    console.error(
+      `[packs] parts ${language}: analytics point not written:`,
+      err,
+    );
+  }
 }
 
 async function readOriginals(
@@ -392,6 +400,7 @@ export async function checkPartsFreshness(o: {
     return done(build, detail);
   } catch (err) {
     console.error(`${tag}: freshness unknown:`, err);
+    point(env, language, "parts-error");
     return "error";
   }
 }

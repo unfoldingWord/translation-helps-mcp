@@ -145,8 +145,10 @@ export async function runScheduled(
       }
       return;
     default:
-      console.log(
-        `[packs] cron ${JSON.stringify(deps.cron ?? null)} is none of the packs jobs (${PACKS_CRONS.join(", ")}); nothing done`,
+      // Loud, with a stable prefix to alert on: a cron in wrangler.toml with no job here runs nothing. No guess from
+      // the clock: it could run the cleanup or a sweep at the wrong time.
+      console.error(
+        `[packs] cron-unknown: ${JSON.stringify(deps.cron ?? null)} is none of the packs jobs (${PACKS_CRONS.join(", ")}); nothing done`,
       );
   }
 }

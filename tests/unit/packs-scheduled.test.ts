@@ -244,14 +244,17 @@ describe("runScheduled: one job per cron string", () => {
     expect(s.parts.map((c) => c.language).sort()).toEqual([...six].sort());
   });
 
-  it("an unknown cron string, or none, does nothing and says so", async () => {
+  it("an unknown cron string, or none, does nothing and says so loudly, under a prefix to alert on", async () => {
     const s = setup({
       f11: ["fr"],
       parts: languagesOfHour(6, 1),
       env: { PACKS_CLEANUP: "delete" },
     });
+    const errors: string[] = [];
     const logs: string[] = [];
+    const error = console.error;
     const log = console.log;
+    console.error = (line: string) => void errors.push(String(line));
     console.log = (line: string) => void logs.push(String(line));
     try {
       for (const cron of ["17 * * * *", "47 * * * *", "* * * * *", ""]) {
@@ -260,15 +263,22 @@ describe("runScheduled: one job per cron string", () => {
       }
       await s.run(undefined as unknown as string, at(6));
     } finally {
+      console.error = error;
       console.log = log;
     }
     expect([s.f11, s.parts, s.cleanups]).toEqual([[], [], []]);
     expect(s.r2.ops).toEqual([]);
-    expect(logs).toHaveLength(9);
-    expect(logs[0]).toBe(
-      `[packs] cron "17 * * * *" is none of the packs jobs (${PACKS_CRONS.join(", ")}); nothing done`,
+    expect(logs).toEqual([]);
+    expect(errors).toHaveLength(9);
+    expect(errors.every((e) => e.startsWith("[packs] cron-unknown: "))).toBe(
+      true,
     );
-    expect(logs.at(-1)).toContain("cron null is none of the packs jobs");
+    expect(errors[0]).toBe(
+      `[packs] cron-unknown: "17 * * * *" is none of the packs jobs (${PACKS_CRONS.join(", ")}); nothing done`,
+    );
+    expect(errors.at(-1)).toContain(
+      "cron-unknown: null is none of the packs jobs",
+    );
   });
 });
 
@@ -748,7 +758,7 @@ describe("wrangler.toml: the crons and their vars", () => {
   function sections(): Record<string, string[]> {
     const out: Record<string, string[]> = { "": [] };
     let section = "";
-    for (const line of toml().split("\n")) {
+    for (const line of toml().split(/\r?\n/)) {
       if (line.trimStart().startsWith("#") || !line.trim()) continue;
       const header = /^\[+([^\]]+)\]+\s*$/.exec(line);
       if (header) out[(section = header[1] ?? "")] ??= [];
@@ -814,7 +824,9 @@ describe("worker.ts: the scheduled handler", () => {
       fileURLToPath(new URL("../../src/worker.ts", import.meta.url)),
       "utf8",
     );
-    const handler = /async scheduled\([\s\S]*?\n {2}\},\n/.exec(source)?.[0];
+    const handler = /async scheduled\([\s\S]*?\r?\n {2}\},\r?\n/.exec(
+      source,
+    )?.[0];
     expect(handler).toBeDefined();
     expect(handler!.replace(/\s+/g, " ")).toContain(
       "await runScheduled(env, ctx, { cron: event.cron, scheduledTime: event.scheduledTime, });",

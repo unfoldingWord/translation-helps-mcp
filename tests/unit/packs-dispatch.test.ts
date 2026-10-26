@@ -685,7 +685,7 @@ describe("wrangler.toml", () => {
   function varsBySection(): Record<string, string> {
     const vars: Record<string, string> = {};
     let section = "";
-    for (const line of toml().split("\n")) {
+    for (const line of toml().split(/\r?\n/)) {
       const header = /^\[+([^\]]+)\]+\s*$/.exec(line);
       if (header) section = header[1] ?? "";
       else if (/^vars\s*=/.test(line)) vars[section] = line;
@@ -701,7 +701,7 @@ describe("wrangler.toml", () => {
     expect(vars["env.production"]).not.toContain("PACKS_PARTS_DISPATCH");
     // Nowhere else outside a comment: the top-level config deploys under the production Worker's name.
     const set = toml()
-      .split("\n")
+      .split(/\r?\n/)
       .filter((l) => !l.trimStart().startsWith("#"))
       .filter((l) => l.includes("PACKS_PARTS_DISPATCH"));
     expect(set).toEqual([vars["env.preview"]]);

@@ -95,6 +95,7 @@ Neither merges before step 1 is done (it is, as of 2026-10-21).
      - PowerShell: `npm install; $env:BASE_PATH = '/v2'; npm run build --workspace=translation-helps-mcp-web`
   2. `npx wrangler deploy --config wrangler.api.toml --env <env>`
   3. `npx wrangler deploy --config wrangler.toml --env <env>`
+  4. Watch the next run of each of the Worker's crons (the deploy check in "Parts: crons").
 - [ ] Check, no change required: Cloudflare Pages project `translation-helps-mcp` (pages.dev:
       `translation-helps-mcp-945.pages.dev`; v1, custom domain `tc-helps.mcp.servant.bible`) → Settings → Bindings.
       If the service binding `V2` → `translation-helps-mcp-v2` is set, `/v2/*` uses it; if not, it goes through the
@@ -154,8 +155,8 @@ once a staging build of es-419 has published:
       `Access-Control-*` must be identical the second time (served from Pages' cache). Repeat the step-7 checks
       (Content-Length, 416, stamps) with `BASE=https://tc-helps.mcp.servant.bible`.
 - Parts in production are delivery 3's Task 14, each step with Abel's yes: tc-study lets parts publish to production
-  (Task 13) and sets the repository variable `PACKS_PARTS_PRODUCTION`; `[env.production]` gets
-  `PACKS_PARTS_DISPATCH = "on"` and the three parts crons ("Parts: crons" for the cron limit), then
+  (Task 13); Abel sets tc-study's repository variable `PACKS_PARTS_PRODUCTION` (Task 14 Step 1); `[env.production]`
+  gets `PACKS_PARTS_DISPATCH = "on"` and the three parts crons ("Parts: crons" for the cron limit), then
   `PACKS_CLEANUP = "dry-run"` and, after a week of logs, `delete`. The spec (§6, "Meanwhile") has the backfill wait
   for parts; Task 14 rewrites this step for it.
 - Approved by Abel: ☐
@@ -211,31 +212,46 @@ The Worker picks the job by the cron string (`src/packs/scheduled.ts`); each job
 | `7 4,5 * * *` | The cleanup again at 04:07 and 05:07, only when the ledger says that day's outcome was `postponed` or `aborted`.                                                                                                 | no (Task 14) | yes (`dry-run`) |
 | `37 * * * *`  | The parts slice: the published parts languages whose `fnv1a32(language) % 24` is the hour (es-419 at 22, en at 18), at most `PARTS_CHECKS_PER_RUN`, reason `daily`. Nothing is read while parts dispatch is off. | no (Task 14) | yes             |
 
-- Any other cron string (an old `17 * * * *` still deployed, a typo) does nothing and logs
-  `[packs] cron "<string>" is none of the packs jobs (…); nothing done`.
+- Any other cron string (an old `17 * * * *` still deployed, a typo) does nothing and logs, with `console.error`,
+  `[packs] cron-unknown: "<string>" is none of the packs jobs (…); nothing done`. **Alert on `[packs] cron-unknown:`**:
+  the Worker does not guess the job from the clock, so that cron's job does not run at all.
+- **After any deploy of a Worker with crons** (the first production deploy especially), watch the next run of each of
+  its crons with `npx wrangler tail --config wrangler.toml --env <env>`:
+  - production, at the next 06:17 UTC: `"17 6 * * *" @ … - Ok`, and no `[packs] cron-unknown:`,
+    `[packs] f1.1 sweep stopped:` or `[packs] daily freshness sweep stopped:`. The f1.1 sweep logs no line of its own
+    when nothing is stale, only `[packs] stale <compat>/<lang>: …` for each language it finds stale;
+  - preview: `"37 * * * *" @ … - Ok` each hour, with `[packs] parts sweep <HH> UTC: …` in an hour whose slice has a
+    language (es-419 at 22, en at 18; an empty slice logs nothing), `[packs] cleanup (dry-run): …` at 03:07, and no
+    `[packs] cron-unknown:`.
 - The Free plan allows **5 cron triggers per account**. Staging uses 3 and production 1. Task 14 must add the three
   parts crons to `[env.production.triggers]` together with the flags: 3 + 4 = 7, over 5 on Free, so on Free staging's
   crons would have to go (or the account be Paid). Other Workers' crons on the account count too (not checked).
 - A run is kept under the Free plan's per-invocation limits (50 outside fetches, 1,000 KV and R2 calls): a parts check
-  makes at most 14 fetches (9 after the run's first), so 5 checks a run. A slice with more languages checks 5 of them,
-  starting further along each day, and logs the rest as `left for another day`. On a Paid plan
+  makes at most 14 fetches (9 after the run's first), so 5 checks a run. A crowded slice (k languages, more than
+  `PARTS_CHECKS_PER_RUN`) checks at most that many a run, starting that many further along (sorted, as a ring) each
+  day, and logs the rest as `left for another day`: each of its languages is checked by the cron at least every
+  ⌈k / `PARTS_CHECKS_PER_RUN`⌉ days, and a phone that opens one still triggers its check in between. On a Paid plan
   `PARTS_CHECKS_PER_RUN` can be raised.
 - The slice's log line: `[packs] parts sweep <HH> UTC: <lang> <result>, …`.
 
 ### Parts: the check
 
 A GET of a list under `CURRENT_PARTS_COMPAT` (200 or 304, not HEAD) and the cron's slice run the same check
-(`src/packs/partsFreshness.ts`), at most once an hour per language. It computes no fingerprint and reads no git tree or manifest: it compares the list's
-`stamps` (or, for a list without them, its resources' and its originals list's stamps) with what Door43 and GitHub
-have now, and the list's `code` with the code in `status/builder.json`. When something differs and no `ok` build has
-seen it yet, it asks for a parts build (`parts: true`), and the build decides unit by unit what to rebuild.
+(`src/packs/partsFreshness.ts`), at most once an hour per language. It computes no fingerprint and reads no git tree
+or manifest: it compares the list's `stamps` (or, for a list without them, its resources' and its originals list's
+stamps) with what Door43 and GitHub have now, and the list's `code` with the code in `status/builder.json`. When
+something differs and no `ok` build has seen it yet, it asks for a parts build (`parts: true`), and the build decides
+unit by unit what to rebuild.
 
 - Log line: `[packs] parts <compat>/<lang>: <result> (<key> <built stamp|new> → <now>; code <list's> → <builder's>)`,
   with `; not compared, unreadable: …` when an input could not be read (it is left out, so it cannot ask for a build).
   Results: `fresh`, `seen` (an `ok` build already saw the change), `budget` (a code-only change the cron may not
-  spend today), `unknown` (the language's search failed or found no row of it), `no-list`, `error`, or the dispatch
-  outcome (`dispatched`, `running`, `cooling`, `stopped`, `capped`, `unconfigured`). Analytics: `parts-<result>`
-  (`parts-stale-seen` for `seen`).
+  spend today), `unknown` (the language's search failed or found no row of it), `no-list`, or the dispatch outcome
+  (`dispatched`, `running`, `cooling`, `stopped`, `capped`, `unconfigured`, `invalid`, `error`). Analytics:
+  `parts-<result>` (`parts-stale-seen` for `seen`).
+- A check that crashes (a KV or R2 call that throws, a limit reached) asks for nothing and logs, with `console.error`,
+  `[packs] parts <compat>/<lang>: freshness unknown: <error>` instead of the usual line; its result is `error`, and
+  Analytics `parts-error`, as for a dispatch that failed.
 - Breakers: a moved stamp is seen when an `ok` build started after both the stamp's own date and the moment this Worker
   first saw it (`packs:first-seen:*`); a code change is seen only by an `ok` status whose `code` is the builder's. The
   dispatch guard (`running` 5.5 h, `cooling` 24 h after a failure, `stopped` after 3) applies as for f1.1.
@@ -277,9 +293,12 @@ seen it yet, it asks for a parts build (`parts: true`), and the build decides un
   `--print-compat --parts`): until the redeploy, a parts dispatch of the old compat is marked `failed` and builds
   nothing. After it, the old compat's published lists are still served, a missing one answers `404 old-compat`, and
   the cleanup keeps every part any parts compat's list names.
-- **A stale `status/builder.json`** (`packs-builder.yml` failed after a push that changed the code): every `ok` build
-  writes master's real code, which never equals the builder file's, so checks keep asking for code rebuilds, bounded by
-  the caps (10 a day from the cron, `PACKS_PARTS_DAILY_CAP` from phones). Run `packs-builder.yml` by hand.
+- **A stale `status/builder.json`** (`packs-builder.yml` failed after a push that changed the code): a list built
+  since carries master's real code, not the builder file's, so its check asks for a code rebuild. Every parts publish
+  from `master` rewrites `status/builder.json` with the real code in its "Builder code" step, so the next one (that
+  rebuild or any other) ends it. Code rebuilds keep coming only while that step fails too, or when master has moved
+  since the run's commit (the step then writes nothing), and they stay bounded by the caps (10 a day from the cron,
+  `PACKS_PARTS_DAILY_CAP` from phones). Run `packs-builder.yml` by hand.
 
 ### Parts: the cleanup
 
@@ -314,8 +333,8 @@ Deletes parts no list has named for 30 days (`src/packs/cleanup.ts`). Only `part
 
 - **What to alert on** (all `console.error`):
   - `[packs] cleanup-alert: aborted <N> days in a row (since <day>); last: <why>`: logged from the 3rd day in a row
-    that ends `aborted`. Read `<why>` and fix it. Postponed days do not count; a day that ends `done`, or a day with
-    no run, breaks the streak.
+    that ends `aborted`. Read `<why>` and fix it. Only days that end `aborted` count: a day that ends `postponed` or
+    `done`, or a day with no run, breaks the streak.
   - `… started during the deletes; if its list names a deleted part, rebuild it with force` and
     `<list> names <N> deleted key(s) (…); it was written during the deletes; rebuild with force`: a build raced the
     deletes. Dispatch that language with the workflow's `force` input.
@@ -338,9 +357,11 @@ every part before the lists protect such a run. Keep local runs to `--no-upload`
 
 ### Parts: comparing the stamps
 
-`scripts/packs-parts-stamps.ts` prints where the Worker's stamps for a language differ from a published list's (`[]`
-and exit 0 when they agree, 1 on a difference, 2 on bad arguments). Run it on files saved from R2, **before** the
-preview Worker is deployed:
+`scripts/packs-parts-stamps.ts` prints where the Worker's stamps for a language differ from a published list's. It
+exits 0 with `[]` when they agree; 1 on a difference or on `unknown` (the language's search failed or found no row of
+it); 2 on bad arguments, on a list or builder file that cannot be read or is not one, or on a `--base` that does not
+answer 200 with a schema 2 list. It is the real-data gate before parts checks may dispatch: run it **before** the
+preview Worker is deployed, with `--list` on files saved from R2:
 
 ```bash
 npx wrangler r2 object get language-packs-staging/catalog/<compat>/<lang>.json --remote --file <lang>.json
@@ -360,6 +381,11 @@ For a list without `stamps`, save its originals list the same way and pass it wi
 - The Free plan's 10 ms of CPU per invocation is not measured for the cleanup (JSON parsing, the sha256 of each
   `originals.json`) on a large bucket, nor for the f1.1 sweep.
 - A stale `status/builder.json` causes code-rebuild attempts, bounded by the caps ("Parts: the builder file").
+- KV writes on the Free plan (1,000 a day): each check a phone triggers writes the hour's claim
+  (`packs:fresh:<compat>:<lang>`, so at most 24 a day per language opened every hour), plus a first-seen record per
+  new stamp and, now and then, the shared readings and the token. About 40 parts languages opened all day would use
+  them up. It fails safe (the claim's put throws, the check ends `error` and asks for nothing), but the catalog
+  cache's background writes then fail too, for the rest of the day.
 
 ## Client contract: whole packs (f1.1)
 

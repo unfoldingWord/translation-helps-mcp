@@ -114,6 +114,7 @@ function setup(
     objects?: Record<string, unknown>;
     partsDispatch?: string;
     observeThrows?: boolean;
+    analyticsThrows?: boolean;
     firstSeen?: FirstSeen;
   } = {},
 ) {
@@ -150,8 +151,10 @@ function setup(
     LANGUAGE_PACKS: bucket,
     PACKS_PARTS_DISPATCH: o.partsDispatch ?? "on",
     ANALYTICS: {
-      writeDataPoint: (p: { blobs?: string[] }) =>
-        void points.push(p.blobs ?? []),
+      writeDataPoint: (p: { blobs?: string[] }) => {
+        if (o.analyticsThrows) throw new Error("analytics down");
+        points.push(p.blobs ?? []);
+      },
     } as unknown as AnalyticsEngineDataset,
   };
   const ctx = { waitUntil: () => {} } as unknown as ExecutionContext;
@@ -814,6 +817,40 @@ describe("checkPartsFreshness", () => {
     const err = vi.spyOn(console, "error").mockImplementation(() => {});
     const s = setup({ observeThrows: true });
     expect(await s.check()).toBe("error");
+    err.mockRestore();
+  });
+
+  it("a crash logs `freshness unknown:` and writes the `parts-error` point, as every other result writes its own", async () => {
+    const errors: unknown[][] = [];
+    const err = vi
+      .spyOn(console, "error")
+      .mockImplementation((...a: unknown[]) => void errors.push(a));
+    const s = setup({ observeThrows: true });
+    expect(await s.check()).toBe("error");
+    err.mockRestore();
+    expect(s.points).toEqual([["pack", "freshness", LANG, "parts-error"]]);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]![0]).toBe(
+      `[packs] parts ${COMPAT}/${LANG}: freshness unknown:`,
+    );
+  });
+
+  it("a failing Analytics write neither throws nor changes a result, on a crash or not", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const crashed = setup({ observeThrows: true, analyticsThrows: true });
+    expect(await crashed.check()).toBe("error");
+    const fresh = setup({ builder: BUILDER, analyticsThrows: true });
+    expect(await fresh.check()).toBe("fresh");
+    const stale = setup({
+      builder: BUILDER,
+      observed: moved({ [GLT]: "v13#2026-10-20T09_00_00Z" }),
+      analyticsThrows: true,
+    });
+    expect(await stale.check()).toBe("dispatched");
+    expect(stale.builds).toHaveLength(1);
+    expect(err.mock.calls.map((c) => String(c[0]))).toContain(
+      `[packs] parts ${LANG}: analytics point not written:`,
+    );
     err.mockRestore();
   });
 });
