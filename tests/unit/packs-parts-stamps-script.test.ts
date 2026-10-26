@@ -35,15 +35,23 @@ describe("diffForReport", () => {
   });
 });
 
+/** An answer with another status than 200: `{ [ANSWER]: 202, body }`. */
+const ANSWER = Symbol("status");
+
 function worker(objects: Record<string, unknown>) {
   const asked: string[] = [];
   const fetchImpl = async (input: RequestInfo | URL) => {
     const url = String(input);
     asked.push(url);
-    const path = new URL(url).pathname;
-    return path in objects
-      ? Response.json(objects[path])
-      : Response.json({ error: "not found" }, { status: 404 });
+    const parsed = new URL(url);
+    const found = objects[parsed.pathname] ?? objects[url];
+    if (found === undefined) {
+      return Response.json({ error: "not found" }, { status: 404 });
+    }
+    const o = found as { [ANSWER]?: number; body?: unknown };
+    return o[ANSWER]
+      ? Response.json(o.body, { status: o[ANSWER] })
+      : Response.json(found);
   };
   return { fetch: fetchImpl as typeof fetch, asked };
 }
@@ -200,6 +208,123 @@ describe("run", () => {
     });
     expect(code).toBe(0);
     expect(out).toEqual(["[]"]);
+  });
+
+  it("a 202 (the Worker asked for a build) or any answer but 200 is an error, not a list", async () => {
+    const accepted = runWith(
+      ["--base", "https://preview.example.workers.dev", "--lang", "es-419"],
+      {
+        [LIST_PATH]: {
+          [ANSWER]: 202,
+          body: { status: "building", retryAfter: 900 },
+        },
+      },
+      { stamps: {} },
+    );
+    expect(await accepted.done).toBe(2);
+    expect(accepted.err.join("\n")).toContain("202");
+    expect(accepted.observedFor).toEqual([]);
+  });
+
+  it("a list that is not a schema 2 parts list is an error, from the Worker or a file", async () => {
+    for (const body of [{ ...LIST, schema: 1 }, { error: "x" }, [LIST]]) {
+      const r = runWith(
+        ["--base", "https://preview.example.workers.dev", "--lang", "es-419"],
+        { [LIST_PATH]: body },
+        { stamps: {} },
+      );
+      expect(await r.done, JSON.stringify(body)).toBe(2);
+      expect(r.err.join("\n")).toContain("schema 2");
+      expect(r.observedFor).toEqual([]);
+    }
+    const err: string[] = [];
+    const code = await run(["--list", "f1.json", "--lang", "es-419"], {
+      readFile: async () => JSON.stringify({ ...LIST, schema: 1 }),
+      observe: async () => ({ stamps: {} }),
+      out: () => {},
+      err: (line) => void err.push(line),
+    });
+    expect(code).toBe(2);
+  });
+
+  it("an originals list the Worker answers with anything but 200 is an error too", async () => {
+    const r = runWith(
+      ["--base", "https://preview.example.workers.dev", "--lang", "es-419"],
+      {
+        [LIST_PATH]: { ...LIST, stamps: undefined },
+        [`/v2/packs/${COMPAT}/originals/${ORIGINALS_SHA}`]: {
+          [ANSWER]: 202,
+          body: {},
+        },
+      },
+      { stamps: {} },
+    );
+    expect(await r.done).toBe(2);
+  });
+
+  describe("--builder: the list's code against the one master builds", () => {
+    const builder = (code: string, compat = COMPAT) => ({
+      compat,
+      code,
+      commit: "4863174" + "0".repeat(33),
+      at: "2026-10-20T00:00:00Z",
+    });
+    const withBuilder = (b: unknown, source = "builder.json") => {
+      const out: string[] = [];
+      const err: string[] = [];
+      const done = run(
+        ["--list", "es-419.json", "--lang", "es-419", "--builder", source],
+        {
+          fetch: (async (input: RequestInfo | URL) =>
+            String(input) === "https://example.test/builder.json"
+              ? Response.json(b)
+              : new Response("no", { status: 404 })) as typeof fetch,
+          readFile: async (path) =>
+            JSON.stringify(path === "builder.json" ? b : LIST),
+          observe: async () => ({ stamps: { ...LIST.stamps } }),
+          out: (line) => void out.push(line),
+          err: (line) => void err.push(line),
+        },
+      );
+      return { done, out, err };
+    };
+
+    it("the same code: [] and 0", async () => {
+      const r = withBuilder(builder(LIST.code));
+      expect(await r.done).toBe(0);
+      expect(r.out).toEqual(["[]"]);
+    });
+
+    it("another code is reported as the code key and exits 1, as the check would rebuild it", async () => {
+      const newCode = `${COMPAT}+0123456789abcdef`;
+      for (const source of [
+        "builder.json",
+        "https://example.test/builder.json",
+      ]) {
+        const r = withBuilder(builder(newCode), source);
+        expect(await r.done, source).toBe(1);
+        expect(JSON.parse(r.out.join("\n"))).toEqual([
+          { key: "code", list: LIST.code, now: newCode },
+        ]);
+      }
+    });
+
+    it("a builder of another compat is said, and its code not compared (the check does not rebuild for it)", async () => {
+      const r = withBuilder(
+        builder("f2.1-x+00", "f2.1-u2.3.0-p6000230-q9-a12-t1"),
+      );
+      expect(await r.done).toBe(0);
+      expect(r.err.join("\n")).toContain("f2.1-u2.3.0-p6000230-q9-a12-t1");
+    });
+
+    it("a builder file that is missing or malformed exits 2", async () => {
+      for (const b of [{ compat: COMPAT }, "nonsense"]) {
+        expect(await withBuilder(b).done).toBe(2);
+      }
+      expect(
+        await withBuilder(builder(LIST.code), "https://example.test/none").done,
+      ).toBe(2);
+    });
   });
 
   it("a list the Worker does not have, or bad arguments, exit 2", async () => {

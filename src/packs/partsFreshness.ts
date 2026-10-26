@@ -57,14 +57,10 @@ const BUILDER_KEY = "status/builder.json";
 const CHECK_TTL_S = 3600;
 const SHA256_RE = /^[0-9a-f]{64}$/;
 
-/** `status/builder.json`; anything malformed is no file, so it asks for nothing. */
-export async function readPartsBuilder(
-  bucket: R2Bucket,
-): Promise<PartsBuilder | null> {
+/** A `status/builder.json` text: its four strings, else null. */
+export function parsePartsBuilder(text: string): PartsBuilder | null {
   try {
-    const object = await bucket.get(BUILDER_KEY);
-    if (!object) return null;
-    const b = JSON.parse(await object.text()) as Partial<PartsBuilder> | null;
+    const b = JSON.parse(text) as Partial<PartsBuilder> | null;
     if (
       b &&
       typeof b.compat === "string" &&
@@ -78,6 +74,18 @@ export async function readPartsBuilder(
     // Falls through to "no file".
   }
   return null;
+}
+
+/** `status/builder.json`; anything malformed is no file, so it asks for nothing. */
+export async function readPartsBuilder(
+  bucket: R2Bucket,
+): Promise<PartsBuilder | null> {
+  try {
+    const object = await bucket.get(BUILDER_KEY);
+    return object ? parsePartsBuilder(await object.text()) : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
