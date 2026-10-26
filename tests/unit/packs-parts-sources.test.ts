@@ -175,8 +175,10 @@ function network(
     asked.push({ url: String(input), auth: headers.get("Authorization") });
     if (url.host === "git.door43.org") {
       if (url.pathname === "/api/v1/catalog/search") {
+        // tc-study's build sends no language for the originals (see partsSources.ts), so they differ by subject.
+        const subject = url.searchParams.get("subject");
         return answer(
-          originals[url.searchParams.get("lang") as "hbo" | "el-x-koine"],
+          originals[subject === "Hebrew Old Testament" ? "hbo" : "el-x-koine"],
         );
       }
       const commits = url.pathname.match(
@@ -390,15 +392,15 @@ describe("observeParts", () => {
     expect(s.searches).toEqual([LANG]);
   });
 
-  it("asks Door43 for the originals as tc-study does: owner, lang, subject, stage prod, one row, no topic", async () => {
+  it("asks Door43 for the originals as tc-study's build does: owner, subject, stage prod, one row, no lang, no topic", async () => {
     const s = setup();
     await s.observe();
     const searches = s.asked
       .map((a) => a.url)
       .filter((u) => u.includes("/catalog/search"));
     expect(searches.sort()).toEqual([
-      "https://git.door43.org/api/v1/catalog/search?owner=unfoldingWord&lang=el-x-koine&subject=Greek+New+Testament&stage=prod&limit=1",
-      "https://git.door43.org/api/v1/catalog/search?owner=unfoldingWord&lang=hbo&subject=Hebrew+Old+Testament&stage=prod&limit=1",
+      "https://git.door43.org/api/v1/catalog/search?owner=unfoldingWord&subject=Greek+New+Testament&stage=prod&limit=1",
+      "https://git.door43.org/api/v1/catalog/search?owner=unfoldingWord&subject=Hebrew+Old+Testament&stage=prod&limit=1",
     ]);
   });
 

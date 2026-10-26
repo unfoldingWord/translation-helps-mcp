@@ -135,12 +135,10 @@ export function maculaStampOf(commit: { sha: string; date: string }): string {
 const ORIGINALS = [
   {
     key: "unfoldingWord/el-x-koine/ugnt",
-    lang: "el-x-koine",
     subject: "Greek New Testament",
   },
   {
     key: "unfoldingWord/hbo/uhb",
-    lang: "hbo",
     subject: "Hebrew Old Testament",
   },
 ] as const;
@@ -224,7 +222,9 @@ type RawOriginalHit = {
 
 /**
  * UHB and UGNT as tc-study's `discover/originalLanguageCatalog.ts` finds them: Door43ApiClient.searchCatalog with
- * owner, lang, subject, `stage=prod` and `limit=1`, without the tc-ready topic `catalogSearch` always adds. Stamped
+ * owner, subject, `stage=prod` and `limit=1`, without the tc-ready topic `catalogSearch` always adds. No `lang`: the
+ * build passes `lang:`, but searchCatalog reads `language`, so its real query has none, and the Worker sends what the
+ * build sends so that both find the same row. Both sides should move to `language=` together. Stamped
  * as `createResourceMetadata` builds the row (tag `release.tag_name ?? tag_name`, date `release.published_at ||
  * released`), then `resourceContentStamp`. Each original is read on its own: one Door43 cannot give is left out.
  */
@@ -234,11 +234,10 @@ async function originalStamps(
   const stamps: Record<string, string> = {};
   const unreadable: string[] = [];
   await Promise.all(
-    ORIGINALS.map(async ({ key, lang, subject }) => {
+    ORIGINALS.map(async ({ key, subject }) => {
       try {
         const query = new URLSearchParams();
         query.append("owner", "unfoldingWord");
-        query.append("lang", lang);
         query.append("subject", subject);
         query.append("stage", "prod");
         query.append("limit", "1");
