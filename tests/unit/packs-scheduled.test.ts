@@ -762,7 +762,7 @@ describe("runScheduled: the cleanup crons", () => {
         const lines = await alerts(() => s.run(CLEANUP_RETRY_CRON, at(4, 7)));
         expect(s.cleanups).toEqual([]);
         expect(lines).toEqual([
-          `${ALERT_TAG} the ${DAY} cleanup (${mode}) at 03:07 UTC recorded no outcome: the runtime killed it, the cron did not fire, or ${LEDGER} cannot be read; not retried`,
+          `${ALERT_TAG} no outcome recorded for ${DAY}: the 03:07 UTC cleanup (${mode}) was killed, did not fire, or could not read or write ${LEDGER}; not retried`,
         ]);
         // Only the ledger was read: nothing written, nothing deleted.
         expect(s.r2.ops).toEqual([{ op: "get", key: LEDGER }]);

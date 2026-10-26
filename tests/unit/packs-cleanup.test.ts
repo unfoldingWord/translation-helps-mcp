@@ -1012,6 +1012,39 @@ describe("runScheduled runs the cleanup", () => {
     expect(w.r2.ops).toEqual([]);
   });
 
+  it("alerts on the retry when the 03:07 run could not write the ledger at all", async () => {
+    const w = world();
+    const env = { PACKS_CLEANUP: "delete" };
+    const errors: string[] = [];
+    const error = console.error;
+    const log = console.log;
+    console.error = (...args: unknown[]) => void errors.push(args.join(" "));
+    console.log = () => {};
+    try {
+      // Every ledger write fails at 03:07: the done write, then the stop's record of `aborted`.
+      w.r2.fail.push((op, key) => op === "put" && key === LEDGER);
+      await cron(w, CLEANUP_CRON, day(0), env);
+      expect(w.ledger()).toBeNull();
+      expect(errors.join("\n")).toContain("could not record the day's outcome");
+      w.r2.fail.length = 0;
+      await cron(
+        w,
+        CLEANUP_RETRY_CRON,
+        new Date(day(0).getTime() + 3_600_000),
+        env,
+      );
+      expect(
+        errors.filter((e) => e.startsWith("[packs] cleanup-alert:")),
+      ).toEqual([
+        `[packs] cleanup-alert: no outcome recorded for ${dayOf(0)}: the 03:07 UTC cleanup (delete) was killed, did not fire, or could not read or write ${LEDGER}; not retried`,
+      ]);
+      expect(w.ledger()).toBeNull();
+    } finally {
+      console.error = error;
+      console.log = log;
+    }
+  });
+
   it("again on a retry cron when the day's run was postponed, and not once it is done", async () => {
     const w = world({
       [`status/${C}/en.json`]: JSON.stringify({

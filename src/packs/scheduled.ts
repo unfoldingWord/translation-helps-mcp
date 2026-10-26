@@ -198,10 +198,12 @@ async function runCleanup(
       const outcome = await cleanupOutcome(env, day);
       if (!outcome) {
         // Every run that ends records its outcome, so none means the 03:07 run never ended (the runtime killed it,
-        // over its CPU or memory, before it could write) or never started. Still not retried (a missing outcome only
-        // delays the cleanup), but loud, under the cleanup's alert tag: otherwise it could fail silently every day.
+        // over its CPU or memory, before it could write), never started, or could not write the ledger (its put
+        // failed, and failed again when the stop was recorded); or this read of the ledger failed. Still not retried
+        // (a missing outcome only delays the cleanup), but loud, under the cleanup's alert tag: otherwise it could
+        // fail silently every day.
         console.error(
-          `${ALERT_TAG} the ${day} cleanup (${mode}) at 03:07 UTC recorded no outcome: the runtime killed it, the cron did not fire, or ${LEDGER} cannot be read; not retried`,
+          `${ALERT_TAG} no outcome recorded for ${day}: the 03:07 UTC cleanup (${mode}) was killed, did not fire, or could not read or write ${LEDGER}; not retried`,
         );
         return;
       }

@@ -194,7 +194,7 @@ Parts (`f2.0-…`, `CURRENT_PARTS_COMPAT` in `src/packs/dispatch.ts`) are served
 | `PACKS_PARTS_DAILY_CAP` | Counted parts dispatches a day (KV `packs:dispatch-parts:<date>`), apart from f1.1's 20 (`packs:dispatch:<date>`). `0` closes counted dispatches. The cron's dispatches (reason `daily`) are not counted.                                                       | 20               | nowhere                                                      |
 | `PACKS_SWEEP`           | `parts`: the f1.1 cron (`17 6 * * *`) sweeps nothing.                                                                                                                                                                                                           | f1.1 swept       | preview `parts`                                              |
 | `PACKS_CLEANUP`         | Exactly `dry-run` (logs what it would delete, keeps the ledger) or `delete`. Anything else, `off` included, is off: no R2 call at all.                                                                                                                          | off              | preview `dry-run`; absent from production on purpose         |
-| `PARTS_CHECKS_PER_RUN`  | Parts checks in one run of the hourly slice: digits only (as `PACKS_PARTS_DAILY_CAP`; `1e2` is invalid), `0` for none. Above 12, Analytics points can be lost (see the crons).                                                                                  | 5                | nowhere                                                      |
+| `PARTS_CHECKS_PER_RUN`  | Parts checks in one run of the hourly slice: digits only (as `PACKS_PARTS_DAILY_CAP`; `1e2` is invalid), `0` for none. Above 125, Analytics points can be lost (see the crons).                                                                                 | 5                | nowhere                                                      |
 | `PARTS_RATE_LIMIT_RPM`  | Part requests a minute per IP, in a counter of their own (lists keep `RATE_LIMIT_RPM`, 90). `0` turns it off.                                                                                                                                                   | 600              | nowhere                                                      |
 
 Production has none of them on purpose: it asks for no parts builds and deletes nothing until Task 14 adds
@@ -232,9 +232,10 @@ The Worker picks the job by the cron string (`src/packs/scheduled.ts`); each job
   day, and logs the rest as `left for another day`: each of its languages is checked by the cron at least every
   ⌈k / `PARTS_CHECKS_PER_RUN`⌉ days, and a phone that opens one still triggers its check in between. On a Paid plan
   `PARTS_CHECKS_PER_RUN` can be raised.
-- Analytics Engine takes 25 data points per invocation. A parts check writes at most 2 (its result, plus
-  `parts-compat-drift` when master builds another compat), the slice itself none, so above **12**
-  `PARTS_CHECKS_PER_RUN` a run can lose points. A lost point is caught and logged
+- Analytics Engine takes at most 250 data points per Worker invocation. A parts check writes at most 2 (its result,
+  plus `parts-compat-drift` when master builds another compat), the slice itself none, so a run loses points only
+  above **125** `PARTS_CHECKS_PER_RUN`. On Free that cannot happen (the 50-fetch limit keeps a run at 5 checks); it
+  matters only on a Paid plan raised past 125. A lost point is caught and logged
   (`[packs] parts <lang>: analytics point not written`); the checks' results do not change.
 - The slice's log line: `[packs] parts sweep <HH> UTC: <lang> <result>, …`.
 
@@ -347,11 +348,12 @@ Deletes parts no list has named for 30 days (`src/packs/cleanup.ts`). Only `part
   - `[packs] cleanup-alert: aborted <N> days in a row (since <day>); last: <why>`: logged from the 3rd day in a row
     that ends `aborted`. Read `<why>` and fix it. Only days that end `aborted` count: a day that ends `postponed` or
     `done`, or a day with no run, breaks the streak.
-  - `[packs] cleanup-alert: the <day> cleanup (<mode>) at 03:07 UTC recorded no outcome: …; not retried`: logged by
-    each retry (04:07 and 05:07) while `PACKS_CLEANUP` is on and the ledger has no outcome for the day. Every run
-    that ends records one, so the 03:07 run was killed before it could (over its CPU or memory limit, such as the Free
-    plan's 10 ms of CPU), or never ran, or the ledger cannot be read. Nothing is retried: look at the 03:07
-    invocation in the dashboard or with `wrangler tail`.
+  - `[packs] cleanup-alert: no outcome recorded for <day>: the 03:07 UTC cleanup (<mode>) was killed, …; not retried`:
+    logged by each retry (04:07 and 05:07) while `PACKS_CLEANUP` is on and the ledger has no outcome for the day.
+    Every run that ends records one, so the 03:07 run was killed before it could (over its CPU or memory limit, such
+    as the Free plan's 10 ms of CPU), or never ran, or could not read or write the ledger (a failed write is logged
+    `… could not record the day's outcome`). Nothing is retried: look at the 03:07 invocation in
+    the dashboard or with `wrangler tail`.
   - `… started during the deletes; if its list names a deleted part, rebuild it with force` and
     `<list> names <N> deleted key(s) (…); it was written during the deletes; rebuild with force`: a build raced the
     deletes. Dispatch that language with the workflow's `force` input.
