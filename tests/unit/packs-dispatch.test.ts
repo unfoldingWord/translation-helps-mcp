@@ -18,7 +18,7 @@ import {
 } from "../../src/packs/dispatch";
 
 const NOW = new Date("2026-10-21T12:00:00Z");
-const COMPAT = "f1.1-u2.3.0-p6000230-q8-a11-t1";
+const COMPAT = "f1.1-u2.3.0-p6000230-q9-a12-t1";
 const LANG = "es-419";
 const STATUS_KEY = `status/${COMPAT}/${LANG}.json`;
 const COUNTER_KEY = "packs:dispatch:2026-10-21";

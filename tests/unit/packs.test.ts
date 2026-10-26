@@ -35,9 +35,9 @@ vi.mock("@translation-helps/door43", async (importOriginal) => ({
   },
 }));
 
-const COMPAT = "f1.1-u2.3.0-p6000230-q8-a11-t1";
+const COMPAT = "f1.1-u2.3.0-p6000230-q9-a12-t1";
 /** A compat older phones still ask for; the workflow can no longer build it. */
-const OLD_COMPAT = "f1.1-u2.3.0-p6000229-q8-a11-t1";
+const OLD_COMPAT = "f1.1-u2.3.0-p6000229-q9-a12-t1";
 const SHA = "a".repeat(64);
 const ORIGINALS_SHA = "b".repeat(64);
 const ENTRY_KEY = `catalog/${COMPAT}/es-419.json`;
