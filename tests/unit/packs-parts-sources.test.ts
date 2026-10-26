@@ -716,4 +716,30 @@ describe("observeParts with the default search", () => {
     expect(url.searchParams.get("stage")).toBe("prod");
     expect(url.searchParams.get("limit")).toBe("500");
   });
+
+  it("asks Door43 on every check, past the catalog's KV and isolate caches", async () => {
+    const net = network();
+    let searches = 0;
+    vi.stubGlobal("fetch", async () => {
+      searches += 1;
+      return Response.json({ ok: true, data: [] });
+    });
+    const { kv, values, puts } = fakeKv();
+    // The test above left this very search in the isolate's cache; a check must not read it from there.
+    const ctx = { waitUntil: () => {} } as unknown as ExecutionContext;
+    for (const at of [NOW, new Date(NOW.getTime() + 5 * MINUTE)]) {
+      await observeParts({
+        language: "es-419",
+        env: { TRANSLATION_HELPS_CACHE: kv },
+        ctx,
+        now: at,
+        fetch: net.fetch,
+      });
+    }
+    expect(searches).toBe(2);
+    expect([...values.keys()].some((k) => k.startsWith("catalog:"))).toBe(
+      false,
+    );
+    expect(puts.some((p) => p.key.startsWith("catalog:"))).toBe(false);
+  });
 });

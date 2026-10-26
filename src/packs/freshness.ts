@@ -135,6 +135,13 @@ export const defaultSearch: Search = (language, env, ctx) =>
   });
 
 /**
+ * The same search asked of Door43 now, past the catalog caches (one Door43 request a check): the parts check dates a
+ * change by when it first saw it, so it must not see a release an hour late.
+ */
+export const freshSearch: Search = (language, _env, ctx) =>
+  catalogSearch({ lang: language, ctx, limit: SEARCH_LIMIT, fresh: true });
+
+/**
  * Never throws: it runs in `waitUntil` after the entry has been served. The hour is claimed before Door43 is asked,
  * so a Door43 outage is not asked again on every request. `entry` may be a reader because a 304 carries no body; it
  * is called only once the hour allows a check.

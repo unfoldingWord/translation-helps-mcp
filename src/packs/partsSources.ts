@@ -13,7 +13,7 @@ import {
   catalogKey,
   catalogResourceId,
   currentStamps,
-  defaultSearch,
+  freshSearch,
   type FreshnessEnv,
   type Search,
 } from "./freshness.js";
@@ -364,7 +364,7 @@ export async function observeParts(o: {
   const fetchImpl = o.fetch ?? fetch;
   const kv = env.TRANSLATION_HELPS_CACHE;
   try {
-    const rows = await (o.search ?? defaultSearch)(language, env, o.ctx);
+    const rows = await (o.search ?? freshSearch)(language, env, o.ctx);
     if (!rows.some((row) => row.language === language)) {
       return { unknown: `the catalog search has no row of ${language}` };
     }

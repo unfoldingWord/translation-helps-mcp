@@ -679,4 +679,34 @@ describe("the isolate's catalog cache", () => {
     await Promise.all(pending);
     expect(puts).toHaveLength(1);
   });
+
+  it("fresh: asks Door43 past both caches and writes no KV (the parts freshness check)", async () => {
+    mockFetch({ "catalog/search": { ok: true, data: [] } });
+    const calls = () =>
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length;
+    const kvGets: string[] = [];
+    const puts: string[] = [];
+    const kv = {
+      get: async (key: string) => {
+        kvGets.push(key);
+        return null;
+      },
+      put: async (key: string) => void puts.push(key),
+    };
+    const pending: Promise<unknown>[] = [];
+    const ctx = { waitUntil: (p: Promise<unknown>) => void pending.push(p) };
+    // A cached answer in the isolate...
+    await catalogSearch({ lang: "es-419", kv, ctx });
+    await Promise.all(pending);
+    expect(calls()).toBe(1);
+    kvGets.length = 0;
+    puts.length = 0;
+    // ...is not what a fresh search answers.
+    await catalogSearch({ lang: "es-419", kv, ctx, fresh: true });
+    await catalogSearch({ lang: "es-419", kv, ctx, fresh: true });
+    await Promise.all(pending);
+    expect(calls()).toBe(3);
+    expect(kvGets).toEqual([]);
+    expect(puts).toEqual([]);
+  });
 });
