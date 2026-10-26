@@ -3,6 +3,7 @@
  */
 export * from "./tsv.js";
 export * from "./usfm.js";
+export * from "./usfmId.js";
 export * from "./markdown.js";
 export * from "./catalogParsers.js";
 export * from "./articleSearch.js";

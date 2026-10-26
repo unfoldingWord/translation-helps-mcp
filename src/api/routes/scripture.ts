@@ -16,7 +16,12 @@ import {
 } from "./helpers.js";
 import { catalogSearch } from "@translation-helps/door43";
 import type { CatalogEntry } from "@translation-helps/door43";
-import { extractVerses, usfmExtent } from "@translation-helps/door43";
+import {
+  extractVerses,
+  usfmExtent,
+  declaredLanguageFromIdLine,
+  sameScriptureLanguage,
+} from "@translation-helps/door43";
 import type {
   ScriptureVersion,
   ScriptureVersionRole,
@@ -65,6 +70,8 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
     verseStr,
     format,
     includeAll ? "all" : "primary",
+    // Answers cached before a book's \id language was checked.
+    "id-lang",
   );
 
   const cached = await getCachedJson<Record<string, unknown>>(
@@ -147,38 +154,82 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
     }
 
     // Cap fan-out: one literal + one simplified (prefer unfoldingWord), unless
-    // ?all=1. Either way a version whose catalog entry says it lacks the book
-    // is not fetched.
-    const cappedEntries = includeAll
-      ? entries.filter((e) => hasBook(e, book))
-      : pickPrimaryScriptureEntries(entries, book);
-    const versionsNote = includeAll
-      ? null
-      : describeStandIns(entries, cappedEntries, book, language);
-
-    const allEntries = [
-      ...cappedEntries.map((e) => ({ entry: e, isOriginal: false })),
-      ...originalEntries.map((e) => ({ entry: e, isOriginal: true })),
-    ];
-
+    // ?all=1. A version whose catalog entry says it lacks the book is not
+    // fetched. A book whose \id line declares another language is treated
+    // the same way, and the next version of that role is tried.
     const fetcher = makeFetcher(env, execCtx);
     const zipSources: ZipCacheSource[] = [];
     // How far the book goes in each version that has it but not the passage.
     const extents: BookExtent[] = [];
+    const knownUsfm = new Map<CatalogEntry, string | null>();
 
-    const tZip = Date.now();
-    const settled = await Promise.allSettled(
-      allEntries.map(async ({ entry, isOriginal }) => {
+    const readBook = async (entry: CatalogEntry): Promise<string | null> => {
+      const cached = knownUsfm.get(entry);
+      if (cached !== undefined) return cached;
+      let usfm: string | null = null;
+      try {
         const zipUrl = zipUrlFromEntry(entry);
         const bookPaths = buildBookPaths(entry, book, "", ".usfm");
-
-        let usfm: string | null = null;
         for (const p of bookPaths) {
           usfm = await fetcher.getFileText(zipUrl, p);
           if (usfm) break;
         }
         if (fetcher.lastCacheSource) zipSources.push(fetcher.lastCacheSource);
+      } catch {
+        usfm = null;
+      }
+      knownUsfm.set(entry, usfm);
+      return usfm;
+    };
+
+    const usfmOf = (entry: CatalogEntry) =>
+      knownUsfm.has(entry) ? (knownUsfm.get(entry) ?? null) : undefined;
+
+    const tZip = Date.now();
+    const originalReads = Promise.all(
+      originalEntries.map(async (entry) => ({
+        entry,
+        usfm: await readBook(entry),
+      })),
+    );
+
+    let decision = scriptureVersionsForBook(entries, book, language, usfmOf, {
+      includeAll,
+    });
+    for (let round = 0; round <= entries.length; round++) {
+      const pending = decision.picked.filter((entry) => !knownUsfm.has(entry));
+      if (pending.length === 0) break;
+      await Promise.all(pending.map((entry) => readBook(entry)));
+      decision = scriptureVersionsForBook(entries, book, language, usfmOf, {
+        includeAll,
+      });
+    }
+
+    const cappedEntries = decision.picked;
+    const versionsNote = decision.versionsNote;
+    const originals = await originalReads;
+
+    const settled = await Promise.allSettled(
+      [
+        ...cappedEntries.map((entry) => ({
+          entry,
+          isOriginal: false,
+          usfm: knownUsfm.get(entry) ?? null,
+        })),
+        ...originals.map(({ entry, usfm }) => ({
+          entry,
+          isOriginal: true,
+          usfm,
+        })),
+      ].map(async ({ entry, isOriginal, usfm }) => {
         if (!usfm) return null;
+        // After the USFM is in hand, before the verses are taken out of it.
+        if (!isOriginal) {
+          const declared = declaredLanguageFromIdLine(usfm);
+          if (declared && !sameScriptureLanguage(language, declared)) {
+            return null;
+          }
+        }
 
         const text = extractVerses(usfm, chapter, verseStart, verseEnd, format);
         if (text === null) {
@@ -194,7 +245,7 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
           resourceType: abbrev,
           role,
           text,
-          source: zipUrl,
+          source: zipUrlFromEntry(entry),
         } as ScriptureVersion;
       }),
     );
@@ -376,6 +427,85 @@ export function describeStandIns(
   return standIns.length > 0
     ? `The ${list(lacking)} ${verb} not include ${book} yet; the ${list(standIns)} ${standIns.length === 1 ? "is" : "are"} given in ${lacking.length === 1 ? "its" : "their"} place.`
     : `The ${list(lacking)} ${verb} not include ${book} yet, and no other "${language}" version has it.`;
+}
+
+/**
+ * One literal and one simplified version of `book`, skipping a book whose
+ * `\id` line declares another language and taking the next version of
+ * that role. `usfmOf` returns the book text, null when the file is missing,
+ * or undefined when it has not been read yet (still eligible, so the caller
+ * can fetch it). With `includeAll`, every book that passes is returned.
+ */
+export function scriptureVersionsForBook(
+  entries: CatalogEntry[],
+  book: string,
+  language: string,
+  usfmOf: (entry: CatalogEntry) => string | null | undefined,
+  options?: { includeAll?: boolean },
+): { picked: CatalogEntry[]; versionsNote: string | null } {
+  const includeAll = options?.includeAll === true;
+  const discarded: { entry: CatalogEntry; declared: string }[] = [];
+  const eligible = entries.filter((entry) => {
+    if (!hasBook(entry, book)) return false;
+    const usfm = usfmOf(entry);
+    if (typeof usfm !== "string") return true;
+    const declared = declaredLanguageFromIdLine(usfm);
+    if (!declared || sameScriptureLanguage(language, declared)) return true;
+    discarded.push({ entry, declared });
+    return false;
+  });
+  const picked = includeAll
+    ? eligible
+    : pickPrimaryScriptureEntries(eligible, book);
+
+  if (discarded.length === 0) {
+    return {
+      picked,
+      versionsNote: includeAll
+        ? null
+        : describeStandIns(entries, picked, book, language),
+    };
+  }
+
+  const why = discarded
+    .map(
+      (item) =>
+        `${abbrevOf(item.entry).toUpperCase()}: the book is in ${item.declared}`,
+    )
+    .join(". ");
+  const usual = pickPrimaryScriptureEntries(entries);
+  const standIns = picked.filter((entry) => !usual.includes(entry));
+  const catalogNote = includeAll
+    ? null
+    : describeStandIns(
+        entries.filter(
+          (entry) => !discarded.some((item) => item.entry === entry),
+        ),
+        picked,
+        book,
+        language,
+      );
+
+  let languageNote = `${why}.`;
+  if (!includeAll && standIns.length > 0 && !catalogNote) {
+    const list = standIns.map(versionLabel).join(" and ");
+    const verb = standIns.length === 1 ? "is" : "are";
+    const whose = discarded.length === 1 ? "its" : "their";
+    languageNote = `${why}; the ${list} ${verb} given in ${whose} place.`;
+  }
+
+  return {
+    picked,
+    versionsNote: catalogNote ? `${languageNote} ${catalogNote}` : languageNote,
+  };
+}
+
+function versionLabel(entry: CatalogEntry): string {
+  const abbrev = abbrevOf(entry);
+  const role = resolveScriptureVersionRole(abbrev);
+  return role === "other"
+    ? abbrev.toUpperCase()
+    : `${abbrev.toUpperCase()} (${role})`;
 }
 
 function aggregateZipSources(
