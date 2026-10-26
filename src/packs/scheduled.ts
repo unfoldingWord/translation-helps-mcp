@@ -231,7 +231,7 @@ async function runPartsSweep(
   const ordered = [...sorted.slice(offset), ...sorted.slice(0, offset)];
   const checked = ordered.slice(0, perRun);
   const left = ordered.slice(perRun);
-  const budgetKey = `packs:code-rebuilds:${day}`;
+  const budget = codeBudgetOf(kv, `packs:code-rebuilds:${day}`);
   const check = deps.checkPartsFreshness ?? checkPartsFreshness;
   const results: string[] = [];
   for (const language of checked) {
@@ -250,18 +250,17 @@ async function runPartsSweep(
         // Asked only for a code-only change; spent only when that change was dispatched (below).
         codeBudget: async () => {
           askedForCode = true;
-          return (await readCounter(kv, budgetKey)) < CODE_REBUILDS_PER_DAY;
+          return budget.left();
         },
       });
-      if (askedForCode && result === "dispatched") {
-        await bumpCounter(kv, budgetKey);
-      }
+      if (askedForCode && result === "dispatched") budget.spend();
       results.push(`${language} ${result}`);
     } catch (err) {
       console.error(`[packs] parts sweep of ${language} failed:`, err);
       results.push(`${language} error`);
     }
   }
+  await budget.save();
   console.log(
     `[packs] parts sweep ${String(hour).padStart(2, "0")} UTC: ${results.join(", ")}` +
       (left.length
@@ -284,20 +283,45 @@ async function readPartsList(
   }
 }
 
-async function readCounter(kv: KVNamespace, key: string): Promise<number> {
-  try {
-    return Number.parseInt((await kv.get(key)) ?? "0", 10) || 0;
-  } catch {
-    return 0;
-  }
-}
-
-/** Best effort, as the dispatch cap: KV is eventually consistent, so the budget is soft by a rebuild or so. */
-async function bumpCounter(kv: KVNamespace, key: string): Promise<void> {
-  try {
-    const count = await readCounter(kv, key);
-    await kv.put(key, String(count + 1), { expirationTtl: COUNTER_TTL_S });
-  } catch {
-    // Ignored.
-  }
+/**
+ * The day's code budget for one run: the counter is read once, when a check first asks, spent in memory, and written
+ * back once at the end, only if the run spent some. One parts slice runs an hour, so no other run spends it meanwhile
+ * (a phone's `code` rebuild counts against the parts cap, not this budget). A counter that cannot be read leaves no
+ * budget for this run: code rebuilds are never urgent, and an unread counter could otherwise allow ten every hour.
+ */
+function codeBudgetOf(kv: KVNamespace, key: string) {
+  let spent: number | undefined;
+  let read: Promise<number> | undefined;
+  let dirty = false;
+  const load = () =>
+    (read ??= (async () => {
+      try {
+        return Number.parseInt((await kv.get(key)) ?? "0", 10) || 0;
+      } catch (err) {
+        console.error(
+          `[packs] code budget ${key} unreadable; no code rebuild this run:`,
+          err,
+        );
+        return CODE_REBUILDS_PER_DAY;
+      }
+    })());
+  return {
+    async left(): Promise<boolean> {
+      spent ??= await load();
+      return spent < CODE_REBUILDS_PER_DAY;
+    },
+    spend(): void {
+      spent = (spent ?? 0) + 1;
+      dirty = true;
+    },
+    /** Best effort, as the dispatch cap: KV is eventually consistent. */
+    async save(): Promise<void> {
+      if (!dirty) return;
+      try {
+        await kv.put(key, String(spent), { expirationTtl: COUNTER_TTL_S });
+      } catch (err) {
+        console.error(`[packs] code budget ${key} not saved:`, err);
+      }
+    },
+  };
 }

@@ -567,6 +567,81 @@ describe("runScheduled: the code budget (the real parts check)", () => {
     expect(s.builds).toHaveLength(CODE_REBUILDS_PER_DAY);
   });
 
+  /** Counts the budget counter's reads and writes; `failRead` makes its reads throw. */
+  function countBudget(s: ReturnType<typeof codeBump>, failRead = false) {
+    const key = `packs:code-rebuilds:${DAY}`;
+    const kv = s.env.TRANSLATION_HELPS_CACHE;
+    const calls = { gets: 0, puts: [] as string[] };
+    s.env.TRANSLATION_HELPS_CACHE = {
+      get: async (k: string | string[], ...rest: unknown[]) => {
+        if (k === key) {
+          calls.gets++;
+          if (failRead) throw new Error("KV down");
+        }
+        return (kv.get as (...a: unknown[]) => unknown)(k, ...rest);
+      },
+      put: async (k: string, v: string, o?: KVNamespacePutOptions) => {
+        if (k === key) calls.puts.push(v);
+        return kv.put(k, v, o);
+      },
+    } as unknown as KVNamespace;
+    return calls;
+  }
+
+  it("never goes over the budget across the dispatches of one run: read once, spent in memory, written once", async () => {
+    const languages = languagesOfHour(5, PARTS_CHECKS_PER_RUN);
+    const s = codeBump(languages);
+    s.values.set(
+      `packs:code-rebuilds:${DAY}`,
+      String(CODE_REBUILDS_PER_DAY - 2),
+    );
+    const calls = countBudget(s);
+    await s.run(SLICE, at(5, 37), s.more);
+    expect(s.builds).toHaveLength(2);
+    expect(calls).toEqual({
+      gets: 1,
+      puts: [String(CODE_REBUILDS_PER_DAY)],
+    });
+  });
+
+  it("reads and writes no counter in a run that asks for no code rebuild", async () => {
+    const [language] = languagesOfHour(4, 1) as [string];
+    const s = codeBump([language]);
+    const calls = countBudget(s);
+    await s.run(SLICE, at(4, 37), {
+      ...s.more,
+      observe: async () => ({ stamps: { "x/y/z": "v2#2026-10-20T00_00_00Z" } }),
+      // The list's code is the builder's: nothing code-only.
+    });
+    expect(calls.gets).toBe(0);
+    expect(calls.puts).toEqual([]);
+  });
+
+  it("writes nothing when every code-only check was held (none dispatched)", async () => {
+    const languages = languagesOfHour(5, 3);
+    const s = codeBump(languages, () => "cooling");
+    const calls = countBudget(s);
+    await s.run(SLICE, at(5, 37), s.more);
+    expect(calls).toEqual({ gets: 1, puts: [] });
+  });
+
+  it("asks for no code rebuild when the counter cannot be read (code rebuilds can wait a day)", async () => {
+    const languages = languagesOfHour(5, 3);
+    const s = codeBump(languages);
+    const calls = countBudget(s, true);
+    const errors: string[] = [];
+    const error = console.error;
+    console.error = (line: string) => void errors.push(String(line));
+    try {
+      await s.run(SLICE, at(5, 37), s.more);
+    } finally {
+      console.error = error;
+    }
+    expect(s.builds).toEqual([]);
+    expect(calls).toEqual({ gets: 1, puts: [] });
+    expect(errors.join("\n")).toContain("code budget");
+  });
+
   it("counts the code budget on the schedule's day, not the clock's", async () => {
     const [language] = languagesOfHour(23, 1) as [string];
     const s = codeBump([language]);
