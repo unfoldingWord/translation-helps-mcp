@@ -28,6 +28,26 @@ export function responseCacheKey(
   return extra.length > 0 ? `${base}:${extra.join(":")}` : base;
 }
 
+/**
+ * Verse segment for a response cache key. A range must not reuse the
+ * single-verse entry, and a cross-chapter range must not reuse either chapter.
+ */
+export function cacheVerse(
+  chapter: string,
+  verseStart?: string,
+  verseEnd?: string,
+  endChapter?: string,
+): string | undefined {
+  if (endChapter && endChapter !== chapter) {
+    const start = verseStart ?? "1";
+    const end = verseEnd ?? "end";
+    return `${start}-${endChapter}:${end}`;
+  }
+  if (verseStart == null) return undefined;
+  if (verseEnd && verseEnd !== verseStart) return `${verseStart}-${verseEnd}`;
+  return verseStart;
+}
+
 export async function getCachedJson<T>(
   kv: KVNamespace | undefined,
   key: string,

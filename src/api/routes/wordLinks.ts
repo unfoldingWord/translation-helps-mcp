@@ -30,6 +30,7 @@ import {
   getCachedJson,
   putCachedJson,
   responseCacheKey,
+  cacheVerse,
 } from "./responseCache.js";
 import { packViewsOf, wordLinksFromViews } from "./packViews.js";
 
@@ -50,11 +51,13 @@ export async function handleWordLinks(ctx: RouteContext): Promise<Response> {
     chapter,
     verseStart,
     verseEnd,
+    endChapter,
   } = ref;
 
   // The language packs' views first: the links with their words already found, in a few KB.
+  // Views are one chapter file, so a cross-chapter range stays on the TSV path.
   const views = packViewsOf(env);
-  if (views) {
+  if (views && !endChapter) {
     const fromPack = await wordLinksFromViews(views, {
       language: requestedLanguage,
       book,
@@ -81,7 +84,7 @@ export async function handleWordLinks(ctx: RouteContext): Promise<Response> {
     requestedLanguage,
     book,
     chapter,
-    verseStart,
+    cacheVerse(chapter, verseStart, verseEnd, endChapter),
   );
 
   const cached = await getCachedJson<Record<string, unknown>>(
@@ -136,7 +139,13 @@ export async function handleWordLinks(ctx: RouteContext): Promise<Response> {
       };
     }
 
-    const rows = parseTranslationWordLinksTsv(tsv, chapter, verseStart);
+    const rows = parseTranslationWordLinksTsv(
+      tsv,
+      chapter,
+      verseStart,
+      verseEnd,
+      endChapter,
+    );
 
     const alignmentRows = rows.map((r) => ({
       chapter: r.chapter,
