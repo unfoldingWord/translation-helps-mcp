@@ -152,8 +152,11 @@ with. tc-study's sample-output check fails when a count changes without a format
    - a new book or a removed one adds or drops its parts.
 6. **The build does not trust the asker.** It recomputes every fingerprint itself and builds what does not match.
 7. **When it runs:** the Worker checks when a language's list is requested (at most hourly per language, as for
-   f1.1), and a cron checks every published parts language once a day, in hourly slices (the languages whose
-   `fnv1a32(language) % 24` is the hour). `DAILY_LANGUAGES` and its unconditional daily builds are gone.
+   f1.1), and a cron checks the published parts languages in hourly slices (the languages whose
+   `fnv1a32(language) % 24` is the hour), at most `PARTS_CHECKS_PER_RUN` (default 5) a run, to stay within the Free
+   plan's limits per invocation. A slice of k languages with more than that starts further along each day, so the cron
+   checks each of them at least every ⌈k / `PARTS_CHECKS_PER_RUN`⌉ days; phones' requests still trigger checks in
+   between. `DAILY_LANGUAGES` and its unconditional daily builds are gone.
 
 ### The exact rules (2026-10-24)
 
@@ -496,7 +499,8 @@ what any list of any parts compat names (an older app may still read an older co
 list and of `originals.json`, the originals list each language list names, and its parts. An originals list at its
 content address that no list names follows the same rule; nothing else is ever deleted (`packs/`, `v1/`, `status/`,
 `catalog/f1.*`, every language list, every `originals.json`). A run waits while any parts build is `running`, deletes
-nothing when any list cannot be read, and looks again right before deleting. Operations: `docs/LANGUAGE_PACKS_INFRA.md`.
+nothing when any list cannot be read, and looks again right before deleting.
+Operations: `docs/LANGUAGE_PACKS_INFRA.md`.
 
 **Requests:** the full English language is about 700 parts (66 books × ~10 kinds, plus shared). With 4 downloads at a
 time that is under a minute of round trips on a normal connection, but more than the Worker's current 90 requests a
@@ -585,8 +589,9 @@ Each with its own plan and PRs, in this order:
 3. **Worker and MCP v2** (delivery 3, built 2026-10-26, not deployed yet): the parts routes (lists `no-cache` with
    their own 304, originals lists and parts immutable, parts with their own rate limit of 600 a minute); a parts build
    asked for when the stamp of anything a list was built from, or the builder's code, moved (stamps, not fingerprints,
-   in the Worker); a switch and a daily cap of their own for parts dispatches; a cron that checks each parts language
-   once a day in hourly slices; and the cleanup after 30 days, `dry-run` first. Views from parts stay with 2c.
+   in the Worker); a switch and a daily cap of their own for parts dispatches; a cron that checks the parts languages
+   in hourly slices, at most `PARTS_CHECKS_PER_RUN` (default 5) a run, rotating by day; and the cleanup after 30
+   days, `dry-run` first. Views from parts stay with 2c.
 4. **Servos online** (plan 3, now written for parts): project-book download, "the whole language", updates by
    connection, staging and apply-all-at-once.
 
