@@ -68,6 +68,25 @@ export const COMPAT_RE = /^f\d+\.\d+-u[\w.]+-p\d+-q\d+-a\d+-t\d+$/;
  */
 export const CURRENT_PACK_COMPAT = "f1.1-u2.3.0-p6000230-q8-a11-t1";
 
+/**
+ * The compatibility folder the workflow builds parts into today (`parts: true`). The same rule as for
+ * `CURRENT_PACK_COMPAT` holds: only this parts compat may ask for a build.
+ *
+ * Must equal tc-study's `compatKeyOf(PARTS_FORMAT_VERSION, PACK_VERSIONS)`, which `packs-status --print-compat
+ * --parts` prints. After a bump in tc-study, change it here and redeploy v2.
+ */
+export const CURRENT_PARTS_COMPAT = "f2.0-u2.3.0-p6000230-q9-a12-t1";
+
+/** Format 2 and later are parts: lists of content-addressed parts instead of one zip per language. */
+export function isPartsCompat(compat: string): boolean {
+  return /^f([2-9]|\d{2,})\./.test(compat);
+}
+
+/** The compats the workflow builds today; any other would never land (see `CURRENT_PACK_COMPAT`). */
+export function isBuildableCompat(compat: string): boolean {
+  return compat === CURRENT_PACK_COMPAT || compat === CURRENT_PARTS_COMPAT;
+}
+
 function statusKey(compat: string, language: string): string {
   return `status/${compat}/${language}.json`;
 }
@@ -123,8 +142,11 @@ type BuildRequest = {
   env: BuildEnv;
   compat: string;
   language: string;
-  /** `daily` is the cron's own work: bounded by the bucket's languages, so it neither waits for nor uses the cap. */
-  reason: "missing" | "stale" | "daily";
+  /**
+   * `daily` is the cron's own work: bounded by the bucket's languages, so it neither waits for nor uses the cap.
+   * `code` is a rebuild for a new builder version alone; it is counted like `stale`.
+   */
+  reason: "missing" | "stale" | "code" | "daily";
   now?: Date;
   fetch?: typeof fetch;
 };
@@ -259,6 +281,8 @@ async function dispatchWorkflow(
           target: env.PACKS_TARGET ?? "staging",
           // The workflow stops (and marks this compat failed) when its code builds another one.
           compat,
+          // Only for parts, so the f1.1 body stays what the deployed workflow has always been sent.
+          ...(compat === CURRENT_PARTS_COMPAT ? { parts: "true" } : {}),
         },
       }),
     });

@@ -4,7 +4,14 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { requestBuild, type BuildEnv } from "../../src/packs/dispatch";
+import {
+  CURRENT_PACK_COMPAT,
+  CURRENT_PARTS_COMPAT,
+  isBuildableCompat,
+  isPartsCompat,
+  requestBuild,
+  type BuildEnv,
+} from "../../src/packs/dispatch";
 
 const NOW = new Date("2026-10-21T12:00:00Z");
 const COMPAT = "f1.1-u2.3.0-p6000230-q8-a11-t1";
@@ -157,6 +164,29 @@ function setup(
   return { env, r2, kv, fetchImpl, run };
 }
 
+describe("compats", () => {
+  it("the parts compat is tc-study's `packs-status --print-compat --parts`", () => {
+    expect(CURRENT_PARTS_COMPAT).toBe("f2.0-u2.3.0-p6000230-q9-a12-t1");
+    expect(CURRENT_PACK_COMPAT).toBe(COMPAT);
+  });
+
+  it("a parts compat is one whose format major is 2 or more", () => {
+    expect(isPartsCompat(CURRENT_PARTS_COMPAT)).toBe(true);
+    expect(isPartsCompat("f2.0-u2.3.0-p6000229-q9-a12-t1")).toBe(true);
+    expect(isPartsCompat("f10.1-u2.3.0-p6000230-q9-a12-t1")).toBe(true);
+    expect(isPartsCompat(CURRENT_PACK_COMPAT)).toBe(false);
+    expect(isPartsCompat("f1.9-u2.3.0-p6000230-q8-a11-t1")).toBe(false);
+  });
+
+  it("only the two current compats can be built", () => {
+    expect(isBuildableCompat(CURRENT_PACK_COMPAT)).toBe(true);
+    expect(isBuildableCompat(CURRENT_PARTS_COMPAT)).toBe(true);
+    expect(isBuildableCompat("f1.1-u2.3.0-p6000229-q8-a11-t1")).toBe(false);
+    expect(isBuildableCompat("f2.0-u2.3.0-p6000229-q9-a12-t1")).toBe(false);
+    expect(isBuildableCompat("")).toBe(false);
+  });
+});
+
 describe("requestBuild guard", () => {
   it("leaves a build running for 1 h alone", async () => {
     const t = setup({
@@ -281,6 +311,15 @@ describe("requestBuild guard", () => {
     expect(t.fetchImpl).not.toHaveBeenCalled();
   });
 
+  it("counts a code rebuild against the day's cap, like a stale one", async () => {
+    const full = setup({ kv: { [COUNTER_KEY]: "20" } });
+    expect(await full.run({ reason: "code" })).toBe("capped");
+    expect(full.fetchImpl).not.toHaveBeenCalled();
+    const t = setup({ kv: { [COUNTER_KEY]: "4" } });
+    expect(await t.run({ reason: "code" })).toBe("dispatched");
+    expect(t.kv.store.get(COUNTER_KEY)).toBe("5");
+  });
+
   it("lets builds the cron's check asks for through a full cap, without counting them", async () => {
     const t = setup({ kv: { [COUNTER_KEY]: "20" } });
     expect(await t.run({ reason: "daily" })).toBe("dispatched");
@@ -341,6 +380,44 @@ describe("requestBuild dispatch", () => {
     expect(headers.get("Accept")).toBe("application/vnd.github+json");
     expect(headers.get("X-GitHub-Api-Version")).toBe("2022-11-28");
     expect(headers.get("User-Agent")).toBeTruthy();
+  });
+
+  it("sends the f1.1 body byte for byte as the deployed Worker does, with no parts input", async () => {
+    const t = setup();
+    expect(await t.run()).toBe("dispatched");
+    const [, init] = t.fetchImpl.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(init.body).toBe(
+      `{"ref":"master","inputs":{"language":"es-419","mode":"publish","target":"staging","compat":"${COMPAT}"}}`,
+    );
+  });
+
+  it("asks the workflow for parts when the compat is the parts compat, and marks that compat running", async () => {
+    const t = setup();
+    expect(await t.run({ compat: CURRENT_PARTS_COMPAT })).toBe("dispatched");
+    const [url, init] = t.fetchImpl.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(url).toBe(DISPATCH_URL);
+    expect(JSON.parse(String(init.body))).toEqual({
+      ref: "master",
+      inputs: {
+        language: LANG,
+        mode: "publish",
+        target: "staging",
+        compat: CURRENT_PARTS_COMPAT,
+        parts: "true",
+      },
+    });
+    expect(
+      JSON.parse(
+        t.r2.text(`status/${CURRENT_PARTS_COMPAT}/${LANG}.json`) ?? "",
+      ),
+    ).toMatchObject({ state: "running", run: "dispatched" });
+    expect(t.r2.text(STATUS_KEY)).toBeUndefined();
   });
 
   it("sends the configured target", async () => {
