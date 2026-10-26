@@ -43,6 +43,11 @@ export type BuildStatus = {
    * The Worker's `running` mark at dispatch has none: the build has not started yet.
    */
   started?: string;
+  /**
+   * The builder code a parts run built with (tc-study writes it on `ok`, parts only). The parts freshness check
+   * takes a code change as seen only by a run of that code.
+   */
+  code?: string;
 };
 
 const HOUR_MS = 3_600_000;
@@ -146,6 +151,7 @@ function parseStatus(raw: string | null): BuildStatus | null {
         failures: s.failures,
         run: typeof s.run === "string" ? s.run : "",
         ...(typeof s.started === "string" ? { started: s.started } : {}),
+        ...(typeof s.code === "string" ? { code: s.code } : {}),
       };
     }
   } catch {

@@ -153,6 +153,11 @@ function setup(
     [];
   const checks: Array<{ compat: string; language: string; entry: unknown }> =
     [];
+  const partsChecks: Array<{
+    compat: string;
+    language: string;
+    list: unknown;
+  }> = [];
   const env: PacksEnv = {
     LANGUAGE_PACKS: bucket,
     TRANSLATION_HELPS_CACHE: {} as KVNamespace,
@@ -187,6 +192,14 @@ function setup(
       const entry = typeof o.entry === "function" ? await o.entry() : o.entry;
       checks.push({ compat: o.compat, language: o.language, entry });
     },
+    checkPartsFreshness: async (o) => {
+      partsChecks.push({
+        compat: o.compat,
+        language: o.language,
+        list: await o.list(),
+      });
+      return "fresh";
+    },
   };
   async function call(path: string, init: RequestInit = {}) {
     const request = new Request(`https://tc-helps.example/v2/packs/${path}`, {
@@ -197,7 +210,7 @@ function setup(
     await Promise.all(pending);
     return res;
   }
-  return { call, points, builds, gets, heads, checks };
+  return { call, points, builds, gets, heads, checks, partsChecks };
 }
 
 beforeEach(() => {
@@ -902,6 +915,33 @@ describe("GET /v2/packs/<parts compat>/<lang> (a parts list)", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("ETag")).toBe('"l1"');
     expect(await res.text()).toBe("");
+  });
+
+  it("runs the parts freshness check after a list GET and its 304, with the list the bucket holds", async () => {
+    const { call, partsChecks, checks } = setup({ objects: partsObjects() });
+    await call(`${PARTS_COMPAT}/es`);
+    const res = await call(`${PARTS_COMPAT}/es-419`, {
+      headers: { "If-None-Match": '"l1"' },
+    });
+    expect(res.status).toBe(304);
+    expect(partsChecks).toEqual([
+      { compat: PARTS_COMPAT, language: "es-419", list: PARTS_LIST },
+      { compat: PARTS_COMPAT, language: "es-419", list: PARTS_LIST },
+    ]);
+    expect(checks).toEqual([]);
+  });
+
+  it("runs no parts check for a HEAD, a part, an originals list, a missing list or an f1.1 entry", async () => {
+    const { call, partsChecks, checks } = setup({ objects: partsObjects() });
+    await call(`${PARTS_COMPAT}/es-419`, { method: "HEAD" });
+    await call(`parts/${PART_SHA}`);
+    await call(`${PARTS_COMPAT}/originals/${PARTS_ORIGINALS_SHA}`);
+    await call(`${PARTS_COMPAT}/en`);
+    await call(`${COMPAT}/es-419`);
+    expect(partsChecks).toEqual([]);
+    expect(checks).toEqual([
+      { compat: COMPAT, language: "es-419", entry: ENTRY },
+    ]);
   });
 
   it("does not run the f1.1 freshness check for a parts list", async () => {

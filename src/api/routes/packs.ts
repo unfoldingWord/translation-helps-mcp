@@ -39,6 +39,10 @@ import {
   checkFreshness,
   type PackCatalogEntry,
 } from "../../packs/freshness.js";
+import {
+  checkPartsFreshness,
+  type PartsListLite,
+} from "../../packs/partsFreshness.js";
 import { VARIANTS } from "./packViews.js";
 
 export type PacksEnv = {
@@ -58,6 +62,7 @@ export type PacksDeps = {
   isEligible: (language: string, env: PacksEnv) => Promise<Eligibility>;
   requestBuild: typeof requestBuild;
   checkFreshness: typeof checkFreshness;
+  checkPartsFreshness: typeof checkPartsFreshness;
 };
 
 type Outcome =
@@ -390,22 +395,29 @@ async function respond(
 
   const served = await serve(request, bucket, target);
   if (served) {
-    // f1.1 entries only: a parts list is not a PackCatalogEntry.
-    if (
-      target.route === "entry" &&
-      request.method === "GET" &&
-      !isPartsCompat(target.compat)
-    ) {
-      // After the answer: the phone gets the entry it has now, and a newer pack is built for its next visit.
-      ctx.waitUntil(
-        deps.checkFreshness({
-          env,
-          ctx,
-          compat: target.compat,
-          language: target.lang,
-          entry: () => readEntry(bucket, target.key),
-        }),
-      );
+    // After the answer: the phone gets the entry it has now, and a newer one is built for its next visit.
+    if (target.route === "entry" && request.method === "GET") {
+      if (isPartsCompat(target.compat)) {
+        ctx.waitUntil(
+          deps.checkPartsFreshness({
+            env,
+            ctx,
+            compat: target.compat,
+            language: target.lang,
+            list: () => readEntry<PartsListLite>(bucket, target.key),
+          }),
+        );
+      } else {
+        ctx.waitUntil(
+          deps.checkFreshness({
+            env,
+            ctx,
+            compat: target.compat,
+            language: target.lang,
+            entry: () => readEntry<PackCatalogEntry>(bucket, target.key),
+          }),
+        );
+      }
     }
     return served;
   }
@@ -518,19 +530,17 @@ export async function isEligibleLanguage(
 }
 
 /** Read again rather than taken from the answer: a 304 has no body, and a 200's body is streamed to the phone. */
-async function readEntry(
-  bucket: R2Bucket,
-  key: string,
-): Promise<PackCatalogEntry | null> {
+async function readEntry<T>(bucket: R2Bucket, key: string): Promise<T | null> {
   const object = await bucket.get(key);
   if (!object) return null;
-  return (await new Response(object.body).json()) as PackCatalogEntry;
+  return (await new Response(object.body).json()) as T;
 }
 
 const DEFAULT_DEPS: PacksDeps = {
   isEligible: isEligibleLanguage,
   requestBuild,
   checkFreshness,
+  checkPartsFreshness,
 };
 
 /** `path` is what follows `/v2/packs/`, still percent-encoded. */

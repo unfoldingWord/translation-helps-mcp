@@ -1,0 +1,293 @@
+/**
+ * Parts lists follow what they were built from. A list hit checks, at most once an hour per language, whether the
+ * stamp of anything the build read moved (a release, a lexicon or MACULA commit: `observeParts`) or whether master
+ * builds another code (`status/builder.json`), and asks for a parts build when one did. The build then decides unit
+ * by unit what to rebuild and what to carry; the Worker computes no fingerprint (delivery 3, Decision 1).
+ *
+ * Every reason has a breaker: an `ok` build that already saw the change. When the Worker and the build derive a
+ * stamp differently, that breaker limits the disagreement to one build per change instead of a loop.
+ */
+
+import {
+  CURRENT_PARTS_COMPAT,
+  partsDispatchEnabled,
+  readBuildStatus,
+  requestBuild,
+  type BuildOutcome,
+  type BuildStatus,
+} from "./dispatch.js";
+import { okBuildSawDoor43At, type FreshnessEnv } from "./freshness.js";
+import { observeParts } from "./partsSources.js";
+
+/** Copied from tc-study language-pack `parts/partsList.ts` (`PartsList`, schema 2), only the fields read here. */
+export type PartsListLite = {
+  schema: 2;
+  /** `es-419`, or `originals`. */
+  language: string;
+  compat: string;
+  /** The code its parts were built with: `<compat>+<hash>` (resource-pipeline `partsCode`). */
+  code: string;
+  resources: Array<{ key: string; stamp: string; role?: string }>;
+  /** A language's list: the originals list at its content address. */
+  originals?: { path: string; sha256: string };
+  /** A language's list: the stamp of every resource the build read (tc-study Task 10). */
+  stamps?: Record<string, string>;
+};
+
+/** tc-study resource-pipeline `packsStatus.ts` `PartsBuilder`: what master's code builds today. */
+export type PartsBuilder = {
+  compat: string;
+  code: string;
+  commit: string;
+  /** When this code first appeared. */
+  at: string;
+};
+
+export type PartsCheck =
+  | "not-current"
+  | "throttled"
+  | "no-list"
+  | "fresh"
+  | "unknown"
+  | "seen"
+  | "budget"
+  | BuildOutcome;
+
+const BUILDER_KEY = "status/builder.json";
+const CHECK_TTL_S = 3600;
+const SHA256_RE = /^[0-9a-f]{64}$/;
+
+/** `status/builder.json`; anything malformed is no file, so it asks for nothing. */
+export async function readPartsBuilder(
+  bucket: R2Bucket,
+): Promise<PartsBuilder | null> {
+  try {
+    const object = await bucket.get(BUILDER_KEY);
+    if (!object) return null;
+    const b = JSON.parse(await object.text()) as Partial<PartsBuilder> | null;
+    if (
+      b &&
+      typeof b.compat === "string" &&
+      typeof b.code === "string" &&
+      typeof b.commit === "string" &&
+      typeof b.at === "string"
+    ) {
+      return { compat: b.compat, code: b.code, commit: b.commit, at: b.at };
+    }
+  } catch {
+    // Falls through to "no file".
+  }
+  return null;
+}
+
+/**
+ * What the list was built from: its `stamps`, or, for a list published before tc-study recorded them, its resources
+ * and those of the originals list it names (inputs that got no part are then missing, and read as new once).
+ */
+export function builtStamps(
+  list: PartsListLite,
+  originals: PartsListLite | null,
+): Record<string, string> {
+  if (list.stamps && typeof list.stamps === "object") return list.stamps;
+  const stamps: Record<string, string> = {};
+  const listed = (l: PartsListLite | null) =>
+    Array.isArray(l?.resources) ? l.resources : [];
+  for (const r of [...listed(originals), ...listed(list)]) {
+    if (typeof r?.key === "string" && typeof r.stamp === "string") {
+      stamps[r.key] = r.stamp;
+    }
+  }
+  return stamps;
+}
+
+/**
+ * Keys whose stamp moved, and keys only now there (a new resource), by key. A key only in `built` is ignored: a
+ * resource Door43 no longer lists stays in the list until the next build for another reason (Decision 13).
+ */
+export function changedSources(
+  built: Record<string, string>,
+  current: Record<string, string>,
+): Array<{ key: string; built?: string; current: string }> {
+  return Object.keys(current)
+    .sort()
+    .filter((key) => built[key] !== current[key])
+    .map((key) =>
+      key in built
+        ? { key, built: built[key], current: current[key]! }
+        : { key, current: current[key]! },
+    );
+}
+
+/**
+ * The date after `#` of a stamp, sanitizing undone (`_` back to `:`, offsets included: `…T19_52_42-04_00`); NaN
+ * when there is none.
+ */
+function stampDate(stamp: string): number {
+  const hash = stamp.lastIndexOf("#");
+  if (hash < 0) return NaN;
+  return Date.parse(stamp.slice(hash + 1).replaceAll("_", ":"));
+}
+
+/**
+ * Whether an `ok` build started after every change: then it read them, and a list that still differs is a
+ * disagreement between the two derivations, not news. A change with no date cannot be placed in time, so any `ok`
+ * build counts as having seen it; otherwise a stamp the two sides write differently would build every hour.
+ */
+function sourcesSeen(
+  changes: Array<{ current: string }>,
+  status: BuildStatus | null,
+): boolean {
+  const sawAt = okBuildSawDoor43At(status);
+  if (Number.isNaN(sawAt)) return false;
+  const dates = changes.map((c) => stampDate(c.current));
+  const newest = Math.max(-Infinity, ...dates.filter((d) => !Number.isNaN(d)));
+  return sawAt > newest;
+}
+
+/**
+ * A code change is seen only by an `ok` run of that very code (tc-study writes `code` into a parts run's `ok`
+ * status). A run's start says nothing here: one queued before the push, or a re-run, builds the old code after it.
+ */
+function codeSeen(status: BuildStatus | null, code: string): boolean {
+  return status?.state === "ok" && status.code === code;
+}
+
+function point(env: FreshnessEnv, language: string, result: string): void {
+  env.ANALYTICS?.writeDataPoint({
+    indexes: ["pack"],
+    blobs: ["pack", "freshness", language, result],
+    doubles: [0],
+  });
+}
+
+async function readOriginals(
+  bucket: R2Bucket,
+  compat: string,
+  list: PartsListLite,
+): Promise<PartsListLite | null> {
+  const named = list.originals;
+  // Only the content-addressed path the list's sha names: a path is never taken from the list as it is.
+  if (
+    !named ||
+    typeof named.sha256 !== "string" ||
+    !SHA256_RE.test(named.sha256) ||
+    named.path !== `catalog/${compat}/originals/${named.sha256}.json`
+  ) {
+    return null;
+  }
+  try {
+    const object = await bucket.get(named.path);
+    if (!object) return null;
+    const originals = JSON.parse(await object.text()) as PartsListLite;
+    return Array.isArray(originals?.resources) ? originals : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Never throws: it runs in `waitUntil` after the list has been served, and in the cron's sweep. Only the current
+ * parts compat may ask for a build, and only while parts dispatch is on; neither case claims the hour or reads
+ * anything. `list` is a reader because a 304 carries no body; it is called only once the hour allows a check.
+ */
+export async function checkPartsFreshness(o: {
+  env: FreshnessEnv;
+  ctx: ExecutionContext;
+  compat: string;
+  language: string;
+  list: () => Promise<PartsListLite | null>;
+  now?: Date;
+  observe?: typeof observeParts;
+  requestBuild?: typeof requestBuild;
+  /** `daily` when the cron sweeps the bucket (see requestBuild's cap). */
+  reason?: "stale" | "daily";
+  /** On the daily path, whether a code-only rebuild may still be asked for today. Without it, none is. */
+  codeBudget?: () => Promise<boolean>;
+}): Promise<PartsCheck> {
+  const { env, compat, language } = o;
+  const now = o.now ?? new Date();
+  const kv = env.TRANSLATION_HELPS_CACHE;
+  if (compat !== CURRENT_PARTS_COMPAT) return "not-current";
+  if (!partsDispatchEnabled(env)) return "parts-off";
+  const tag = `[packs] parts ${compat}/${language}`;
+  const done = (result: PartsCheck, detail = ""): PartsCheck => {
+    console.log(`${tag}: ${result}${detail}`);
+    point(env, language, `parts-${result === "seen" ? "stale-seen" : result}`);
+    return result;
+  };
+  try {
+    // The same hour as the f1.1 check, under the parts compat's own key.
+    const key = `packs:fresh:${compat}:${language}`;
+    const last = Date.parse((await kv.get(key)) ?? "");
+    if (!Number.isNaN(last) && now.getTime() - last < CHECK_TTL_S * 1000) {
+      return "throttled";
+    }
+    await kv.put(key, now.toISOString(), { expirationTtl: CHECK_TTL_S });
+
+    const bucket = env.LANGUAGE_PACKS;
+    const list = await o.list();
+    if (!bucket || !list || typeof list.code !== "string") {
+      return done("no-list");
+    }
+    const originals = list.stamps
+      ? null
+      : await readOriginals(bucket, compat, list);
+
+    const observed = await (o.observe ?? observeParts)({
+      language,
+      env,
+      ctx: o.ctx,
+      now,
+    });
+    if ("unknown" in observed) return done("unknown", ` (${observed.unknown})`);
+
+    const builder = await readPartsBuilder(bucket);
+    if (builder && builder.compat !== compat) {
+      // Master builds another compat than this Worker asks for: v2 needs the new CURRENT_PARTS_COMPAT first.
+      console.log(
+        `${tag}: compat-drift (master builds ${builder.compat}); no code rebuild`,
+      );
+      point(env, language, "parts-compat-drift");
+    }
+    const sources = changedSources(
+      builtStamps(list, originals),
+      observed.stamps,
+    );
+    const code =
+      builder?.compat === compat && builder.code !== list.code
+        ? builder.code
+        : null;
+    if (!sources.length && !code) return done("fresh");
+
+    const detail = ` (${[
+      ...sources.map((c) => `${c.key} ${c.built ?? "new"} → ${c.current}`),
+      ...(code ? [`code ${list.code} → ${code}`] : []),
+    ].join("; ")})`;
+    const status = await readBuildStatus(bucket, compat, language);
+    const unseenSources = sources.length > 0 && !sourcesSeen(sources, status);
+    const unseenCode = code !== null && !codeSeen(status, code);
+    if (!unseenSources && !unseenCode) {
+      return done(
+        "seen",
+        ` by the build started ${status?.started ?? `before ${status?.at}`}${detail}`,
+      );
+    }
+
+    const daily = o.reason === "daily";
+    // A code bump touches every language at once: the sweep spreads its rebuilds over days.
+    if (!unseenSources && daily && !(await (o.codeBudget?.() ?? false))) {
+      return done("budget", detail);
+    }
+    const build = await (o.requestBuild ?? requestBuild)({
+      env,
+      compat,
+      language,
+      reason: daily ? "daily" : unseenSources ? "stale" : "code",
+      now,
+    });
+    return done(build, detail);
+  } catch (err) {
+    console.error(`${tag}: freshness unknown:`, err);
+    return "error";
+  }
+}
