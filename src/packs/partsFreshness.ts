@@ -178,13 +178,14 @@ export async function firstSeenKey(
  * A stamp's own date is when it was made, not when a build could read it: a MACULA commit made on a Taller branch
  * on Monday and merged on Thursday is dated Monday, as is a lexicon commit merged late or a release Door43 indexed
  * late, so a build on Wednesday would otherwise count as having seen it. One bulk read for all of them; a write only
- * the first time. A read that fails is taken as first seen now and writes nothing, so it never moves a record later.
+ * the first time. A read that fails gives null and writes nothing: the check then knows nothing (`unknown`), since
+ * taking every change as first seen now would ask for a build on every check while the records stay unreadable.
  */
 async function firstSeen(
   kv: KVNamespace,
   changes: Array<{ key: string; current: string }>,
   now: Date,
-): Promise<number[]> {
+): Promise<number[] | null> {
   const keys = await Promise.all(
     changes.map((c) => firstSeenKey(c.key, c.current)),
   );
@@ -196,7 +197,7 @@ async function firstSeen(
     }
   } catch (err) {
     console.error(`[packs] first-seen records unreadable:`, err);
-    return keys.map(() => now.getTime());
+    return null;
   }
   return Promise.all(
     keys.map(async (k) => {
@@ -262,13 +263,15 @@ function point(env: FreshnessEnv, language: string, result: string): void {
   }
 }
 
-async function readOriginals(
-  bucket: R2Bucket,
+/**
+ * The originals list a language list names, when it names it by content: `catalog/<compat>/originals/<sha256>.json`
+ * for its own 64-hex sha256, in the compat being read. Anything else is null: a path is never taken from a list as
+ * it is. The cleanup reads the same field by the same rule.
+ */
+export function originalsPathOf(
   compat: string,
-  list: PartsListLite,
-): Promise<PartsListLite | null> {
-  const named = list.originals;
-  // Only the content-addressed path the list's sha names: a path is never taken from the list as it is.
+  named: { path?: unknown; sha256?: unknown } | null | undefined,
+): string | null {
   if (
     !named ||
     typeof named.sha256 !== "string" ||
@@ -277,8 +280,18 @@ async function readOriginals(
   ) {
     return null;
   }
+  return named.path;
+}
+
+async function readOriginals(
+  bucket: R2Bucket,
+  compat: string,
+  list: PartsListLite,
+): Promise<PartsListLite | null> {
+  const path = originalsPathOf(compat, list.originals);
+  if (!path) return null;
   try {
-    const object = await bucket.get(named.path);
+    const object = await bucket.get(path);
     if (!object) return null;
     const originals = JSON.parse(await object.text()) as PartsListLite;
     return Array.isArray(originals?.resources) ? originals : null;
@@ -374,6 +387,10 @@ export async function checkPartsFreshness(o: {
     ].join("; ")})`;
     // Recorded whatever the status, so the time is when the change was first seen, not when a build was first ok.
     const seenAt = sources.length ? await firstSeen(kv, sources, now) : [];
+    // Without the records, no change can be dated: like an unreadable code budget, that asks for nothing.
+    if (!seenAt) {
+      return done("unknown", ` (first-seen records unreadable)${detail}`);
+    }
     const status = await readBuildStatus(bucket, compat, language);
     const unseenSources =
       sources.length > 0 && !sourcesSeen(sources, seenAt, status);

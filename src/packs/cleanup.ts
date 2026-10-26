@@ -28,7 +28,7 @@
  * Each run records the day's outcome (`done`, `postponed` or `aborted`) in the ledger, without touching the first
  * dates or `checked`, so the 04 and 05 UTC retries run only when the day's cleanup did not finish
  * (`cleanupOutcome`), and `ABORT_ALERT_DAYS` days in a row that end aborted log `[packs] cleanup-alert:`, the tag
- * an alert can watch for.
+ * an alert can watch for. A run the runtime kills records nothing; the retries log that under the same tag.
  *
  * What it cannot close: a build reads `has(part)` to skip uploading a part the bucket already has. A build that
  * started after the last listing (milliseconds before the delete) and found an orphan due that very moment would
@@ -43,6 +43,7 @@
  */
 
 import { COMPAT_RE, RUNNING_STALE_MS, isPartsCompat } from "./dispatch.js";
+import { originalsPathOf } from "./partsFreshness.js";
 import type { CleanupMode } from "./scheduled.js";
 
 export type CleanupEnv = {
@@ -87,7 +88,8 @@ export const CLEANUP_R2_CALLS = 800;
 /** Days in a row that end aborted before the run logs `[packs] cleanup-alert:`. */
 export const ABORT_ALERT_DAYS = 3;
 const OUTCOME_DAYS = 7;
-const ALERT_TAG = "[packs] cleanup-alert:";
+/** The prefix every cleanup alert is logged with (`console.error`), the tag an alert can watch for. */
+export const ALERT_TAG = "[packs] cleanup-alert:";
 
 const SHA256_RE = /^[0-9a-f]{64}$/;
 const PART_KEY_RE = /^parts\/[0-9a-f]{64}\.part\.gz$/;
@@ -298,13 +300,8 @@ async function readNamed(
         named.add(`${top}originals/${await sha256Hex(bytes)}.json`);
         continue;
       }
-      const sha = list.originals?.sha256;
-      const path = `${top}originals/${String(sha)}.json`;
-      if (
-        typeof sha !== "string" ||
-        !SHA256_RE.test(sha) ||
-        list.originals?.path !== path
-      ) {
+      const path = originalsPathOf(compat, list.originals);
+      if (!path) {
         throw new Stop(
           "aborted",
           `${o.key} names no originals list by content`,
@@ -527,8 +524,13 @@ export async function runPartsCleanup(
       Number.isNaN(checked) ||
       now.getTime() - checked > LEDGER_GAP_MS;
     if (ledger && restart) {
+      // Said once, with its reason: a dry run that would delete nothing for 30 more days is explained here.
       console.log(
-        `${tag}: the last finished run was ${ledger.checked ?? "never"}; every count starts again`,
+        `${tag}: every count starts again, as ` +
+          (Number.isNaN(checked)
+            ? `the ledger has no date for a finished run`
+            : `the last finished run was ${ledger.checked}, more than ${LEDGER_GAP_MS / DAY_MS} days ago`) +
+          `; nothing is due before ${new Date(now.getTime() + ORPHAN_DAYS * DAY_MS).toISOString().slice(0, 10)}`,
       );
     }
     // Named keys, and keys gone from the bucket, leave the ledger: a key unnamed again starts from today.
@@ -676,8 +678,16 @@ async function warnIfListNamesDeleted(
         const list = await readLoosely(r2, o.key);
         if (!list) continue;
         const names = partKeys(list);
-        const originals = list.originals?.path;
-        if (typeof originals === "string") {
+        // `originals.json` names no originals list; a language list names one by content, or none is read.
+        const originals = list.originals
+          ? originalsPathOf(compat, list.originals)
+          : null;
+        if (list.originals && !originals) {
+          console.error(
+            `${tag}: ${o.key} names no originals list by content; its originals list is not checked`,
+          );
+        }
+        if (originals) {
           names.push(originals);
           // An originals list that was named before had its parts named too; another one is read for its parts.
           if (!named.has(originals) && !gone.has(originals)) {

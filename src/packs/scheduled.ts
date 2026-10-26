@@ -6,7 +6,8 @@
  *   `parts` (staging, which never swept f1.1);
  * - `7 3 * * *`: the parts cleanup, when `PACKS_CLEANUP` is `dry-run` or `delete` (anything else is off);
  * - `7 4,5 * * *`: the cleanup again, only when the day's run was postponed or aborted (the ledger records each day's
- *   outcome). One cron string for both retries: the Free plan allows 5 cron triggers in the whole account;
+ *   outcome); a day with no outcome at all is not retried but logged under `[packs] cleanup-alert:`. One cron string
+ *   for both retries: the Free plan allows 5 cron triggers in the whole account;
  * - `37 * * * *`: the parts languages whose `fnv1a32(language) % 24` is the hour, so each is checked once a day and
  *   the Door43 and GitHub requests are spread across the day. Only while parts dispatch is on: a check that may not
  *   ask for a build reads nothing.
@@ -47,7 +48,12 @@ import {
   type PartsCheck,
   type PartsListLite,
 } from "./partsFreshness.js";
-import { cleanupOutcome, runPartsCleanup } from "./cleanup.js";
+import {
+  ALERT_TAG,
+  LEDGER,
+  cleanupOutcome,
+  runPartsCleanup,
+} from "./cleanup.js";
 import type { observeParts } from "./partsSources.js";
 
 export type ScheduledEnv = FreshnessEnv & {
@@ -81,10 +87,14 @@ export const PARTS_CHECKS_PER_RUN = 5;
 const COUNTER_TTL_S = 2 * 24 * 3600;
 const DAY_MS = 24 * 3_600_000;
 
-/** `PARTS_CHECKS_PER_RUN`: a whole number (0 checks none); unset, empty or anything else is the default. */
+/**
+ * `PARTS_CHECKS_PER_RUN`: digits only, as the parts daily cap reads its own (0 checks none); unset, empty or anything
+ * else (`1e2`, `5.0`, ` 7`) is the default, so a typo can neither lift the cap nor stop the checks.
+ */
 export function checksPerRun(raw: string | undefined): number {
-  const n = raw?.trim() ? Number(raw) : Number.NaN;
-  return Number.isInteger(n) && n >= 0 ? n : PARTS_CHECKS_PER_RUN;
+  return raw !== undefined && /^\d+$/.test(raw)
+    ? Number(raw)
+    : PARTS_CHECKS_PER_RUN;
 }
 
 /** The standard 32-bit FNV-1a, a copy of tc-study language-pack `parts/partSlots.ts` `fnv1a32`. */
@@ -186,9 +196,18 @@ async function runCleanup(
   try {
     if (retry) {
       const outcome = await cleanupOutcome(env, day);
-      if (outcome !== "postponed" && outcome !== "aborted") {
+      if (!outcome) {
+        // Every run that ends records its outcome, so none means the 03:07 run never ended (the runtime killed it,
+        // over its CPU or memory, before it could write) or never started. Still not retried (a missing outcome only
+        // delays the cleanup), but loud, under the cleanup's alert tag: otherwise it could fail silently every day.
+        console.error(
+          `${ALERT_TAG} the ${day} cleanup (${mode}) at 03:07 UTC recorded no outcome: the runtime killed it, the cron did not fire, or ${LEDGER} cannot be read; not retried`,
+        );
+        return;
+      }
+      if (outcome === "done") {
         console.log(
-          `[packs] cleanup (${mode}) retry: the day's cleanup was ${outcome ?? "not recorded"}; nothing to retry`,
+          `[packs] cleanup (${mode}) retry: the day's cleanup was done; nothing to retry`,
         );
         return;
       }

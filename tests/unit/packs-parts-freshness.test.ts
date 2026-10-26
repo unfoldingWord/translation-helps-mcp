@@ -660,21 +660,58 @@ describe("checkPartsFreshness", () => {
       expect(fresh.puts).toEqual([`packs:fresh:${COMPAT}:${LANG}`]);
     });
 
-    it("a bulk KV read that fails: first seen now, and nothing written over what may be there", async () => {
-      // Recorded Tuesday, so the build started Thursday 15:59 would have seen it, but the record cannot be read.
-      const s = setup({
-        observed: merged,
-        status: ok("2026-10-22T15:59:00Z"),
-        firstSeen: [
-          ["Biblica/hbo/macula", MONDAY_STAMP, "2026-10-20T00:00:00Z"],
-          ["Biblica/el-x-koine/macula", MONDAY_STAMP, "2026-10-20T00:00:00Z"],
-        ],
-      });
-      s.failBulkReads();
-      expect(await s.check({ now: THURSDAY_CHECK })).toBe("dispatched");
-      expect(s.puts.filter((k) => k.startsWith("packs:first-seen:"))).toEqual(
-        [],
-      );
+    it("a bulk KV read that fails: unknown, no build, nothing written over what may be there", async () => {
+      // Before the review of PR #79 a failed read dated every change now, so a list that kept disagreeing asked for a
+      // build on every check while the records stayed unreadable. Now no change can be dated, so nothing is asked.
+      for (const status of [ok("2026-10-22T15:59:00Z"), ok(WEDNESDAY), null]) {
+        const s = setup({
+          observed: merged,
+          ...(status ? { status } : {}),
+          firstSeen: [
+            ["Biblica/hbo/macula", MONDAY_STAMP, "2026-10-20T00:00:00Z"],
+            ["Biblica/el-x-koine/macula", MONDAY_STAMP, "2026-10-20T00:00:00Z"],
+          ],
+        });
+        s.failBulkReads();
+        const log = vi.spyOn(console, "log").mockImplementation(() => {});
+        const error = vi.spyOn(console, "error").mockImplementation(() => {});
+        try {
+          for (const reason of ["stale", "daily"] as const) {
+            s.values.delete(`packs:fresh:${COMPAT}:${LANG}`);
+            expect(await s.check({ now: THURSDAY_CHECK, reason })).toBe(
+              "unknown",
+            );
+          }
+          expect(log.mock.calls.map((c) => String(c[0]))).toEqual(
+            Array.from(
+              { length: 2 },
+              () =>
+                `[packs] parts ${COMPAT}/${LANG}: unknown (first-seen records unreadable) (Biblica/el-x-koine/macula ${STAMPS["Biblica/hbo/macula"]} → ${MONDAY_STAMP}; Biblica/hbo/macula ${STAMPS["Biblica/hbo/macula"]} → ${MONDAY_STAMP})`,
+            ),
+          );
+          expect(String(error.mock.calls[0]?.[0])).toBe(
+            "[packs] first-seen records unreadable:",
+          );
+        } finally {
+          log.mockRestore();
+          error.mockRestore();
+        }
+        expect(s.builds).toEqual([]);
+        expect(s.budget).not.toHaveBeenCalled();
+        expect(s.points).toEqual(
+          Array.from({ length: 2 }, () => [
+            "pack",
+            "freshness",
+            LANG,
+            "parts-unknown",
+          ]),
+        );
+        // No first-seen record written, and the status not even read.
+        expect(s.puts.filter((k) => k.startsWith("packs:first-seen:"))).toEqual(
+          [],
+        );
+        expect(s.gets).not.toContain(`status/${COMPAT}/${LANG}.json`);
+      }
     });
   });
 

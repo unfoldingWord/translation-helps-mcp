@@ -30,7 +30,7 @@ import {
   type BuildOutcome,
 } from "../../src/packs/dispatch";
 import type { PartsCheck, PartsListLite } from "../../src/packs/partsFreshness";
-import { LEDGER } from "../../src/packs/cleanup";
+import { ALERT_TAG, LEDGER } from "../../src/packs/cleanup";
 import { fakeKv, fakeR2 } from "./fakeR2";
 
 const F11 = CURRENT_PACK_COMPAT;
@@ -386,6 +386,12 @@ describe("runScheduled: the parts sweep", () => {
       ["abc", PARTS_CHECKS_PER_RUN],
       ["-1", PARTS_CHECKS_PER_RUN],
       ["1.5", PARTS_CHECKS_PER_RUN],
+      // Digits only, as PACKS_PARTS_DAILY_CAP: what Number() would read as a whole number is still a typo here.
+      ["1e2", PARTS_CHECKS_PER_RUN],
+      ["0x8", PARTS_CHECKS_PER_RUN],
+      ["5.0", PARTS_CHECKS_PER_RUN],
+      [" 3", PARTS_CHECKS_PER_RUN],
+      ["+3", PARTS_CHECKS_PER_RUN],
     ] as const) {
       const s = setup({
         parts: crowded,
@@ -395,6 +401,8 @@ describe("runScheduled: the parts sweep", () => {
       expect([raw, s.parts.length]).toEqual([raw, n]);
     }
     expect(checksPerRun("3")).toBe(3);
+    expect(checksPerRun("12")).toBe(12);
+    expect(checksPerRun("1e2")).toBe(PARTS_CHECKS_PER_RUN);
     expect(PARTS_CHECKS_PER_RUN).toBe(5);
   });
 
@@ -724,14 +732,61 @@ describe("runScheduled: the cleanup crons", () => {
     },
   );
 
-  it("a retry does nothing when the day has no outcome (no ledger, another day's, or one that does not parse)", async () => {
-    for (const ledger of [undefined, recorded("2026-10-20", "aborted"), "{"]) {
+  /** The `console.error` lines `fn` logs that carry the cleanup's alert tag. */
+  async function alerts(fn: () => Promise<void>): Promise<string[]> {
+    const errors: string[] = [];
+    const error = console.error;
+    const log = console.log;
+    console.error = (...args: unknown[]) => void errors.push(args.join(" "));
+    console.log = () => {};
+    try {
+      await fn();
+    } finally {
+      console.error = error;
+      console.log = log;
+    }
+    return errors.filter((e) => e.startsWith(ALERT_TAG));
+  }
+
+  it("a retry runs no cleanup when the day has no outcome (no ledger, another day's, or one that does not parse), and alerts once", async () => {
+    for (const mode of ["dry-run", "delete"] as const) {
+      for (const ledger of [
+        undefined,
+        recorded("2026-10-20", "aborted"),
+        "{",
+      ]) {
+        const s = setup({
+          env: { PACKS_CLEANUP: mode },
+          ...(ledger ? { extra: { [LEDGER]: ledger } } : {}),
+        });
+        const lines = await alerts(() => s.run(CLEANUP_RETRY_CRON, at(4, 7)));
+        expect(s.cleanups).toEqual([]);
+        expect(lines).toEqual([
+          `${ALERT_TAG} the ${DAY} cleanup (${mode}) at 03:07 UTC recorded no outcome: the runtime killed it, the cron did not fire, or ${LEDGER} cannot be read; not retried`,
+        ]);
+        // Only the ledger was read: nothing written, nothing deleted.
+        expect(s.r2.ops).toEqual([{ op: "get", key: LEDGER }]);
+      }
+    }
+  });
+
+  it("no alert from a retry when the cleanup is off, or when the day has an outcome", async () => {
+    for (const raw of [undefined, "off", "Delete"]) {
+      const s = setup({ env: { PACKS_CLEANUP: raw } });
+      expect(await alerts(() => s.run(CLEANUP_RETRY_CRON, at(4, 7)))).toEqual(
+        [],
+      );
+      expect(s.r2.ops).toEqual([]);
+    }
+    for (const state of ["done", "postponed", "aborted"]) {
       const s = setup({
-        env: { PACKS_CLEANUP: "delete" },
-        ...(ledger ? { extra: { [LEDGER]: ledger } } : {}),
+        env: { PACKS_CLEANUP: "dry-run" },
+        extra: { [LEDGER]: recorded(DAY, state) },
       });
-      await s.run(CLEANUP_RETRY_CRON, at(4, 7));
-      expect(s.cleanups).toEqual([]);
+      expect(await alerts(() => s.run(CLEANUP_RETRY_CRON, at(5, 7)))).toEqual(
+        [],
+      );
+      expect(s.cleanups.length).toBe(state === "done" ? 0 : 1);
     }
   });
 

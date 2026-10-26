@@ -194,7 +194,7 @@ Parts (`f2.0-…`, `CURRENT_PARTS_COMPAT` in `src/packs/dispatch.ts`) are served
 | `PACKS_PARTS_DAILY_CAP` | Counted parts dispatches a day (KV `packs:dispatch-parts:<date>`), apart from f1.1's 20 (`packs:dispatch:<date>`). `0` closes counted dispatches. The cron's dispatches (reason `daily`) are not counted.                                                       | 20               | nowhere                                                      |
 | `PACKS_SWEEP`           | `parts`: the f1.1 cron (`17 6 * * *`) sweeps nothing.                                                                                                                                                                                                           | f1.1 swept       | preview `parts`                                              |
 | `PACKS_CLEANUP`         | Exactly `dry-run` (logs what it would delete, keeps the ledger) or `delete`. Anything else, `off` included, is off: no R2 call at all.                                                                                                                          | off              | preview `dry-run`; absent from production on purpose         |
-| `PARTS_CHECKS_PER_RUN`  | Parts checks in one run of the hourly slice: a whole number, `0` for none.                                                                                                                                                                                      | 5                | nowhere                                                      |
+| `PARTS_CHECKS_PER_RUN`  | Parts checks in one run of the hourly slice: digits only (as `PACKS_PARTS_DAILY_CAP`; `1e2` is invalid), `0` for none. Above 12, Analytics points can be lost (see the crons).                                                                                  | 5                | nowhere                                                      |
 | `PARTS_RATE_LIMIT_RPM`  | Part requests a minute per IP, in a counter of their own (lists keep `RATE_LIMIT_RPM`, 90). `0` turns it off.                                                                                                                                                   | 600              | nowhere                                                      |
 
 Production has none of them on purpose: it asks for no parts builds and deletes nothing until Task 14 adds
@@ -232,6 +232,10 @@ The Worker picks the job by the cron string (`src/packs/scheduled.ts`); each job
   day, and logs the rest as `left for another day`: each of its languages is checked by the cron at least every
   ⌈k / `PARTS_CHECKS_PER_RUN`⌉ days, and a phone that opens one still triggers its check in between. On a Paid plan
   `PARTS_CHECKS_PER_RUN` can be raised.
+- Analytics Engine takes 25 data points per invocation. A parts check writes at most 2 (its result, plus
+  `parts-compat-drift` when master builds another compat), the slice itself none, so above **12**
+  `PARTS_CHECKS_PER_RUN` a run can lose points. A lost point is caught and logged
+  (`[packs] parts <lang>: analytics point not written`); the checks' results do not change.
 - The slice's log line: `[packs] parts sweep <HH> UTC: <lang> <result>, …`.
 
 ### Parts: the check
@@ -246,7 +250,8 @@ unit by unit what to rebuild.
 - Log line: `[packs] parts <compat>/<lang>: <result> (<key> <built stamp|new> → <now>; code <list's> → <builder's>)`,
   with `; not compared, unreadable: …` when an input could not be read (it is left out, so it cannot ask for a build).
   Results: `fresh`, `seen` (an `ok` build already saw the change), `budget` (a code-only change the cron may not
-  spend today), `unknown` (the language's search failed or found no row of it), `no-list`, or the dispatch outcome
+  spend today), `unknown` (the language's search failed or found no row of it, or the first-seen records could not be
+  read: see below), `no-list`, or the dispatch outcome
   (`dispatched`, `running`, `cooling`, `stopped`, `capped`, `unconfigured`, `invalid`, `error`). Analytics:
   `parts-<result>` (`parts-stale-seen` for `seen`).
 - A check that crashes (a KV or R2 call that throws, a limit reached) asks for nothing and logs, with `console.error`,
@@ -255,6 +260,10 @@ unit by unit what to rebuild.
 - Breakers: a moved stamp is seen when an `ok` build started after both the stamp's own date and the moment this Worker
   first saw it (`packs:first-seen:*`); a code change is seen only by an `ok` status whose `code` is the builder's. The
   dispatch guard (`running` 5.5 h, `cooling` 24 h after a failure, `stopped` after 3) applies as for f1.1.
+- When the first-seen records cannot be read (the one bulk KV read throws), no change can be dated, so the check asks
+  for nothing: result `unknown`, logged `[packs] first-seen records unreadable: <error>` (`console.error`) and
+  `[packs] parts <compat>/<lang>: unknown (first-seen records unreadable) (<changes>)`, Analytics `parts-unknown`,
+  no record written. Dating every change "now" instead would ask for a build on every check while KV fails.
 - Code-only rebuilds from the cron: at most 10 a day (`CODE_REBUILDS_PER_DAY`), so a code bump reaches 100 languages in
   about 10 days. A phone's visit asks sooner, counted against `PACKS_PARTS_DAILY_CAP`. A moved stamp spends no budget.
 
@@ -312,8 +321,11 @@ Deletes parts no list has named for 30 days (`src/packs/cleanup.ts`). Only `part
 - **The ledger** `cleanup/parts-orphans.json`: `{ schema: 1, checked, since, outcomes }`. `since` maps each unnamed
   key to the first run that found it unnamed; `outcomes` maps each of the last 7 UTC days to `done`, `postponed` or
   `aborted`. A key named again, or gone, leaves `since`. If `checked` (the last finished run) is more than 3 days
-  old, every count starts again: "30 days in a row" needs runs to watch them. A ledger that does not parse also
-  restarts every count; deleting it does the same.
+  old, every count starts again: "30 days in a row" needs runs to watch them. The run says so once, with the date of
+  the last finished run and the first day anything can be due:
+  `[packs] cleanup (<mode>): every count starts again, as the last finished run was <time>, …; nothing is due before <day>`
+  (so a long `would delete 0` tail in `dry-run` after it is expected). A ledger that does not parse also restarts
+  every count; deleting it does the same.
 - **Due**: `since` 30 days ago or more **and** R2's `uploaded` 30 days ago or more. tc-study puts a part it names
   again when R2 wrote it more than 20 days ago (`PART_REFRESH_DAYS`), so an old `uploaded` means no build has named it
   for 30 days. Oldest first, at most 1000 deletes a run (one R2 call); the rest wait for the next run.
@@ -326,7 +338,7 @@ Deletes parts no list has named for 30 days (`src/packs/cleanup.ts`). Only `part
     `dry-run`), with `, <R> left for the next run` past 1000, and `; <C> R2 calls`;
   - `[packs] cleanup (<mode>): postponed, <status key> is running`, or `aborted, <why>`;
   - the retries: `[packs] cleanup (<mode>) retry: the day's cleanup was <outcome>` (`; nothing to retry` when it was
-    `done` or not recorded);
+    `done`; a day with no outcome is an alert, below);
   - Analytics `["pack", "cleanup", <mode>, <state>]`, doubles `[deleted, bytes, due]`.
 
   In `dry-run`, read the counts and MB against what lists dropped before switching to `delete`.
@@ -335,6 +347,11 @@ Deletes parts no list has named for 30 days (`src/packs/cleanup.ts`). Only `part
   - `[packs] cleanup-alert: aborted <N> days in a row (since <day>); last: <why>`: logged from the 3rd day in a row
     that ends `aborted`. Read `<why>` and fix it. Only days that end `aborted` count: a day that ends `postponed` or
     `done`, or a day with no run, breaks the streak.
+  - `[packs] cleanup-alert: the <day> cleanup (<mode>) at 03:07 UTC recorded no outcome: …; not retried`: logged by
+    each retry (04:07 and 05:07) while `PACKS_CLEANUP` is on and the ledger has no outcome for the day. Every run
+    that ends records one, so the 03:07 run was killed before it could (over its CPU or memory limit, such as the Free
+    plan's 10 ms of CPU), or never ran, or the ledger cannot be read. Nothing is retried: look at the 03:07
+    invocation in the dashboard or with `wrangler tail`.
   - `… started during the deletes; if its list names a deleted part, rebuild it with force` and
     `<list> names <N> deleted key(s) (…); it was written during the deletes; rebuild with force`: a build raced the
     deletes. Dispatch that language with the workflow's `force` input.
@@ -439,7 +456,10 @@ The list answers as the f1.1 entry does, as in the table above: `200` with its `
 - **Rate limit:** parts have their own, **600 requests a minute per IP** (`PARTS_RATE_LIMIT_RPM`); lists and originals
   lists keep 90. Past it: `429` with `Retry-After`; wait that long and go on. All of English is about 730 parts.
 - A missing part or originals list is `404` (`{"error":"part not found"}`, `{"error":"originals list not found"}`) and
-  asks for no build: a list names only what its build wrote.
+  asks for no build: a list names only what its build wrote. A list the app holds can be old, though: once a later
+  build drops a part (or an originals list), the cleanup deletes it 30 days after the last list named it, so a phone
+  resuming from an old list can meet this `404`. **On a `404` for a part or an originals list, fetch the language list
+  again and continue from it; do not retry the part.**
 - A GET of the list (not a HEAD) lets the Worker check, at most once an hour per language, whether the list is behind
   Door43 or the builder; a newer list comes on a later visit.
 - **After importing the parts**, the app sets the resource's `availability.offline`: the catalog row restored from the

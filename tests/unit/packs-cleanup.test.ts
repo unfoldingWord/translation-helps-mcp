@@ -302,6 +302,40 @@ describe("runPartsCleanup: 30 days in a row", () => {
     expect(w.r2.deleted).toEqual([part(9)]);
   });
 
+  it("says once, with the last finished run's date, that every count starts again (a long dry-run tail explained)", async () => {
+    const logs: string[] = [];
+    const log = console.log;
+    console.log = (line: string) => void logs.push(String(line));
+    const restarts = () =>
+      logs.filter((l) => l.includes("every count starts again"));
+    try {
+      const w = world();
+      await daily(w, 0, 20);
+      expect(restarts()).toEqual([]);
+      await w.run(25);
+      expect(restarts()).toEqual([
+        `[packs] cleanup (delete): every count starts again, as the last finished run was ${day(20).toISOString()}, more than 3 days ago; nothing is due before ${dayOf(55)}`,
+      ]);
+      await daily(w, 26, 30);
+      expect(restarts()).toHaveLength(1);
+
+      // A ledger with no date for a finished run (as left by a run that only ever stopped) restarts too.
+      logs.length = 0;
+      const undated = world({
+        [LEDGER]: JSON.stringify({
+          schema: 1,
+          since: { [part(9)]: day(-40).toISOString() },
+        }),
+      });
+      await undated.run(0, "dry-run");
+      expect(restarts()).toEqual([
+        `[packs] cleanup (dry-run): every count starts again, as the ledger has no date for a finished run; nothing is due before ${dayOf(30)}`,
+      ]);
+    } finally {
+      console.log = log;
+    }
+  });
+
   it("keeps counting across a missed day or two", async () => {
     const w = world();
     await daily(w, 0, 10);
@@ -646,6 +680,68 @@ describe("runPartsCleanup: the open windows, documented", () => {
     expect(errors.join("\n")).toContain(
       `catalog/${C}/en.json names 1 deleted key (${part(9)})`,
     );
+  });
+
+  it("an originals path a list written during the deletes does not name by content is not read, and is said so", async () => {
+    // An originals list naming part 9, at a path that is not the content address of the sha the list gives.
+    const other = originalsText([9]);
+    const at = `catalog/${C}/originals/${hash(other)}.json`;
+    const elsewhere = `catalog/${OLD}/originals/${hash(other)}.json`;
+    for (const originals of [
+      { path: at, sha256: "f".repeat(64) },
+      { path: elsewhere, sha256: hash(other) },
+      { path: "status/builder.json", sha256: hash(other) },
+      { path: at },
+    ]) {
+      const w = world({
+        [at]: { text: other, uploaded: day(1) },
+        [elsewhere]: { text: other, uploaded: day(1) },
+      });
+      await daily(w, 0, 29);
+      w.r2.before.push((op) => {
+        if (op === "delete") {
+          w.r2.put(
+            `catalog/${C}/en.json`,
+            JSON.stringify({
+              ...JSON.parse(languageText("en", [1], ORIGINALS)),
+              originals,
+            }),
+          );
+        }
+      });
+      const reads = () =>
+        w.r2.ops.filter((o) => o.op === "get" && o.key === originals.path);
+      const before = reads().length;
+      const { result, errors } = await quiet(() => w.run(30));
+      expect(result).toMatchObject({ state: "done", deleted: 1 });
+      expect(w.r2.deleted).toEqual([part(9)]);
+      // Not read after the deletes, so its part 9 is not reported through it.
+      expect(reads().length).toBe(before);
+      expect(errors).toEqual([
+        `[packs] cleanup (delete): catalog/${C}/en.json names no originals list by content; its originals list is not checked`,
+      ]);
+    }
+  });
+
+  it("a list written during the deletes with a part deleted and a bad originals path: both said", async () => {
+    const w = world();
+    await daily(w, 0, 29);
+    w.r2.before.push((op) => {
+      if (op === "delete") {
+        w.r2.put(
+          `catalog/${C}/en.json`,
+          JSON.stringify({
+            ...JSON.parse(languageText("en", [9], ORIGINALS)),
+            originals: { path: "status/builder.json", sha256: "f".repeat(64) },
+          }),
+        );
+      }
+    });
+    const { errors } = await quiet(() => w.run(30));
+    expect(errors).toEqual([
+      `[packs] cleanup (delete): catalog/${C}/en.json names no originals list by content; its originals list is not checked`,
+      `[packs] cleanup (delete): catalog/${C}/en.json names 1 deleted key (${part(9)}); it was written during the deletes; rebuild with force`,
+    ]);
   });
 
   it("a status turned running after the recheck is named after the deletes (the same window)", async () => {
