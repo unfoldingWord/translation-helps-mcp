@@ -32,18 +32,26 @@ function unescapeTsvText(text: string): string {
 
 /**
  * Parse a full TN TSV string, returning rows matching chapter (and optionally
- * verse). Accepts both old (Book/Ch/Vs) and new (Reference) layouts.
+ * verse or an inclusive verse range). Accepts both old (Book/Ch/Vs) and
+ * new (Reference) layouts.
  *
  * Context notes are ALWAYS included alongside verse-level notes:
  *   - front:intro  → book-level introduction (chapter = "front", verse = "intro")
- *   - {chapter}:intro → chapter-level introduction (verse = "intro")
- * These are returned regardless of any `verse` filter so that callers can access
+ *   - {chapter}:intro → chapter introduction for every chapter in the query
+ * These are returned regardless of any verse filter so that callers can access
  * introductory context for every passage query.
+ *
+ * `verseEnd` is the last verse when the query stays in `chapter`. `endChapter`
+ * is set for a cross-chapter reference ("23:50-24:12"): verses run from
+ * `verse` to the end of `chapter`, through any chapter in between, and from
+ * verse 1 through `verseEnd` of `endChapter`.
  */
 export function parseTranslationNotesTsv(
   tsv: string,
   chapter: string,
   verse?: string,
+  verseEnd?: string,
+  endChapter?: string,
 ): TranslationNoteRow[] {
   const lines = tsv.split("\n");
   const results: TranslationNoteRow[] = [];
@@ -66,12 +74,8 @@ export function parseTranslationNotesTsv(
       const ch = ref.slice(0, colonIdx);
       const vs = ref.slice(colonIdx + 1);
 
-      // Always include book-intro and chapter-intro, regardless of verse filter
-      const isBookIntro = ch === "front" && vs === "intro";
-      const isChapterIntro = ch === chapter && vs === "intro";
-      if (!isBookIntro && !isChapterIntro) {
-        if (ch !== chapter) continue;
-        if (verse && vs !== verse) continue;
+      if (!noteIntroInQuery(ch, vs, chapter, endChapter)) {
+        if (!rowInQuery(ch, vs, chapter, verse, verseEnd, endChapter)) continue;
       }
 
       results.push({
@@ -89,11 +93,11 @@ export function parseTranslationNotesTsv(
       if (cols.length < 8) continue;
       const [book, ch, vs, id, supRef, quote, occurrence, ...noteParts] = cols;
 
-      const isBookIntro = ch === "front" && vs === "intro";
-      const isChapterIntro = ch === chapter && vs === "intro";
-      if (!isBookIntro && !isChapterIntro) {
-        if (ch !== chapter) continue;
-        if (verse && vs !== verse) continue;
+      if (!noteIntroInQuery(ch ?? "", vs ?? "", chapter, endChapter)) {
+        if (
+          !rowInQuery(ch ?? "", vs ?? "", chapter, verse, verseEnd, endChapter)
+        )
+          continue;
       }
 
       results.push({
@@ -117,13 +121,16 @@ export function parseTranslationNotesTsv(
 // ---------------------------------------------------------------------------
 
 /**
- * Parse a full TWL TSV string, returning only rows matching chapter (and
- * optionally verse). Accepts both old and new layouts.
+ * Parse a full TWL TSV string, returning rows in the chapter and optional
+ * verse range. `verseEnd` and `endChapter` mean the same as in
+ * parseTranslationNotesTsv. Accepts both old and new layouts.
  */
 export function parseTranslationWordLinksTsv(
   tsv: string,
   chapter: string,
   verse?: string,
+  verseEnd?: string,
+  endChapter?: string,
 ): TranslationWordLinkRow[] {
   const lines = tsv.split("\n");
   const header = lines[0]?.toLowerCase() ?? "";
@@ -168,8 +175,7 @@ export function parseTranslationWordLinksTsv(
       twLink = twLink?.trim() ?? "";
     }
 
-    if (ch !== chapter) continue;
-    if (verse && vs !== verse) continue;
+    if (!rowInQuery(ch, vs, chapter, verse, verseEnd, endChapter)) continue;
 
     // Derive the clean article path from the rc:// URI
     const wordPath = twLink
@@ -193,8 +199,74 @@ export function parseTranslationWordLinksTsv(
 }
 
 // ---------------------------------------------------------------------------
-// Translation Questions
+// Verse ranges
 // ---------------------------------------------------------------------------
+
+/**
+ * True when a note's intro cell belongs with this query: the book intro
+ * always, and the chapter intro of every chapter the query covers.
+ */
+function noteIntroInQuery(
+  rowChapter: string,
+  rowVerse: string,
+  chapter: string,
+  endChapter?: string,
+): boolean {
+  if (rowVerse !== "intro") return false;
+  if (rowChapter === "front") return true;
+  return chapterInQuery(rowChapter, chapter, endChapter);
+}
+
+function chapterInQuery(
+  rowChapter: string,
+  chapter: string,
+  endChapter?: string,
+): boolean {
+  const cross = Boolean(endChapter) && endChapter !== chapter;
+  if (!cross) return rowChapter === chapter;
+  const rowCh = Number.parseInt(rowChapter, 10);
+  const startCh = Number.parseInt(chapter, 10);
+  const endCh = Number.parseInt(endChapter!, 10);
+  if (Number.isNaN(rowCh) || Number.isNaN(startCh) || Number.isNaN(endCh)) {
+    return false;
+  }
+  return rowCh >= startCh && rowCh <= endCh;
+}
+
+/**
+ * Whether a verse cell belongs to the query. Same-chapter ranges reuse
+ * verseOverlapsQueryRange, so a bridge is kept when it overlaps. A
+ * cross-chapter query keeps the start chapter from its first verse on,
+ * the end chapter through verseEnd, and every verse in between.
+ */
+function rowInQuery(
+  rowChapter: string,
+  rowVerse: string,
+  chapter: string,
+  verseStart?: string,
+  verseEnd?: string,
+  endChapter?: string,
+): boolean {
+  if (!chapterInQuery(rowChapter, chapter, endChapter)) return false;
+  const cross = Boolean(endChapter) && endChapter !== chapter;
+  if (!cross) {
+    if (!verseStart) return true;
+    return verseOverlapsQueryRange(rowVerse, verseStart, verseEnd);
+  }
+  if (!verseStart && !verseEnd) return true;
+  const rowCh = Number.parseInt(rowChapter, 10);
+  const startCh = Number.parseInt(chapter, 10);
+  const endCh = Number.parseInt(endChapter!, 10);
+  // Past any chapter's last verse, so the open side of the range still overlaps.
+  const throughChapter = "999";
+  if (rowCh === startCh) {
+    return verseOverlapsQueryRange(rowVerse, verseStart ?? "1", throughChapter);
+  }
+  if (rowCh === endCh) {
+    return verseOverlapsQueryRange(rowVerse, "1", verseEnd ?? throughChapter);
+  }
+  return verseOverlapsQueryRange(rowVerse, "1", throughChapter);
+}
 
 /**
  * True when a TSV verse cell overlaps an inclusive query range.
@@ -203,6 +275,7 @@ export function parseTranslationWordLinksTsv(
  * (`"intro"`). Non-numeric cells never match a verse filter. Bridges match when
  * they overlap the query range (not only when equal).
  */
+
 export function verseOverlapsQueryRange(
   tsvVerse: string,
   verseStart: string,

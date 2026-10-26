@@ -87,6 +87,7 @@ export function requireReferenceAndLanguage(url: URL): {
   language: string;
   book: string;
   chapter: string;
+  endChapter?: string;
   verseStart?: string;
   verseEnd?: string;
 } {

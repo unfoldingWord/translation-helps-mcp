@@ -31,6 +31,7 @@ import {
   getCachedJson,
   putCachedJson,
   responseCacheKey,
+  cacheVerse,
 } from "./responseCache.js";
 import { notesFromViews, packViewsOf } from "./packViews.js";
 
@@ -51,11 +52,13 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
     chapter,
     verseStart,
     verseEnd,
+    endChapter,
   } = ref;
 
   // The language packs' views first: the notes with their words already found, in a few KB.
+  // Views are one chapter file, so a cross-chapter range stays on the TSV path.
   const views = packViewsOf(env);
-  if (views) {
+  if (views && !endChapter) {
     const fromPack = await notesFromViews(views, {
       language: requestedLanguage,
       book,
@@ -82,7 +85,7 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
     requestedLanguage,
     book,
     chapter,
-    verseStart,
+    cacheVerse(chapter, verseStart, verseEnd, endChapter),
   );
 
   const cached = await getCachedJson<Record<string, unknown>>(
@@ -143,7 +146,13 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
       };
     }
 
-    const rows = parseTranslationNotesTsv(tsv, chapter, verseStart);
+    const rows = parseTranslationNotesTsv(
+      tsv,
+      chapter,
+      verseStart,
+      verseEnd,
+      endChapter,
+    );
 
     // Batch compute aligned gateway quotes (best-effort; empty string on failure)
     const alignmentRows = rows.map((r) => ({
