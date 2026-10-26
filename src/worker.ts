@@ -56,6 +56,8 @@ export interface Env extends DispatchEnv {
   MCP_API_KEY?: string;
   /** Max requests/min per IP for /mcp and /api/tool. Default 90; 0 = off. */
   RATE_LIMIT_RPM?: string;
+  /** Max part requests/min per IP for /v2/packs/parts/, counted apart. Default 600; 0 = off. */
+  PARTS_RATE_LIMIT_RPM?: string;
   OPENAI_API_KEY?: string;
   ASSETS: Fetcher;
   BASE_PATH?: string;

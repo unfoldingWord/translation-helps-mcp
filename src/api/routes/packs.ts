@@ -6,8 +6,12 @@
  *   /v2/packs/{compat}/{lang}/{sha256}  → packs/{compat}/{lang}/{sha256}.langpack.zip (immutable)
  *   /v2/packs/{compat}/originals/{sha256} → packs/{compat}/originals/{sha256}.langpack.zip
  *
- * Packs are content-addressed, so the keys an entry names are the keys these paths build. A language that is
- * eligible but has no entry yet answers 202 and asks tc-study's workflow for a build.
+ * Under a parts compat (format 2 and later) the entry is the language's parts list, and:
+ *   /v2/packs/{compat}/originals/{sha256} → catalog/{compat}/originals/{sha256}.json (the originals list; immutable)
+ *   /v2/packs/parts/{sha256}            → parts/{sha256}.part.gz (immutable, shared by every compat and language)
+ *
+ * Packs and parts are content-addressed, so the keys a list names are the keys these paths build. A language that
+ * is eligible but has no entry yet answers 202 and asks tc-study's workflow for a build.
  *
  * main's Pages app proxies /v2/* through SvelteKit, which turns a 200 whose ETag equals If-None-Match into its own
  * 304 without the CORS headers, and caches anything public. So this route answers every 304 itself, with CORS, and
@@ -22,8 +26,9 @@ import {
 import { enforceRateLimit } from "../../core/rateLimit.js";
 import {
   COMPAT_RE,
-  CURRENT_PACK_COMPAT,
   LANGUAGE_RE,
+  isBuildableCompat,
+  isPartsCompat,
   requestBuild,
   type BuildEnv,
   type BuildOutcome,
@@ -39,6 +44,8 @@ export type PacksEnv = {
   TRANSLATION_HELPS_CACHE: KVNamespace;
   ANALYTICS?: AnalyticsEngineDataset;
   RATE_LIMIT_RPM?: string;
+  /** Max part requests/min per IP, counted apart from RATE_LIMIT_RPM. Default 600; 0 = off. */
+  PARTS_RATE_LIMIT_RPM?: string;
 } & BuildEnv;
 
 /** `unknown` when Door43 could not answer, which must not read as a definite no. */
@@ -69,7 +76,7 @@ type Outcome =
   | "error";
 
 type Target = {
-  route: "entry" | "pack";
+  route: "entry" | "pack" | "originals" | "part";
   compat: string;
   lang: string;
   key: string;
@@ -86,15 +93,23 @@ const CORS: Record<string, string> = {
     "ETag, Content-Range, Content-Length, Accept-Ranges",
 };
 const NO_STORE = "no-store";
+const IMMUTABLE = "public, max-age=31536000, immutable";
 const CACHE_CONTROL = {
   entry: "no-cache",
-  pack: "public, max-age=31536000, immutable",
+  pack: IMMUTABLE,
+  originals: IMMUTABLE,
+  part: IMMUTABLE,
 } as const;
 const CONTENT_TYPE = {
   entry: "application/json",
   pack: "application/zip",
+  originals: "application/json",
+  part: "application/gzip",
 } as const;
 const SHA256_RE = /^[0-9a-f]{64}$/;
+/** About 730 requests download all of English; a limit of their own keeps them from blocking list checks. */
+const PARTS_RATE_LIMIT_SCOPE = "parts";
+const DEFAULT_PARTS_RPM = 600;
 
 /**
  * Lowercases, resolves the regional variant packs are built under (es → es-419), and validates. The mapping is
@@ -111,6 +126,16 @@ function parsePath(path: string): Target | null {
   const parts = path.split("/");
   if (parts.length !== 2 && parts.length !== 3) return null;
   const [compat = "", rawLang = "", sha] = parts;
+  // `parts` can never be a compat, so it cannot shadow one.
+  if (compat === "parts" && sha === undefined) {
+    if (!SHA256_RE.test(rawLang)) return null;
+    return {
+      route: "part",
+      compat: "",
+      lang: "",
+      key: `parts/${rawLang}.part.gz`,
+    };
+  }
   if (!COMPAT_RE.test(compat)) return null;
   if (sha === undefined) {
     const lang = normalizePackLanguage(rawLang);
@@ -123,6 +148,16 @@ function parsePath(path: string): Target | null {
     };
   }
   if (!SHA256_RE.test(sha)) return null;
+  if (isPartsCompat(compat)) {
+    // A parts compat has no per-language packs: a language's parts are under /v2/packs/parts/.
+    if (rawLang !== "originals") return null;
+    return {
+      route: "originals",
+      compat,
+      lang: "originals",
+      key: `catalog/${compat}/originals/${sha}.json`,
+    };
+  }
   const lang =
     rawLang === "originals" ? "originals" : normalizePackLanguage(rawLang);
   if (!lang) return null;
@@ -239,10 +274,9 @@ async function serve(
 ): Promise<Served | null> {
   const tags = parseIfNoneMatch(request.headers.get("If-None-Match"));
   const isHead = request.method === "HEAD";
+  const ranged = target.route === "pack" || target.route === "part";
   const range =
-    target.route === "pack" && !isHead
-      ? parseRange(request.headers.get("Range"))
-      : null;
+    ranged && !isHead ? parseRange(request.headers.get("Range")) : null;
 
   // R2 checks a single etag itself and then sends no body; a list or `*` is compared after the read.
   const single = tags.length === 1 && tags[0] !== "*" ? tags[0] : undefined;
@@ -295,7 +329,10 @@ async function serve(
   headers.set("Content-Type", CONTENT_TYPE[target.route]);
   headers.set("Cache-Control", CACHE_CONTROL[target.route]);
   headers.set("ETag", object.httpEtag);
-  if (target.route === "pack") headers.set("Accept-Ranges", "bytes");
+  if (ranged) headers.set("Accept-Ranges", "bytes");
+  // The app checks the sha256 of the gzip bytes themselves. With a Content-Encoding, whatever the upload carried,
+  // the runtime would compress them again or a browser would hand the app the decoded bytes.
+  if (target.route === "part") headers.delete("Content-Encoding");
 
   let status = 200;
   if (range) {
@@ -323,10 +360,14 @@ async function respond(
       response: new Response(null, { status: 204, headers: CORS }),
     };
   }
-  const limited = enforceRateLimit(request, env.RATE_LIMIT_RPM, {
-    ...CORS,
-    "Cache-Control": NO_STORE,
-  });
+  const limitHeaders = { ...CORS, "Cache-Control": NO_STORE };
+  const limited =
+    target?.route === "part"
+      ? enforceRateLimit(request, env.PARTS_RATE_LIMIT_RPM, limitHeaders, {
+          scope: PARTS_RATE_LIMIT_SCOPE,
+          fallbackRpm: DEFAULT_PARTS_RPM,
+        })
+      : enforceRateLimit(request, env.RATE_LIMIT_RPM, limitHeaders);
   if (limited) return { outcome: "rate-limited", response: limited };
   if (request.method !== "GET" && request.method !== "HEAD") {
     return plain(
@@ -344,7 +385,12 @@ async function respond(
 
   const served = await serve(request, bucket, target);
   if (served) {
-    if (target.route === "entry" && request.method === "GET") {
+    // f1.1 entries only: a parts list is not a PackCatalogEntry.
+    if (
+      target.route === "entry" &&
+      request.method === "GET" &&
+      !isPartsCompat(target.compat)
+    ) {
       // After the answer: the phone gets the entry it has now, and a newer pack is built for its next visit.
       ctx.waitUntil(
         deps.checkFreshness({
@@ -360,6 +406,12 @@ async function respond(
   }
   if (target.route === "pack") {
     return plain(404, "missing", { error: "pack not found" });
+  }
+  if (target.route === "part") {
+    return plain(404, "missing", { error: "part not found" });
+  }
+  if (target.route === "originals") {
+    return plain(404, "missing", { error: "originals list not found" });
   }
 
   let eligible: Eligibility = "unknown";
@@ -379,8 +431,8 @@ async function respond(
   if (eligible === "no") {
     return plain(404, "not-eligible", { error: "no packs for this language" });
   }
-  // The workflow only builds the current compat; asking for an older one would loop. The app must update.
-  if (target.compat !== CURRENT_PACK_COMPAT) {
+  // The workflow only builds the current compats; asking for an older one would loop. The app must update.
+  if (!isBuildableCompat(target.compat)) {
     return plain(404, "old-compat", {
       state: "unavailable",
       reason: "old-compat",
