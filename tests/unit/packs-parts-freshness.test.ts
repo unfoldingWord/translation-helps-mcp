@@ -4,12 +4,14 @@
  * asks for a parts build when one did. Every reason has a breaker: an `ok` build that already saw the change.
  */
 
+import { createHash } from "node:crypto";
 import { describe, it, expect, vi } from "vitest";
 import {
   builtStamps,
   changedSources,
   comparedStamps,
   checkPartsFreshness,
+  firstSeenKey,
   readPartsBuilder,
   type PartsListLite,
 } from "../../src/packs/partsFreshness";
@@ -72,17 +74,37 @@ const BUILDER = {
 function fakeKv() {
   const values = new Map<string, string>();
   const puts: string[] = [];
+  const ttls = new Map<string, number | undefined>();
+  /** Every get call: a key, or the keys of one bulk read. */
+  const gets: Array<string | string[]> = [];
+  let bulkFails = false;
   const kv = {
-    async get(key: string) {
+    async get(key: string | string[]) {
+      gets.push(key);
+      if (Array.isArray(key)) {
+        if (bulkFails) throw new Error("KV bulk read failed");
+        return new Map(key.map((k) => [k, values.get(k) ?? null]));
+      }
       return values.get(key) ?? null;
     },
-    async put(key: string, value: string) {
+    async put(key: string, value: string, o?: { expirationTtl?: number }) {
       values.set(key, value);
       puts.push(key);
+      ttls.set(key, o?.expirationTtl);
     },
   };
-  return { kv: kv as unknown as KVNamespace, values, puts };
+  return {
+    kv: kv as unknown as KVNamespace,
+    values,
+    puts,
+    ttls,
+    gets,
+    failBulkReads: () => void (bulkFails = true),
+  };
 }
+
+/** When the Worker first saw `stamp` for `key`, as an earlier check would have recorded it. */
+type FirstSeen = Array<[key: string, stamp: string, at: string]>;
 
 function setup(
   o: {
@@ -92,9 +114,15 @@ function setup(
     objects?: Record<string, unknown>;
     partsDispatch?: string;
     observeThrows?: boolean;
+    firstSeen?: FirstSeen;
   } = {},
 ) {
-  const { kv, puts } = fakeKv();
+  const { kv, puts, values, ttls, gets: kvGets, failBulkReads } = fakeKv();
+  const seed = (async () => {
+    for (const [key, stamp, at] of o.firstSeen ?? []) {
+      values.set(await firstSeenKey(key, stamp), at);
+    }
+  })();
   const objects: Record<string, unknown> = {
     ...(o.builder === undefined ? {} : { "status/builder.json": o.builder }),
     ...(o.status === undefined
@@ -131,7 +159,7 @@ function setup(
   const builds: Array<{ compat: string; language: string; reason: string }> =
     [];
   const budget = vi.fn(async () => true);
-  const check = (
+  const check = async (
     c: {
       list?: PartsListLite | null;
       now?: Date;
@@ -140,8 +168,9 @@ function setup(
       codeBudget?: () => Promise<boolean>;
       noBudget?: boolean;
     } = {},
-  ) =>
-    checkPartsFreshness({
+  ) => {
+    await seed;
+    return checkPartsFreshness({
       env,
       ctx,
       compat: c.compat ?? COMPAT,
@@ -164,7 +193,20 @@ function setup(
         return "dispatched";
       },
     });
-  return { check, builds, observations, points, puts, gets, budget };
+  };
+  return {
+    check,
+    builds,
+    observations,
+    points,
+    puts,
+    gets,
+    budget,
+    values,
+    ttls,
+    kvGets,
+    failBulkReads,
+  };
 }
 
 const moved = (changes: Record<string, string>): Observed => ({
@@ -384,6 +426,17 @@ describe("checkPartsFreshness", () => {
 
   describe("the breaker: an ok build that already saw the change", () => {
     const glt = moved({ [GLT]: "v13#2026-10-20T09_00_00Z" });
+    /**
+     * These cases read the date in the stamp, so the Worker is taken to have first seen each change long before it
+     * (as for a stamp dated ahead of when it appeared): the later of the two is what counts.
+     */
+    const EARLY = "2026-09-01T00:00:00Z";
+    const seenEarly = (observed: Observed): FirstSeen =>
+      "stamps" in observed
+        ? Object.entries(observed.stamps)
+            .filter(([key, stamp]) => STAMPS[key] !== stamp)
+            .map(([key, stamp]) => [key, stamp, EARLY])
+        : [];
     const ok = (started: string, extra: Record<string, unknown> = {}) => ({
       state: "ok",
       at: "2026-10-20T12:00:00Z",
@@ -392,10 +445,12 @@ describe("checkPartsFreshness", () => {
       started,
       ...extra,
     });
+    const at = (observed: Observed, status: unknown) =>
+      setup({ observed, status, firstSeen: seenEarly(observed) });
 
     it("an ok build started after the newest change: seen, with no build", async () => {
       const log = vi.spyOn(console, "log").mockImplementation(() => {});
-      const s = setup({ observed: glt, status: ok("2026-10-20T10:00:00Z") });
+      const s = at(glt, ok("2026-10-20T10:00:00Z"));
       expect(await s.check()).toBe("seen");
       expect(s.builds).toEqual([]);
       expect(s.points).toEqual([
@@ -405,15 +460,12 @@ describe("checkPartsFreshness", () => {
     });
 
     it("one started before it: a build", async () => {
-      const s = setup({ observed: glt, status: ok("2026-10-20T08:00:00Z") });
+      const s = at(glt, ok("2026-10-20T08:00:00Z"));
       expect(await s.check()).toBe("dispatched");
     });
 
     it("a failed status, however recent: a build (the guard then cools it)", async () => {
-      const s = setup({
-        observed: glt,
-        status: { ...ok("2026-10-21T09:00:00Z"), state: "failed" },
-      });
+      const s = at(glt, { ...ok("2026-10-21T09:00:00Z"), state: "failed" });
       expect(await s.check()).toBe("dispatched");
     });
 
@@ -422,51 +474,54 @@ describe("checkPartsFreshness", () => {
         [GLT]: "v13#2026-10-20T09_00_00Z",
         [TN]: "v13#2026-10-21T08_00_00Z",
       });
-      const s = setup({ observed: both, status: ok("2026-10-20T10:00:00Z") });
+      const s = at(both, ok("2026-10-20T10:00:00Z"));
       expect(await s.check()).toBe("dispatched");
     });
 
     it("a lexicon date's offset is read back from the stamp (…T19_52_42-04_00 is 23:52:42 UTC)", async () => {
       const lexicon = moved({ [UHL]: "fedcba9876#2026-10-19T19_52_42-04_00" });
-      const before = setup({
-        observed: lexicon,
-        status: ok("2026-10-19T23:00:00Z"),
-      });
-      expect(await before.check()).toBe("dispatched");
-      const after = setup({
-        observed: lexicon,
-        status: ok("2026-10-19T23:55:00Z"),
-      });
-      expect(await after.check()).toBe("seen");
+      expect(await at(lexicon, ok("2026-10-19T23:00:00Z")).check()).toBe(
+        "dispatched",
+      );
+      expect(await at(lexicon, ok("2026-10-19T23:55:00Z")).check()).toBe(
+        "seen",
+      );
     });
 
     it("MACULA's toISOString date is read back too", async () => {
       const macula = moved({
         "Biblica/hbo/macula": "f1e2d3c4b5#2026-10-20T00_00_00.000Z",
       });
+      expect(await at(macula, ok("2026-10-19T23:59:00Z")).check()).toBe(
+        "dispatched",
+      );
+      expect(await at(macula, ok("2026-10-20T00:01:00Z")).check()).toBe("seen");
+    });
+
+    it("a change with no date is seen only by an ok build that started after the Worker first saw it", async () => {
+      const undated = moved({ [GLT]: "v13" });
+      const firstSeen: FirstSeen = [[GLT, "v13", "2026-10-20T12:00:00Z"]];
       expect(
         await setup({
-          observed: macula,
-          status: ok("2026-10-19T23:59:00Z"),
+          observed: undated,
+          status: ok("2026-10-20T10:00:00Z"),
+          firstSeen,
         }).check(),
       ).toBe("dispatched");
       expect(
         await setup({
-          observed: macula,
-          status: ok("2026-10-20T00:01:00Z"),
+          observed: undated,
+          status: ok("2026-10-20T13:00:00Z"),
+          firstSeen,
         }).check(),
       ).toBe("seen");
-    });
-
-    it("a change with no date is taken as seen by any ok build: nothing tells a later one from a disagreement", async () => {
-      const undated = moved({ [GLT]: "v13" });
+      // Seen for the first time now: no build so far can have read it.
       expect(
         await setup({
           observed: undated,
-          status: ok("2026-01-01T00:00:00Z"),
+          status: ok("2026-10-21T09:59:00Z"),
         }).check(),
-      ).toBe("seen");
-      expect(await setup({ observed: undated }).check()).toBe("dispatched");
+      ).toBe("dispatched");
     });
 
     it("a code change is seen only by an ok run of that code, whenever it started", async () => {
@@ -490,21 +545,133 @@ describe("checkPartsFreshness", () => {
     });
 
     it("a seen release and an unseen code: a code rebuild, budgeted on the daily path", async () => {
-      const s = setup({
+      const o = {
         builder: { ...BUILDER, code: NEW_CODE },
         observed: glt,
         status: ok("2026-10-20T10:00:00Z", { code: CODE }),
-      });
+        firstSeen: seenEarly(glt),
+      };
+      const s = setup(o);
       expect(await s.check()).toBe("dispatched");
       expect(s.builds[0]?.reason).toBe("code");
-      const daily = setup({
-        builder: { ...BUILDER, code: NEW_CODE },
-        observed: glt,
-        status: ok("2026-10-20T10:00:00Z", { code: CODE }),
-      });
+      const daily = setup(o);
       expect(
         await daily.check({ reason: "daily", codeBudget: async () => false }),
       ).toBe("budget");
+    });
+  });
+
+  describe("a change is dated no earlier than when the Worker first saw it", () => {
+    // Taller: a MACULA commit made on a branch on Monday, merged into the default branch on Thursday. GitHub dates it
+    // Monday, but no build could read it before Thursday.
+    const MONDAY_STAMP = "f1e2d3c4b5#2026-10-19T09_00_00.000Z";
+    const merged = moved({
+      "Biblica/hbo/macula": MONDAY_STAMP,
+      "Biblica/el-x-koine/macula": MONDAY_STAMP,
+    });
+    const WEDNESDAY = "2026-10-21T10:00:00Z";
+    const THURSDAY_CHECK = new Date("2026-10-22T16:00:00Z");
+    const FRIDAY_CHECK = new Date("2026-10-23T09:00:00Z");
+    const ok = (started: string) => ({
+      state: "ok",
+      at: started,
+      failures: 0,
+      run: "1",
+      started,
+    });
+
+    it("a build on Wednesday did not see Monday's commit merged on Thursday; one after Thursday's check did", async () => {
+      // Thursday: the merge is seen; Wednesday's build started after the commit's date but before the merge.
+      const thursday = setup({ observed: merged, status: ok(WEDNESDAY) });
+      expect(await thursday.check({ now: THURSDAY_CHECK })).toBe("dispatched");
+      const recorded = await firstSeenKey("Biblica/hbo/macula", MONDAY_STAMP);
+      expect(thursday.values.get(recorded)).toBe(THURSDAY_CHECK.toISOString());
+
+      // Friday, the list still disagrees: the build Thursday's check asked for, started after it, saw the commit.
+      const firstSeen: FirstSeen = [
+        ["Biblica/hbo/macula", MONDAY_STAMP, THURSDAY_CHECK.toISOString()],
+        [
+          "Biblica/el-x-koine/macula",
+          MONDAY_STAMP,
+          THURSDAY_CHECK.toISOString(),
+        ],
+      ];
+      const after = setup({
+        observed: merged,
+        status: ok("2026-10-22T16:05:00Z"),
+        firstSeen,
+      });
+      expect(await after.check({ now: FRIDAY_CHECK })).toBe("seen");
+      expect(after.builds).toEqual([]);
+
+      // A build that started after the merge but before the Worker saw it may have read it; it is not taken as
+      // having done so (one build more, never one less).
+      const between = setup({
+        observed: merged,
+        status: ok("2026-10-22T15:30:00Z"),
+        firstSeen,
+      });
+      expect(await between.check({ now: FRIDAY_CHECK })).toBe("dispatched");
+    });
+
+    it("the first time is written once, for 400 days, under a hash of the key and the stamp", async () => {
+      const s = setup({ observed: merged, status: ok(WEDNESDAY) });
+      await s.check({ now: THURSDAY_CHECK });
+      const hash = createHash("sha256")
+        .update(`Biblica/hbo/macula|${MONDAY_STAMP}`)
+        .digest("hex")
+        .slice(0, 32);
+      expect(await firstSeenKey("Biblica/hbo/macula", MONDAY_STAMP)).toBe(
+        `packs:first-seen:${hash}`,
+      );
+      const firstSeenPuts = s.puts.filter((k) =>
+        k.startsWith("packs:first-seen:"),
+      );
+      expect(firstSeenPuts).toHaveLength(2);
+      expect(s.ttls.get(`packs:first-seen:${hash}`)).toBe(400 * 24 * 3600);
+
+      // A later check finds it and writes nothing over it.
+      const later = new Date(THURSDAY_CHECK.getTime() + 61 * MINUTE);
+      await s.check({ now: later });
+      expect(
+        s.puts.filter((k) => k.startsWith("packs:first-seen:")),
+      ).toHaveLength(2);
+      expect(s.values.get(`packs:first-seen:${hash}`)).toBe(
+        THURSDAY_CHECK.toISOString(),
+      );
+    });
+
+    it("one bulk KV read a check, and none when nothing changed", async () => {
+      const s = setup({ observed: merged });
+      await s.check();
+      const reads = s.kvGets.filter((g) => Array.isArray(g));
+      expect(reads).toEqual([
+        [
+          await firstSeenKey("Biblica/el-x-koine/macula", MONDAY_STAMP),
+          await firstSeenKey("Biblica/hbo/macula", MONDAY_STAMP),
+        ],
+      ]);
+      const fresh = setup();
+      expect(await fresh.check()).toBe("fresh");
+      expect(fresh.kvGets.filter((g) => Array.isArray(g))).toEqual([]);
+      expect(fresh.puts).toEqual([`packs:fresh:${COMPAT}:${LANG}`]);
+    });
+
+    it("a bulk KV read that fails: first seen now, and nothing written over what may be there", async () => {
+      // Recorded Tuesday, so the build started Thursday 15:59 would have seen it, but the record cannot be read.
+      const s = setup({
+        observed: merged,
+        status: ok("2026-10-22T15:59:00Z"),
+        firstSeen: [
+          ["Biblica/hbo/macula", MONDAY_STAMP, "2026-10-20T00:00:00Z"],
+          ["Biblica/el-x-koine/macula", MONDAY_STAMP, "2026-10-20T00:00:00Z"],
+        ],
+      });
+      s.failBulkReads();
+      expect(await s.check({ now: THURSDAY_CHECK })).toBe("dispatched");
+      expect(s.puts.filter((k) => k.startsWith("packs:first-seen:"))).toEqual(
+        [],
+      );
     });
   });
 
@@ -569,7 +736,9 @@ describe("checkPartsFreshness", () => {
       "throttled",
     );
     expect(s.observations).toEqual([LANG]);
-    expect(s.puts).toEqual([`packs:fresh:${COMPAT}:${LANG}`]);
+    expect(s.puts.filter((k) => k.startsWith("packs:fresh:"))).toEqual([
+      `packs:fresh:${COMPAT}:${LANG}`,
+    ]);
     expect(await s.check({ now: new Date(NOW.getTime() + 61 * MINUTE) })).toBe(
       "dispatched",
     );

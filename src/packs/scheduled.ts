@@ -14,11 +14,17 @@
  * parts check fetches at most: the language's catalog search (1), UHB and UGNT (2) and MACULA (2, plus a token mint),
  * which are cached in KV for the hour and so are paid by the run's first check only, the two lexicons (4), and a
  * dispatch (a token mint and the POST, twice when GitHub refuses a cached token: 4). That is at most 14 for the
- * first check and 9 for each other one, so `PARTS_CHECKS_PER_RUN = 5` checks stay at 50 or fewer, and about 25 KV
- * and R2 calls each. A slice with more languages than that checks five of them, chosen afresh each day, and the
- * rest are still checked by the phones that open them. The f1.1 sweep stays one daily loop, as before, and the
- * cleanup counts its own R2 calls (`src/packs/cleanup.ts`). Going over a limit is not a disaster either: the call that
- * goes over throws, and every check and the cleanup turn a thrown call into "unknown", "error" or "aborted".
+ * first check and 9 for each other one, so `PARTS_CHECKS_PER_RUN = 5` checks stay at 50 or fewer. The search always
+ * asks Door43, past the catalog cache, and a shared reading with an input left out is kept 10 minutes, so a run
+ * still reads it once. KV and R2: about 26 calls a check (the hour, the list, the shared readings and the token, the
+ * builder file and the status, one bulk read of the first-seen records, which KV counts as one call, a dispatch and
+ * the code budget), plus one KV write for each change the Worker sees for the first time, once per key and stamp in
+ * the whole Worker. Five checks are about 130; at 03 UTC, with the cleanup's 800, that leaves room for some 70 stamps
+ * never seen before in one run. A slice with more than five languages checks five of them, chosen afresh each day,
+ * and the rest are still checked by the phones that open them. The f1.1 sweep stays one daily loop, as before, and
+ * the cleanup counts its own R2 calls (`src/packs/cleanup.ts`). Going over a limit is not a disaster either: the
+ * call that goes over throws, and every check and the cleanup turn a thrown call into an unreadable input,
+ * "unknown", "error" or "aborted".
  */
 
 import {

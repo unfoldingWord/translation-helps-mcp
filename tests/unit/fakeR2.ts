@@ -147,7 +147,11 @@ export function fakeKv() {
   const values = new Map<string, string>();
   const puts: Array<{ key: string; value: string; ttl?: number }> = [];
   const kv = {
-    async get(key: string) {
+    // An array is KV's bulk read: one Map of up to 100 keys.
+    async get(key: string | string[]) {
+      if (Array.isArray(key)) {
+        return new Map(key.map((k) => [k, values.get(k) ?? null]));
+      }
       return values.get(key) ?? null;
     },
     async put(key: string, value: string, o?: { expirationTtl?: number }) {

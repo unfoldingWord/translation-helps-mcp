@@ -144,20 +144,90 @@ function stampDate(stamp: string): number {
   return Date.parse(stamp.slice(hash + 1).replaceAll("_", ":"));
 }
 
+const FIRST_SEEN_PREFIX = "packs:first-seen:";
+/** Longer than any list goes unbuilt in practice; an expired record only costs one build more. */
+const FIRST_SEEN_TTL_S = 400 * 24 * 3600;
+/** KV's bulk read takes at most 100 keys, and counts as one operation against the invocation's limit. */
+const KV_BULK_MAX = 100;
+
+/** Where the Worker keeps when it first saw `stamp` for `key`: a hash, since stamps carry any character. */
+export async function firstSeenKey(
+  key: string,
+  stamp: string,
+): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`${key}|${stamp}`),
+  );
+  const hex = Array.from(new Uint8Array(digest), (b) =>
+    b.toString(16).padStart(2, "0"),
+  ).join("");
+  return `${FIRST_SEEN_PREFIX}${hex.slice(0, 32)}`;
+}
+
+/**
+ * When the Worker first saw each change's current stamp, recording `now` for those it never saw before (review H1).
+ * A stamp's own date is when it was made, not when a build could read it: a MACULA commit made on a Taller branch
+ * on Monday and merged on Thursday is dated Monday, as is a lexicon commit merged late or a release Door43 indexed
+ * late, so a build on Wednesday would otherwise count as having seen it. One bulk read for all of them; a write only
+ * the first time. A read that fails is taken as first seen now and writes nothing, so it never moves a record later.
+ */
+async function firstSeen(
+  kv: KVNamespace,
+  changes: Array<{ key: string; current: string }>,
+  now: Date,
+): Promise<number[]> {
+  const keys = await Promise.all(
+    changes.map((c) => firstSeenKey(c.key, c.current)),
+  );
+  const found = new Map<string, string | null>();
+  try {
+    for (let i = 0; i < keys.length; i += KV_BULK_MAX) {
+      const part = await kv.get(keys.slice(i, i + KV_BULK_MAX));
+      for (const [k, v] of part) found.set(k, v);
+    }
+  } catch (err) {
+    console.error(`[packs] first-seen records unreadable:`, err);
+    return keys.map(() => now.getTime());
+  }
+  return Promise.all(
+    keys.map(async (k) => {
+      const at = Date.parse(found.get(k) ?? "");
+      if (!Number.isNaN(at)) return at;
+      try {
+        await kv.put(k, now.toISOString(), {
+          expirationTtl: FIRST_SEEN_TTL_S,
+        });
+      } catch {
+        // Recorded on a later check, which only dates the change later.
+      }
+      return now.getTime();
+    }),
+  );
+}
+
 /**
  * Whether an `ok` build started after every change: then it read them, and a list that still differs is a
- * disagreement between the two derivations, not news. A change with no date cannot be placed in time, so any `ok`
- * build counts as having seen it; otherwise a stamp the two sides write differently would build every hour.
+ * disagreement between the two derivations, not news. A change is dated by the later of its stamp's date and when
+ * the Worker first saw it (`firstSeen`), so a change with no date, or one made before it could be read, is seen only
+ * by a build that started after the Worker saw it: one build per change, then the breaker holds.
  */
 function sourcesSeen(
   changes: Array<{ current: string }>,
+  seenAt: number[],
   status: BuildStatus | null,
 ): boolean {
   const sawAt = okBuildSawDoor43At(status);
   if (Number.isNaN(sawAt)) return false;
-  const dates = changes.map((c) => stampDate(c.current));
-  const newest = Math.max(-Infinity, ...dates.filter((d) => !Number.isNaN(d)));
-  return sawAt > newest;
+  const dates = changes.map((c, i) => {
+    const dated = stampDate(c.current);
+    const seen = seenAt[i] ?? NaN;
+    return Math.max(
+      Number.isNaN(dated) ? -Infinity : dated,
+      Number.isNaN(seen) ? -Infinity : seen,
+    );
+  });
+  return sawAt > Math.max(-Infinity, ...dates);
 }
 
 /**
@@ -286,8 +356,11 @@ export async function checkPartsFreshness(o: {
       ...sources.map((c) => `${c.key} ${c.built ?? "new"} → ${c.current}`),
       ...(code ? [`code ${list.code} → ${code}`] : []),
     ].join("; ")})`;
+    // Recorded whatever the status, so the time is when the change was first seen, not when a build was first ok.
+    const seenAt = sources.length ? await firstSeen(kv, sources, now) : [];
     const status = await readBuildStatus(bucket, compat, language);
-    const unseenSources = sources.length > 0 && !sourcesSeen(sources, status);
+    const unseenSources =
+      sources.length > 0 && !sourcesSeen(sources, seenAt, status);
     const unseenCode = code !== null && !codeSeen(status, code);
     if (!unseenSources && !unseenCode) {
       return done(
