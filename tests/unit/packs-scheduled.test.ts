@@ -15,6 +15,7 @@ import {
   PACKS_CRONS,
   PARTS_CHECKS_PER_RUN,
   PARTS_SLICE_CRON,
+  checksPerRun,
   cleanupMode,
   fnv1a32,
   partsHourOf,
@@ -364,6 +365,85 @@ describe("runScheduled: the parts sweep", () => {
     expect(new Set(picks).size).toBeGreaterThan(1);
   });
 
+  it("checks PARTS_CHECKS_PER_RUN languages a run when it is set (0 checks none); anything else is the default 5", async () => {
+    const crowded = languagesOfHour(9, 8);
+    for (const [raw, n] of [
+      ["2", 2],
+      ["8", 8],
+      ["0", 0],
+      [undefined, PARTS_CHECKS_PER_RUN],
+      ["", PARTS_CHECKS_PER_RUN],
+      ["abc", PARTS_CHECKS_PER_RUN],
+      ["-1", PARTS_CHECKS_PER_RUN],
+      ["1.5", PARTS_CHECKS_PER_RUN],
+    ] as const) {
+      const s = setup({
+        parts: crowded,
+        env: { PARTS_CHECKS_PER_RUN: raw },
+      });
+      await s.run(SLICE, at(9, 37));
+      expect([raw, s.parts.length]).toEqual([raw, n]);
+    }
+    expect(checksPerRun("3")).toBe(3);
+    expect(PARTS_CHECKS_PER_RUN).toBe(5);
+  });
+
+  it.each([
+    [7, 5],
+    [12, 5],
+    [7, 3],
+    [10, 5],
+    [11, 4],
+  ])(
+    "rotates a slice of %i by the day: with %i a run, every language is checked within ceil(k/perRun) days, on any days",
+    async (k, perRun) => {
+      const crowded = languagesOfHour(11, k);
+      const s = setup({
+        parts: crowded,
+        env: { PARTS_CHECKS_PER_RUN: String(perRun) },
+      });
+      const byDay: string[][] = [];
+      // 40 days in a row, across a month's end.
+      for (let d = 0; d < 40; d++) {
+        const when = new Date(
+          at(11, 37, "2026-10-10").getTime() + d * 86_400_000,
+        );
+        s.parts.length = 0;
+        await s.run(SLICE, when);
+        byDay.push(s.parts.map((c) => c.language));
+      }
+      const window = Math.ceil(k / perRun);
+      for (let d = 0; d + window <= byDay.length; d++) {
+        const seen = new Set(byDay.slice(d, d + window).flat());
+        expect([d, seen.size]).toEqual([d, k]);
+      }
+      // The day's offset is dayIndex * perRun % k into the sorted slice.
+      const sorted = [...crowded].sort();
+      const dayIndex = Math.floor(
+        at(11, 37, "2026-10-10").getTime() / 86_400_000,
+      );
+      const offset = (dayIndex * perRun) % k;
+      expect(byDay[0]).toEqual(
+        [...sorted.slice(offset), ...sorted.slice(0, offset)].slice(0, perRun),
+      );
+    },
+  );
+
+  it("takes the day from the schedule's time, not the clock: a 23:37 run that starts after midnight keeps its day", async () => {
+    const crowded = languagesOfHour(23, PARTS_CHECKS_PER_RUN + 3);
+    const late = setup({ parts: crowded });
+    const onTime = setup({ parts: crowded });
+    const scheduled = at(23, 37);
+    await late.run(SLICE, scheduled, {
+      now: new Date(scheduled.getTime() + 40 * 60_000),
+    });
+    await onTime.run(SLICE, scheduled);
+    expect(late.parts.map((c) => c.language)).toEqual(
+      onTime.parts.map((c) => c.language),
+    );
+    expect(late.parts.length).toBe(PARTS_CHECKS_PER_RUN);
+  });
+
   it("one failing check does not stop the next", async () => {
     const six = languagesOfHour(6, 3);
     const s = setup({ parts: six });
@@ -485,6 +565,19 @@ describe("runScheduled: the code budget (the real parts check)", () => {
     );
     for (let hour = 0; hour < 24; hour++) await s.run(SLICE, at(hour), s.more);
     expect(s.builds).toHaveLength(CODE_REBUILDS_PER_DAY);
+  });
+
+  it("counts the code budget on the schedule's day, not the clock's", async () => {
+    const [language] = languagesOfHour(23, 1) as [string];
+    const s = codeBump([language]);
+    const scheduled = at(23, 37);
+    await s.run(SLICE, scheduled, {
+      ...s.more,
+      now: new Date(scheduled.getTime() + 40 * 60_000),
+    });
+    expect(s.builds).toEqual([{ language, reason: "daily" }]);
+    expect(s.values.get(`packs:code-rebuilds:${DAY}`)).toBe("1");
+    expect(s.values.has(`packs:code-rebuilds:2026-10-22`)).toBe(false);
   });
 
   it("does not spend the code budget on a moved stamp", async () => {

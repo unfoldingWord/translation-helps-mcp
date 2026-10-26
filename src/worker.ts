@@ -66,6 +66,8 @@ export interface Env extends DispatchEnv {
   PACKS_SWEEP?: string;
   /** `dry-run` or `delete` runs the parts cleanup at 03 UTC (retried at 04 and 05); unset (or anything else) is off. */
   PACKS_CLEANUP?: string;
+  /** Parts checks in one run of the hourly parts slice. Default 5 (the Free plan's 50 outside fetches); 0 = none. */
+  PARTS_CHECKS_PER_RUN?: string;
   OPENAI_API_KEY?: string;
   ASSETS: Fetcher;
   BASE_PATH?: string;

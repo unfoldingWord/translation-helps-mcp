@@ -24,8 +24,9 @@
  * builder file and the status, one bulk read of the first-seen records, which KV counts as one call, and a
  * dispatch), plus one KV write for each change the Worker sees for the first time, once per key and stamp in the
  * whole Worker, and the code budget, read once and written once a run. Five checks are about 130. A slice with more
- * than five languages checks five of them, the next five each day, and the rest are still checked by the phones that
- * open them. The f1.1 sweep stays one daily loop, as before, and the cleanup counts its own R2 calls
+ * than five languages checks five of them, the next five each day (so each of k languages at least every
+ * ceil(k / 5) days), and the rest are still checked by the phones that open them. `PARTS_CHECKS_PER_RUN` changes the
+ * five (on a Paid plan it can be raised). The f1.1 sweep stays one daily loop, as before, and the cleanup counts its own R2 calls
  * (`src/packs/cleanup.ts`). Going over a limit is not a disaster either: the call that goes over throws, and every
  * check and the cleanup turn a thrown call into an unreadable input, "unknown", "error" or "aborted".
  */
@@ -54,6 +55,8 @@ export type ScheduledEnv = FreshnessEnv & {
   PACKS_SWEEP?: string;
   /** `dry-run` or `delete` runs the parts cleanup at 03 UTC; anything else, or unset, is off. */
   PACKS_CLEANUP?: string;
+  /** Parts checks in one run of the parts slice: a whole number, 0 for none; unset or anything else is 5. */
+  PARTS_CHECKS_PER_RUN?: string;
 };
 
 export type CleanupMode = "dry-run" | "delete";
@@ -73,9 +76,16 @@ export const PACKS_CRONS: readonly string[] = [
 ];
 /** Code-only rebuilds the sweep may ask for in a day (Decision 7): a code bump reaches 100 languages in ten days. */
 export const CODE_REBUILDS_PER_DAY = 10;
-/** Parts checks in one run, so that a run stays within the Free plan's 50 outside fetches (see above). */
+/** Parts checks in one run by default, so that a run stays within the Free plan's 50 outside fetches (see above). */
 export const PARTS_CHECKS_PER_RUN = 5;
 const COUNTER_TTL_S = 2 * 24 * 3600;
+const DAY_MS = 24 * 3_600_000;
+
+/** `PARTS_CHECKS_PER_RUN`: a whole number (0 checks none); unset, empty or anything else is the default. */
+export function checksPerRun(raw: string | undefined): number {
+  const n = raw?.trim() ? Number(raw) : Number.NaN;
+  return Number.isInteger(n) && n >= 0 ? n : PARTS_CHECKS_PER_RUN;
+}
 
 /** The standard 32-bit FNV-1a, a copy of tc-study language-pack `parts/partSlots.ts` `fnv1a32`. */
 export function fnv1a32(text: string): number {
@@ -209,14 +219,18 @@ async function runPartsSweep(
   if (!slice.length) return;
 
   const kv = env.TRANSLATION_HELPS_CACHE;
-  const day = (deps.now ?? new Date()).toISOString().slice(0, 10);
-  // A different order each day, so that a slice over the cap leaves out other languages tomorrow.
-  const ordered = [...slice].sort(
-    (a, b) =>
-      fnv1a32(`${day}:${a}`) - fnv1a32(`${day}:${b}`) || (a < b ? -1 : 1),
-  );
-  const checked = ordered.slice(0, PARTS_CHECKS_PER_RUN);
-  const left = ordered.slice(PARTS_CHECKS_PER_RUN);
+  // The schedule's day, not the clock's: a 23:37 run that starts after midnight keeps its day's turn and budget.
+  const day = at.toISOString().slice(0, 10);
+  const perRun = checksPerRun(env.PARTS_CHECKS_PER_RUN);
+  // A slice over the cap starts each day perRun further along (sorted, as a ring), so each of its k languages is
+  // checked at least every ceil(k / perRun) days.
+  const sorted = [...slice].sort();
+  const k = sorted.length;
+  const offset =
+    k > perRun ? (Math.floor(at.getTime() / DAY_MS) * perRun) % k : 0;
+  const ordered = [...sorted.slice(offset), ...sorted.slice(0, offset)];
+  const checked = ordered.slice(0, perRun);
+  const left = ordered.slice(perRun);
   const budgetKey = `packs:code-rebuilds:${day}`;
   const check = deps.checkPartsFreshness ?? checkPartsFreshness;
   const results: string[] = [];
