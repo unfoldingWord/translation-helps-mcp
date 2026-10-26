@@ -38,7 +38,7 @@ export type PackCatalogEntry = {
 
 export type FreshnessEnv = BuildEnv & { ANALYTICS?: AnalyticsEngineDataset };
 
-type Search = (
+export type Search = (
   language: string,
   env: FreshnessEnv,
   ctx: ExecutionContext,
@@ -96,24 +96,37 @@ export function newestDifferingRelease(
   return newest;
 }
 
-/** Keyed as bt-synergy's catalogIdentity keys a hit: owner/language/repo name after the first `_`. */
+/** The resource id of a catalog row, as bt-synergy's catalogIdentity takes it: the repo name after the first `_`. */
+export function catalogResourceId(row: Pick<CatalogEntry, "name">): string {
+  return row.name.includes("_")
+    ? row.name.split("_").slice(1).join("_")
+    : row.name;
+}
+
+/** Keyed as bt-synergy's catalogIdentity keys a hit: owner/language/repo name after the first `_`; null without a name. */
+export function catalogKey(
+  row: Pick<CatalogEntry, "owner" | "name" | "language">,
+  language: string,
+): string | null {
+  if (!row.name) return null;
+  return `${row.owner}/${row.language || language}/${catalogResourceId(row)}`;
+}
+
 export function currentStamps(
   rows: CatalogEntry[],
   language: string,
 ): Record<string, string> {
   const stamps: Record<string, string> = {};
   for (const row of rows) {
-    if (!row.stamp || row.stamp === "nostamp" || !row.name) continue;
-    const id = row.name.includes("_")
-      ? row.name.split("_").slice(1).join("_")
-      : row.name;
-    if (NOT_CATALOG_STAMPED.has(id)) continue;
-    stamps[`${row.owner}/${row.language || language}/${id}`] = row.stamp;
+    const key = catalogKey(row, language);
+    if (!row.stamp || row.stamp === "nostamp" || !key) continue;
+    if (NOT_CATALOG_STAMPED.has(catalogResourceId(row))) continue;
+    stamps[key] = row.stamp;
   }
   return stamps;
 }
 
-const defaultSearch: Search = (language, env, ctx) =>
+export const defaultSearch: Search = (language, env, ctx) =>
   catalogSearch({
     lang: language,
     kv: env.TRANSLATION_HELPS_CACHE,

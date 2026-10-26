@@ -225,6 +225,11 @@ export interface CatalogEntry {
   language?: string;
   /** The release's identity in bt-synergy's `resourceContentStamp` format: `tag#published_at`. */
   stamp?: string;
+  /**
+   * Whether the hit names a release tag (`release.tag_name`). tc-study's discovery leaves a hit without one out, so
+   * the packs freshness check does too. Absent on rows cached before it existed.
+   */
+  hasRelease?: boolean;
 }
 
 export interface LanguageEntry {
@@ -499,6 +504,7 @@ function mapApiEntry(raw: CatalogApiEntry): CatalogEntry {
     },
     language: raw.language,
     stamp: catalogStamp(raw),
+    hasRelease: Boolean(raw.release?.tag_name),
   };
 }
 

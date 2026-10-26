@@ -611,6 +611,20 @@ describe("catalogSearch stamps each row like bt-synergy's resourceContentStamp",
     const rows = await catalogSearch({ lang: "es-419" });
     expect(rows.map((r) => r.stamp)).toEqual(["v42", "nostamp"]);
   });
+
+  it("says whether the hit names a release tag, which tc-study's discovery requires", async () => {
+    mockFetch({
+      "catalog/search": {
+        ok: true,
+        data: [
+          hit({ release: { tag_name: "v42" } }),
+          hit({ name: "es-419_gst" }),
+        ],
+      },
+    });
+    const rows = await catalogSearch({ lang: "fr" });
+    expect(rows.map((r) => r.hasRelease)).toEqual([true, false]);
+  });
 });
 
 describe("catalogSearch limit", () => {
