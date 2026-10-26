@@ -79,7 +79,8 @@ Neither merges before step 1 is done (it is, as of 2026-10-21).
     `Get-Content key.pem -Raw | npx wrangler secret put GITHUB_APP_PRIVATE_KEY --config wrangler.toml --env <env>`
 - Verify: `npx wrangler secret list --config wrangler.toml --env <env>` shows the three names.
 - Already in wrangler (no action): `PACKS_TARGET` on `translation-helps-mcp-v2` (preview → staging, production →
-  production), binding `LANGUAGE_PACKS` (base and preview → `language-packs-staging`, production → `language-packs`),
+  production), `PACKS_PARTS_DISPATCH = "on"` in preview only (production asks for no parts builds until delivery 3's
+  Task 14; parts dispatches have their own daily cap, `PACKS_PARTS_DAILY_CAP`, default 20), binding `LANGUAGE_PACKS` (base and preview → `language-packs-staging`, production → `language-packs`),
   cron `17 6 * * *` in production only (it checks every published language for a newer Door43 release and builds
   nothing by itself).
 - Approved by Abel: ☐

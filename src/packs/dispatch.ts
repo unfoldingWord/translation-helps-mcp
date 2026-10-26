@@ -16,6 +16,10 @@ import {
 export type BuildEnv = {
   LANGUAGE_PACKS?: R2Bucket;
   TRANSLATION_HELPS_CACHE: KVNamespace;
+  /** `on` lets the Worker ask for parts builds (see `partsDispatchEnabled`); anything else, or unset, is off. */
+  PACKS_PARTS_DISPATCH?: string;
+  /** Counted parts dispatches a day, apart from f1.1's `DAILY_CAP`. Default `PARTS_DAILY_CAP`. */
+  PACKS_PARTS_DAILY_CAP?: string;
 } & DispatchEnv;
 
 export type BuildOutcome =
@@ -26,6 +30,7 @@ export type BuildOutcome =
   | "capped"
   | "unconfigured"
   | "invalid"
+  | "parts-off"
   | "error";
 
 export type BuildStatus = {
@@ -46,6 +51,11 @@ export const RUNNING_STALE_MS = 5.5 * HOUR_MS;
 export const FAILED_COOLDOWN_MS = 24 * HOUR_MS;
 export const MAX_FAILURES = 3;
 export const DAILY_CAP = 20;
+/**
+ * Parts dispatches have a counter and a cap of their own, so f2.0 traffic (a first visit per language, then code
+ * rebuilds) can never use up the day f1.1 phones still depend on, and the other way round.
+ */
+export const PARTS_DAILY_CAP = 20;
 const COUNTER_TTL_S = 2 * 24 * 3600;
 
 const WORKFLOW_DISPATCH = `${GITHUB_API}/repos/unfoldingWord/tc-study/actions/workflows/language-packs.yml/dispatches`;
@@ -80,6 +90,23 @@ export const CURRENT_PARTS_COMPAT = "f2.0-u2.3.0-p6000230-q9-a12-t1";
 /** Format 2 and later are parts: lists of content-addressed parts instead of one zip per language. */
 export function isPartsCompat(compat: string): boolean {
   return /^f([2-9]|\d{2,})\./.test(compat);
+}
+
+/**
+ * Whether this Worker may ask for parts builds at all. Off until the workflow may publish parts to the Worker's
+ * target (staging now; production after delivery 3's Task 14), because a parts dispatch the workflow refuses
+ * would be marked failed and cool the language for nothing. The parts freshness check and the sweep check it
+ * before observing anything, and `requestBuild` checks it again.
+ */
+export function partsDispatchEnabled(env: {
+  PACKS_PARTS_DISPATCH?: string;
+}): boolean {
+  return env.PACKS_PARTS_DISPATCH === "on";
+}
+
+/** A whole count, else the default: a typo must not lift the cap or close it. `0` closes it. */
+function partsDailyCap(raw: string | undefined): number {
+  return raw !== undefined && /^\d+$/.test(raw) ? Number(raw) : PARTS_DAILY_CAP;
 }
 
 /** The compats the workflow builds today; any other would never land (see `CURRENT_PACK_COMPAT`). */
@@ -156,6 +183,9 @@ export async function requestBuild(o: BuildRequest): Promise<BuildOutcome> {
   if (!LANGUAGE_RE.test(o.language) || !COMPAT_RE.test(o.compat)) {
     return "invalid";
   }
+  if (isPartsCompat(o.compat) && !partsDispatchEnabled(o.env)) {
+    return "parts-off";
+  }
   try {
     return await guardedDispatch(o);
   } catch (err) {
@@ -209,9 +239,15 @@ async function guardedDispatch(o: BuildRequest): Promise<BuildOutcome> {
 
   // Best effort both ways: KV is eventually consistent and allows one write per second per key, so the cap is
   // soft by a few dispatches and a failed read or write never blocks a build.
-  const counterKey = `packs:dispatch:${now.toISOString().slice(0, 10)}`;
+  const parts = isPartsCompat(compat);
+  const day = now.toISOString().slice(0, 10);
+  // f1.1's key is the one the deployed Worker has always used.
+  const counterKey = parts
+    ? `packs:dispatch-parts:${day}`
+    : `packs:dispatch:${day}`;
+  const cap = parts ? partsDailyCap(env.PACKS_PARTS_DAILY_CAP) : DAILY_CAP;
   const counted = o.reason !== "daily";
-  if (counted && (await readCounter(kv, counterKey)) >= DAILY_CAP) {
+  if (counted && (await readCounter(kv, counterKey)) >= cap) {
     return "capped";
   }
 

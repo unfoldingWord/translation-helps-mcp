@@ -55,6 +55,8 @@ BASE_PATH = "/v2"
 
 [env.production]
 name = "translation-helps-mcp-v2"
+# No PACKS_PARTS_DISPATCH here: production asks for no parts builds (a missing parts list is 404 parts-off) until
+# the workflow may publish parts to production. Delivery 3's Task 14 adds PACKS_PARTS_DISPATCH = "on" with Abel's yes.
 vars = { NODE_ENV = "production", BASE_PATH = "/v2", API_BASE_URL = "https://translation-helps-api-v2.unfoldingword.workers.dev", PACKS_TARGET = "production" }
 # Custom hostname routes require the zone on this Cloudflare account.
 # Pages v1 stays at tc-helps.mcp.servant.bible/; attach /v2* in the dashboard when ready:
@@ -92,7 +94,9 @@ binding = "API"
 service = "translation-helps-api-v2"
 
 [env.preview]
-vars = { NODE_ENV = "development", BASE_PATH = "/v2", PACKS_TARGET = "staging" }
+# PACKS_PARTS_DISPATCH = "on": staging asks for parts builds (`parts: true`). Parts dispatches have their own daily
+# cap, PACKS_PARTS_DAILY_CAP (default 20), apart from f1.1's 20.
+vars = { NODE_ENV = "development", BASE_PATH = "/v2", PACKS_TARGET = "staging", PACKS_PARTS_DISPATCH = "on" }
 
 [[env.preview.kv_namespaces]]
 binding = "TRANSLATION_HELPS_CACHE"

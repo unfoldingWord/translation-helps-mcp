@@ -3,12 +3,16 @@
  * to the bucket, and a KV counter caps the day.
  */
 
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   CURRENT_PACK_COMPAT,
   CURRENT_PARTS_COMPAT,
+  PARTS_DAILY_CAP,
   isBuildableCompat,
   isPartsCompat,
+  partsDispatchEnabled,
   requestBuild,
   type BuildEnv,
 } from "../../src/packs/dispatch";
@@ -18,6 +22,8 @@ const COMPAT = "f1.1-u2.3.0-p6000230-q8-a11-t1";
 const LANG = "es-419";
 const STATUS_KEY = `status/${COMPAT}/${LANG}.json`;
 const COUNTER_KEY = "packs:dispatch:2026-10-21";
+const PARTS_COUNTER_KEY = "packs:dispatch-parts:2026-10-21";
+const PARTS_STATUS_KEY = `status/${CURRENT_PARTS_COMPAT}/${LANG}.json`;
 const TOKEN_KEY = "packs:github-token:678";
 const DISPATCH_URL =
   "https://api.github.com/repos/unfoldingWord/tc-study/actions/workflows/language-packs.yml/dispatches";
@@ -118,6 +124,8 @@ function setup(
     kvFailing?: { get?: string; put?: string };
     secrets?: boolean;
     privateKey?: string;
+    /** PACKS_PARTS_DISPATCH; unset as in production today. */
+    partsDispatch?: string;
   } = {},
 ) {
   const r2 = fakeBucket(
@@ -149,6 +157,9 @@ function setup(
     LANGUAGE_PACKS: r2.bucket,
     TRANSLATION_HELPS_CACHE: kv.kv,
     ...secrets,
+    ...(o.partsDispatch !== undefined
+      ? { PACKS_PARTS_DISPATCH: o.partsDispatch }
+      : {}),
   };
   const fetchImpl = vi.fn(async () => new Response(null, { status: 204 }));
   const run = (extra: Partial<Parameters<typeof requestBuild>[0]> = {}) =>
@@ -395,7 +406,7 @@ describe("requestBuild dispatch", () => {
   });
 
   it("asks the workflow for parts when the compat is the parts compat, and marks that compat running", async () => {
-    const t = setup();
+    const t = setup({ partsDispatch: "on" });
     expect(await t.run({ compat: CURRENT_PARTS_COMPAT })).toBe("dispatched");
     const [url, init] = t.fetchImpl.mock.calls[0] as unknown as [
       string,
@@ -584,6 +595,196 @@ describe("requestBuild dispatch", () => {
     expect(dispatches).toBe(2);
     expect(t.kv.store.has(TOKEN_KEY)).toBe(false);
     expect(t.r2.text(STATUS_KEY)).toBeUndefined();
+  });
+});
+
+describe("parts dispatch behind PACKS_PARTS_DISPATCH", () => {
+  const PRODUCTION = { PACKS_TARGET: "production" } as const;
+  const STAGING = { PACKS_TARGET: "staging" } as const;
+
+  it("is on only for the exact string `on`", () => {
+    expect(partsDispatchEnabled({ PACKS_PARTS_DISPATCH: "on" })).toBe(true);
+    for (const value of [undefined, "", "off", "ON", "true", "1", " on"]) {
+      expect(partsDispatchEnabled({ PACKS_PARTS_DISPATCH: value })).toBe(false);
+    }
+  });
+
+  it("asks for no parts build in production without the flag, touching neither GitHub, the status nor the counters", async () => {
+    const t = setup();
+    const env: BuildEnv = { ...t.env, ...PRODUCTION };
+    expect(await t.run({ env, compat: CURRENT_PARTS_COMPAT })).toBe(
+      "parts-off",
+    );
+    expect(
+      await t.run({ env, compat: CURRENT_PARTS_COMPAT, reason: "daily" }),
+    ).toBe("parts-off");
+    expect(t.fetchImpl).not.toHaveBeenCalled();
+    expect(t.r2.puts).toHaveLength(0);
+    expect(t.kv.puts).toHaveLength(0);
+  });
+
+  it("still dispatches f1.1 in production without the flag", async () => {
+    const t = setup();
+    const env: BuildEnv = { ...t.env, ...PRODUCTION };
+    expect(await t.run({ env })).toBe("dispatched");
+    const [, init] = t.fetchImpl.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(init.body).toBe(
+      `{"ref":"master","inputs":{"language":"es-419","mode":"publish","target":"production","compat":"${COMPAT}"}}`,
+    );
+  });
+
+  it("dispatches a staging parts build with parts: true when the preview env turns the flag on", async () => {
+    const t = setup({ partsDispatch: "on" });
+    const env: BuildEnv = { ...t.env, ...STAGING };
+    expect(await t.run({ env, compat: CURRENT_PARTS_COMPAT })).toBe(
+      "dispatched",
+    );
+    const [, init] = t.fetchImpl.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(JSON.parse(String(init.body))).toEqual({
+      ref: "master",
+      inputs: {
+        language: LANG,
+        mode: "publish",
+        target: "staging",
+        compat: CURRENT_PARTS_COMPAT,
+        parts: "true",
+      },
+    });
+  });
+
+  it("sends the parts body byte for byte under PACKS_TARGET production once the flag is on", async () => {
+    const t = setup({ partsDispatch: "on" });
+    const env: BuildEnv = { ...t.env, ...PRODUCTION };
+    expect(await t.run({ env, compat: CURRENT_PARTS_COMPAT })).toBe(
+      "dispatched",
+    );
+    const [, init] = t.fetchImpl.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(init.body).toBe(
+      `{"ref":"master","inputs":{"language":"es-419","mode":"publish","target":"production","compat":"${CURRENT_PARTS_COMPAT}","parts":"true"}}`,
+    );
+  });
+});
+
+describe("wrangler.toml", () => {
+  const toml = () =>
+    readFileSync(
+      fileURLToPath(new URL("../../wrangler.toml", import.meta.url)),
+      "utf8",
+    );
+
+  /** Each section's inline `vars = { … }` line, by section header (`""` for the top level). */
+  function varsBySection(): Record<string, string> {
+    const vars: Record<string, string> = {};
+    let section = "";
+    for (const line of toml().split("\n")) {
+      const header = /^\[+([^\]]+)\]+\s*$/.exec(line);
+      if (header) section = header[1] ?? "";
+      else if (/^vars\s*=/.test(line)) vars[section] = line;
+    }
+    return vars;
+  }
+
+  it("turns parts dispatch on for the preview Worker only, never in production (Task 14 does that)", () => {
+    const vars = varsBySection();
+    expect(vars["env.preview"]).toContain('PACKS_PARTS_DISPATCH = "on"');
+    expect(vars["env.preview"]).toContain('PACKS_TARGET = "staging"');
+    expect(vars["env.production"]).toContain('PACKS_TARGET = "production"');
+    expect(vars["env.production"]).not.toContain("PACKS_PARTS_DISPATCH");
+    // Nowhere else outside a comment: the top-level config deploys under the production Worker's name.
+    const set = toml()
+      .split("\n")
+      .filter((l) => !l.trimStart().startsWith("#"))
+      .filter((l) => l.includes("PACKS_PARTS_DISPATCH"));
+    expect(set).toEqual([vars["env.preview"]]);
+  });
+});
+
+describe("the parts daily cap, apart from f1.1's", () => {
+  it("is 20 by default", () => {
+    expect(PARTS_DAILY_CAP).toBe(20);
+  });
+
+  it("counts parts dispatches in a counter of their own, with a two-day expiry", async () => {
+    const t = setup({ partsDispatch: "on", kv: { [PARTS_COUNTER_KEY]: "4" } });
+    expect(await t.run({ compat: CURRENT_PARTS_COMPAT })).toBe("dispatched");
+    expect(t.kv.store.get(PARTS_COUNTER_KEY)).toBe("5");
+    expect(t.kv.store.has(COUNTER_KEY)).toBe(false);
+    const put = t.kv.puts.find((p) => p.key === PARTS_COUNTER_KEY);
+    expect(put?.options).toEqual({ expirationTtl: 2 * 24 * 3600 });
+  });
+
+  it("caps parts at 20 a day without touching f1.1's cap", async () => {
+    const t = setup({
+      partsDispatch: "on",
+      kv: { [PARTS_COUNTER_KEY]: "20", [COUNTER_KEY]: "3" },
+    });
+    expect(await t.run({ compat: CURRENT_PARTS_COMPAT })).toBe("capped");
+    expect(await t.run({ compat: CURRENT_PARTS_COMPAT, reason: "code" })).toBe(
+      "capped",
+    );
+    expect(t.r2.text(PARTS_STATUS_KEY)).toBeUndefined();
+    // f1.1 still has 17 dispatches left today.
+    expect(await t.run()).toBe("dispatched");
+    expect(t.kv.store.get(COUNTER_KEY)).toBe("4");
+    expect(t.kv.store.get(PARTS_COUNTER_KEY)).toBe("20");
+  });
+
+  it("is not used up by f1.1: a full f1.1 day still lets parts through", async () => {
+    const t = setup({ partsDispatch: "on", kv: { [COUNTER_KEY]: "20" } });
+    expect(await t.run()).toBe("capped");
+    expect(await t.run({ compat: CURRENT_PARTS_COMPAT })).toBe("dispatched");
+    expect(t.kv.store.get(COUNTER_KEY)).toBe("20");
+    expect(t.kv.store.get(PARTS_COUNTER_KEY)).toBe("1");
+  });
+
+  it("reads its cap from PACKS_PARTS_DAILY_CAP, falling back to 20 for a value that is not a count", async () => {
+    const five = setup({
+      partsDispatch: "on",
+      kv: { [PARTS_COUNTER_KEY]: "5" },
+    });
+    const capped: BuildEnv = { ...five.env, PACKS_PARTS_DAILY_CAP: "5" };
+    expect(await five.run({ env: capped, compat: CURRENT_PARTS_COMPAT })).toBe(
+      "capped",
+    );
+    const four = setup({
+      partsDispatch: "on",
+      kv: { [PARTS_COUNTER_KEY]: "4" },
+    });
+    const open: BuildEnv = { ...four.env, PACKS_PARTS_DAILY_CAP: "5" };
+    expect(await four.run({ env: open, compat: CURRENT_PARTS_COMPAT })).toBe(
+      "dispatched",
+    );
+    for (const bad of ["", "x", "-1", "2.5"]) {
+      const t = setup({
+        partsDispatch: "on",
+        kv: { [PARTS_COUNTER_KEY]: "19" },
+      });
+      const env: BuildEnv = { ...t.env, PACKS_PARTS_DAILY_CAP: bad };
+      expect(await t.run({ env, compat: CURRENT_PARTS_COMPAT }), bad).toBe(
+        "dispatched",
+      );
+      expect(
+        await t.run({ env, compat: CURRENT_PARTS_COMPAT, language: "fr" }),
+        bad,
+      ).toBe("capped");
+    }
+  });
+
+  it("lets the cron's parts checks through a full parts cap, without counting them", async () => {
+    const t = setup({ partsDispatch: "on", kv: { [PARTS_COUNTER_KEY]: "20" } });
+    expect(await t.run({ compat: CURRENT_PARTS_COMPAT, reason: "daily" })).toBe(
+      "dispatched",
+    );
+    expect(t.kv.store.get(PARTS_COUNTER_KEY)).toBe("20");
   });
 });
 

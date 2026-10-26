@@ -26,9 +26,11 @@ import {
 import { enforceRateLimit } from "../../core/rateLimit.js";
 import {
   COMPAT_RE,
+  CURRENT_PARTS_COMPAT,
   LANGUAGE_RE,
   isBuildableCompat,
   isPartsCompat,
+  partsDispatchEnabled,
   requestBuild,
   type BuildEnv,
   type BuildOutcome,
@@ -67,6 +69,7 @@ type Outcome =
   | "eligibility-unknown"
   | "not-eligible"
   | "old-compat"
+  | "parts-off"
   | "unsatisfiable"
   | "bad-request"
   | "preflight"
@@ -97,8 +100,10 @@ const IMMUTABLE = "public, max-age=31536000, immutable";
 const CACHE_CONTROL = {
   entry: "no-cache",
   pack: IMMUTABLE,
+  // A JSON list may be compressed on its way: fetch hands the app the decoded bytes, which are the stored ones.
   originals: IMMUTABLE,
-  part: IMMUTABLE,
+  // A part is gzip the app hashes as stored: no cache or proxy may recompress or re-encode it.
+  part: `${IMMUTABLE}, no-transform`,
 } as const;
 const CONTENT_TYPE = {
   entry: "application/json",
@@ -436,6 +441,13 @@ async function respond(
     return plain(404, "old-compat", {
       state: "unavailable",
       reason: "old-compat",
+    });
+  }
+  // Not old-compat: the app is current, this Worker just does not ask for parts builds yet (PACKS_PARTS_DISPATCH).
+  if (target.compat === CURRENT_PARTS_COMPAT && !partsDispatchEnabled(env)) {
+    return plain(404, "parts-off", {
+      state: "unavailable",
+      reason: "parts-off",
     });
   }
   // Awaited: this runs only until the language's first build is asked for, and the phone should learn whether one
