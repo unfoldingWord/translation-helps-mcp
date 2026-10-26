@@ -15,7 +15,11 @@ import {
   runPartsCleanup,
   type CleanupEnv,
 } from "../../src/packs/cleanup";
-import { runScheduled } from "../../src/packs/scheduled";
+import {
+  CLEANUP_CRON,
+  CLEANUP_RETRY_CRON,
+  runScheduled,
+} from "../../src/packs/scheduled";
 import {
   CURRENT_PACK_COMPAT,
   CURRENT_PARTS_COMPAT,
@@ -884,26 +888,61 @@ describe("runPartsCleanup: modes and limits", () => {
 });
 
 describe("runScheduled runs the cleanup", () => {
-  it("at 03 UTC in the PACKS_CLEANUP mode, with the real cleanup", async () => {
-    const w = world();
-    const { kv } = fakeKv();
-    await runScheduled(
-      { ...w.env, TRANSLATION_HELPS_CACHE: kv, PACKS_CLEANUP: "dry-run" },
+  const cron = (
+    w: ReturnType<typeof world>,
+    which: string,
+    when: Date,
+    env: Partial<CleanupEnv & { PACKS_CLEANUP: string }> = {},
+  ) => {
+    w.r2.setNow(when);
+    return runScheduled(
+      { ...w.env, TRANSLATION_HELPS_CACHE: fakeKv().kv, ...env },
       {} as ExecutionContext,
-      { scheduledTime: day(0).getTime(), now: day(0) },
+      { cron: which, scheduledTime: when.getTime(), now: when },
     );
+  };
+
+  it("on the 03:07 cron, in the PACKS_CLEANUP mode, with the real cleanup", async () => {
+    const w = world();
+    await cron(w, CLEANUP_CRON, day(0), { PACKS_CLEANUP: "dry-run" });
     expect(w.ledger()!.since).toEqual({ [part(9)]: day(0).toISOString() });
     expect(w.points.at(-1)).toEqual(["pack", "cleanup", "dry-run", "done"]);
   });
 
   it("not at all when PACKS_CLEANUP is unset", async () => {
     const w = world();
-    const { kv } = fakeKv();
-    await runScheduled(
-      { TRANSLATION_HELPS_CACHE: kv, LANGUAGE_PACKS: w.r2.bucket },
-      {} as ExecutionContext,
-      { scheduledTime: day(0).getTime(), now: day(0) },
-    );
+    await cron(w, CLEANUP_CRON, day(0));
+    await cron(w, CLEANUP_RETRY_CRON, new Date(day(0).getTime() + 3_600_000));
     expect(w.r2.ops).toEqual([]);
+  });
+
+  it("again on a retry cron when the day's run was postponed, and not once it is done", async () => {
+    const w = world({
+      [`status/${C}/en.json`]: JSON.stringify({
+        state: "running",
+        at: day(0).toISOString(),
+      }),
+    });
+    const env = { PACKS_CLEANUP: "delete" };
+    const hour = (h: number) => new Date(day(0).getTime() + h * 3_600_000);
+    const log = console.log;
+    console.log = () => {};
+    try {
+      await cron(w, CLEANUP_CRON, day(0), env);
+      expect(w.ledger()!.outcomes).toEqual({ [dayOf(0)]: "postponed" });
+      // The build ends before 04:07.
+      w.r2.put(
+        `status/${C}/en.json`,
+        JSON.stringify({ state: "ok", at: hour(0.5).toISOString() }),
+      );
+      await cron(w, CLEANUP_RETRY_CRON, hour(1), env);
+      expect(w.ledger()!.outcomes).toEqual({ [dayOf(0)]: "done" });
+      const calls = w.r2.ops.length;
+      await cron(w, CLEANUP_RETRY_CRON, hour(2), env);
+      // One read of the ledger, nothing else.
+      expect(w.r2.ops.slice(calls)).toEqual([{ op: "get", key: LEDGER }]);
+    } finally {
+      console.log = log;
+    }
   });
 });

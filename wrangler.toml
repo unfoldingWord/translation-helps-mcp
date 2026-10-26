@@ -64,13 +64,13 @@ vars = { NODE_ENV = "production", BASE_PATH = "/v2", API_BASE_URL = "https://tra
 #   worker:  translation-helps-mcp-v2
 # Until then, use workers.dev: https://translation-helps-mcp-v2.unfoldingword.workers.dev/v2/
 
-# An hourly check, never a build by itself (src/packs/scheduled.ts runScheduled): it asks for a build only where a
-# freshness check finds that something a pack or a parts list was built from moved. The 06:17 run checks every f1.1
-# language, as the daily cron did; each run checks the parts languages whose fnv1a32(language) % 24 is its hour, so
-# each one once a day (only while PACKS_PARTS_DISPATCH is on, so none here yet). No PACKS_CLEANUP here: the parts
-# cleanup is off in production until Abel says yes to "dry-run" (and later to "delete").
+# The daily f1.1 freshness check, as before delivery 3: a check, never a build by itself; it asks for a build only
+# where a language's Door43 release moved (src/packs/scheduled.ts picks the job by the cron string). Production lists
+# only this cron: the parts slice ("37 * * * *") and the parts cleanup ("7 3 * * *", "7 4,5 * * *") come with
+# delivery 3's Task 14, with Abel's yes, together with PACKS_PARTS_DISPATCH and PACKS_CLEANUP. Mind the Free plan's
+# 5 cron triggers per account (staging has 3).
 [env.production.triggers]
-crons = ["17 * * * *"]
+crons = ["17 6 * * *"]
 
 [[env.production.kv_namespaces]]
 binding = "TRANSLATION_HELPS_CACHE"
@@ -99,13 +99,15 @@ service = "translation-helps-api-v2"
 [env.preview]
 # PACKS_PARTS_DISPATCH = "on": staging asks for parts builds (`parts: true`). Parts dispatches have their own daily
 # cap, PACKS_PARTS_DAILY_CAP (default 20), apart from f1.1's 20. PACKS_SWEEP = "parts": the staging cron never sweeps
-# f1.1. PACKS_CLEANUP = "dry-run": the 03 UTC run logs what the parts cleanup would delete and keeps its ledger, and
-# deletes nothing.
+# f1.1. PACKS_CLEANUP = "dry-run": the 03 UTC run (and its 04 and 05 retries, when it was postponed or aborted) logs
+# what the parts cleanup would delete and keeps its ledger, and deletes nothing. PARTS_CHECKS_PER_RUN unset: 5.
 vars = { NODE_ENV = "development", BASE_PATH = "/v2", PACKS_TARGET = "staging", PACKS_PARTS_DISPATCH = "on", PACKS_SWEEP = "parts", PACKS_CLEANUP = "dry-run" }
 
-# The same hourly check on staging, at another minute: it may ask for staging parts builds of es-419 and en.
+# One cron per job, each its own invocation (src/packs/scheduled.ts): the parts cleanup at 03:07 UTC, its retries
+# at 04:07 and 05:07, and the hourly parts slice at :37, which may ask for staging parts builds of es-419 and en.
+# No f1.1 sweep on staging (PACKS_SWEEP = "parts").
 [env.preview.triggers]
-crons = ["47 * * * *"]
+crons = ["7 3 * * *", "7 4,5 * * *", "37 * * * *"]
 
 [[env.preview.kv_namespaces]]
 binding = "TRANSLATION_HELPS_CACHE"

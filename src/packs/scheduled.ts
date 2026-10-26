@@ -1,13 +1,17 @@
 /**
- * The hourly cron (delivery 3, Decision 8). Each run does at most three things, each wrapped so that a failure stops
- * only itself:
+ * The packs crons (delivery 3, Decision 8, review 7-8). Each job has a cron string of its own, and the handler picks
+ * the job by `event.cron`, so every job is its own invocation with its own limits:
  *
- * - at 06 UTC, the f1.1 sweep, exactly as the daily cron ran it before (`runDailySweep`), unless `PACKS_SWEEP` is
+ * - `17 6 * * *`: the f1.1 sweep, exactly as the daily cron always ran it (`runDailySweep`), unless `PACKS_SWEEP` is
  *   `parts` (staging, which never swept f1.1);
- * - at 03 UTC, the parts cleanup, when `PACKS_CLEANUP` is `dry-run` or `delete` (anything else is off);
- * - every hour, the parts languages whose `fnv1a32(language) % 24` is the hour, so each is checked once a day and the
- *   Door43 and GitHub requests are spread across the day. Only while parts dispatch is on: a check that may not ask
- *   for a build reads nothing.
+ * - `7 3 * * *`: the parts cleanup, when `PACKS_CLEANUP` is `dry-run` or `delete` (anything else is off);
+ * - `7 4,5 * * *`: the cleanup again, only when the day's run was postponed or aborted (the ledger records each day's
+ *   outcome). One cron string for both retries: the Free plan allows 5 cron triggers in the whole account;
+ * - `37 * * * *`: the parts languages whose `fnv1a32(language) % 24` is the hour, so each is checked once a day and
+ *   the Door43 and GitHub requests are spread across the day. Only while parts dispatch is on: a check that may not
+ *   ask for a build reads nothing.
+ *
+ * Any other cron string does nothing but say so in the log. Each job is wrapped so that a failure stops only itself.
  *
  * Subrequests. The account's Workers plan is not known here, so a run is kept under the Free plan's limits per
  * invocation, 50 fetches outside Cloudflare and 1,000 calls to KV and R2 (Paid allows 10,000 of each by default). A
@@ -17,14 +21,13 @@
  * first check and 9 for each other one, so `PARTS_CHECKS_PER_RUN = 5` checks stay at 50 or fewer. The search always
  * asks Door43, past the catalog cache, and a shared reading with an input left out is kept 10 minutes, so a run
  * still reads it once. KV and R2: about 26 calls a check (the hour, the list, the shared readings and the token, the
- * builder file and the status, one bulk read of the first-seen records, which KV counts as one call, a dispatch and
- * the code budget), plus one KV write for each change the Worker sees for the first time, once per key and stamp in
- * the whole Worker. Five checks are about 130; at 03 UTC, with the cleanup's 800, that leaves room for some 70 stamps
- * never seen before in one run. A slice with more than five languages checks five of them, chosen afresh each day,
- * and the rest are still checked by the phones that open them. The f1.1 sweep stays one daily loop, as before, and
- * the cleanup counts its own R2 calls (`src/packs/cleanup.ts`). Going over a limit is not a disaster either: the
- * call that goes over throws, and every check and the cleanup turn a thrown call into an unreadable input,
- * "unknown", "error" or "aborted".
+ * builder file and the status, one bulk read of the first-seen records, which KV counts as one call, and a
+ * dispatch), plus one KV write for each change the Worker sees for the first time, once per key and stamp in the
+ * whole Worker, and the code budget, read once and written once a run. Five checks are about 130. A slice with more
+ * than five languages checks five of them, the next five each day, and the rest are still checked by the phones that
+ * open them. The f1.1 sweep stays one daily loop, as before, and the cleanup counts its own R2 calls
+ * (`src/packs/cleanup.ts`). Going over a limit is not a disaster either: the call that goes over throws, and every
+ * check and the cleanup turn a thrown call into an unreadable input, "unknown", "error" or "aborted".
  */
 
 import {
@@ -43,7 +46,7 @@ import {
   type PartsCheck,
   type PartsListLite,
 } from "./partsFreshness.js";
-import { runPartsCleanup } from "./cleanup.js";
+import { cleanupOutcome, runPartsCleanup } from "./cleanup.js";
 import type { observeParts } from "./partsSources.js";
 
 export type ScheduledEnv = FreshnessEnv & {
@@ -55,9 +58,19 @@ export type ScheduledEnv = FreshnessEnv & {
 
 export type CleanupMode = "dry-run" | "delete";
 
-/** The hour (UTC) the f1.1 sweep has always run in (it was `17 6 * * *`). */
-export const F11_SWEEP_HOUR = 6;
-export const CLEANUP_HOUR = 3;
+/** The f1.1 sweep's cron, the one it has always had. */
+export const F11_SWEEP_CRON = "17 6 * * *";
+export const CLEANUP_CRON = "7 3 * * *";
+/** 04:07 and 05:07 UTC: runs the cleanup only when the day's was postponed or aborted. */
+export const CLEANUP_RETRY_CRON = "7 4,5 * * *";
+export const PARTS_SLICE_CRON = "37 * * * *";
+/** Every cron string this Worker has a job for. */
+export const PACKS_CRONS: readonly string[] = [
+  F11_SWEEP_CRON,
+  CLEANUP_CRON,
+  CLEANUP_RETRY_CRON,
+  PARTS_SLICE_CRON,
+];
 /** Code-only rebuilds the sweep may ask for in a day (Decision 7): a code bump reaches 100 languages in ten days. */
 export const CODE_REBUILDS_PER_DAY = 10;
 /** Parts checks in one run, so that a run stays within the Free plan's 50 outside fetches (see above). */
@@ -85,7 +98,9 @@ export function cleanupMode(raw: string | undefined): CleanupMode | null {
 }
 
 export type ScheduledDeps = {
-  /** The cron's own time (`ScheduledController.scheduledTime`): it picks the hour, even when a run starts late. */
+  /** The cron string that fired (`ScheduledController.cron`): it picks the job. */
+  cron?: string;
+  /** The cron's own time (`ScheduledController.scheduledTime`): it picks the hour and the day, even when late. */
   scheduledTime?: number | Date;
   /** The clock of the checks and of the code budget's day. Unset in production, as the f1.1 sweep always had it. */
   now?: Date;
@@ -95,7 +110,7 @@ export type ScheduledDeps = {
   observe?: typeof observeParts;
   cleanup?: (
     env: ScheduledEnv,
-    o: { now?: Date; mode: CleanupMode },
+    o: { now?: Date; mode: CleanupMode; day: string },
   ) => Promise<unknown>;
 };
 
@@ -105,44 +120,83 @@ export async function runScheduled(
   deps: ScheduledDeps = {},
 ): Promise<void> {
   const at = new Date(deps.scheduledTime ?? deps.now ?? Date.now());
-  const hour = at.getUTCHours();
-
-  if (hour === F11_SWEEP_HOUR && env.PACKS_SWEEP !== "parts") {
-    try {
-      // The same call the daily cron made, with the same defaults.
-      await runDailySweep(env, ctx, {
-        requestBuild: deps.requestBuild,
-        checkFreshness: deps.checkFreshness,
-        now: deps.now,
-      });
-    } catch (err) {
-      console.error(`[packs] f1.1 sweep stopped:`, err);
-    }
+  switch (deps.cron) {
+    case F11_SWEEP_CRON:
+      return runF11Sweep(env, ctx, deps);
+    case CLEANUP_CRON:
+      return runCleanup(env, at, deps, false);
+    case CLEANUP_RETRY_CRON:
+      return runCleanup(env, at, deps, true);
+    case PARTS_SLICE_CRON:
+      try {
+        await runPartsSweep(env, ctx, at, deps);
+      } catch (err) {
+        console.error(`[packs] parts sweep stopped:`, err);
+      }
+      return;
+    default:
+      console.log(
+        `[packs] cron ${JSON.stringify(deps.cron ?? null)} is none of the packs jobs (${PACKS_CRONS.join(", ")}); nothing done`,
+      );
   }
+}
 
-  // Before the parts slice: a build that slice dispatches would otherwise postpone the cleanup every day.
-  const mode = cleanupMode(env.PACKS_CLEANUP);
-  if (hour === CLEANUP_HOUR && mode) {
-    try {
-      await (deps.cleanup ?? runPartsCleanup)(env, { now: deps.now, mode });
-    } catch (err) {
-      console.error(`[packs] cleanup stopped:`, err);
-    }
+async function runF11Sweep(
+  env: ScheduledEnv,
+  ctx: ExecutionContext,
+  deps: ScheduledDeps,
+): Promise<void> {
+  if (env.PACKS_SWEEP === "parts") {
+    console.log(`[packs] f1.1 sweep: off here (PACKS_SWEEP = parts)`);
+    return;
   }
-
   try {
-    await runPartsSweep(env, ctx, hour, deps);
+    // The same call the daily cron made, with the same defaults.
+    await runDailySweep(env, ctx, {
+      requestBuild: deps.requestBuild,
+      checkFreshness: deps.checkFreshness,
+      now: deps.now,
+    });
   } catch (err) {
-    console.error(`[packs] parts sweep stopped:`, err);
+    console.error(`[packs] f1.1 sweep stopped:`, err);
+  }
+}
+
+async function runCleanup(
+  env: ScheduledEnv,
+  at: Date,
+  deps: ScheduledDeps,
+  retry: boolean,
+): Promise<void> {
+  const mode = cleanupMode(env.PACKS_CLEANUP);
+  if (!mode) return;
+  const day = at.toISOString().slice(0, 10);
+  try {
+    if (retry) {
+      const outcome = await cleanupOutcome(env, day);
+      if (outcome !== "postponed" && outcome !== "aborted") {
+        console.log(
+          `[packs] cleanup (${mode}) retry: the day's cleanup was ${outcome ?? "not recorded"}; nothing to retry`,
+        );
+        return;
+      }
+      console.log(
+        `[packs] cleanup (${mode}) retry: the day's cleanup was ${outcome}`,
+      );
+    }
+    await (deps.cleanup ?? runPartsCleanup)(env, { now: deps.now, mode, day });
+  } catch (err) {
+    console.error(`[packs] cleanup stopped:`, err);
   }
 }
 
 async function runPartsSweep(
   env: ScheduledEnv,
   ctx: ExecutionContext,
-  hour: number,
+  at: Date,
   deps: ScheduledDeps,
 ): Promise<void> {
+  const hour = at.getUTCHours();
   const bucket = env.LANGUAGE_PACKS;
   if (!bucket || !partsDispatchEnabled(env)) return;
   const compat = CURRENT_PARTS_COMPAT;

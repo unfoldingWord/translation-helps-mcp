@@ -64,7 +64,7 @@ export interface Env extends DispatchEnv {
   PACKS_PARTS_DAILY_CAP?: string;
   /** `parts`: the cron never runs the f1.1 sweep (staging). Unset sweeps f1.1 at 06 UTC as before. */
   PACKS_SWEEP?: string;
-  /** `dry-run` or `delete` runs the parts cleanup at 03 UTC; unset (or anything else) is off. */
+  /** `dry-run` or `delete` runs the parts cleanup at 03 UTC (retried at 04 and 05); unset (or anything else) is off. */
   PACKS_CLEANUP?: string;
   OPENAI_API_KEY?: string;
   ASSETS: Fetcher;
@@ -150,15 +150,20 @@ export default {
     return svelteKit.fetch(request, env, ctx);
   },
 
-  /** The hourly cron (see wrangler.toml and src/packs/scheduled.ts): the hour comes from the schedule. */
+  /**
+   * The packs crons (see wrangler.toml and src/packs/scheduled.ts): the cron string picks the job, the schedule's
+   * time its hour and day. Awaited, as Cloudflare documents for one task: the runtime waits for the handler's promise
+   * (up to a cron's 15 min), and the job, not a waitUntil after it, is the invocation.
+   */
   async scheduled(
     event: ScheduledController,
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
-    ctx.waitUntil(
-      runScheduled(env, ctx, { scheduledTime: event.scheduledTime }),
-    );
+    await runScheduled(env, ctx, {
+      cron: event.cron,
+      scheduledTime: event.scheduledTime,
+    });
   },
 };
 

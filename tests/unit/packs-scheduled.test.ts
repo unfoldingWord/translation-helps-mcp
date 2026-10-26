@@ -1,14 +1,20 @@
 /**
- * The hourly cron: the f1.1 sweep at 06 UTC exactly as the daily cron ran it, the parts languages in hourly slices
- * (each once a day), code-only rebuilds within their daily budget, and the cleanup at 03 UTC when it is on.
+ * The packs crons, one job per cron string: the f1.1 sweep at 06:17 UTC exactly as the daily cron ran it, the parts
+ * languages in hourly slices (each once a day), code-only rebuilds within their daily budget, and the cleanup at 03:07
+ * UTC when it is on, retried at 04:07 and 05:07 only when the day's was postponed or aborted.
  */
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import {
+  CLEANUP_CRON,
+  CLEANUP_RETRY_CRON,
   CODE_REBUILDS_PER_DAY,
+  F11_SWEEP_CRON,
+  PACKS_CRONS,
   PARTS_CHECKS_PER_RUN,
+  PARTS_SLICE_CRON,
   cleanupMode,
   fnv1a32,
   partsHourOf,
@@ -23,6 +29,7 @@ import {
   type BuildOutcome,
 } from "../../src/packs/dispatch";
 import type { PartsCheck, PartsListLite } from "../../src/packs/partsFreshness";
+import { LEDGER } from "../../src/packs/cleanup";
 import { fakeKv, fakeR2 } from "./fakeR2";
 
 const F11 = CURRENT_PACK_COMPAT;
@@ -30,10 +37,14 @@ const PARTS = CURRENT_PARTS_COMPAT;
 const OLD_PARTS = "f2.0-u2.3.0-p6000229-q9-a12-t1";
 const DAY = "2026-10-21";
 const at = (hour: number, minute = 17, day = DAY) =>
-  new Date(`${day}T${String(hour).padStart(2, "0")}:${minute}:00Z`);
+  new Date(
+    `${day}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00Z`,
+  );
 const SHA = "a".repeat(64);
 const CODE = `${PARTS}+7bc31e739fbeed69`;
 const NEW_CODE = `${PARTS}+0123456789abcdef`;
+const F11_CRON = F11_SWEEP_CRON;
+const SLICE = PARTS_SLICE_CRON;
 
 /** Two-letter codes whose slice is `hour`, in a stable order. */
 function languagesOfHour(hour: number, n: number): string[] {
@@ -94,7 +105,7 @@ function setup(
     list: PartsListLite | null;
     hasBudget: boolean;
   }> = [];
-  const cleanups: Array<{ mode: string }> = [];
+  const cleanups: Array<{ mode: string; day: string }> = [];
   const order: string[] = [];
   const deps: ScheduledDeps = {
     checkFreshness: async (c) => {
@@ -113,12 +124,14 @@ function setup(
     },
     cleanup: async (_env, c) => {
       order.push(`cleanup ${c.mode}`);
-      cleanups.push({ mode: c.mode });
+      cleanups.push({ mode: c.mode, day: c.day });
     },
   };
-  const run = (when: Date, more: ScheduledDeps = {}) =>
+  /** One invocation of `cron`, scheduled at `when`. */
+  const run = (cron: string, when: Date, more: ScheduledDeps = {}) =>
     runScheduled(env, {} as ExecutionContext, {
       ...deps,
+      cron,
       scheduledTime: when.getTime(),
       now: when,
       ...more,
@@ -142,14 +155,14 @@ describe("fnv1a32 and the hour slices", () => {
 describe("runScheduled: the f1.1 sweep", () => {
   const F11_LANGS = ["en", "es-419", "fr", "pt-br", "sw"];
 
-  it("at 06 UTC runs the f1.1 sweep exactly as the daily cron did: same checks, same listing", async () => {
+  it("the f1.1 cron runs the f1.1 sweep exactly as the daily cron did: same checks, same listing", async () => {
     const extra = { [`catalog/${F11}/originals.json`]: "{}" };
     const s = setup({
       f11: F11_LANGS,
       extra,
       env: { PACKS_PARTS_DISPATCH: undefined },
     });
-    await s.run(at(6));
+    await s.run(F11_CRON, at(6));
 
     // The old daily cron, run by itself over the same bucket.
     const old = setup({
@@ -184,6 +197,7 @@ describe("runScheduled: the f1.1 sweep", () => {
     const s = setup({ f11: ["fr"] });
     const nows: Array<Date | undefined> = [];
     await runScheduled(s.env, {} as ExecutionContext, {
+      cron: F11_CRON,
       scheduledTime: at(6).getTime(),
       checkFreshness: async (c) => void nows.push(c.now),
       checkPartsFreshness: async () => "fresh",
@@ -191,38 +205,82 @@ describe("runScheduled: the f1.1 sweep", () => {
     expect(nows).toEqual([undefined]);
   });
 
-  it("runs no f1.1 sweep in any other hour", async () => {
-    const s = setup({ f11: F11_LANGS });
-    for (const hour of [0, 3, 5, 7, 12, 23]) await s.run(at(hour));
+  it("no other cron runs the f1.1 sweep, in any hour, 06 included", async () => {
+    const s = setup({
+      f11: F11_LANGS,
+      env: { PACKS_CLEANUP: "dry-run", PACKS_PARTS_DISPATCH: undefined },
+    });
+    for (const cron of [CLEANUP_CRON, CLEANUP_RETRY_CRON, SLICE]) {
+      for (let hour = 0; hour < 24; hour++) await s.run(cron, at(hour, 7));
+    }
     expect(s.f11).toEqual([]);
     expect(s.r2.ops.some((op) => op.key === `catalog/${F11}/`)).toBe(false);
   });
 
-  it("takes the hour from the schedule, so a 06:17 run that starts late still sweeps", async () => {
+  it("the f1.1 cron sweeps whatever the hour it starts in (the cron string picks the job)", async () => {
     const s = setup({ f11: ["fr"] });
-    await s.run(at(7, 2), { scheduledTime: at(6).getTime() });
+    await s.run(F11_CRON, at(7, 2), { scheduledTime: at(6).getTime() });
     expect(s.f11.map((c) => c.language)).toEqual(["fr"]);
   });
 
-  it("never runs the f1.1 sweep with PACKS_SWEEP = parts (staging), in any hour", async () => {
+  it("never runs the f1.1 sweep with PACKS_SWEEP = parts (staging)", async () => {
     const s = setup({ f11: F11_LANGS, env: { PACKS_SWEEP: "parts" } });
-    for (let hour = 0; hour < 24; hour++) await s.run(at(hour));
+    await s.run(F11_CRON, at(6));
     expect(s.f11).toEqual([]);
+    expect(s.r2.ops).toEqual([]);
+  });
+});
+
+describe("runScheduled: one job per cron string", () => {
+  it("the f1.1 cron at 06:17 checks no parts language, and the parts cron at 06:37 sweeps no f1.1 (no shared run)", async () => {
+    const six = languagesOfHour(6, 2);
+    const s = setup({ f11: ["fr"], parts: six });
+    await s.run(F11_CRON, at(6));
+    expect(s.f11.map((c) => c.language)).toEqual(["fr"]);
+    expect(s.parts).toEqual([]);
+    await s.run(SLICE, at(6, 37));
+    expect(s.f11.map((c) => c.language)).toEqual(["fr"]);
+    expect(s.parts.map((c) => c.language).sort()).toEqual([...six].sort());
+  });
+
+  it("an unknown cron string, or none, does nothing and says so", async () => {
+    const s = setup({
+      f11: ["fr"],
+      parts: languagesOfHour(6, 1),
+      env: { PACKS_CLEANUP: "delete" },
+    });
+    const logs: string[] = [];
+    const log = console.log;
+    console.log = (line: string) => void logs.push(String(line));
+    try {
+      for (const cron of ["17 * * * *", "47 * * * *", "* * * * *", ""]) {
+        await s.run(cron, at(6));
+        await s.run(cron, at(3));
+      }
+      await s.run(undefined as unknown as string, at(6));
+    } finally {
+      console.log = log;
+    }
+    expect([s.f11, s.parts, s.cleanups]).toEqual([[], [], []]);
+    expect(s.r2.ops).toEqual([]);
+    expect(logs).toHaveLength(9);
+    expect(logs[0]).toBe(
+      `[packs] cron "17 * * * *" is none of the packs jobs (${PACKS_CRONS.join(", ")}); nothing done`,
+    );
+    expect(logs.at(-1)).toContain("cron null is none of the packs jobs");
   });
 });
 
 describe("runScheduled: the parts sweep", () => {
-  it("at 06 UTC checks only the parts languages of hour 6, after the f1.1 sweep", async () => {
+  it("at 06:37 UTC checks only the parts languages of hour 6", async () => {
     const six = languagesOfHour(6, 2);
     const other = languagesOfHour(7, 2);
     const s = setup({ f11: ["fr"], parts: [...six, ...other] });
-    await s.run(at(6));
-    expect(s.f11.map((c) => c.language)).toEqual(["fr"]);
+    await s.run(SLICE, at(6, 37));
     expect(s.parts.map((c) => c.language).sort()).toEqual([...six].sort());
     expect(s.parts.every((c) => c.reason === "daily" && c.hasBudget)).toBe(
       true,
     );
-    expect(s.order[0]).toBe("f11 fr");
     // The check reads the language's own list.
     expect(s.parts[0]?.list?.language).toBe(s.parts[0]?.language);
   });
@@ -245,7 +303,7 @@ describe("runScheduled: the parts sweep", () => {
       "ta",
     ];
     const s = setup({ parts: languages });
-    for (let hour = 0; hour < 24; hour++) await s.run(at(hour));
+    for (let hour = 0; hour < 24; hour++) await s.run(SLICE, at(hour));
     expect(s.parts.map((c) => c.language).sort()).toEqual(
       [...languages].sort(),
     );
@@ -262,7 +320,7 @@ describe("runScheduled: the parts sweep", () => {
       },
       env: { PACKS_SWEEP: "parts" },
     });
-    for (let h = 0; h < 24; h++) await s.run(at(h));
+    for (let h = 0; h < 24; h++) await s.run(SLICE, at(h));
     expect(s.parts.map((c) => c.language)).toEqual(["es-419"]);
     const lists = s.r2.ops.filter((op) => op.op === "list").map((op) => op.o);
     expect(
@@ -279,7 +337,7 @@ describe("runScheduled: the parts sweep", () => {
       parts: ["es-419"],
       env: { PACKS_PARTS_DISPATCH: undefined, PACKS_SWEEP: "parts" },
     });
-    for (let h = 0; h < 24; h++) await s.run(at(h));
+    for (let h = 0; h < 24; h++) await s.run(SLICE, at(h));
     expect(s.parts).toEqual([]);
     expect(s.r2.ops).toEqual([]);
   });
@@ -292,7 +350,7 @@ describe("runScheduled: the parts sweep", () => {
     for (let d = 1; d <= 20; d++) {
       const day = `2026-11-${String(d).padStart(2, "0")}`;
       s.parts.length = 0;
-      await s.run(at(9, 17, day));
+      await s.run(SLICE, at(9, 17, day));
       expect(s.parts).toHaveLength(PARTS_CHECKS_PER_RUN);
       for (const c of s.parts) seen.add(c.language);
       picks.push(
@@ -306,14 +364,11 @@ describe("runScheduled: the parts sweep", () => {
     expect(new Set(picks).size).toBeGreaterThan(1);
   });
 
-  it("one failing check does not stop the next, nor a failing f1.1 sweep the parts slice", async () => {
+  it("one failing check does not stop the next", async () => {
     const six = languagesOfHour(6, 3);
-    const s = setup({ f11: ["fr"], parts: six });
+    const s = setup({ parts: six });
     const checked: string[] = [];
-    await s.run(at(6), {
-      checkFreshness: async () => {
-        throw new Error("f1.1 boom");
-      },
+    await s.run(SLICE, at(6), {
       checkPartsFreshness: async (c) => {
         checked.push(c.language);
         if (checked.length === 1) throw new Error("parts boom");
@@ -323,11 +378,22 @@ describe("runScheduled: the parts sweep", () => {
     expect(checked).toHaveLength(3);
   });
 
-  it("a listing that fails stops only the parts sweep, not the cleanup before it", async () => {
-    const s = setup({ parts: ["es-419"], env: { PACKS_CLEANUP: "dry-run" } });
+  it("a listing that fails stops the parts slice without throwing out of the handler", async () => {
+    const s = setup({ parts: ["es-419"] });
     s.r2.fail.push((op, key) => op === "list" && key === `catalog/${PARTS}/`);
-    await expect(s.run(at(3))).resolves.toBeUndefined();
-    expect(s.cleanups).toEqual([{ mode: "dry-run" }]);
+    await expect(s.run(SLICE, at(3))).resolves.toBeUndefined();
+    expect(s.parts).toEqual([]);
+  });
+
+  it("a failing f1.1 sweep does not throw out of the handler either", async () => {
+    const s = setup({ f11: ["fr"] });
+    await expect(
+      s.run(F11_CRON, at(6), {
+        checkFreshness: async () => {
+          throw new Error("f1.1 boom");
+        },
+      }),
+    ).resolves.toBeUndefined();
   });
 });
 
@@ -377,7 +443,8 @@ describe("runScheduled: the code budget (the real parts check)", () => {
     const log = console.log;
     console.log = (line: string) => void logs.push(String(line));
     try {
-      for (let hour = 0; hour < 24; hour++) await s.run(at(hour), s.more);
+      for (let hour = 0; hour < 24; hour++)
+        await s.run(SLICE, at(hour), s.more);
     } finally {
       console.log = log;
     }
@@ -399,7 +466,7 @@ describe("runScheduled: the code budget (the real parts check)", () => {
     const s = codeBump(languages, (l) =>
       held.has(l) ? "stopped" : "dispatched",
     );
-    for (let hour = 0; hour < 24; hour++) await s.run(at(hour), s.more);
+    for (let hour = 0; hour < 24; hour++) await s.run(SLICE, at(hour), s.more);
     // Four held languages asked and spent nothing: the other ten were all dispatched.
     expect(s.builds.filter((b) => !held.has(b.language))).toHaveLength(
       CODE_REBUILDS_PER_DAY,
@@ -416,14 +483,14 @@ describe("runScheduled: the code budget (the real parts check)", () => {
       `packs:code-rebuilds:2026-10-20`,
       String(CODE_REBUILDS_PER_DAY),
     );
-    for (let hour = 0; hour < 24; hour++) await s.run(at(hour), s.more);
+    for (let hour = 0; hour < 24; hour++) await s.run(SLICE, at(hour), s.more);
     expect(s.builds).toHaveLength(CODE_REBUILDS_PER_DAY);
   });
 
   it("does not spend the code budget on a moved stamp", async () => {
     const [language] = languagesOfHour(4, 1) as [string];
     const s = codeBump([language]);
-    await s.run(at(4), {
+    await s.run(SLICE, at(4), {
       ...s.more,
       observe: async () => ({ stamps: { "x/y/z": "v2#2026-10-20T00_00_00Z" } }),
     });
@@ -432,37 +499,73 @@ describe("runScheduled: the code budget (the real parts check)", () => {
   });
 });
 
-describe("runScheduled: the cleanup hour", () => {
-  it("runs the cleanup at 03 UTC in the mode PACKS_CLEANUP names, before the parts slice", async () => {
+describe("runScheduled: the cleanup crons", () => {
+  /** A ledger whose only content is the day's outcome. */
+  const recorded = (day: string, state: string) =>
+    JSON.stringify({ schema: 1, since: {}, outcomes: { [day]: state } });
+
+  it("the 03:07 cron runs the cleanup in the mode PACKS_CLEANUP names, for the schedule's day, and checks no parts", async () => {
     const three = languagesOfHour(3, 1);
     for (const mode of ["dry-run", "delete"] as const) {
       const s = setup({ parts: three, env: { PACKS_CLEANUP: mode } });
-      for (let h = 0; h < 24; h++) await s.run(at(h));
-      expect(s.cleanups).toEqual([{ mode }]);
-      expect(s.order.indexOf(`cleanup ${mode}`)).toBeLessThan(
-        s.order.indexOf(`parts ${three[0]}`),
-      );
+      await s.run(CLEANUP_CRON, at(3, 7));
+      expect(s.cleanups).toEqual([{ mode, day: DAY }]);
+      expect(s.parts).toEqual([]);
     }
   });
 
-  it("is off when PACKS_CLEANUP is unset, off, or anything but the two modes", async () => {
+  it("is off when PACKS_CLEANUP is unset, off, or anything but the two modes, retries included", async () => {
     for (const raw of [undefined, "off", "Delete", "dry_run", "yes", ""]) {
-      const s = setup({ env: { PACKS_CLEANUP: raw } });
-      for (let h = 0; h < 24; h++) await s.run(at(h));
+      const s = setup({
+        env: { PACKS_CLEANUP: raw },
+        extra: { [LEDGER]: recorded(DAY, "aborted") },
+      });
+      await s.run(CLEANUP_CRON, at(3, 7));
+      await s.run(CLEANUP_RETRY_CRON, at(4, 7));
       expect(s.cleanups).toEqual([]);
       expect(cleanupMode(raw)).toBeNull();
     }
   });
 
-  it("a failing cleanup does not stop the parts slice", async () => {
-    const three = languagesOfHour(3, 1);
-    const s = setup({ parts: three, env: { PACKS_CLEANUP: "delete" } });
-    await s.run(at(3), {
-      cleanup: async () => {
-        throw new Error("cleanup boom");
-      },
-    });
-    expect(s.parts.map((c) => c.language)).toEqual(three);
+  it.each([
+    ["postponed", 1],
+    ["aborted", 1],
+    ["done", 0],
+  ] as const)(
+    "the 04:07 and 05:07 retries run when the day's cleanup was %s: %i run each",
+    async (state, runs) => {
+      const s = setup({
+        env: { PACKS_CLEANUP: "dry-run" },
+        extra: { [LEDGER]: recorded(DAY, state) },
+      });
+      await s.run(CLEANUP_RETRY_CRON, at(4, 7));
+      await s.run(CLEANUP_RETRY_CRON, at(5, 7));
+      expect(s.cleanups).toEqual(
+        Array.from({ length: 2 * runs }, () => ({ mode: "dry-run", day: DAY })),
+      );
+    },
+  );
+
+  it("a retry does nothing when the day has no outcome (no ledger, another day's, or one that does not parse)", async () => {
+    for (const ledger of [undefined, recorded("2026-10-20", "aborted"), "{"]) {
+      const s = setup({
+        env: { PACKS_CLEANUP: "delete" },
+        ...(ledger ? { extra: { [LEDGER]: ledger } } : {}),
+      });
+      await s.run(CLEANUP_RETRY_CRON, at(4, 7));
+      expect(s.cleanups).toEqual([]);
+    }
+  });
+
+  it("a failing cleanup does not throw out of the handler", async () => {
+    const s = setup({ env: { PACKS_CLEANUP: "delete" } });
+    await expect(
+      s.run(CLEANUP_CRON, at(3, 7), {
+        cleanup: async () => {
+          throw new Error("cleanup boom");
+        },
+      }),
+    ).resolves.toBeUndefined();
   });
 });
 
@@ -486,16 +589,36 @@ describe("wrangler.toml: the crons and their vars", () => {
     return out;
   }
 
-  it("runs production hourly at :17 (06:17 is the f1.1 sweep's old time) and staging hourly at :47", () => {
+  /** The cron strings of a `[...triggers]` section. */
+  const crons = (lines: string[] | undefined): string[] | null => {
+    const m = /^crons = (\[.*\])$/.exec(lines?.join("") ?? "");
+    return m ? (JSON.parse(m[1]!) as string[]) : null;
+  };
+
+  it("production keeps only the f1.1 sweep's daily cron; staging has the cleanup, its retries and the parts slice", () => {
     const s = sections();
-    expect(s["env.production.triggers"]).toEqual(['crons = ["17 * * * *"]']);
-    expect(s["env.preview.triggers"]).toEqual(['crons = ["47 * * * *"]']);
+    expect(crons(s["env.production.triggers"])).toEqual([F11_SWEEP_CRON]);
+    expect(crons(s["env.preview.triggers"])).toEqual([
+      CLEANUP_CRON,
+      CLEANUP_RETRY_CRON,
+      PARTS_SLICE_CRON,
+    ]);
     // The top level deploys under the production Worker's name: no cron of its own.
     expect(
       Object.keys(s)
         .filter((k) => k.endsWith("triggers"))
         .sort(),
     ).toEqual(["env.preview.triggers", "env.production.triggers"]);
+  });
+
+  it("lists only crons the Worker has a job for, within the Free plan's 5 cron triggers per account", () => {
+    const s = sections();
+    const all = [
+      ...crons(s["env.production.triggers"])!,
+      ...crons(s["env.preview.triggers"])!,
+    ];
+    expect(all.every((c) => PACKS_CRONS.includes(c))).toBe(true);
+    expect(all.length).toBeLessThanOrEqual(5);
   });
 
   it("sweeps parts only and cleans up in dry-run on staging; production has no cleanup and no parts dispatch", () => {
@@ -509,9 +632,25 @@ describe("wrangler.toml: the crons and their vars", () => {
     expect(production).not.toContain("PACKS_PARTS_DISPATCH");
     const anywhere = Object.values(s)
       .flat()
-      .filter((l) => /PACKS_CLEANUP|PACKS_SWEEP/.test(l));
+      .filter((l) => /PACKS_CLEANUP|PACKS_SWEEP|PARTS_CHECKS_PER_RUN/.test(l));
     expect(anywhere).toEqual(
       s["env.preview"]!.filter((l) => l.startsWith("vars")),
     );
+    expect(anywhere.join()).not.toContain("PARTS_CHECKS_PER_RUN");
+  });
+});
+
+describe("worker.ts: the scheduled handler", () => {
+  it("awaits the job picked by the cron string, with no waitUntil (worker.ts pulls in the web build, so read as text)", () => {
+    const source = readFileSync(
+      fileURLToPath(new URL("../../src/worker.ts", import.meta.url)),
+      "utf8",
+    );
+    const handler = /async scheduled\([\s\S]*?\n {2}\},\n/.exec(source)?.[0];
+    expect(handler).toBeDefined();
+    expect(handler!.replace(/\s+/g, " ")).toContain(
+      "await runScheduled(env, ctx, { cron: event.cron, scheduledTime: event.scheduledTime, });",
+    );
+    expect(handler).not.toContain("waitUntil(");
   });
 });
