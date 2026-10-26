@@ -22,15 +22,24 @@
  * - "30 days in a row" needs runs to watch them: when the last finished run is more than `LEDGER_GAP_MS` old (the
  *   cleanup was off, aborted or postponed for days), every count starts again;
  * - one run makes at most `CLEANUP_R2_CALLS` R2 calls before its ledger write (under the Free plan's 1,000 calls to
- *   Cloudflare services per invocation, with room for the hour's parts checks) and deletes at most `MAX_DELETES`
- *   keys, in one call; a run that would need more aborts before deleting anything.
+ *   Cloudflare services per invocation; the cleanup has its own cron, so its own invocation) and deletes at most
+ *   `MAX_DELETES` keys, in one call; a run that would need more aborts before deleting anything.
+ *
+ * Each run records the day's outcome (`done`, `postponed` or `aborted`) in the ledger, without touching the first
+ * dates or `checked`, so the 04 and 05 UTC retries run only when the day's cleanup did not finish
+ * (`cleanupOutcome`), and `ABORT_ALERT_DAYS` days in a row that end aborted log `[packs] cleanup-alert:`, the tag
+ * an alert can watch for.
  *
  * What it cannot close: a build reads `has(part)` to skip uploading a part the bucket already has. A build that
  * started after the last listing (milliseconds before the delete) and found an orphan due that very moment would
  * name a deleted part. A build writes `running` minutes before its first `has` (it builds its tools and downloads
  * first), so that window is far shorter than any build's; a status that turned `running` during the deletes is
- * still logged as an error, naming the language, so a person can rebuild it with `force`. tc-study could close it
- * on its side by checking again (HEAD) every part it skipped right before it writes the list.
+ * still logged as an error, naming the language, so a person can rebuild it with `force`, and so is a list written
+ * since the last look that names a deleted key. tc-study closes it on its side by checking again (HEAD) every part it
+ * skipped right before it writes the list.
+ *
+ * Two runs at once (a cron delivered twice) are safe too: each reads, rechecks and deletes the same due keys, a
+ * delete of a key already gone is a no-op, and each writes the ledger it computed from the same reading.
  */
 
 import { COMPAT_RE, RUNNING_STALE_MS, isPartsCompat } from "./dispatch.js";
@@ -55,12 +64,16 @@ export type CleanupSummary = {
   bytes: number;
 };
 
+export type CleanupState = CleanupSummary["state"];
+
 type Ledger = {
   schema: 1;
   /** When the last finished run wrote it. */
   checked?: string;
   /** Candidate key → when a run first found it unnamed. */
   since: Record<string, string>;
+  /** UTC day → the outcome of that day's last run, for the retries and the alert; the last `OUTCOME_DAYS` days. */
+  outcomes?: Record<string, CleanupState>;
 };
 
 const DAY_MS = 24 * 3_600_000;
@@ -71,6 +84,10 @@ export const LEDGER = "cleanup/parts-orphans.json";
 /** Two missed daily runs are fine; a longer gap restarts every count. */
 export const LEDGER_GAP_MS = 3 * DAY_MS;
 export const CLEANUP_R2_CALLS = 800;
+/** Days in a row that end aborted before the run logs `[packs] cleanup-alert:`. */
+export const ABORT_ALERT_DAYS = 3;
+const OUTCOME_DAYS = 7;
+const ALERT_TAG = "[packs] cleanup-alert:";
 
 const SHA256_RE = /^[0-9a-f]{64}$/;
 const PART_KEY_RE = /^parts\/[0-9a-f]{64}\.part\.gz$/;
@@ -130,6 +147,11 @@ function counted(bucket: R2Bucket) {
     async put(key: string, value: string): Promise<void> {
       calls++;
       await bucket.put(key, value, LEDGER_METADATA);
+    },
+    /** As `get`, but never refused: the checks after the deletes, which must not stop the ledger's write. */
+    async getReserved(key: string): Promise<R2ObjectBody | null> {
+      calls++;
+      return bucket.get(key);
     },
     async delete(keys: string[]): Promise<void> {
       spend();
@@ -337,25 +359,122 @@ async function candidates(
   return out;
 }
 
-async function readLedger(r2: Bucket): Promise<Ledger | null> {
-  const object = await r2.get(LEDGER);
-  if (!object) return null;
+/** The ledger, or null when there is none; `unparsable` when there is one that does not parse. */
+function parseLedger(raw: string): Ledger | null {
   try {
-    const l = JSON.parse(await object.text()) as Partial<Ledger> | null;
+    const l = JSON.parse(raw) as Partial<Ledger> | null;
     if (l?.schema === 1 && l.since && typeof l.since === "object") {
+      const outcomes =
+        l.outcomes && typeof l.outcomes === "object" ? l.outcomes : undefined;
       return {
         schema: 1,
         since: l.since,
         ...(typeof l.checked === "string" ? { checked: l.checked } : {}),
+        ...(outcomes ? { outcomes } : {}),
       };
     }
   } catch {
-    // Read as no ledger below.
+    // Not a ledger.
   }
+  return null;
+}
+
+type LedgerRead = { ledger: Ledger | null; unparsable: boolean };
+
+async function readLedger(r2: Bucket): Promise<LedgerRead> {
+  const object = await r2.get(LEDGER);
+  if (!object) return { ledger: null, unparsable: false };
+  const ledger = parseLedger(await object.text());
+  if (ledger) return { ledger, unparsable: false };
   console.error(
     `[packs] cleanup: ${LEDGER} does not parse; counting again from today`,
   );
-  return null;
+  return { ledger: null, unparsable: true };
+}
+
+/** The outcome of `day`'s last cleanup run, or null when none is recorded or the ledger cannot be read. */
+export async function cleanupOutcome(
+  env: CleanupEnv,
+  day: string,
+): Promise<CleanupState | null> {
+  try {
+    const object = await env.LANGUAGE_PACKS?.get(LEDGER);
+    const outcome = object
+      ? parseLedger(await object.text())?.outcomes?.[day]
+      : undefined;
+    return outcome === "done" ||
+      outcome === "postponed" ||
+      outcome === "aborted"
+      ? outcome
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The outcomes with `day`'s set, the last `OUTCOME_DAYS` days kept. */
+function withOutcome(
+  outcomes: Ledger["outcomes"],
+  day: string,
+  state: CleanupState,
+): Record<string, CleanupState> {
+  const oldest = Date.parse(day) - (OUTCOME_DAYS - 1) * DAY_MS;
+  const kept = Object.entries({ ...outcomes, [day]: state })
+    .filter(([d]) => Date.parse(d) >= oldest && d <= day)
+    .sort(([a], [b]) => a.localeCompare(b));
+  return Object.fromEntries(kept);
+}
+
+/** The days in a row, ending with `day`, whose outcome is `aborted`, and the first of them. */
+function abortStreak(
+  outcomes: Record<string, CleanupState>,
+  day: string,
+): { days: number; since: string } {
+  let days = 0;
+  let since = day;
+  for (let t = Date.parse(day); ; t -= DAY_MS) {
+    const d = new Date(t).toISOString().slice(0, 10);
+    if (outcomes[d] !== "aborted") break;
+    days++;
+    since = d;
+  }
+  return { days, since };
+}
+
+/**
+ * A run that stopped records its outcome and nothing else: the first dates and `checked` stay as they were. With a
+ * ledger that does not parse, nothing is written (the next finished run replaces it). Never throws.
+ */
+async function recordStop(
+  r2: Bucket,
+  read: LedgerRead | undefined,
+  day: string,
+  stop: Stop,
+  tag: string,
+): Promise<void> {
+  try {
+    // A run that stopped before reading the ledger reads it now.
+    const current =
+      read ??
+      (await (async () => {
+        const object = await r2.getReserved(LEDGER);
+        if (!object) return { ledger: null, unparsable: false };
+        const ledger = parseLedger(await object.text());
+        return { ledger, unparsable: !ledger };
+      })());
+    if (current.unparsable) return;
+    const base: Ledger = current.ledger ?? { schema: 1, since: {} };
+    const outcomes = withOutcome(base.outcomes, day, stop.state);
+    await r2.put(LEDGER, JSON.stringify({ ...base, outcomes }));
+    const streak = abortStreak(outcomes, day);
+    if (stop.state === "aborted" && streak.days >= ABORT_ALERT_DAYS) {
+      console.error(
+        `${ALERT_TAG} aborted ${streak.days} days in a row (since ${streak.since}); last: ${stop.message}`,
+      );
+    }
+  } catch (err) {
+    console.error(`${tag}: could not record the day's outcome:`, err);
+  }
 }
 
 function point(env: CleanupEnv, mode: CleanupMode, s: CleanupSummary): void {
@@ -368,13 +487,14 @@ function point(env: CleanupEnv, mode: CleanupMode, s: CleanupSummary): void {
 
 const mb = (bytes: number) => `${(bytes / 1e6).toFixed(1)} MB`;
 
-/** Never throws: it runs in the cron's `waitUntil`. */
+/** Never throws: the cron's handler awaits it. `day` (UTC, `YYYY-MM-DD`) is the day the outcome is recorded for. */
 export async function runPartsCleanup(
   env: CleanupEnv,
-  o: { now?: Date; mode: CleanupMode },
+  o: { now?: Date; mode: CleanupMode; day?: string },
 ): Promise<CleanupSummary> {
   const now = o.now ?? new Date();
   const { mode } = o;
+  const day = o.day ?? now.toISOString().slice(0, 10);
   const summary: CleanupSummary = {
     state: "done",
     named: 0,
@@ -389,7 +509,11 @@ export async function runPartsCleanup(
     return { ...summary, state: "aborted", why: "no bucket" };
   }
   const r2 = counted(bucket);
+  let read: LedgerRead | undefined;
   try {
+    // Read first, so that a run that stops anywhere can record its outcome over what it read.
+    read = await readLedger(r2);
+    const { ledger } = read;
     const compats = await partsCompats(r2);
     const status = await statuses(r2, compats, now);
     const { named, lists } = await readNamed(r2, compats);
@@ -397,7 +521,6 @@ export async function runPartsCleanup(
     summary.named = named.size;
     summary.orphans = orphans.length;
 
-    const ledger = await readLedger(r2);
     const checked = Date.parse(ledger?.checked ?? "");
     const restart =
       !ledger ||
@@ -466,6 +589,7 @@ export async function runPartsCleanup(
       summary.deleted = keys.length;
       for (const key of keys) delete since[key];
       await warnIfBuildStarted(r2, compats, now, statusAgain, tag);
+      await warnIfListNamesDeleted(r2, compats, lists, named, keys, tag);
     }
 
     const sorted = Object.fromEntries(
@@ -475,8 +599,16 @@ export async function runPartsCleanup(
       schema: 1,
       checked: now.toISOString(),
       since: sorted,
+      outcomes: withOutcome(ledger?.outcomes, day, "done"),
     };
-    await r2.put(LEDGER, JSON.stringify(next));
+    try {
+      await r2.put(LEDGER, JSON.stringify(next));
+    } catch (err) {
+      throw new Stop(
+        "aborted",
+        `writing ${LEDGER} failed after deleting ${summary.deleted}: ${String(err)}`,
+      );
+    }
 
     const left = summary.due - doomed.length;
     console.log(
@@ -493,6 +625,7 @@ export async function runPartsCleanup(
     summary.why = stop.message;
     if (summary.deleted === 0) summary.bytes = 0;
     console.log(`${tag}: ${stop.state}, ${stop.message}`);
+    await recordStop(r2, read, day, stop, tag);
   }
   point(env, mode, summary);
   return summary;
@@ -518,4 +651,71 @@ async function warnIfBuildStarted(
       );
     }
   }
+}
+
+/**
+ * After the deletes: a top-level list added or rewritten since the last look was written by a build in the window the
+ * recheck leaves, and may name a deleted key, directly or through an originals list no list named before. Such a list
+ * is logged as an error, with the keys, so a person can rebuild with `force`. The lists read before the deletes named
+ * none of them. Never throws: the ledger's write comes next.
+ */
+async function warnIfListNamesDeleted(
+  r2: Bucket,
+  compats: string[],
+  seen: Map<string, string>,
+  named: Set<string>,
+  deleted: string[],
+  tag: string,
+): Promise<void> {
+  const gone = new Set(deleted);
+  try {
+    for (const compat of compats) {
+      const top = `catalog/${compat}/`;
+      for (const o of (await topLists(r2, top)).values()) {
+        if (seen.get(o.key) === o.etag) continue;
+        const list = await readLoosely(r2, o.key);
+        if (!list) continue;
+        const names = partKeys(list);
+        const originals = list.originals?.path;
+        if (typeof originals === "string") {
+          names.push(originals);
+          // An originals list that was named before had its parts named too; another one is read for its parts.
+          if (!named.has(originals) && !gone.has(originals)) {
+            const inner = await readLoosely(r2, originals);
+            if (inner) names.push(...partKeys(inner));
+          }
+        }
+        const hit = [...new Set(names.filter((k) => gone.has(k)))].sort();
+        if (hit.length) {
+          console.error(
+            `${tag}: ${o.key} names ${hit.length} deleted key${hit.length === 1 ? "" : "s"} (${hit.slice(0, 5).join(", ")}${hit.length > 5 ? ", …" : ""}); it was written during the deletes; rebuild with force`,
+          );
+        }
+      }
+    }
+  } catch (err) {
+    console.error(
+      `${tag}: could not check the lists after the deletes: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+/** A list read for the check after the deletes: whatever does not read or parse is skipped, never thrown. */
+async function readLoosely(r2: Bucket, key: string): Promise<ListShape | null> {
+  try {
+    const object = await r2.getReserved(key);
+    if (!object) return null;
+    const list = JSON.parse(await object.text()) as ListShape | null;
+    return list && typeof list === "object" ? list : null;
+  } catch {
+    return null;
+  }
+}
+
+function partKeys(list: ListShape): string[] {
+  if (!Array.isArray(list.parts)) return [];
+  return (list.parts as Array<{ sha256?: unknown }>)
+    .map((p) => p?.sha256)
+    .filter((sha): sha is string => typeof sha === "string")
+    .map((sha) => `parts/${sha}.part.gz`);
 }

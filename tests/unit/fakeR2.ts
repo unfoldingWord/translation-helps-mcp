@@ -2,7 +2,8 @@
  * An in-memory R2 bucket for the packs tests: `list` with prefix, delimiter, cursor and a page size (R2 pages hold at
  * most 1000 objects), objects with `etag`, `size` and `uploaded`, plus `get`, `head`, `put` and `delete(keys)`. Every
  * call is recorded in `ops`, `fail` makes a call throw, to stand in for an R2 error, and `before` runs before each
- * call, to change the bucket mid-run.
+ * call, to change the bucket mid-run. The bucket has a clock (`opts.now`, moved with `setNow`): every write without a
+ * date of its own, the code's `put` included, is `uploaded` at the clock's time.
  */
 
 export type StoredObject = {
@@ -20,6 +21,7 @@ export function fakeR2(
   initial: Record<string, string | { text: string; uploaded?: Date }> = {},
   opts: { pageSize?: number; now?: Date } = {},
 ) {
+  let clock: Date | undefined = opts.now;
   const objects = new Map<string, StoredObject>();
   const ops: FakeR2Op[] = [];
   const deleted: string[] = [];
@@ -29,7 +31,7 @@ export function fakeR2(
     objects.set(key, {
       text,
       etag: `etag-${++etags}`,
-      uploaded: uploaded ?? opts.now ?? new Date(),
+      uploaded: uploaded ?? clock ?? new Date(),
       size: new TextEncoder().encode(text).length,
     });
   };
@@ -136,9 +138,13 @@ export function fakeR2(
     deleted,
     fail,
     before,
-    /** Writes as a build would: a new etag and `uploaded`. */
+    /** Writes as a build would: a new etag and `uploaded` (the clock's time unless given). */
     put: (key: string, text: string, uploaded?: Date) =>
       store(key, text, uploaded),
+    /** Moves the bucket's clock: later writes are dated with it. */
+    setNow: (now: Date) => {
+      clock = now;
+    },
   };
 }
 

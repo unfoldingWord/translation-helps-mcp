@@ -7,9 +7,11 @@
 import { createHash } from "node:crypto";
 import { describe, it, expect } from "vitest";
 import {
+  ABORT_ALERT_DAYS,
   CLEANUP_R2_CALLS,
   LEDGER,
   MAX_DELETES,
+  cleanupOutcome,
   runPartsCleanup,
   type CleanupEnv,
 } from "../../src/packs/cleanup";
@@ -17,6 +19,7 @@ import { runScheduled } from "../../src/packs/scheduled";
 import {
   CURRENT_PACK_COMPAT,
   CURRENT_PARTS_COMPAT,
+  RUNNING_STALE_MS,
 } from "../../src/packs/dispatch";
 import { fakeKv, fakeR2 } from "./fakeR2";
 
@@ -109,16 +112,30 @@ function world(
         void points.push(p.blobs ?? []),
     } as unknown as AnalyticsEngineDataset,
   };
-  const run = (n: number, mode: "dry-run" | "delete" = "delete") =>
-    runPartsCleanup(env, { now: day(n), mode });
+  // The bucket's clock follows the runs, so what a test writes between two runs is dated like a build's write.
+  const run = (n: number, mode: "dry-run" | "delete" = "delete") => {
+    r2.setNow(day(n));
+    return runPartsCleanup(env, { now: day(n), mode });
+  };
   const ledger = () => {
     const raw = r2.objects.get(LEDGER)?.text;
     return raw
-      ? (JSON.parse(raw) as { since: Record<string, string>; checked: string })
+      ? (JSON.parse(raw) as {
+          since: Record<string, string>;
+          checked?: string;
+          outcomes?: Record<string, string>;
+        })
       : null;
   };
-  return { r2, env, run, ledger, points };
+  /** What decides deletes: the first dates and the last finished run (not the days' outcomes). */
+  const counts = () => {
+    const l = ledger();
+    return l ? { since: l.since, checked: l.checked } : null;
+  };
+  return { r2, env, run, ledger, counts, points };
 }
+
+const dayOf = (n: number) => day(n).toISOString().slice(0, 10);
 
 /** Runs once a day from `from` to `to`, as the cron does; returns the last summary. */
 async function daily(w: ReturnType<typeof world>, from: number, to: number) {
@@ -217,6 +234,7 @@ describe("runPartsCleanup: 30 days in a row", () => {
       schema: 1,
       checked: day(0).toISOString(),
       since: { [part(9)]: day(0).toISOString() },
+      outcomes: { [dayOf(0)]: "done" },
     });
   });
 
@@ -238,7 +256,9 @@ describe("runPartsCleanup: 30 days in a row", () => {
   it("does not delete a part R2 wrote less than 30 days ago, however long it has been unnamed", async () => {
     const w = world();
     await daily(w, 0, 20);
-    w.r2.put(part(9), "orphan nine", day(20));
+    // Written again on day 20 (the bucket's clock), as a build that found it missing would.
+    w.r2.put(part(9), "orphan nine");
+    expect(w.r2.objects.get(part(9))?.uploaded).toEqual(day(20));
     const s = await daily(w, 21, 49);
     expect(s.deleted).toBe(0);
     expect(w.r2.deleted).toEqual([]);
@@ -314,14 +334,19 @@ describe("runPartsCleanup: a partial view never deletes", () => {
     return w;
   }
 
-  function unchanged(w: ReturnType<typeof world>, before: string | undefined) {
+  /** Nothing deleted, the counts as they were; only the day's outcome is recorded. */
+  function unchanged(
+    w: ReturnType<typeof world>,
+    before: ReturnType<ReturnType<typeof world>["counts"]>,
+  ) {
     expect(w.r2.deleted).toEqual([]);
-    expect(w.r2.objects.get(LEDGER)?.text).toBe(before);
+    expect(w.counts()).toEqual(before);
+    expect(w.ledger()!.outcomes![dayOf(30)]).toBe("aborted");
   }
 
-  it("aborts when a list cannot be read, and leaves the ledger as it was", async () => {
+  it("aborts when a list cannot be read, and leaves the counts as they were", async () => {
     const w = await ready();
-    const before = w.r2.objects.get(LEDGER)?.text;
+    const before = w.counts();
     w.r2.fail.push(
       (op, key) => op === "get" && key === `catalog/${C}/es-419.json`,
     );
@@ -361,7 +386,7 @@ describe("runPartsCleanup: a partial view never deletes", () => {
     ],
   ])("aborts on %s", async (_name, key, text) => {
     const w = await ready();
-    const before = w.r2.objects.get(LEDGER)?.text;
+    const before = w.counts();
     w.r2.put(key, text, OLD_DATE);
     expect((await w.run(30)).state).toBe("aborted");
     unchanged(w, before);
@@ -369,7 +394,7 @@ describe("runPartsCleanup: a partial view never deletes", () => {
 
   it("aborts when the originals list a language names is missing", async () => {
     const w = await ready();
-    const before = w.r2.objects.get(LEDGER)?.text;
+    const before = w.counts();
     w.r2.objects.delete(`catalog/${C}/originals/${hash(ORIGINALS)}.json`);
     expect((await w.run(30)).state).toBe("aborted");
     unchanged(w, before);
@@ -384,7 +409,7 @@ describe("runPartsCleanup: a partial view never deletes", () => {
     `status/${C}/`,
   ])("aborts when listing %s fails", async (prefix) => {
     const w = await ready();
-    const before = w.r2.objects.get(LEDGER)?.text;
+    const before = w.counts();
     w.r2.fail.push((op, key) => op === "list" && key === prefix);
     expect((await w.run(30)).state).toBe("aborted");
     unchanged(w, before);
@@ -406,7 +431,12 @@ describe("runPartsCleanup: a partial view never deletes", () => {
     expect(w.r2.ops.filter((op) => op.op !== "put").length).toBeLessThanOrEqual(
       CLEANUP_R2_CALLS,
     );
-    expect(w.r2.objects.has(LEDGER)).toBe(false);
+    // Only the day's outcome: no first date, no finished run.
+    expect(w.ledger()).toEqual({
+      schema: 1,
+      since: {},
+      outcomes: { [dayOf(0)]: "aborted" },
+    });
   });
 });
 
@@ -419,10 +449,10 @@ describe("runPartsCleanup: builds", () => {
       run: "dispatched",
     });
 
-  it("is postponed while a parts build is running, and leaves the ledger as it was", async () => {
+  it("is postponed while a parts build is running, and leaves the counts as they were", async () => {
     const w = world();
     await daily(w, 0, 29);
-    const before = w.r2.objects.get(LEDGER)?.text;
+    const before = w.counts();
     w.r2.put(
       `status/${C}/es-419.json`,
       running(new Date(day(30).getTime() - 3_600_000)),
@@ -430,7 +460,8 @@ describe("runPartsCleanup: builds", () => {
     const s = await w.run(30);
     expect(s).toMatchObject({ state: "postponed", deleted: 0 });
     expect(s.why).toContain(`status/${C}/es-419.json`);
-    expect(w.r2.objects.get(LEDGER)?.text).toBe(before);
+    expect(w.counts()).toEqual(before);
+    expect(w.ledger()!.outcomes![dayOf(30)]).toBe("postponed");
     expect(w.points.at(-1)).toEqual(["pack", "cleanup", "delete", "postponed"]);
   });
 
@@ -457,7 +488,7 @@ describe("runPartsCleanup: builds", () => {
   it("aborts when a build starts between the first look and the deletes", async () => {
     const w = world();
     await daily(w, 0, 29);
-    const before = w.r2.objects.get(LEDGER)?.text;
+    const before = w.counts();
     let started = false;
     w.r2.before.push((op, key) => {
       if (!started && op === "list" && key === "parts/") {
@@ -469,7 +500,7 @@ describe("runPartsCleanup: builds", () => {
     expect(s.state).toBe("aborted");
     expect(s.why).toContain(`status/${C}/en.json is running`);
     expect(w.r2.deleted).toEqual([]);
-    expect(w.r2.objects.get(LEDGER)?.text).toBe(before);
+    expect(w.counts()).toEqual(before);
   });
 
   it.each([
@@ -501,7 +532,7 @@ describe("runPartsCleanup: builds", () => {
     async (_what, change) => {
       const w = world();
       await daily(w, 0, 29);
-      const before = w.r2.objects.get(LEDGER)?.text;
+      const before = w.counts();
       let done = false;
       w.r2.before.push((op, key) => {
         if (!done && op === "list" && key === "parts/") {
@@ -512,7 +543,7 @@ describe("runPartsCleanup: builds", () => {
       const s = await w.run(30);
       expect(s.state).toBe("aborted");
       expect(w.r2.deleted).toEqual([]);
-      expect(w.r2.objects.get(LEDGER)?.text).toBe(before);
+      expect(w.counts()).toEqual(before);
     },
   );
 
@@ -533,6 +564,251 @@ describe("runPartsCleanup: builds", () => {
     expect(errors.join("\n")).toContain(
       `status/${C}/en.json started during the deletes`,
     );
+  });
+});
+
+describe("runPartsCleanup: the open windows, documented", () => {
+  const running = (at: Date) =>
+    JSON.stringify({
+      state: "running",
+      at: at.toISOString(),
+      failures: 0,
+      run: "dispatched",
+    });
+
+  /** Runs `fn` with console.error and console.log captured. */
+  async function quiet<T>(fn: () => Promise<T>) {
+    const errors: string[] = [];
+    const logs: string[] = [];
+    const error = console.error;
+    const log = console.log;
+    console.error = (line: string) => void errors.push(String(line));
+    console.log = (line: string) => void logs.push(String(line));
+    try {
+      return { result: await fn(), errors, logs };
+    } finally {
+      console.error = error;
+      console.log = log;
+    }
+  }
+
+  it("a list written after the recheck and before the delete cannot stop it, but is named in an error after it", async () => {
+    const w = world();
+    await daily(w, 0, 29);
+    // The window the recheck leaves: a build that found part 9 present writes a list naming it right then.
+    w.r2.before.push((op) => {
+      if (op === "delete") {
+        w.r2.put(`catalog/${C}/en.json`, languageText("en", [9], ORIGINALS));
+      }
+    });
+    const { result, errors } = await quiet(() => w.run(30));
+    expect(result).toMatchObject({ state: "done", deleted: 1 });
+    expect(w.r2.deleted).toEqual([part(9)]);
+    expect(errors.join("\n")).toContain(
+      `catalog/${C}/en.json names 1 deleted key (${part(9)})`,
+    );
+  });
+
+  it("a list rewritten after the deletes that names nothing deleted raises no error", async () => {
+    const w = world();
+    await daily(w, 0, 29);
+    w.r2.before.push((op) => {
+      if (op === "delete") {
+        w.r2.put(`catalog/${C}/en.json`, languageText("en", [1], ORIGINALS));
+      }
+    });
+    const { result, errors } = await quiet(() => w.run(30));
+    expect(result).toMatchObject({ state: "done", deleted: 1 });
+    expect(errors).toEqual([]);
+  });
+
+  it("an originals list a new list names, unnamed before, is read for deleted parts too", async () => {
+    const other = originalsText([9]);
+    const w = world({
+      [`catalog/${C}/originals/${hash(other)}.json`]: {
+        text: other,
+        uploaded: day(1),
+      },
+    });
+    await daily(w, 0, 29);
+    w.r2.before.push((op) => {
+      if (op === "delete") {
+        w.r2.put(`catalog/${C}/en.json`, languageText("en", [1], other));
+      }
+    });
+    const { result, errors } = await quiet(() => w.run(30));
+    // Part 9 was due; the unnamed originals list naming it was not (R2 wrote it on day 1).
+    expect(result).toMatchObject({ state: "done", deleted: 1 });
+    expect(errors.join("\n")).toContain(
+      `catalog/${C}/en.json names 1 deleted key (${part(9)})`,
+    );
+  });
+
+  it("a status turned running after the recheck is named after the deletes (the same window)", async () => {
+    const w = world();
+    await daily(w, 0, 29);
+    w.r2.before.push((op) => {
+      if (op === "delete") w.r2.put(`status/${C}/fr.json`, running(day(30)));
+    });
+    const { result, errors } = await quiet(() => w.run(30));
+    expect(result).toMatchObject({ state: "done", deleted: 1 });
+    expect(errors.join("\n")).toContain(
+      `status/${C}/fr.json started during the deletes`,
+    );
+  });
+
+  it("a running status dated in the future postpones, as the dispatch guard reads it", async () => {
+    const w = world();
+    await daily(w, 0, 29);
+    w.r2.put(
+      `status/${C}/es-419.json`,
+      running(new Date(day(30).getTime() + 3_600_000)),
+    );
+    const { result } = await quiet(() => w.run(30));
+    expect(result).toMatchObject({ state: "postponed", deleted: 0 });
+  });
+
+  it("a running status is a build until RUNNING_STALE_MS (5.5 h) has passed, and dead from then on", async () => {
+    for (const [age, state] of [
+      [RUNNING_STALE_MS - 1, "postponed"],
+      [RUNNING_STALE_MS, "done"],
+    ] as const) {
+      const w = world();
+      await daily(w, 0, 29);
+      w.r2.put(
+        `status/${C}/es-419.json`,
+        running(new Date(day(30).getTime() - age)),
+      );
+      const { result } = await quiet(() => w.run(30));
+      expect(result.state).toBe(state);
+    }
+    expect(RUNNING_STALE_MS).toBe(5.5 * 3_600_000);
+  });
+
+  it("two cleanups at once delete only the due orphan, and leave one consistent ledger", async () => {
+    const w = world();
+    await daily(w, 0, 29);
+    w.r2.setNow(day(30));
+    const { result } = await quiet(() =>
+      Promise.all([
+        runPartsCleanup(w.env, { now: day(30), mode: "delete" }),
+        runPartsCleanup(w.env, { now: day(30), mode: "delete" }),
+      ]),
+    );
+    expect(result.map((r) => r.state)).toEqual(["done", "done"]);
+    expect(w.r2.deleted).toEqual([part(9)]);
+    for (const n of [1, 2, 101, 102])
+      expect(w.r2.objects.has(part(n))).toBe(true);
+    expect(w.ledger()).toMatchObject({
+      checked: day(30).toISOString(),
+      since: {},
+    });
+    expect((await quiet(() => w.run(31))).result).toMatchObject({
+      state: "done",
+      orphans: 0,
+      deleted: 0,
+    });
+  });
+
+  it("a ledger write that fails after the deletes: aborted with the deletes reported, and the next run drops them", async () => {
+    const w = world();
+    await daily(w, 0, 29);
+    w.r2.fail.push((op, key) => op === "put" && key === LEDGER);
+    const { result, logs } = await quiet(() => w.run(30));
+    expect(result).toMatchObject({ state: "aborted", deleted: 1 });
+    expect(result.why).toContain(`writing ${LEDGER} failed after deleting 1`);
+    expect(logs.join("\n")).toContain("aborted, writing");
+    expect(w.r2.deleted).toEqual([part(9)]);
+    // The old ledger still has part 9's first date; it is gone from the bucket, so the next run drops it.
+    expect(w.ledger()!.since[part(9)]).toBe(day(0).toISOString());
+    w.r2.fail.length = 0;
+    const next = (await quiet(() => w.run(31))).result;
+    expect(next).toMatchObject({ state: "done", orphans: 0, deleted: 0 });
+    expect(w.ledger()!.since).toEqual({});
+  });
+});
+
+describe("runPartsCleanup: the day's outcome and the alert", () => {
+  async function quiet<T>(fn: () => Promise<T>) {
+    const errors: string[] = [];
+    const error = console.error;
+    const log = console.log;
+    console.error = (line: string) => void errors.push(String(line));
+    console.log = () => {};
+    try {
+      return { result: await fn(), errors };
+    } finally {
+      console.error = error;
+      console.log = log;
+    }
+  }
+  const alerts = (errors: string[]) =>
+    errors.filter((e) => e.startsWith("[packs] cleanup-alert:"));
+
+  it("records each day's outcome, keeps a week of them, and cleanupOutcome reads the day's", async () => {
+    const w = world();
+    await quiet(() => daily(w, 0, 9));
+    expect(Object.keys(w.ledger()!.outcomes!).sort()).toEqual(
+      [3, 4, 5, 6, 7, 8, 9].map(dayOf),
+    );
+    expect(await cleanupOutcome(w.env, dayOf(9))).toBe("done");
+    expect(await cleanupOutcome(w.env, dayOf(10))).toBeNull();
+    w.r2.put(
+      `status/${C}/es-419.json`,
+      JSON.stringify({ state: "running", at: day(10).toISOString() }),
+    );
+    await quiet(() => w.run(10));
+    expect(await cleanupOutcome(w.env, dayOf(10))).toBe("postponed");
+  });
+
+  it("reads no outcome from a bucket it cannot read or a ledger that does not parse", async () => {
+    const w = world({ [LEDGER]: "{" });
+    expect(await cleanupOutcome(w.env, dayOf(0))).toBeNull();
+    w.r2.fail.push((op) => op === "get");
+    expect(await cleanupOutcome(w.env, dayOf(0))).toBeNull();
+    expect(await cleanupOutcome({}, dayOf(0))).toBeNull();
+  });
+
+  it(`alerts with a stable tag on the ${ABORT_ALERT_DAYS}rd day in a row that ends aborted, not before`, async () => {
+    const w = world();
+    await quiet(() => daily(w, 0, 29));
+    w.r2.fail.push(
+      (op, key) => op === "get" && key === `catalog/${C}/es-419.json`,
+    );
+    const runs = [];
+    for (const n of [30, 31, 32, 33]) runs.push(await quiet(() => w.run(n)));
+    expect(runs.map((r) => alerts(r.errors).length)).toEqual([0, 0, 1, 1]);
+    expect(alerts(runs[2]!.errors)[0]).toContain(
+      `aborted ${ABORT_ALERT_DAYS} days in a row (since ${dayOf(30)})`,
+    );
+    expect(alerts(runs[3]!.errors)[0]).toContain("aborted 4 days in a row");
+  });
+
+  it("a day that ends done (a retry) or a day without a run breaks the streak", async () => {
+    const w = world();
+    await quiet(() => daily(w, 0, 29));
+    const broken = (op: string, key: string) =>
+      op === "get" && key === `catalog/${C}/es-419.json`;
+    w.r2.fail.push(broken);
+    await quiet(() => w.run(30));
+    await quiet(() => w.run(31));
+    // Day 31's retry finishes it.
+    w.r2.fail.length = 0;
+    await quiet(() => w.run(31));
+    w.r2.fail.push(broken);
+    const day32 = await quiet(() => w.run(32));
+    expect(alerts(day32.errors)).toEqual([]);
+    // Day 34 with no run on day 33.
+    await quiet(() => w.run(33));
+    w.r2.objects.set(LEDGER, {
+      ...w.r2.objects.get(LEDGER)!,
+      text: JSON.stringify({
+        ...w.ledger(),
+        outcomes: { [dayOf(32)]: "aborted", [dayOf(34)]: "aborted" },
+      }),
+    });
+    const day35 = await quiet(() => w.run(35));
+    expect(alerts(day35.errors)).toEqual([]);
   });
 });
 
