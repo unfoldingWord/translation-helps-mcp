@@ -1,7 +1,8 @@
 /**
  * An in-memory R2 bucket for the packs tests: `list` with prefix, delimiter, cursor and a page size (R2 pages hold at
  * most 1000 objects), objects with `etag`, `size` and `uploaded`, plus `get`, `head`, `put` and `delete(keys)`. Every
- * call is recorded in `ops`, and `fail` makes a call throw, to stand in for an R2 error.
+ * call is recorded in `ops`, `fail` makes a call throw, to stand in for an R2 error, and `before` runs before each
+ * call, to change the bucket mid-run.
  */
 
 export type StoredObject = {
@@ -36,7 +37,10 @@ export function fakeR2(
     if (typeof v === "string") store(key, v);
     else store(key, v.text, v.uploaded);
   }
+  /** Called before every call, to change the bucket mid-run as a build would. */
+  const before: Array<(op: string, key: string) => void> = [];
   const check = (op: string, key: string) => {
+    for (const hook of before) hook(op, key);
     if (fail.some((f) => f(op, key))) throw new Error(`R2 ${op} ${key} failed`);
   };
   const body = (key: string, o: StoredObject) => ({
@@ -47,6 +51,7 @@ export function fakeR2(
     uploaded: o.uploaded,
     text: async () => o.text,
     json: async () => JSON.parse(o.text),
+    arrayBuffer: async () => new TextEncoder().encode(o.text).buffer,
   });
   const bucket = {
     async list(
@@ -130,6 +135,7 @@ export function fakeR2(
     ops,
     deleted,
     fail,
+    before,
     /** Writes as a build would: a new etag and `uploaded`. */
     put: (key: string, text: string, uploaded?: Date) =>
       store(key, text, uploaded),

@@ -37,6 +37,7 @@ import {
   type PartsCheck,
   type PartsListLite,
 } from "./partsFreshness.js";
+import { runPartsCleanup } from "./cleanup.js";
 import type { observeParts } from "./partsSources.js";
 
 export type ScheduledEnv = FreshnessEnv & {
@@ -115,9 +116,9 @@ export async function runScheduled(
 
   // Before the parts slice: a build that slice dispatches would otherwise postpone the cleanup every day.
   const mode = cleanupMode(env.PACKS_CLEANUP);
-  if (hour === CLEANUP_HOUR && mode && deps.cleanup) {
+  if (hour === CLEANUP_HOUR && mode) {
     try {
-      await deps.cleanup(env, { now: deps.now, mode });
+      await (deps.cleanup ?? runPartsCleanup)(env, { now: deps.now, mode });
     } catch (err) {
       console.error(`[packs] cleanup stopped:`, err);
     }
