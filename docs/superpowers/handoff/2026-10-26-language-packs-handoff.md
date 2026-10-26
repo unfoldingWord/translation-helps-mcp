@@ -10,8 +10,8 @@ merged without Abel's explicit yes (Abel merges PRs himself).
 | Repo | Branch | State |
 |---|---|---|
 | unfoldingWord/tc-study | `master` | Plans 2b-1 and 2b-2 merged (PRs #46–#49): parts build, fingerprints, reuse, publish to staging. |
-| unfoldingWord/tc-study | `feat/packs-builder-stamps` | Delivery 3, tc-study side (Tasks 10–11 + review fixes): `PartsList.stamps`, `status/builder.json`, `packs-builder.yml`, ok status records `code`, parts publish only from master, separate concurrency groups. Pushed, **no PR yet**. |
-| unfoldingWord/translation-helps-mcp | `feat/packs-worker-parts` (from `v2`) | Delivery 3, Worker side: Tasks 1–6 committed and pushed; Tasks 7–8 (sweep, cleanup) in progress at handoff time — check `git log`. **No PR yet.** |
+| unfoldingWord/tc-study | `feat/packs-builder-stamps` | Delivery 3, tc-study side, done and reviewed (4 commits): `PartsList.stamps`, `status/builder.json` + `packs-builder.yml`, ok status records `code`, parts publish only from master, separate concurrency groups (`-parts-`, `-parts-measure-`), parts R2 wrote >20 days ago are re-put, present parts re-checked before the lists. resource-pipeline 358 pass. Pushed, **no PR yet**. One small TODO: the workflow summary doesn't print `parts.refreshed`. |
+| unfoldingWord/translation-helps-mcp | `feat/packs-worker-parts` (from `v2`) | Delivery 3, Worker side: Tasks 1–8 done, every review finding fixed (19 commits). Unit tests 1418 pass; typecheck and lint clean. Pushed, **no PR yet**. Left: Task 9 (docs), a final review of both branches, then PRs. |
 | translation-helps-mcp | `docs/packs-delivery-3` | Plan for delivery 3: `docs/superpowers/plans/2026-10-26-language-packs-3-worker-parts.md`. |
 | translation-helps-mcp | `docs/packs-spec-2b2` | The spec with the exact fingerprint rules (§2) and list format (§3) as 2b-2 built them. |
 | translation-helps-mcp | `docs/packs-delivery-2b2`, `docs/packs-delivery-2b1` | Plans 2b-2 and 2b-1 (done). |
@@ -41,26 +41,28 @@ lists (they gain `stamps`), `published` with 0 parts put; then `unchanged` again
 
 Plan tasks (see the plan and `3-ledger.md` for every amendment):
 
-1. **Finish Tasks 7–8** if not committed (hourly cron with per-language slices; cleanup with a first-seen ledger,
-   modes off/dry-run/delete, default off, staging dry-run). Production must get no parts dispatch and no deletes.
-2. **Fix the Tasks 4–6 review findings** (recorded in `3-ledger.md`, "Review 4-6"):
-   - H1: a lexicon/MACULA change can be marked seen with no build (commit date earlier than the merge). Keep a KV
-     first-seen time per key+stamp; a change's date is `max(stampDate, firstSeen)`.
-   - M1: `scripts/packs-parts-stamps.ts` with `--base` GETs the list, which can dispatch on preview (flag on) and
-     accepts a 202. Require 200 + schema 2; run the gate with `--list` (list fetched with `wrangler r2 object get`)
-     before deploying preview, or deploy preview with `PACKS_PARTS_DISPATCH` off until the gate prints nothing; add
-     `--builder` to compare `list.code` with `builder.code`.
-   - M2: one unreadable input (GitHub 60/h anonymous, a lexicon read) makes the whole check `unknown`. Leave
-     unreadable inputs out of the map (a key only in the list is ignored); no literal text = no lexicons.
-   - LOW items listed there (originals query `lang` vs `language` in tc-study, catalog cache staleness for checks,
-     MACULA keys, undated stamps, stale builder.json, waitUntil cut-off).
-3. **Review Tasks 7–8**, then Task 9 (docs: client contract, operations, spec rewrite of §2 "For the Worker" —
-   the Worker decides by stamps + code, not fingerprints: Abel's decision 1).
-4. **Final review** of both branches; open PRs: tc-study `feat/packs-builder-stamps` → `master`; MCP
-   `feat/packs-worker-parts` → `v2` (after #76).
-5. **Task 12, staging, each step with Abel's yes:** run the gate (Task 6 script) against the staging lists of
-   es-419 and en; it must print no differences before any dispatch. Then deploy the preview Workers
-   (`translation-helps-mcp-v2-preview` / `translation-helps-api-v2-preview`) and watch the cron in dry-run.
+Tasks 1–8 and 10–11 are done, with every review finding fixed (see `3-ledger.md`: "Review 1-3 fixes" …
+"Review 7-8 fixes", "Publish vs cleanup"). Left:
+
+1. **Task 9** (docs: client contract, operations, spec rewrite of §2 "For the Worker" — the Worker decides by
+   stamps + code, not fingerprints: Abel's decision 1). Document: crons per job (production `17 6 * * *` only;
+   preview `7 3`, `7 4,5`, `37 *`), the env vars (`PACKS_PARTS_DISPATCH`, `PACKS_PARTS_DAILY_CAP`,
+   `PACKS_SWEEP`, `PACKS_CLEANUP` off/dry-run/delete, `PARTS_CHECKS_PER_RUN`, `PARTS_RATE_LIMIT_RPM`), the KV
+   keys (`packs:first-seen:*`, `packs:dispatch-parts:<date>`), `cleanup/parts-orphans.json`, the
+   `[packs] cleanup-alert:` log tag, and that only workflow publishes are safe against cleanup.
+2. **Final review** of both branches (most capable model), then PRs: tc-study `feat/packs-builder-stamps` →
+   `master`; MCP `feat/packs-worker-parts` → `v2`, **after #76** (merge or rebase it in).
+3. **Task 12, staging, each step with Abel's yes.** Reordered by review: run the gate FIRST, before deploying
+   preview, with files: `wrangler r2 object get language-packs-staging/catalog/<f2.0…>/es-419.json` (and en,
+   and `status/builder.json`), then `npx tsx scripts/packs-parts-stamps.ts --list <file> --builder <file> …`; it
+   must print no differences. A GET against a preview Worker with `PACKS_PARTS_DISPATCH=on` can dispatch. Only
+   then deploy the preview Workers (`translation-helps-mcp-v2-preview` / `translation-helps-api-v2-preview`) and
+   watch the crons, cleanup in dry-run.
+4. **Open points noted by review, not fixed:** both sides send no language in the UHB/UGNT search (tc-study passes
+   `lang:` but `searchCatalog` reads `language`); move both to `language=` in one change. Cloudflare Free allows
+   5 cron triggers per account and 10 ms CPU per invocation: check the account's plan and existing triggers before
+   Task 14 (production would need the 3 extra crons). A stale `status/builder.json` (e.g. a production
+   packs-builder job waiting for approval) makes code-rebuild attempts, bounded by the caps.
 6. **Task 13 (tc-study):** lift the workflow's refusal of parts publishes to production.
 7. **Task 14, production, each step with Abel's yes:** set `PACKS_PARTS_DISPATCH = "on"` in production, the
    `packs-production` Environment var `PACKS_PARTS_PRODUCTION`, then cleanup modes.
