@@ -71,8 +71,9 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
     verseStr,
     format,
     includeAll ? "all" : "primary",
-    // Answers cached before a book's \id language and script were checked.
-    "id-lang-script",
+    // Answers cached before a book's \id language and script were checked,
+    // and before "only the original" stopped counting as the book being available.
+    "lang-book",
   );
 
   const cached = await getCachedJson<Record<string, unknown>>(
@@ -258,17 +259,29 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
       )
       .map((r) => r.value);
 
-    if (versions.length === 0) {
+    // The original (Greek or Hebrew) is not a translation of the language.
+    // If none of the language's versions have the passage, say so, even when
+    // the original has the text. A book the catalog leaves out is named with
+    // the same stand-in note a success would have carried.
+    const languageVersions = versions.filter((v) => v.role !== "original");
+    if (languageVersions.length === 0) {
+      const named =
+        extents.length === 0
+          ? (versionsNote ??
+            describeStandIns(entries, cappedEntries, book, language))
+          : null;
       return {
         ok: false,
-        message: missingPassageMessage({
-          reference,
-          book,
-          chapter,
-          verseStart,
-          language,
-          extents,
-        }),
+        message:
+          named ??
+          missingPassageMessage({
+            reference,
+            book,
+            chapter,
+            verseStart,
+            language,
+            extents,
+          }),
       };
     }
 
