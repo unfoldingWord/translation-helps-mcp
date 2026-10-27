@@ -28,8 +28,11 @@ import type {
   ScriptureVersionRole,
 } from "@translation-helps/door43";
 import {
+  bookCodesFromIngredients,
   ingredientCoversBook,
   resolveScriptureVersionRole,
+  sortUsfmBooksCanonically,
+  usfmToBookName,
 } from "@translation-helps/door43";
 import type { ZipCacheSource } from "@translation-helps/door43";
 import {
@@ -414,6 +417,26 @@ export function pickPrimaryScriptureEntries(
  * which ones, and what was given in their place, if anything. Null when the
  * usual literal and simplified versions were used.
  */
+/**
+ * Union of books listed in the language's catalog entries, English names in
+ * canonical order. Empty-ingredient versions add nothing; null when none list
+ * books (caller keeps today's message with no list).
+ */
+function availableBooksSuffix(
+  entries: CatalogEntry[],
+  language: string,
+): string | null {
+  const codes = new Set<string>();
+  for (const entry of entries) {
+    for (const code of bookCodesFromIngredients(entry.ingredients)) {
+      codes.add(code);
+    }
+  }
+  if (codes.size === 0) return null;
+  const names = sortUsfmBooksCanonically(codes).map(usfmToBookName);
+  return `Books available in ${language}: ${names.join(", ")}.`;
+}
+
 export function describeStandIns(
   entries: CatalogEntry[],
   picked: CatalogEntry[],
@@ -434,11 +457,15 @@ export function describeStandIns(
   const lacking = usual.filter((entry) => !picked.includes(entry));
   if (lacking.length === 0) return null;
 
+  const bookName = usfmToBookName(book);
   const verb = lacking.length === 1 ? "does" : "do";
   const standIns = picked.filter((entry) => !usual.includes(entry));
-  return standIns.length > 0
-    ? `The ${list(lacking)} ${verb} not include ${book} yet; the ${list(standIns)} ${standIns.length === 1 ? "is" : "are"} given in ${lacking.length === 1 ? "its" : "their"} place.`
-    : `The ${list(lacking)} ${verb} not include ${book} yet, and no other "${language}" version has it.`;
+  if (standIns.length > 0) {
+    return `The ${list(lacking)} ${verb} not include ${bookName} yet; the ${list(standIns)} ${standIns.length === 1 ? "is" : "are"} given in ${lacking.length === 1 ? "its" : "their"} place.`;
+  }
+  const base = `The ${list(lacking)} ${verb} not include ${bookName} yet, and no other "${language}" version has it.`;
+  const available = availableBooksSuffix(entries, language);
+  return available ? `${base} ${available}` : base;
 }
 
 /**

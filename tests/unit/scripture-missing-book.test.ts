@@ -3,7 +3,8 @@
  * (Greek or Hebrew) must not turn that into a success: the route says the book
  * is not available, and get_passage soft-fails. English stand-ins, a book the
  * language does have, a verse past the end, and a language with no Bible stay
- * as they are (#67).
+ * as they are (#67). When nothing has the book, the message also lists which
+ * books the language's catalog entries do cover (#67 available books).
  */
 import { describe, expect, it, vi } from "vitest";
 import type { CatalogEntry } from "@translation-helps/door43";
@@ -96,28 +97,30 @@ const UHB = entry(
   ["ISA"],
   "https://example.test/uhb.zip",
 );
+/** Books listed for es-419-style gaps: same set v1 reports, not including John. */
+const ES_GAP_BOOKS = ["3JN", "EST", "JON", "NEH", "RUT", "TIT"];
 const ULT_GAP = entry(
   "unfoldingWord",
   "ult",
-  ["GEN"],
+  ES_GAP_BOOKS,
   "https://example.test/ult-gap.zip",
 );
 const UST_GAP = entry(
   "unfoldingWord",
   "ust",
-  ["GEN"],
+  ES_GAP_BOOKS,
   "https://example.test/ust-gap.zip",
 );
 const HGLT = entry(
   "unfoldingWord",
   "hglt",
-  ["GEN"],
+  ["GEN", "RUT", "MAT"],
   "https://example.test/hglt.zip",
 );
 const HGST = entry(
   "unfoldingWord",
   "hgst",
-  ["GEN"],
+  ["GEN", "EXO"],
   "https://example.test/hgst.zip",
 );
 
@@ -218,8 +221,15 @@ async function passageAsMcp(
   }
 }
 
+const ES_AVAILABLE =
+  "Books available in es-419: Ruth, Nehemiah, Esther, Jonah, Titus, 3 John.";
+const BN_AVAILABLE =
+  "Books available in bn: Ruth, Nehemiah, Esther, Jonah, Titus, 3 John.";
+const HI_AVAILABLE = "Books available in hi: Genesis, Exodus, Ruth, Matthew.";
+const ES_MISSING = `The ULT (literal) and UST (simplified) do not include John yet, and no other "es-419" version has it. ${ES_AVAILABLE}`;
+
 describe("scripture when no Bible of the language has the book", () => {
-  it("says the book is not available, naming the versions that lack it, even though the original has the text", async () => {
+  it("says the book is not available, naming the versions and the books that are, even though the original has the text", async () => {
     resetBooks();
     putLanguage("es-419", [ULT_GAP, UST_GAP], []);
 
@@ -229,8 +239,7 @@ describe("scripture when no Bible of the language has the book", () => {
     expect(body).toEqual({
       error: {
         code: "NOT_FOUND",
-        message:
-          'The ULT (literal) and UST (simplified) do not include JHN yet, and no other "es-419" version has it.',
+        message: ES_MISSING,
         retryable: false,
       },
     });
@@ -246,8 +255,7 @@ describe("scripture when no Bible of the language has the book", () => {
     expect(result.structuredContent).toMatchObject({
       available: false,
       code: "RESOURCE_NOT_AVAILABLE",
-      message:
-        'The ULT (literal) and UST (simplified) do not include JHN yet, and no other "es-419" version has it.',
+      message: ES_MISSING,
     });
   });
 
@@ -260,11 +268,11 @@ describe("scripture when no Bible of the language has the book", () => {
 
     expect(status).toBe(404);
     expect(error.message).toBe(
-      'The ULT (literal) and UST (simplified) do not include JHN yet, and no other "bn" version has it.',
+      `The ULT (literal) and UST (simplified) do not include John yet, and no other "bn" version has it. ${BN_AVAILABLE}`,
     );
   });
 
-  it("says Hindi's literal and simplified versions do not include Isaiah", async () => {
+  it("says Hindi's literal and simplified versions do not include Isaiah, listing books in canonical order", async () => {
     resetBooks();
     putLanguage("hi", [HGLT, HGST], []);
 
@@ -273,7 +281,7 @@ describe("scripture when no Bible of the language has the book", () => {
 
     expect(status).toBe(404);
     expect(error.message).toBe(
-      'The HGLT (literal) and HGST (simplified) do not include ISA yet, and no other "hi" version has it.',
+      `The HGLT (literal) and HGST (simplified) do not include Isaiah yet, and no other "hi" version has it. ${HI_AVAILABLE}`,
     );
   });
 
@@ -301,7 +309,7 @@ describe("scripture when no Bible of the language has the book", () => {
       "uhb/original",
     ]);
     expect(body.versionsNote).toBe(
-      "The ULT (literal) and UST (simplified) do not include ISA yet; the T4T and BSB are given in their place.",
+      "The ULT (literal) and UST (simplified) do not include Isaiah yet; the T4T and BSB are given in their place.",
     );
   });
 

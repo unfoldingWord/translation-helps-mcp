@@ -73,6 +73,8 @@ export {
   parseReferenceForTool,
   normalizeReference,
   bookNameToUsfm,
+  usfmToBookName,
+  sortUsfmBooksCanonically,
 } from "./resources/referenceParser.js";
 
 // Scripture roles

@@ -1,7 +1,8 @@
 /**
  * The published ULT and UST do not have every book yet (no Isaiah in release
  * v91). For a book they lack, the scripture route must give another version
- * of the language and say so, not the original text alone (#64).
+ * of the language and say so, not the original text alone (#64). When no
+ * version has the book, the note also lists which books the catalog covers.
  */
 import { describe, expect, it } from "vitest";
 import type { CatalogEntry } from "@translation-helps/door43";
@@ -44,7 +45,7 @@ describe("pickPrimaryScriptureEntries", () => {
     const picked = pickPrimaryScriptureEntries(POOL, "ISA");
     expect(names(picked)).toEqual(["t4t", "bsb"]);
     expect(describeStandIns(POOL, picked, "ISA", "en")).toBe(
-      "The ULT (literal) and UST (simplified) do not include ISA yet; the T4T and BSB are given in their place.",
+      "The ULT (literal) and UST (simplified) do not include Isaiah yet; the T4T and BSB are given in their place.",
     );
   });
 
@@ -52,15 +53,32 @@ describe("pickPrimaryScriptureEntries", () => {
     const picked = pickPrimaryScriptureEntries(POOL, "RUT");
     expect(names(picked)).toEqual(["ult", "bsb"]);
     expect(describeStandIns(POOL, picked, "RUT", "en")).toBe(
-      "The UST (simplified) does not include RUT yet; the BSB is given in its place.",
+      "The UST (simplified) does not include Ruth yet; the BSB is given in its place.",
     );
   });
 
-  it("gives none, and says so, when no version has the book", () => {
+  it("gives none, and says so with the books that are available, when no version has the book", () => {
     const picked = pickPrimaryScriptureEntries(POOL, "NUM");
     expect(picked).toEqual([]);
     expect(describeStandIns(POOL, picked, "NUM", "en")).toBe(
-      'The ULT (literal) and UST (simplified) do not include NUM yet, and no other "en" version has it.',
+      'The ULT (literal) and UST (simplified) do not include Numbers yet, and no other "en" version has it. Books available in en: Genesis, Ruth, Isaiah, John.',
+    );
+  });
+
+  it("leaves the message without a book list when no version lists ingredients", () => {
+    const bare = entry("unfoldingWord", "ult", []);
+    expect(describeStandIns([bare], [], "JHN", "yy")).toBe(
+      'The ULT (literal) does not include John yet, and no other "yy" version has it.',
+    );
+  });
+
+  it("ignores a version with empty ingredients when building the available-books list", () => {
+    const listed = entry("unfoldingWord", "ult", ["RUT", "TIT"]);
+    const bare = entry("someone", "xyz", []);
+    // Usual pair is ULT + XYZ (no simplified); XYZ lists no books so the
+    // available list comes only from ULT's ingredients.
+    expect(describeStandIns([listed, bare], [], "JHN", "es-419")).toBe(
+      'The ULT (literal) and XYZ do not include John yet, and no other "es-419" version has it. Books available in es-419: Ruth, Titus.',
     );
   });
 
@@ -99,7 +117,7 @@ describe("pickPrimaryScriptureEntries", () => {
     const picked = pickPrimaryScriptureEntries(pool, "ISA");
     expect(names(picked)).toEqual(["t4t", "bsb"]);
     expect(describeStandIns(pool, picked, "ISA", "en")).toBe(
-      "The ULT (literal) does not include ISA yet; the BSB is given in its place.",
+      "The ULT (literal) does not include Isaiah yet; the BSB is given in its place.",
     );
   });
 });
