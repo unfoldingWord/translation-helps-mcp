@@ -65,6 +65,16 @@ describe("pickPrimaryScriptureEntries", () => {
     );
   });
 
+  it("lists no books when one of the usual versions has the book", () => {
+    const ult = entry("unfoldingWord", "ult", ["GEN", "ISA"]);
+    const ust = entry("unfoldingWord", "ust", ["GEN"]);
+    const picked = pickPrimaryScriptureEntries([ult, ust], "ISA");
+    expect(picked).toEqual([ult]);
+    expect(describeStandIns([ult, ust], picked, "ISA", "en")).toBe(
+      'The UST (simplified) does not include Isaiah yet, and no other "en" version has it.',
+    );
+  });
+
   it("leaves the message without a book list when no version lists ingredients", () => {
     const bare = entry("unfoldingWord", "ult", []);
     expect(describeStandIns([bare], [], "JHN", "yy")).toBe(

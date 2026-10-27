@@ -413,11 +413,6 @@ export function pickPrimaryScriptureEntries(
 }
 
 /**
- * Says so when the versions a caller would expect do not have the book:
- * which ones, and what was given in their place, if anything. Null when the
- * usual literal and simplified versions were used.
- */
-/**
  * Union of books listed in the language's catalog entries, English names in
  * canonical order. Empty-ingredient versions add nothing; null when none list
  * books (caller keeps today's message with no list).
@@ -437,6 +432,11 @@ function availableBooksSuffix(
   return `Books available in ${language}: ${names.join(", ")}.`;
 }
 
+/**
+ * Says so when the versions a caller would expect do not have the book:
+ * which ones, and what was given in their place, if anything. Null when the
+ * usual literal and simplified versions were used.
+ */
 export function describeStandIns(
   entries: CatalogEntry[],
   picked: CatalogEntry[],
@@ -464,7 +464,9 @@ export function describeStandIns(
     return `The ${list(lacking)} ${verb} not include ${bookName} yet; the ${list(standIns)} ${standIns.length === 1 ? "is" : "are"} given in ${lacking.length === 1 ? "its" : "their"} place.`;
   }
   const base = `The ${list(lacking)} ${verb} not include ${bookName} yet, and no other "${language}" version has it.`;
-  const available = availableBooksSuffix(entries, language);
+  // List other books only when no version of the language has this one.
+  const available =
+    picked.length === 0 ? availableBooksSuffix(entries, language) : null;
   return available ? `${base} ${available}` : base;
 }
 
