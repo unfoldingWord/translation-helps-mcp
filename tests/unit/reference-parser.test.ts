@@ -3,7 +3,132 @@ import {
   parseReference,
   bookNameToUsfm,
   parseReferenceForTool,
+  usfmToBookName,
+  sortUsfmBooksCanonically,
+  isCanonicalUsfmBook,
 } from "@translation-helps/door43";
+
+/** The 66 Protestant canon USFM codes, Genesis → Revelation. */
+const CANONICAL_USFM = [
+  "GEN",
+  "EXO",
+  "LEV",
+  "NUM",
+  "DEU",
+  "JOS",
+  "JDG",
+  "RUT",
+  "1SA",
+  "2SA",
+  "1KI",
+  "2KI",
+  "1CH",
+  "2CH",
+  "EZR",
+  "NEH",
+  "EST",
+  "JOB",
+  "PSA",
+  "PRO",
+  "ECC",
+  "SNG",
+  "ISA",
+  "JER",
+  "LAM",
+  "EZK",
+  "DAN",
+  "HOS",
+  "JOL",
+  "AMO",
+  "OBA",
+  "JON",
+  "MIC",
+  "NAM",
+  "HAB",
+  "ZEP",
+  "HAG",
+  "ZEC",
+  "MAL",
+  "MAT",
+  "MRK",
+  "LUK",
+  "JHN",
+  "ACT",
+  "ROM",
+  "1CO",
+  "2CO",
+  "GAL",
+  "EPH",
+  "PHP",
+  "COL",
+  "1TH",
+  "2TH",
+  "1TI",
+  "2TI",
+  "TIT",
+  "PHM",
+  "HEB",
+  "JAS",
+  "1PE",
+  "2PE",
+  "1JN",
+  "2JN",
+  "3JN",
+  "JUD",
+  "REV",
+] as const;
+
+describe("usfmToBookName and sortUsfmBooksCanonically", () => {
+  it("gives full English names for the 66 canonical codes", () => {
+    expect(CANONICAL_USFM).toHaveLength(66);
+    expect(usfmToBookName("PSA")).toBe("Psalms");
+    expect(usfmToBookName("SNG")).toBe("Song of Songs");
+    expect(usfmToBookName("1KI")).toBe("1 Kings");
+    expect(usfmToBookName("2CH")).toBe("2 Chronicles");
+    expect(usfmToBookName("JHN")).toBe("John");
+    for (const code of CANONICAL_USFM) {
+      const name = usfmToBookName(code);
+      expect(name, code).not.toBe(code);
+      expect(bookNameToUsfm(name)).toBe(code);
+    }
+  });
+
+  it("sorts in canonical order and accepts mixed case", () => {
+    expect(sortUsfmBooksCanonically(["rev", "Gen", "psa", "1ki"])).toEqual([
+      "GEN",
+      "1KI",
+      "PSA",
+      "REV",
+    ]);
+    expect(sortUsfmBooksCanonically([...CANONICAL_USFM].reverse())).toEqual([
+      ...CANONICAL_USFM,
+    ]);
+  });
+
+  it("returns an unknown code as-is (uppercased) and sorts it after the canon", () => {
+    expect(usfmToBookName("FRT")).toBe("FRT");
+    expect(usfmToBookName("tob")).toBe("TOB");
+    expect(sortUsfmBooksCanonically(["FRT", "RUT", "TOB"])).toEqual([
+      "RUT",
+      "FRT",
+      "TOB",
+    ]);
+  });
+});
+
+describe("isCanonicalUsfmBook", () => {
+  it("accepts the 66 canon codes in any case and rejects front matter", () => {
+    for (const code of CANONICAL_USFM) {
+      expect(isCanonicalUsfmBook(code)).toBe(true);
+      expect(isCanonicalUsfmBook(code.toLowerCase())).toBe(true);
+    }
+    expect(isCanonicalUsfmBook("FRT")).toBe(false);
+    expect(isCanonicalUsfmBook("BAK")).toBe(false);
+    expect(isCanonicalUsfmBook("GLO")).toBe(false);
+    expect(isCanonicalUsfmBook("TOB")).toBe(false);
+    expect(isCanonicalUsfmBook("XXA")).toBe(false);
+  });
+});
 
 describe("bookNameToUsfm", () => {
   it("maps full book names to USFM codes", () => {

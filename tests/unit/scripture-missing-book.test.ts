@@ -386,4 +386,79 @@ describe("scripture when no Bible of the language has the book", () => {
       'No scripture translation available for language "xx". Try "en" or check which languages are available for this resource.',
     );
   });
+
+  it("lists books from a version discarded for language, including with all=1", async () => {
+    resetBooks();
+    // Drop the OT original so a foreign-language Ruth is not mistaken for a
+    // missing chapter via the UHB zip mock (keyed by URL, not book path).
+    books.files.delete(UHB.catalog!.prod!.zipball_url!);
+    const glt = entry(
+      "zz_gl",
+      "glt",
+      ["RUT", "TIT"],
+      "https://example.test/zz-glt.zip",
+    );
+    putLanguage(
+      "zz",
+      [glt],
+      [[glt, "\\id RUT EN_UST en_English_ltr\n\\c 1\n\\p\n\\v 1 Hello"]],
+    );
+
+    const alone = await scripture("Ruth 1:1", "zz");
+    expect(alone.status).toBe(404);
+    expect((alone.body.error as { message: string }).message).toBe(
+      "GLT: the book is in en. Books available in zz: Ruth, Titus.",
+    );
+
+    const all = await scripture("Ruth 1:1", "zz", true);
+    expect(all.status).toBe(404);
+    expect((all.body.error as { message: string }).message).toBe(
+      "GLT: the book is in en. Books available in zz: Ruth, Titus.",
+    );
+  });
+
+  it("lists books from other versions when an empty-ingredients version is picked but its zip lacks the book", async () => {
+    resetBooks();
+    const listed = entry(
+      "unfoldingWord",
+      "ult",
+      ["RUT", "TIT"],
+      "https://example.test/listed.zip",
+    );
+    const bare = entry("someone", "xyz", [], "https://example.test/bare.zip");
+    putLanguage("yy", [listed, bare], []);
+
+    const { status, body } = await scripture("John 3:16", "yy");
+    const error = body.error as { message: string };
+
+    expect(status).toBe(404);
+    expect(error.message).toBe(
+      'The ULT (literal) does not include John yet, and no other "yy" version has it. Books available in yy: Ruth, Titus.',
+    );
+  });
+
+  it("omits FRT from the available-books list on a missing-book 404", async () => {
+    resetBooks();
+    const ult = entry(
+      "unfoldingWord",
+      "ult",
+      ["RUT", "FRT", "TIT"],
+      "https://example.test/frt-ult.zip",
+    );
+    const ust = entry(
+      "unfoldingWord",
+      "ust",
+      ["RUT", "FRT", "TIT"],
+      "https://example.test/frt-ust.zip",
+    );
+    putLanguage("zz", [ult, ust], []);
+
+    const { status, body } = await scripture("John 3:16", "zz");
+    const error = body.error as { message: string };
+
+    expect(status).toBe(404);
+    expect(error.message).toBe(
+      'The ULT (literal) and UST (simplified) do not include John yet, and no other "zz" version has it. Books available in zz: Ruth, Titus.',
+    );
+  });
 });

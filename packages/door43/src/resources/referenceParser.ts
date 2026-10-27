@@ -570,6 +570,15 @@ export function usfmToBookName(usfm: string): string {
   return code;
 }
 
+/** True for the 66 Protestant canon USFM codes (values of BOOK_NAME_TO_USFM). */
+export function isCanonicalUsfmBook(usfm: string): boolean {
+  const code = usfm.trim().toUpperCase();
+  for (const mapped of Object.values(BOOK_NAME_TO_USFM)) {
+    if (mapped === code) return true;
+  }
+  return false;
+}
+
 /**
  * Sort USFM codes in Bible order (Genesis → Revelation) using the insertion
  * order of BOOK_NAME_TO_USFM. Unknown codes sort after the canon, A–Z.

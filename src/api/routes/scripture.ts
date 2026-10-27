@@ -31,6 +31,7 @@ import {
   bookCodesFromIngredients,
   ingredientCoversBook,
   resolveScriptureVersionRole,
+  isCanonicalUsfmBook,
   sortUsfmBooksCanonically,
   usfmToBookName,
 } from "@translation-helps/door43";
@@ -268,23 +269,28 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
     // the same stand-in note a success would have carried.
     const languageVersions = versions.filter((v) => v.role !== "original");
     if (languageVersions.length === 0) {
-      const named =
-        extents.length === 0
-          ? (versionsNote ??
-            describeStandIns(entries, cappedEntries, book, language))
-          : null;
+      if (extents.length === 0) {
+        const named =
+          versionsNote ??
+          describeStandIns(entries, cappedEntries, book, language);
+        if (named) {
+          const available = availableBooksSuffix(entries, language);
+          return {
+            ok: false,
+            message: available ? `${named} ${available}` : named,
+          };
+        }
+      }
       return {
         ok: false,
-        message:
-          named ??
-          missingPassageMessage({
-            reference,
-            book,
-            chapter,
-            verseStart,
-            language,
-            extents,
-          }),
+        message: missingPassageMessage({
+          reference,
+          book,
+          chapter,
+          verseStart,
+          language,
+          extents,
+        }),
       };
     }
 
@@ -417,14 +423,16 @@ export function pickPrimaryScriptureEntries(
  * canonical order. Empty-ingredient versions add nothing; null when none list
  * books (caller keeps today's message with no list).
  */
-function availableBooksSuffix(
+export function availableBooksSuffix(
   entries: CatalogEntry[],
   language: string,
 ): string | null {
   const codes = new Set<string>();
   for (const entry of entries) {
     for (const code of bookCodesFromIngredients(entry.ingredients)) {
-      codes.add(code);
+      if (isCanonicalUsfmBook(code)) {
+        codes.add(code);
+      }
     }
   }
   if (codes.size === 0) return null;
@@ -463,11 +471,7 @@ export function describeStandIns(
   if (standIns.length > 0) {
     return `The ${list(lacking)} ${verb} not include ${bookName} yet; the ${list(standIns)} ${standIns.length === 1 ? "is" : "are"} given in ${lacking.length === 1 ? "its" : "their"} place.`;
   }
-  const base = `The ${list(lacking)} ${verb} not include ${bookName} yet, and no other "${language}" version has it.`;
-  // List other books only when no version of the language has this one.
-  const available =
-    picked.length === 0 ? availableBooksSuffix(entries, language) : null;
-  return available ? `${base} ${available}` : base;
+  return `The ${list(lacking)} ${verb} not include ${bookName} yet, and no other "${language}" version has it.`;
 }
 
 /**

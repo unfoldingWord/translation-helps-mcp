@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import type { CatalogEntry } from "@translation-helps/door43";
 import {
+  availableBooksSuffix,
   describeStandIns,
   pickPrimaryScriptureEntries,
 } from "../../src/api/routes/scripture.js";
@@ -57,11 +58,11 @@ describe("pickPrimaryScriptureEntries", () => {
     );
   });
 
-  it("gives none, and says so with the books that are available, when no version has the book", () => {
+  it("gives none and says so when no version has the book (list is added by the route)", () => {
     const picked = pickPrimaryScriptureEntries(POOL, "NUM");
     expect(picked).toEqual([]);
     expect(describeStandIns(POOL, picked, "NUM", "en")).toBe(
-      'The ULT (literal) and UST (simplified) do not include Numbers yet, and no other "en" version has it. Books available in en: Genesis, Ruth, Isaiah, John.',
+      'The ULT (literal) and UST (simplified) do not include Numbers yet, and no other "en" version has it.',
     );
   });
 
@@ -80,15 +81,27 @@ describe("pickPrimaryScriptureEntries", () => {
     expect(describeStandIns([bare], [], "JHN", "yy")).toBe(
       'The ULT (literal) does not include John yet, and no other "yy" version has it.',
     );
+    expect(availableBooksSuffix([bare], "yy")).toBeNull();
   });
 
   it("ignores a version with empty ingredients when building the available-books list", () => {
     const listed = entry("unfoldingWord", "ult", ["RUT", "TIT"]);
     const bare = entry("someone", "xyz", []);
-    // Usual pair is ULT + XYZ (no simplified); XYZ lists no books so the
-    // available list comes only from ULT's ingredients.
-    expect(describeStandIns([listed, bare], [], "JHN", "es-419")).toBe(
-      'The ULT (literal) and XYZ do not include John yet, and no other "es-419" version has it. Books available in es-419: Ruth, Titus.',
+    // XYZ lists no books so the available list comes only from ULT.
+    expect(availableBooksSuffix([listed, bare], "es-419")).toBe(
+      "Books available in es-419: Ruth, Titus.",
+    );
+  });
+
+  it("omits front matter and other non-canonical codes from the available-books list", () => {
+    const withFront = entry("unfoldingWord", "ult", [
+      "RUT",
+      "FRT",
+      "TIT",
+      "TOB",
+    ]);
+    expect(availableBooksSuffix([withFront], "zz")).toBe(
+      "Books available in zz: Ruth, Titus.",
     );
   });
 
