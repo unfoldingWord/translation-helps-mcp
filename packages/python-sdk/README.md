@@ -82,7 +82,7 @@ hits = client.search_articles({
 })
 ```
 
-### Async (requires httpx)
+### Async client
 
 ```python
 import asyncio
