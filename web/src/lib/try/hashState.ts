@@ -10,6 +10,8 @@ export type TryState = {
 	step?: GuidedStepId;
 	open?: { kind: 'note' | 'academy' | 'word'; key: string };
 	story?: number;
+	/** The OBS frame, when the walk looks at one frame and not the whole story. */
+	frame?: number;
 };
 
 const FALLBACK: TryState = { tab: 'guided' };
@@ -82,8 +84,9 @@ export function decodeTryState(hash: string, knownTools: string[]): TryState {
 				out.open = { kind: value.kind as 'note' | 'academy' | 'word', key: value.key };
 				break;
 			case 'story':
+			case 'frame':
 				if (typeof value !== 'number' || !Number.isInteger(value)) return { ...FALLBACK };
-				out.story = value;
+				out[key] = value;
 				break;
 			default:
 				return { ...FALLBACK };
