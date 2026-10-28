@@ -164,3 +164,64 @@ body {
 		transform: translateY(14px);
 	}
 }
+
+/*
+ * Docs pages (routes/docs): bare elements read as text. :where() keeps the specificity at zero,
+ * and the rules sit in the components layer, so any utility class on an element wins.
+ */
+@layer components {
+	.docs {
+		overflow-wrap: anywhere;
+	}
+	.docs :where(h1) {
+		font-size: 1.875rem;
+		font-weight: 700;
+		letter-spacing: -0.02em;
+		line-height: 1.2;
+		color: var(--text);
+	}
+	.docs :where(h2) {
+		margin-top: 2.5rem;
+		font-size: 1.375rem;
+		font-weight: 600;
+		letter-spacing: -0.01em;
+		color: var(--text);
+	}
+	.docs :where(h3) {
+		margin-top: 1.5rem;
+		font-size: 1.0625rem;
+		font-weight: 600;
+		color: var(--text);
+	}
+	.docs :where(p, li) {
+		color: var(--text-2);
+	}
+	.docs :where(p) {
+		margin-top: 0.75rem;
+	}
+	.docs :where(ul, ol) {
+		margin-top: 0.75rem;
+		padding-left: 1.3rem;
+	}
+	.docs :where(ul) {
+		list-style: disc;
+	}
+	.docs :where(ol) {
+		list-style: decimal;
+	}
+	.docs :where(li) {
+		margin-top: 0.3rem;
+	}
+	.docs :where(code) {
+		font-family: var(--font-mono);
+		font-size: 0.875em;
+		color: var(--text);
+	}
+	.docs :where(a) {
+		color: var(--accent);
+		text-underline-offset: 3px;
+	}
+	.docs :where(a:hover) {
+		text-decoration: underline;
+	}
+}

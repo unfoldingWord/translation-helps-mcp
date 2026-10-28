@@ -6,6 +6,15 @@ export const SITE = {
 	door43: 'https://git.door43.org/unfoldingWord'
 } as const;
 
+/**
+ * The REST API Worker (`translation-helps-api-v2`), the address production's `API_BASE_URL` names in wrangler.toml.
+ * Its routes are under `/api/v1`. Staging reaches the same Worker through a service binding.
+ */
+export const API = {
+	origin: 'https://translation-helps-api-v2.unfoldingword.workers.dev',
+	basePath: '/api/v1'
+} as const;
+
 /** Main navigation. Paths are site paths: the components add the base path. */
 export const nav = [
 	{ href: '/try', label: 'Try' },
