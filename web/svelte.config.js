@@ -38,6 +38,11 @@ const config = {
 					return;
 				}
 				throw new Error(message);
+			},
+			// The Try page's hash is its state (see lib/try/hashState.ts), not an element id.
+			handleMissingId: ({ path, message }) => {
+				if (path === BASE_PATH + '/try') return;
+				throw new Error(message);
 			}
 		},
 		// Prevent Node.js modules from being bundled for Cloudflare

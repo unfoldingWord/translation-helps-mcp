@@ -49,6 +49,8 @@
 @theme {
 	--font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
 	--font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', monospace;
+	/* Scripture text: Noto Serif covers polytonic Greek. */
+	--font-serif: 'Noto Serif', 'Gentium Plus', 'Times New Roman', serif;
 	--color-bg: var(--bg);
 	--color-surface: var(--surface);
 	--color-line: var(--border);
@@ -141,21 +143,24 @@ body {
 	cursor: default;
 }
 
-/* Entrance: the hero rises once on load. Content stays visible without motion. */
+/*
+ * Entrance: the hero rises once on load. Only the position moves, never the opacity,
+ * so where animations never run (reduced motion, a frozen screenshot) the content is
+ * simply there, a few pixels lower at most.
+ */
 @media (prefers-reduced-motion: no-preference) {
 	.rise {
-		animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+		animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
 	}
 	.rise-2 {
 		animation-delay: 0.12s;
 	}
-	.float-card {
-		animation: rise 0.7s 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+	.rise-3 {
+		animation-delay: 0.24s;
 	}
 }
 @keyframes rise {
 	from {
-		opacity: 0;
-		transform: translateY(24px);
+		transform: translateY(14px);
 	}
 }
