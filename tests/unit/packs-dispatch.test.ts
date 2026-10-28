@@ -124,7 +124,7 @@ function setup(
     kvFailing?: { get?: string; put?: string };
     secrets?: boolean;
     privateKey?: string;
-    /** PACKS_PARTS_DISPATCH; unset as in production today. */
+    /** PACKS_PARTS_DISPATCH override for the test env. */
     partsDispatch?: string;
   } = {},
 ) {
@@ -693,18 +693,20 @@ describe("wrangler.toml", () => {
     return vars;
   }
 
-  it("turns parts dispatch on for the preview Worker only, never in production (Task 14 does that)", () => {
+  it("turns parts dispatch on for both preview and production Workers", () => {
     const vars = varsBySection();
     expect(vars["env.preview"]).toContain('PACKS_PARTS_DISPATCH = "on"');
     expect(vars["env.preview"]).toContain('PACKS_TARGET = "staging"');
     expect(vars["env.production"]).toContain('PACKS_TARGET = "production"');
-    expect(vars["env.production"]).not.toContain("PACKS_PARTS_DISPATCH");
-    // Nowhere else outside a comment: the top-level config deploys under the production Worker's name.
+    expect(vars["env.production"]).toContain('PACKS_PARTS_DISPATCH = "on"');
+    // Nowhere else outside these env vars lines: the top-level config deploys under the production Worker's name.
     const set = toml()
       .split(/\r?\n/)
       .filter((l) => !l.trimStart().startsWith("#"))
       .filter((l) => l.includes("PACKS_PARTS_DISPATCH"));
-    expect(set).toEqual([vars["env.preview"]]);
+    expect(set.sort()).toEqual(
+      [vars["env.production"], vars["env.preview"]].sort(),
+    );
   });
 });
 

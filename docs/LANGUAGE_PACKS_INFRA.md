@@ -81,9 +81,9 @@ Neither merges before step 1 is done (it is, as of 2026-10-21).
 - Already in wrangler (no action): `PACKS_TARGET` on `translation-helps-mcp-v2` (preview → staging, production →
   production), binding `LANGUAGE_PACKS` (base and preview → `language-packs-staging`, production → `language-packs`),
   and each environment's parts settings and crons ("Operations", "Parts: settings" and "Parts: crons"). In short,
-  production has only the f1.1 cron `17 6 * * *` (it checks every published language for a newer Door43 release and
-  builds nothing by itself) and no parts setting, so it asks for no parts builds until delivery 3's Task 14; preview
-  asks for parts builds (`PACKS_PARTS_DISPATCH = "on"`) and has the three parts crons.
+  preview and production both ask for parts builds (`PACKS_PARTS_DISPATCH = "on"`); both keep cleanup in dry-run
+  (`PACKS_CLEANUP = "dry-run"`); preview runs the three parts crons, and production runs those three plus the f1.1
+  sweep cron `17 6 * * *`.
 - Approved by Abel: ☐
 
 ## 6. Deploy and Pages check
@@ -154,11 +154,10 @@ once a staging build of es-419 has published:
       Range GET, GET with `If-None-Match`, and OPTIONS with an `Origin` header, each twice. Status, `ETag` and
       `Access-Control-*` must be identical the second time (served from Pages' cache). Repeat the step-7 checks
       (Content-Length, 416, stamps) with `BASE=https://tc-helps.mcp.servant.bible`.
-- Parts in production are delivery 3's Task 14, each step with Abel's yes: tc-study lets parts publish to production
-  (Task 13); Abel sets tc-study's repository variable `PACKS_PARTS_PRODUCTION` (Task 14 Step 1); `[env.production]`
-  gets `PACKS_PARTS_DISPATCH = "on"` and the three parts crons ("Parts: crons" for the cron limit), then
-  `PACKS_CLEANUP = "dry-run"` and, after a week of logs, `delete`. The spec (§6, "Meanwhile") has the backfill wait
-  for parts; Task 14 rewrites this step for it.
+- Delivery 3's Task 14 is now: tc-study lets parts publish to production (Task 13), tc-study writes
+  `status/builder.json` for production (`PACKS_PARTS_PRODUCTION = true`), and merging this Worker change into `v2`
+  deploys production through Workers Builds with `PACKS_PARTS_DISPATCH = "on"`, `PACKS_CLEANUP = "dry-run"` and all
+  four production crons. After at least a week of dry-run logs, switch cleanup to `delete` with Abel's yes.
 - Approved by Abel: ☐
 
 ## Operations
@@ -188,29 +187,29 @@ once a staging build of es-419 has published:
 Parts (`f2.0-…`, `CURRENT_PARTS_COMPAT` in `src/packs/dispatch.ts`) are served beside f1.1. These vars are in
 `wrangler.toml`; a change needs a redeploy (step 6).
 
-| Var                     | Meaning                                                                                                                                                                                                                                                         | Unset or invalid | Set today                                                    |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------ |
-| `PACKS_PARTS_DISPATCH`  | Exactly `on` lets the Worker ask for parts builds. Anything else: no parts dispatch from a phone, the check or the cron; a missing parts list answers `404 parts-off`; the check and the cron's slice read nothing. Published lists and parts are still served. | off              | preview `on`; absent from production and `[vars]` on purpose |
-| `PACKS_PARTS_DAILY_CAP` | Counted parts dispatches a day (KV `packs:dispatch-parts:<date>`), apart from f1.1's 20 (`packs:dispatch:<date>`). `0` closes counted dispatches. The cron's dispatches (reason `daily`) are not counted.                                                       | 20               | nowhere                                                      |
-| `PACKS_SWEEP`           | `parts`: the f1.1 cron (`17 6 * * *`) sweeps nothing.                                                                                                                                                                                                           | f1.1 swept       | preview `parts`                                              |
-| `PACKS_CLEANUP`         | Exactly `dry-run` (logs what it would delete, keeps the ledger) or `delete`. Anything else, `off` included, is off: no R2 call at all.                                                                                                                          | off              | preview `dry-run`; absent from production on purpose         |
-| `PARTS_CHECKS_PER_RUN`  | Parts checks in one run of the hourly slice: digits only (as `PACKS_PARTS_DAILY_CAP`; `1e2` is invalid), `0` for none. Above 125, Analytics points can be lost (see the crons).                                                                                 | 5                | nowhere                                                      |
-| `PARTS_RATE_LIMIT_RPM`  | Part requests a minute per IP, in a counter of their own (lists keep `RATE_LIMIT_RPM`, 90). `0` turns it off.                                                                                                                                                   | 600              | nowhere                                                      |
+| Var                     | Meaning                                                                                                                                                                                                                                                         | Unset or invalid | Set today                               |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | --------------------------------------- |
+| `PACKS_PARTS_DISPATCH`  | Exactly `on` lets the Worker ask for parts builds. Anything else: no parts dispatch from a phone, the check or the cron; a missing parts list answers `404 parts-off`; the check and the cron's slice read nothing. Published lists and parts are still served. | off              | preview `on`; production `on`           |
+| `PACKS_PARTS_DAILY_CAP` | Counted parts dispatches a day (KV `packs:dispatch-parts:<date>`), apart from f1.1's 20 (`packs:dispatch:<date>`). `0` closes counted dispatches. The cron's dispatches (reason `daily`) are not counted.                                                       | 20               | nowhere                                 |
+| `PACKS_SWEEP`           | `parts`: the f1.1 cron (`17 6 * * *`) sweeps nothing.                                                                                                                                                                                                           | f1.1 swept       | preview `parts`                         |
+| `PACKS_CLEANUP`         | Exactly `dry-run` (logs what it would delete, keeps the ledger) or `delete`. Anything else, `off` included, is off: no R2 call at all.                                                                                                                          | off              | preview `dry-run`; production `dry-run` |
+| `PARTS_CHECKS_PER_RUN`  | Parts checks in one run of the hourly slice: digits only (as `PACKS_PARTS_DAILY_CAP`; `1e2` is invalid), `0` for none. Above 125, Analytics points can be lost (see the crons).                                                                                 | 5                | nowhere                                 |
+| `PARTS_RATE_LIMIT_RPM`  | Part requests a minute per IP, in a counter of their own (lists keep `RATE_LIMIT_RPM`, 90). `0` turns it off.                                                                                                                                                   | 600              | nowhere                                 |
 
-Production has none of them on purpose: it asks for no parts builds and deletes nothing until Task 14 adds
-`PACKS_PARTS_DISPATCH` and `PACKS_CLEANUP` with Abel's yes (`tests/unit/packs-dispatch.test.ts` and
-`packs-scheduled.test.ts` pin this).
+Production now asks for parts builds and keeps cleanup in dry-run by default. Switching cleanup to `delete` still
+needs Abel's yes after reviewing dry-run logs (`tests/unit/packs-dispatch.test.ts` and `packs-scheduled.test.ts`
+pin these settings).
 
 ### Parts: crons
 
 The Worker picks the job by the cron string (`src/packs/scheduled.ts`); each job is its own invocation.
 
-| Cron (UTC)    | Job                                                                                                                                                                                                              | production   | preview         |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | --------------- |
-| `17 6 * * *`  | The f1.1 sweep (`runDailySweep`), as before delivery 3, unless `PACKS_SWEEP = "parts"`.                                                                                                                          | yes          | no              |
-| `7 3 * * *`   | The parts cleanup, when `PACKS_CLEANUP` is `dry-run` or `delete`.                                                                                                                                                | no (Task 14) | yes (`dry-run`) |
-| `7 4,5 * * *` | The cleanup again at 04:07 and 05:07, only when the ledger says that day's outcome was `postponed` or `aborted`.                                                                                                 | no (Task 14) | yes (`dry-run`) |
-| `37 * * * *`  | The parts slice: the published parts languages whose `fnv1a32(language) % 24` is the hour (es-419 at 22, en at 18), at most `PARTS_CHECKS_PER_RUN`, reason `daily`. Nothing is read while parts dispatch is off. | no (Task 14) | yes             |
+| Cron (UTC)    | Job                                                                                                                                                                                                              | production      | preview         |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | --------------- |
+| `17 6 * * *`  | The f1.1 sweep (`runDailySweep`), as before delivery 3, unless `PACKS_SWEEP = "parts"`.                                                                                                                          | yes             | no              |
+| `7 3 * * *`   | The parts cleanup, when `PACKS_CLEANUP` is `dry-run` or `delete`.                                                                                                                                                | yes (`dry-run`) | yes (`dry-run`) |
+| `7 4,5 * * *` | The cleanup again at 04:07 and 05:07, only when the ledger says that day's outcome was `postponed` or `aborted`.                                                                                                 | yes (`dry-run`) | yes (`dry-run`) |
+| `37 * * * *`  | The parts slice: the published parts languages whose `fnv1a32(language) % 24` is the hour (es-419 at 22, en at 18), at most `PARTS_CHECKS_PER_RUN`, reason `daily`. Nothing is read while parts dispatch is off. | yes             | yes             |
 
 - Any other cron string (an old `17 * * * *` still deployed, a typo) does nothing and logs, with `console.error`,
   `[packs] cron-unknown: "<string>" is none of the packs jobs (…); nothing done`. **Alert on `[packs] cron-unknown:`**:
@@ -223,9 +222,8 @@ The Worker picks the job by the cron string (`src/packs/scheduled.ts`); each job
   - preview: `"37 * * * *" @ … - Ok` each hour, with `[packs] parts sweep <HH> UTC: …` in an hour whose slice has a
     language (es-419 at 22, en at 18; an empty slice logs nothing), `[packs] cleanup (dry-run): …` at 03:07, and no
     `[packs] cron-unknown:`.
-- The Free plan allows **5 cron triggers per account**. Staging uses 3 and production 1. Task 14 must add the three
-  parts crons to `[env.production.triggers]` together with the flags: 3 + 4 = 7, over 5 on Free, so on Free staging's
-  crons would have to go (or the account be Paid). Other Workers' crons on the account count too (not checked).
+- This account is on Workers Paid (250 cron triggers), so the current 7 packs crons (4 production + 3 preview) are
+  within limit. Other Workers' crons on the account still count against that account-wide quota.
 - A run is kept under the Free plan's per-invocation limits (50 outside fetches, 1,000 KV and R2 calls): a parts check
   makes at most 14 fetches (9 after the run's first), so 5 checks a run. A crowded slice (k languages, more than
   `PARTS_CHECKS_PER_RUN`) checks at most that many a run, starting that many further along (sorted, as a ring) each

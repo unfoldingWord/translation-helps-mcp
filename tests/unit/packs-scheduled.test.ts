@@ -343,7 +343,7 @@ describe("runScheduled: the parts sweep", () => {
     expect(hour).toBe(22);
   });
 
-  it("reads nothing for parts while parts dispatch is off (production today)", async () => {
+  it("reads nothing for parts while parts dispatch is off", async () => {
     const s = setup({
       parts: ["es-419"],
       env: { PACKS_PARTS_DISPATCH: undefined, PACKS_SWEEP: "parts" },
@@ -828,9 +828,14 @@ describe("wrangler.toml: the crons and their vars", () => {
     return m ? (JSON.parse(m[1]!) as string[]) : null;
   };
 
-  it("production keeps only the f1.1 sweep's daily cron; staging has the cleanup, its retries and the parts slice", () => {
+  it("production has all four packs crons; staging has the cleanup, its retries and the parts slice", () => {
     const s = sections();
-    expect(crons(s["env.production.triggers"])).toEqual([F11_SWEEP_CRON]);
+    expect(crons(s["env.production.triggers"])).toEqual([
+      F11_SWEEP_CRON,
+      CLEANUP_CRON,
+      CLEANUP_RETRY_CRON,
+      PARTS_SLICE_CRON,
+    ]);
     expect(crons(s["env.preview.triggers"])).toEqual([
       CLEANUP_CRON,
       CLEANUP_RETRY_CRON,
@@ -844,30 +849,32 @@ describe("wrangler.toml: the crons and their vars", () => {
     ).toEqual(["env.preview.triggers", "env.production.triggers"]);
   });
 
-  it("lists only crons the Worker has a job for, within the Free plan's 5 cron triggers per account", () => {
+  it("lists only crons the Worker has a job for (7 total across production + preview on this Paid account)", () => {
     const s = sections();
     const all = [
       ...crons(s["env.production.triggers"])!,
       ...crons(s["env.preview.triggers"])!,
     ];
     expect(all.every((c) => PACKS_CRONS.includes(c))).toBe(true);
-    expect(all.length).toBeLessThanOrEqual(5);
+    expect(all).toHaveLength(7);
   });
 
-  it("sweeps parts only and cleans up in dry-run on staging; production has no cleanup and no parts dispatch", () => {
+  it("sweeps parts only on staging; both staging and production keep cleanup in dry-run", () => {
     const s = sections();
     const preview = s["env.preview"]!.join("\n");
     const production = s["env.production"]!.join("\n");
     expect(preview).toContain('PACKS_SWEEP = "parts"');
     expect(preview).toContain('PACKS_CLEANUP = "dry-run"');
-    expect(production).not.toContain("PACKS_CLEANUP");
+    expect(production).toContain('PACKS_CLEANUP = "dry-run"');
     expect(production).not.toContain("PACKS_SWEEP");
-    expect(production).not.toContain("PACKS_PARTS_DISPATCH");
     const anywhere = Object.values(s)
       .flat()
       .filter((l) => /PACKS_CLEANUP|PACKS_SWEEP|PARTS_CHECKS_PER_RUN/.test(l));
-    expect(anywhere).toEqual(
-      s["env.preview"]!.filter((l) => l.startsWith("vars")),
+    expect(anywhere.sort()).toEqual(
+      [
+        s["env.preview"]!.find((l) => l.startsWith("vars"))!,
+        s["env.production"]!.find((l) => l.startsWith("vars"))!,
+      ].sort(),
     );
     expect(anywhere.join()).not.toContain("PARTS_CHECKS_PER_RUN");
   });

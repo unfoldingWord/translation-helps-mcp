@@ -55,22 +55,20 @@ BASE_PATH = "/v2"
 
 [env.production]
 name = "translation-helps-mcp-v2"
-# No PACKS_PARTS_DISPATCH here: production asks for no parts builds (a missing parts list is 404 parts-off) until
-# the workflow may publish parts to production. Delivery 3's Task 14 adds PACKS_PARTS_DISPATCH = "on" with Abel's yes.
-vars = { NODE_ENV = "production", BASE_PATH = "/v2", API_BASE_URL = "https://translation-helps-api-v2.unfoldingword.workers.dev", PACKS_TARGET = "production" }
+# Production now asks for parts builds and keeps cleanup in dry-run: no deletes until PACKS_CLEANUP is changed to
+# `delete` with Abel's yes after reading the logs.
+vars = { NODE_ENV = "production", BASE_PATH = "/v2", API_BASE_URL = "https://translation-helps-api-v2.unfoldingword.workers.dev", PACKS_TARGET = "production", PACKS_PARTS_DISPATCH = "on", PACKS_CLEANUP = "dry-run" }
 # Custom hostname routes require the zone on this Cloudflare account.
 # Pages v1 stays at tc-helps.mcp.servant.bible/; attach /v2* in the dashboard when ready:
 #   pattern: tc-helps.mcp.servant.bible/v2*
 #   worker:  translation-helps-mcp-v2
 # Until then, use workers.dev: https://translation-helps-mcp-v2.unfoldingword.workers.dev/v2/
 
-# The daily f1.1 freshness check, as before delivery 3: a check, never a build by itself; it asks for a build only
-# where a language's Door43 release moved (src/packs/scheduled.ts picks the job by the cron string). Production lists
-# only this cron: the parts slice ("37 * * * *") and the parts cleanup ("7 3 * * *", "7 4,5 * * *") come with
-# delivery 3's Task 14, with Abel's yes, together with PACKS_PARTS_DISPATCH and PACKS_CLEANUP. Mind the Free plan's
-# 5 cron triggers per account (staging has 3).
+# One cron per job (src/packs/scheduled.ts): the f1.1 sweep at 06:17 UTC, the parts cleanup at 03:07 UTC and its
+# retries at 04:07 and 05:07, and the hourly parts slice at :37. Production keeps PACKS_SWEEP unset, so the f1.1
+# sweep stays on. This account is Workers Paid, so all production + preview crons fit.
 [env.production.triggers]
-crons = ["17 6 * * *"]
+crons = ["17 6 * * *", "7 3 * * *", "7 4,5 * * *", "37 * * * *"]
 
 [[env.production.kv_namespaces]]
 binding = "TRANSLATION_HELPS_CACHE"
