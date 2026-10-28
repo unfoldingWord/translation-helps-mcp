@@ -42,17 +42,20 @@
 		const io = {
 			now: () => performance.now(),
 			initialize: () => new McpHttpClient(where).initialize(),
-			fetchHealth: () => fetch(REST_HEALTH_URL, { cache: 'no-store' }),
+			fetchHealth: (signal: AbortSignal) => fetch(REST_HEALTH_URL, { cache: 'no-store', signal }),
 			callTool: async (tool: string, args: Record<string, unknown>) =>
 				(await run(where, tool, args)).outcome
 		};
-		for (const [i, check] of STATUS_CHECKS.entries()) {
-			rows[i].state = 'running';
-			const result = await runCheck(check, io);
-			rows[i] = { ...result, ms: Math.round(result.ms) };
+		try {
+			for (const [i, check] of STATUS_CHECKS.entries()) {
+				rows[i].state = 'running';
+				const result = await runCheck(check, io);
+				rows[i] = { ...result, ms: Math.round(result.ms) };
+			}
+			finished = true;
+		} finally {
+			running = false;
 		}
-		running = false;
-		finished = true;
 	}
 
 	onMount(runAll);

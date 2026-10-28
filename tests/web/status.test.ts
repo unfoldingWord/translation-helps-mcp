@@ -54,7 +54,7 @@ function io(over: Partial<CheckIo> = {}): CheckIo {
       return () => (t += 25);
     })(),
     initialize: async () => {},
-    fetchHealth: async () => ok,
+    fetchHealth: async (_signal: AbortSignal) => ok,
     callTool: async () => ({ kind: "ok" }),
     ...over,
   };
@@ -108,5 +108,22 @@ describe("runCheck", () => {
       io({ fetchHealth: async () => ({ ok: false, status: 503 }) as Response }),
     );
     expect(r).toMatchObject({ state: "failed", note: "HTTP 503" });
+  });
+
+  it("fails a check that never answers, and the next check still runs", async () => {
+    let aborted = false;
+    const hung = io({
+      timeoutMs: 20,
+      fetchHealth: (signal) =>
+        new Promise<Response>(() => {
+          signal.addEventListener("abort", () => (aborted = true));
+        }),
+    });
+    const r = await runCheck(byId("rest-health"), hung);
+    expect(r.state).toBe("failed");
+    expect(r.note).toMatch(/No answer/);
+    expect(aborted).toBe(true);
+    const next = await runCheck(toolChecks[0], hung);
+    expect(next.state).toBe("ok");
   });
 });
