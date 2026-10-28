@@ -1,433 +1,139 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { withBase } from '$lib/paths.js';
+	import { CircleCheck, CircleAlert, CircleX, Circle, LoaderCircle, RotateCw } from 'lucide-svelte';
+	import { endpoint } from '$lib/endpoint';
+	import { McpHttpClient } from '$lib/mcp/client';
+	import { run } from '$lib/mcp/session';
+	import { REST_HEALTH_URL, STATUS_CHECKS, runCheck, type CheckResult } from '$lib/status';
+	import { SITE } from '$lib/site';
 
-	type TestStatus = 'idle' | 'running' | 'pass' | 'fail';
+	/** `waiting` and `running` are states of the page; the rest come from the check. */
+	type Row = { state: 'waiting' | 'running' | CheckResult['state']; ms: number; note: string };
 
-	interface ToolTest {
-		id: string;
-		label: string;
-		tool: string;
-		params: Record<string, unknown>;
-		validate: (data: unknown) => string | null; // null = pass, string = fail reason
-		status: TestStatus;
-		latency: number;
-		error: string;
-		summary: string;
-	}
+	const blank = (): Row[] => STATUS_CHECKS.map(() => ({ state: 'waiting', ms: 0, note: '' }));
+	let rows = $state<Row[]>(blank());
+	let running = $state(false);
+	let finished = $state(false);
 
-	function isObj(v: unknown): v is Record<string, unknown> {
-		return typeof v === 'object' && v !== null;
-	}
+	const WORDS: Record<Row['state'], string> = {
+		waiting: 'Waiting',
+		running: 'Checking',
+		ok: 'OK',
+		'not-available': 'Not available',
+		failed: 'Failed'
+	};
 
-	function arr(v: unknown): unknown[] {
-		return Array.isArray(v) ? v : [];
-	}
+	const count = (state: Row['state']) => rows.filter((r) => r.state === state).length;
+	const summary = $derived(
+		count('failed')
+			? `${count('failed')} failed, ${count('ok')} OK`
+			: count('not-available')
+				? `${count('ok')} OK, ${count('not-available')} not available`
+				: `All ${rows.length} OK`
+	);
 
-	const TESTS: Omit<ToolTest, 'status' | 'latency' | 'error' | 'summary'>[] = [
-		{
-			id: 'list_languages',
-			label: 'list_languages',
-			tool: 'list_languages',
-			params: {},
-			validate(data) {
-				const d = isObj(data) ? data : {};
-				const totalCount = typeof d.total_count === 'number' ? d.total_count : null;
-				const langs = arr(d.languages ?? d);
-				const count = totalCount ?? langs.length;
-				return count >= 50 ? null : `Expected 50+ languages, got ${count}`;
-			}
-		},
-		{
-			id: 'get_passage_en',
-			label: 'get_passage (JHN 3:16 en)',
-			tool: 'get_passage',
-			params: { reference: 'JHN 3:16', language: 'en' },
-			validate(data) {
-				const d = isObj(data) ? data : {};
-				const versions = arr(d.versions ?? d.scripture ?? []);
-				return versions.length > 0 ? null : 'No versions returned';
-			}
-		},
-		{
-			id: 'get_passage_es',
-			label: 'get_passage (TIT 2:12 es)',
-			tool: 'get_passage',
-			params: { reference: 'TIT 2:12', language: 'es' },
-			validate(data) {
-				const d = isObj(data) ? data : {};
-				const versions = arr(d.versions ?? d.scripture ?? []);
-				return versions.length > 0 ? null : 'No Spanish versions returned';
-			}
-		},
-		{
-			id: 'get_note',
-			label: 'get_note (JHN 3:16 en)',
-			tool: 'get_note',
-			params: { reference: 'JHN 3:16', language: 'en' },
-			validate(data) {
-				const d = isObj(data) ? data : {};
-				const notes = arr(d.notes ?? d.results ?? []);
-				if (notes.length > 0) return null;
-				// Also accept if data itself is an object with note fields
-				if (isObj(data) && ('note' in data || 'quote' in data || 'markdown' in data)) return null;
-				return 'No notes returned';
-			}
-		},
-		{
-			id: 'get_passage_index',
-			label: 'get_passage_index (JHN 3 en)',
-			tool: 'get_passage_index',
-			params: { reference: 'JHN 3:1', language: 'en' },
-			validate(data) {
-				const d = isObj(data) ? data : {};
-				const notes = arr(d.notes ?? d.index ?? []);
-				const words = arr(d.words ?? []);
-				return notes.length > 0 || words.length > 0 ? null : 'Expected notes or words index';
-			}
-		},
-		{
-			id: 'get_passage_context',
-			label: 'get_passage_context (JHN 3:16 en)',
-			tool: 'get_passage_context',
-			params: { reference: 'JHN 3:16', language: 'en' },
-			validate(data) {
-				if (!isObj(data)) return 'No data returned';
-				const hasContent =
-					'notes' in data ||
-					'words' in data ||
-					'questions' in data ||
-					'context' in data ||
-					'availability' in data ||
-					'scripture' in data;
-				return hasContent ? null : 'Expected context/availability keys';
-			}
-		},
-		{
-			id: 'get_academy_article',
-			label: 'get_academy_article (figs-metaphor)',
-			tool: 'get_academy_article',
-			params: { path: 'translate/figs-metaphor', language: 'en' },
-			validate(data) {
-				const d = isObj(data) ? data : {};
-				const text = String(d.markdown ?? d.content ?? d.text ?? d.article ?? '');
-				return text.length > 100 ? null : `Article too short (${text.length} chars)`;
-			}
-		},
-		{
-			id: 'get_word_article',
-			label: 'get_word_article (kt/love)',
-			tool: 'get_word_article',
-			params: { path: 'bible/kt/love' },
-			validate(data) {
-				const d = isObj(data) ? data : {};
-				const text = String(d.markdown ?? d.content ?? d.text ?? d.article ?? '');
-				return text.length > 100 ? null : `Article too short (${text.length} chars)`;
-			}
-		},
-		{
-			id: 'search_articles',
-			label: 'search_articles (grace en)',
-			tool: 'search_articles',
-			params: { query: 'grace', language: 'en' },
-			validate(data) {
-				const d = isObj(data) ? data : {};
-				const results = arr(d.results ?? d.articles ?? d);
-				return results.length > 0 ? null : 'No search results returned';
-			}
-		},
-		{
-			id: 'get_questions',
-			label: 'get_questions (JHN 3:16 en)',
-			tool: 'get_questions',
-			params: { reference: 'JHN 3:16', language: 'en' },
-			validate(data) {
-				const d = isObj(data) ? data : {};
-				const questions = arr(d.questions ?? d.results ?? []);
-				return questions.length > 0 ? null : 'No questions returned';
-			}
-		},
-		{
-			id: 'list_resources',
-			label: 'list_resources (en)',
-			tool: 'list_resources',
-			params: { language: 'en' },
-			validate(data) {
-				const d = isObj(data) ? data : {};
-				const resources = arr(d.available ?? d.resources ?? []);
-				return resources.length > 0 ? null : 'No resources returned';
-			}
-		},
-		{
-			id: 'get_obs_story',
-			label: 'get_obs_story (1:1 en)',
-			tool: 'get_obs_story',
-			params: { reference: '1:1', language: 'en' },
-			validate(data) {
-				const d = isObj(data) ? data : {};
-				if (d.available === false) return 'OBS not available for en';
-				const frames = arr(d.frames ?? d.stories ?? []);
-				if (frames.length > 0) return null;
-				if (typeof d.title === 'string' || typeof d.text === 'string') return null;
-				return 'No OBS story content returned';
-			}
-		}
-	];
-
-	let tests: ToolTest[] = TESTS.map((t) => ({
-		...t,
-		status: 'idle' as TestStatus,
-		latency: 0,
-		error: '',
-		summary: ''
-	}));
-
-	let lastRun = '';
-	let running = false;
-
-	$: passing = tests.filter((t) => t.status === 'pass').length;
-	$: failing = tests.filter((t) => t.status === 'fail').length;
-	$: total = tests.length;
-	$: allDone = tests.every((t) => t.status === 'pass' || t.status === 'fail');
-
-	async function callTool(name: string, params: Record<string, unknown>) {
-		const res = await fetch(withBase('/api/tool'), {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ name, params })
-		});
-		if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-		const data = (await res.json()) as {
-			isError?: boolean;
-			error?: string;
-			content?: Array<{ text?: string }>;
-			structuredContent?: unknown;
-		};
-		if (data?.isError || data?.error) {
-			throw new Error(data?.error ?? data?.content?.[0]?.text ?? 'Tool error');
-		}
-		return data?.structuredContent ?? data;
-	}
-
-	async function runTest(test: ToolTest) {
-		test.status = 'running';
-		test.error = '';
-		test.summary = '';
-		test.latency = 0;
-		tests = tests; // trigger reactivity
-
-		const start = Date.now();
-		try {
-			const data = await callTool(test.tool, test.params);
-			test.latency = Date.now() - start;
-			const failReason = test.validate(data);
-			if (failReason) {
-				test.status = 'fail';
-				test.error = failReason;
-			} else {
-				test.status = 'pass';
-				// Build a short summary
-				if (test.tool === 'list_languages') {
-					const d = isObj(data) ? data : {};
-					const totalCount = typeof d.total_count === 'number' ? d.total_count : null;
-					const langs = arr(d.languages ?? data);
-					test.summary =
-						totalCount !== null ? `${totalCount} total languages` : `${langs.length} languages`;
-				} else if (test.tool === 'get_passage') {
-					const d = isObj(data) ? data : {};
-					const versions = arr(d.versions ?? d.scripture ?? []);
-					test.summary = `${versions.length} version(s)`;
-				} else if (test.tool === 'get_note') {
-					const notes = arr(isObj(data) ? (data.notes ?? data.results ?? []) : []);
-					test.summary = notes.length > 0 ? `${notes.length} note(s)` : 'note found';
-				} else if (test.tool === 'get_passage_index') {
-					const notes = arr(isObj(data) ? (data.notes ?? data.index ?? []) : []);
-					test.summary = `${notes.length} index entries`;
-				} else if (test.tool === 'search_articles') {
-					const results = arr(isObj(data) ? (data.results ?? data.articles ?? data) : []);
-					test.summary = `${results.length} result(s)`;
-				} else if (test.tool === 'get_questions') {
-					const q = arr(isObj(data) ? (data.questions ?? data.results ?? []) : []);
-					test.summary = `${q.length} question(s)`;
-				} else if (test.tool === 'list_resources') {
-					const d = isObj(data) ? data : {};
-					const resources = arr(d.available ?? d.resources ?? []);
-					test.summary = `${resources.length} resource(s)`;
-				} else if (test.tool === 'get_obs_story') {
-					const d = isObj(data) ? data : {};
-					const frames = arr(d.frames ?? []);
-					test.summary = frames.length > 0 ? `${frames.length} frame(s)` : 'story loaded';
-				} else {
-					test.summary = 'ok';
-				}
-			}
-		} catch (e) {
-			test.latency = Date.now() - start;
-			test.status = 'fail';
-			test.error = e instanceof Error ? e.message : String(e);
-		}
-		tests = tests;
-	}
-
+	/** One after another: the server allows 90 requests a minute from one address. */
 	async function runAll() {
 		if (running) return;
 		running = true;
-		lastRun = new Date().toLocaleTimeString();
-
-		// Reset all
-		tests = tests.map((t) => ({
-			...t,
-			status: 'idle' as TestStatus,
-			error: '',
-			summary: '',
-			latency: 0
-		}));
-
-		// Run tool tests in parallel
-		const toolPromises = tests.map((t) => runTest(t));
-		await Promise.all(toolPromises);
-
+		finished = false;
+		rows = blank();
+		const where = endpoint();
+		const io = {
+			now: () => performance.now(),
+			initialize: () => new McpHttpClient(where).initialize(),
+			fetchHealth: () => fetch(REST_HEALTH_URL, { cache: 'no-store' }),
+			callTool: async (tool: string, args: Record<string, unknown>) =>
+				(await run(where, tool, args)).outcome
+		};
+		for (const [i, check] of STATUS_CHECKS.entries()) {
+			rows[i].state = 'running';
+			const result = await runCheck(check, io);
+			rows[i] = { ...result, ms: Math.round(result.ms) };
+		}
 		running = false;
+		finished = true;
 	}
 
-	function statusIcon(s: TestStatus) {
-		if (s === 'idle') return '○';
-		if (s === 'running') return '⏳';
-		if (s === 'pass') return '✅';
-		return '❌';
-	}
+	onMount(runAll);
 
-	function statusColor(s: TestStatus) {
-		if (s === 'pass') return 'text-green-400';
-		if (s === 'fail') return 'text-red-400';
-		if (s === 'running') return 'text-yellow-400';
-		return 'text-slate-600';
-	}
-
-	function cardBorder(s: TestStatus) {
-		if (s === 'pass') return 'border-green-800/60';
-		if (s === 'fail') return 'border-red-800/60';
-		if (s === 'running') return 'border-yellow-800/60 animate-pulse';
-		return 'border-slate-800';
-	}
-
-	onMount(() => {
-		runAll();
-	});
+	const tone = (state: Row['state']) =>
+		state === 'ok'
+			? 'text-accent'
+			: state === 'failed'
+				? 'text-danger'
+				: state === 'not-available'
+					? 'text-accent-2'
+					: 'text-ink-2';
+	const done = (state: Row['state']) => state !== 'waiting' && state !== 'running';
 </script>
 
 <svelte:head>
-	<title>API Health — Translation Helps MCP</title>
+	<title>Status · {SITE.name}</title>
+	<meta
+		name="description"
+		content="Whether the server, the REST API and every tool answer right now."
+	/>
 </svelte:head>
 
-<div class="page-shell">
-	<div class="mx-auto max-w-7xl px-4 py-10">
-		<!-- Header row -->
-		<div class="mb-8 flex flex-wrap items-start justify-between gap-4">
-			<div>
-				<p class="mb-2 text-xs font-semibold tracking-[0.14em] text-sky-400/90 uppercase">Health</p>
-				<h1 class="text-3xl font-semibold tracking-tight text-slate-100">API Health</h1>
-				<p class="mt-2 text-sm text-slate-400">
-					Runs all tool tests against <span class="font-mono text-sky-400">/api/tool</span>.
-				</p>
-			</div>
+<div class="mx-auto max-w-3xl px-4 py-14">
+	<p class="text-accent-2 font-mono text-xs tracking-wide uppercase">System</p>
+	<h1 class="text-ink mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Status</h1>
+	<p class="text-ink-2 mt-3 max-w-2xl">
+		Each check calls the live server, one after another, with the same example the Tools page shows.
+		“Not available” means the server answered and has nothing for that example. It is not a failure.
+	</p>
 
-			<div class="flex items-center gap-4">
-				<!-- Summary badge -->
-				{#if allDone && total > 0}
-					<div
-						class="rounded-full px-4 py-1.5 text-sm font-semibold
-          {failing === 0 ? 'bg-emerald-900/60 text-emerald-300' : 'bg-red-900/60 text-red-300'}"
-					>
-						{passing}/{total} passing
-						{#if failing > 0}· {failing} failing{/if}
-					</div>
-				{:else if running}
-					<div
-						class="rounded-full bg-amber-900/60 px-4 py-1.5 text-sm font-semibold text-amber-300"
-					>
-						Running tests…
-					</div>
-				{/if}
-
-				<button onclick={runAll} disabled={running} class="ui-btn ui-btn-solid px-5">
-					{running ? 'Running…' : 'Run all tests'}
-				</button>
-			</div>
-		</div>
-
-		<!-- System Info -->
-		<div class="ui-card mb-8 p-4">
-			<h2 class="mb-3 text-[11px] font-semibold tracking-[0.16em] text-slate-500 uppercase">
-				System Info
-			</h2>
-			<div class="flex flex-wrap gap-6 font-mono text-sm">
-				<div>
-					<span class="text-slate-500">App port</span>
-					<span class="ml-2 text-sky-300"
-						>{typeof window !== 'undefined' ? window.location.port || '80' : '—'}</span
-					>
-				</div>
-				<div>
-					<span class="text-slate-500">Origin</span>
-					<span class="ml-2 text-sky-300"
-						>{typeof window !== 'undefined' ? window.location.origin : '—'}</span
-					>
-				</div>
-				<div>
-					<span class="text-slate-500">/api/tool</span>
-					<span class="ml-2 text-sky-300">POST JSON</span>
-				</div>
-				{#if lastRun}
-					<div>
-						<span class="text-slate-500">Last run</span>
-						<span class="ml-2 text-slate-300">{lastRun}</span>
-					</div>
-				{/if}
-			</div>
-		</div>
-
-		<!-- Tool Health Grid -->
-		<section class="mb-8">
-			<h2 class="mb-4 text-lg font-semibold text-slate-100">Tool Health</h2>
-			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-				{#each tests as test (test.id)}
-					<div class="ui-card p-4 transition-colors {cardBorder(test.status)}">
-						<div class="flex items-start justify-between gap-2">
-							<div class="min-w-0 flex-1">
-								<div class="flex items-center gap-2">
-									<span class="text-base {statusColor(test.status)}">{statusIcon(test.status)}</span
-									>
-									<span class="truncate font-mono text-xs font-semibold text-slate-200"
-										>{test.label}</span
-									>
-								</div>
-								{#if test.status === 'pass' && test.summary}
-									<p class="mt-1 text-xs text-green-400">{test.summary}</p>
-								{:else if test.status === 'fail' && test.error}
-									<p class="mt-1 line-clamp-2 text-xs break-all text-red-400">{test.error}</p>
-								{:else if test.status === 'running'}
-									<p class="mt-1 text-xs text-yellow-500">calling…</p>
-								{:else if test.status === 'idle'}
-									<p class="mt-1 text-xs text-slate-600">waiting</p>
-								{/if}
-							</div>
-							{#if test.latency > 0}
-								<span class="flex-shrink-0 font-mono text-xs text-slate-500">{test.latency}ms</span>
-							{/if}
-						</div>
-					</div>
-				{/each}
-			</div>
-		</section>
-
-		<!-- Legend -->
-		<div class="flex flex-wrap gap-4 text-xs text-slate-500">
-			<span class="flex items-center gap-1"><span class="text-green-400">✅</span> Pass</span>
-			<span class="flex items-center gap-1"><span class="text-red-400">❌</span> Fail</span>
-			<span class="flex items-center gap-1"><span class="text-yellow-400">⏳</span> Running</span>
-			<span class="flex items-center gap-1"><span class="text-slate-600">○</span> Idle</span>
-			<span class="ml-auto">Latencies shown in <span class="font-mono">ms</span></span>
-		</div>
+	<div class="mt-8 flex flex-wrap items-center justify-between gap-3">
+		<p class="text-ink text-sm" aria-live="polite">
+			{#if finished}{summary}{:else if running}Checking…{/if}
+		</p>
+		<button
+			type="button"
+			onclick={runAll}
+			disabled={running}
+			class="border-line-strong bg-surface text-ink hover:border-accent inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm disabled:opacity-60"
+		>
+			<RotateCw size={15} class={running ? 'animate-spin' : ''} aria-hidden="true" />
+			Run again
+		</button>
 	</div>
+
+	<ul class="border-line bg-surface mt-4 rounded-lg border">
+		{#each STATUS_CHECKS as check, i (check.id)}
+			{@const row = rows[i]}
+			<li class="border-line border-b px-4 py-3 last:border-0">
+				<div class="flex items-center justify-between gap-3">
+					<span class="text-ink min-w-0 font-mono text-[13px] break-all">{check.label}</span>
+					<span class="flex shrink-0 items-center gap-3 text-sm">
+						<span class="flex items-center gap-1.5 {tone(row.state)}">
+							{#if row.state === 'ok'}
+								<CircleCheck size={16} aria-hidden="true" />
+							{:else if row.state === 'failed'}
+								<CircleX size={16} aria-hidden="true" />
+							{:else if row.state === 'not-available'}
+								<CircleAlert size={16} aria-hidden="true" />
+							{:else if row.state === 'running'}
+								<LoaderCircle size={16} class="animate-spin" aria-hidden="true" />
+							{:else}
+								<Circle size={16} aria-hidden="true" />
+							{/if}
+							{WORDS[row.state]}
+						</span>
+						<span class="text-ink-2 w-[4.5rem] text-right font-mono text-xs whitespace-nowrap">
+							{#if done(row.state)}{row.ms} ms{/if}
+						</span>
+					</span>
+				</div>
+				{#if row.note}
+					<p class="text-ink-2 mt-1.5 text-sm break-words">{row.note}</p>
+				{/if}
+			</li>
+		{/each}
+	</ul>
+
+	<p class="text-ink-2 mt-4 text-xs">
+		The REST API check reads <span class="font-mono break-all">{REST_HEALTH_URL}</span>. The checks
+		count toward the rate limit of 90 requests a minute.
+	</p>
 </div>
