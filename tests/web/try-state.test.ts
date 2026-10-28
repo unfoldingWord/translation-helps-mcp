@@ -26,6 +26,14 @@ describe("try state in the URL hash", () => {
     expect(decodeTryState(encodeTryState(obs), [])).toEqual(obs);
     const frame: TryState = { tab: "obs", lang: "en", story: 3, frame: 5 };
     expect(decodeTryState(encodeTryState(frame), [])).toEqual(frame);
+    const notes: TryState = {
+      tab: "obs",
+      lang: "en",
+      story: 3,
+      frame: 5,
+      obsStep: "notes",
+    };
+    expect(decodeTryState(encodeTryState(notes), [])).toEqual(notes);
     const open: TryState = {
       tab: "guided",
       step: "deeper",
@@ -66,6 +74,12 @@ describe("try state in the URL hash", () => {
     expect(
       decodeTryState("#" + btoa('{"tab":"obs","story":3,"frame":"5"}'), []),
     ).toEqual({ tab: "guided" });
+    expect(
+      decodeTryState("#" + btoa('{"tab":"obs","obsStep":"nope"}'), []),
+    ).toEqual({ tab: "guided" });
+    expect(decodeTryState("#" + btoa('{"tab":"obs","obsStep":3}'), [])).toEqual(
+      { tab: "guided" },
+    );
     expect(
       decodeTryState("#" + btoa('{"tab":"guided","step":"nope"}'), []),
     ).toEqual({

@@ -1,23 +1,23 @@
 <script lang="ts">
-	import { onDestroy, onMount, tick, untrack } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import { ArrowLeft, ArrowRight } from 'lucide-svelte';
 	import ResultViewer from '$lib/components/ResultViewer.svelte';
 	import AlignedQuote from '$lib/components/AlignedQuote.svelte';
 	import { endpoint } from '$lib/endpoint';
-	import { run, type RunResult } from '$lib/mcp/session';
-	import { revealOnNarrow } from '$lib/reveal';
 	import type { GuidedStepId, TryState } from './hashState';
 	import {
 		EXAMPLES,
 		GUIDED_STEPS,
 		deeperCall,
-		latestOnly,
 		mapRows,
 		nextStep,
 		stepCall,
+		toolsState,
 		type Call,
 		type MapRow
 	} from './guided';
+	import { languageOptions, loadLanguages } from './languages';
+	import { createWalkRunner, revealResult } from './walkRunner.svelte';
 
 	let { initial, onstate }: { initial: TryState; onstate: (s: TryState) => void } = $props();
 
@@ -33,10 +33,6 @@
 	let languages = $state<{ code: string; label: string }[]>([]);
 	/** The rows of the last map answer. Null until the map has been read for this passage. */
 	let rows = $state<MapRow[] | null>(null);
-	let pending = $state(false);
-	let answer = $state<RunResult | null>(null);
-	/** The call whose answer is on screen (or on its way), so Try again repeats it. */
-	let asked = $state<Call | null>(null);
 
 	const KINDS: [MapRow['kind'], string][] = [
 		['note', 'Notes'],
@@ -60,49 +56,29 @@
 		open ? rows?.find((r) => r.kind === open!.kind && r.key === open!.key) : undefined
 	);
 
-	// A call can finish after the tab changes; a closed walk must not write state.
-	let alive = true;
-	onDestroy(() => (alive = false));
-	// Answers can arrive out of order; only the latest call may show (Review Focus 1).
-	const seq = latestOnly();
-	const keyOf = (c: Call) => JSON.stringify([c.tool, c.args]);
-
-	function report() {
-		onstate({ tab: 'guided', lang, ref, step, ...(open ? { open } : {}) });
-	}
-
-	async function exec(c: Call, force = false) {
-		// The same call again (a double click, a step pressed twice) does not call the server again,
-		// unless the last try failed (rate limit, network): then pressing the step again retries.
-		const settled = answer && ['ok', 'not-available'].includes(answer.outcome.kind);
-		if (!force && asked && keyOf(asked) === keyOf(c) && (pending || settled)) return;
-		const mine = seq.next();
-		asked = c;
-		answer = null;
-		pending = true;
-		const next = await run(endpoint(), c.tool, c.args);
-		if (!alive || !seq.isLatest(mine)) return;
-		answer = next;
-		pending = false;
+	// Runs the step's call and keeps only the latest answer. The map answer also fills `rows`.
+	const runner = createWalkRunner((c, next) => {
 		if (c.tool === 'get_passage_index') {
 			const kind = next.outcome.kind;
 			// Not available means there is nothing to open; a failure leaves it unknown.
 			rows =
 				kind === 'ok' ? mapRows(next.result?.structured) : kind === 'not-available' ? [] : null;
 		}
+	});
+	onDestroy(() => runner.dispose());
+
+	function report() {
+		onstate({ tab: 'guided', lang, ref, step, ...(open ? { open } : {}) });
 	}
 
 	/** Show the current step: call its tool, or clear the answer when it has none. */
 	function show() {
 		report();
 		if (call) {
-			void exec(call);
+			void runner.exec(call);
 			return;
 		}
-		seq.next();
-		asked = null;
-		answer = null;
-		pending = false;
+		runner.clear();
 	}
 
 	let resultEl = $state<HTMLElement>();
@@ -110,8 +86,7 @@
 	/** A choice made by the person: show it and, on a phone, scroll to it. */
 	async function choose() {
 		show();
-		await tick();
-		revealOnNarrow(resultEl);
+		await revealResult(resultEl);
 	}
 
 	function goTo(id: GuidedStepId) {
@@ -160,29 +135,15 @@
 	}
 
 	function openInTools() {
-		if (call) onstate({ tab: 'tools', tool: call.tool, args: { ...call.args } });
+		if (call) onstate(toolsState(call));
 	}
 
 	onMount(async () => {
 		// A shared link on a later step opens that step right away.
 		if (step !== 'pick') show();
-		const { result } = await run(endpoint(), 'list_languages', { limit: 9999 });
-		if (!alive) return;
-		const found = Array.isArray(result?.structured?.languages)
-			? (result.structured.languages as { code?: unknown; name?: unknown; englishName?: unknown }[])
-			: [];
-		const list = found
-			.filter((l) => typeof l.code === 'string' && l.code)
-			.map((l) => {
-				const name =
-					(typeof l.englishName === 'string' && l.englishName) ||
-					(typeof l.name === 'string' && l.name) ||
-					(l.code as string);
-				return { code: l.code as string, label: `${name} (${l.code})` };
-			});
-		if (!list.some((l) => l.code === 'en')) list.unshift({ code: 'en', label: 'English (en)' });
-		if (!list.some((l) => l.code === lang)) list.unshift({ code: lang, label: lang });
-		languages = list;
+		const loaded = await loadLanguages(endpoint());
+		if (!runner.alive) return;
+		languages = languageOptions(loaded, lang);
 	});
 
 	const control =
@@ -356,7 +317,7 @@
 				</div>
 			{/if}
 
-			{#if step === 'map' && !pending && answer && rows}
+			{#if step === 'map' && !runner.pending && runner.answer && rows}
 				{#if rows.length}
 					<div class="space-y-4">
 						{#each KINDS as [kind, heading] (kind)}
@@ -389,18 +350,18 @@
 							{/if}
 						{/each}
 					</div>
-				{:else if answer.outcome.kind === 'ok'}
+				{:else if runner.answer.outcome.kind === 'ok'}
 					<p class="text-ink-2 text-sm">No notes or key terms for this passage.</p>
 				{/if}
 			{/if}
 
 			{#if call}
 				<ResultViewer
-					tool={asked?.tool ?? call.tool}
-					result={answer?.result ?? null}
-					outcome={answer?.outcome ?? null}
-					{pending}
-					onretry={() => asked && exec(asked, true)}
+					tool={runner.asked?.tool ?? call.tool}
+					result={runner.answer?.result ?? null}
+					outcome={runner.answer?.outcome ?? null}
+					pending={runner.pending}
+					onretry={() => runner.retry()}
 				/>
 			{/if}
 		{/if}

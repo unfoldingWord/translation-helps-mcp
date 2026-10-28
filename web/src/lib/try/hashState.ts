@@ -1,6 +1,9 @@
 /** The steps of the guided path on the Try page. */
 export type GuidedStepId = 'pick' | 'text' | 'context' | 'map' | 'deeper' | 'check';
 
+/** The steps of the OBS walk on the Try page. */
+export type ObsStepId = 'story' | 'notes' | 'questions';
+
 export type TryState = {
 	tab: 'guided' | 'obs' | 'tools';
 	tool?: string;
@@ -12,12 +15,15 @@ export type TryState = {
 	story?: number;
 	/** The OBS frame, when the walk looks at one frame and not the whole story. */
 	frame?: number;
+	/** The step of the OBS walk. `step` is the guided walk's. */
+	obsStep?: ObsStepId;
 };
 
 const FALLBACK: TryState = { tab: 'guided' };
 
 const TABS = ['guided', 'obs', 'tools'];
 const STEPS: readonly string[] = ['pick', 'text', 'context', 'map', 'deeper', 'check'];
+const OBS_STEP_IDS: readonly string[] = ['story', 'notes', 'questions'];
 const OPEN_KINDS = ['note', 'academy', 'word'];
 
 function toBase64Url(text: string): string {
@@ -71,6 +77,10 @@ export function decodeTryState(hash: string, knownTools: string[]): TryState {
 			case 'step':
 				if (typeof value !== 'string' || !STEPS.includes(value)) return { ...FALLBACK };
 				out.step = value as GuidedStepId;
+				break;
+			case 'obsStep':
+				if (typeof value !== 'string' || !OBS_STEP_IDS.includes(value)) return { ...FALLBACK };
+				out.obsStep = value as ObsStepId;
 				break;
 			case 'open':
 				if (

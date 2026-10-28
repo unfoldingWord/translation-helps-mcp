@@ -1,4 +1,4 @@
-import type { GuidedStepId } from './hashState';
+import type { GuidedStepId, TryState } from './hashState';
 
 /** A tool call the walk makes, the same shape the Tools tab takes. */
 export type Call = { tool: string; args: Record<string, unknown> };
@@ -121,4 +121,9 @@ export function latestOnly(): { next(): number; isLatest(n: number): boolean } {
 		next: () => ++latest,
 		isLatest: (n) => n === latest
 	};
+}
+
+/** The Tools tab state that opens a call, so a walk can hand its current call over. */
+export function toolsState(call: Call): TryState {
+	return { tab: 'tools', tool: call.tool, args: { ...call.args } };
 }

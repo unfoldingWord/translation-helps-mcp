@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { onDestroy, onMount, tick, untrack } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import { ArrowLeft, ArrowRight } from 'lucide-svelte';
 	import ResultViewer from '$lib/components/ResultViewer.svelte';
 	import { endpoint } from '$lib/endpoint';
-	import { run, type RunResult } from '$lib/mcp/session';
-	import { revealOnNarrow } from '$lib/reveal';
-	import type { TryState } from './hashState';
-	import { latestOnly, type Call } from './guided';
-	import { OBS_STEPS, OBS_STORIES, obsCall, type ObsStepId } from './obs';
+	import type { ObsStepId, TryState } from './hashState';
+	import { toolsState } from './guided';
+	import { languageOptions, loadLanguages } from './languages';
+	import { OBS_STEPS, OBS_STORIES, obsCall } from './obs';
+	import { createWalkRunner, revealResult } from './walkRunner.svelte';
 
 	let { initial, onstate }: { initial: TryState; onstate: (s: TryState) => void } = $props();
 
@@ -21,12 +21,8 @@
 	let frame = $state<number | undefined>(startFrame);
 	let typedFrame = $state(startFrame ? String(startFrame) : '');
 	let frameError = $state('');
-	let step = $state<ObsStepId>('story');
+	let step = $state<ObsStepId>(init.obsStep ?? 'story');
 	let languages = $state<{ code: string; label: string }[]>([]);
-	let pending = $state(false);
-	let answer = $state<RunResult | null>(null);
-	/** The call whose answer is on screen (or on its way), so Try again repeats it. */
-	let asked = $state<Call | null>(null);
 	/** The title of the story, once the story step has answered for it. */
 	let storyTitle = $state('');
 
@@ -36,41 +32,24 @@
 	const following = $derived(OBS_STEPS[at + 1]);
 	const where = $derived(frame ? `Story ${story}, frame ${frame}` : `Story ${story}`);
 
-	// A call can finish after the tab changes; a closed walk must not write state.
-	let alive = true;
-	onDestroy(() => (alive = false));
-	// Answers can arrive out of order; only the latest call may show.
-	const seq = latestOnly();
-	const keyOf = (c: Call) => JSON.stringify([c.tool, c.args]);
-
-	function report() {
-		onstate({ tab: 'obs', lang, story, ...(frame ? { frame } : {}) });
-	}
-
-	async function exec(c: Call, force = false) {
-		// The same call again (a double click, a step pressed twice) does not call the server again,
-		// unless the last try failed (rate limit, network): then pressing the step again retries.
-		const settled = answer && ['ok', 'not-available'].includes(answer.outcome.kind);
-		if (!force && asked && keyOf(asked) === keyOf(c) && (pending || settled)) return;
-		const mine = seq.next();
-		asked = c;
-		answer = null;
-		pending = true;
-		const next = await run(endpoint(), c.tool, c.args);
-		if (!alive || !seq.isLatest(mine)) return;
-		answer = next;
-		pending = false;
+	// Runs the step's call and keeps only the latest answer. The story answer gives the title.
+	const runner = createWalkRunner((c, next) => {
 		if (c.tool === 'get_obs_story' && next.outcome.kind === 'ok') {
 			const t = next.result?.structured?.title;
 			// The server numbers its titles ("1. The Creation"); the line already says the story number.
 			storyTitle = typeof t === 'string' ? t.trim().replace(/^\d+\.\s*/, '') : '';
 		}
+	});
+	onDestroy(() => runner.dispose());
+
+	function report() {
+		onstate({ tab: 'obs', lang, story, obsStep: step, ...(frame ? { frame } : {}) });
 	}
 
 	/** Show the current step: report the state and call its tool. */
 	function show() {
 		report();
-		void exec(call);
+		void runner.exec(call);
 	}
 
 	let resultEl = $state<HTMLElement>();
@@ -78,8 +57,7 @@
 	/** A choice made by the person: show it and, on a phone, scroll to it. */
 	async function choose() {
 		show();
-		await tick();
-		revealOnNarrow(resultEl);
+		await revealResult(resultEl);
 	}
 
 	function goTo(id: ObsStepId) {
@@ -126,29 +104,15 @@
 	}
 
 	function openInTools() {
-		onstate({ tab: 'tools', tool: call.tool, args: { ...call.args } });
+		onstate(toolsState(call));
 	}
 
 	onMount(async () => {
 		// The walk opens on the story, so the first thing seen is the text itself.
 		show();
-		const { result } = await run(endpoint(), 'list_languages', { limit: 9999 });
-		if (!alive) return;
-		const found = Array.isArray(result?.structured?.languages)
-			? (result.structured.languages as { code?: unknown; name?: unknown; englishName?: unknown }[])
-			: [];
-		const list = found
-			.filter((l) => typeof l.code === 'string' && l.code)
-			.map((l) => {
-				const name =
-					(typeof l.englishName === 'string' && l.englishName) ||
-					(typeof l.name === 'string' && l.name) ||
-					(l.code as string);
-				return { code: l.code as string, label: `${name} (${l.code})` };
-			});
-		if (!list.some((l) => l.code === 'en')) list.unshift({ code: 'en', label: 'English (en)' });
-		if (!list.some((l) => l.code === lang)) list.unshift({ code: lang, label: lang });
-		languages = list;
+		const loaded = await loadLanguages(endpoint());
+		if (!runner.alive) return;
+		languages = languageOptions(loaded, lang);
 	});
 
 	const control =
@@ -278,11 +242,11 @@
 		</div>
 
 		<ResultViewer
-			tool={asked?.tool ?? call.tool}
-			result={answer?.result ?? null}
-			outcome={answer?.outcome ?? null}
-			{pending}
-			onretry={() => asked && exec(asked, true)}
+			tool={runner.asked?.tool ?? call.tool}
+			result={runner.answer?.result ?? null}
+			outcome={runner.answer?.outcome ?? null}
+			pending={runner.pending}
+			onretry={() => runner.retry()}
 		/>
 
 		{#if following}

@@ -1,6 +1,7 @@
 import type { Call } from './guided';
+import type { ObsStepId } from './hashState';
 
-export type ObsStepId = 'story' | 'notes' | 'questions';
+export type { ObsStepId };
 
 /** The three OBS tools, in the order a translator uses them: read the story, then its helps. */
 export const OBS_STEPS: { id: ObsStepId; title: string; tool: string }[] = [
