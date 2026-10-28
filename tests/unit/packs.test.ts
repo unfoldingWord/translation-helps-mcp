@@ -310,6 +310,9 @@ describe("GET /v2/packs/<compat>/<lang> (the entry)", () => {
     expect(res.status).toBe(202);
     expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(res.headers.get("Access-Control-Expose-Headers")).toContain(
+      "Retry-After",
+    );
     expect(res.headers.get("Retry-After")).toBe("600");
     expect(await res.json()).toEqual({ state: "preparing" });
     expect(builds).toEqual([
@@ -351,6 +354,9 @@ describe("GET /v2/packs/<compat>/<lang> (the entry)", () => {
       const res = await call(`${COMPAT}/fr`);
       expect(res.status).toBe(503);
       expect(res.headers.get("Cache-Control")).toBe("no-store");
+      expect(res.headers.get("Access-Control-Expose-Headers")).toContain(
+        "Retry-After",
+      );
       expect(res.headers.get("Retry-After")).toBe("3600");
       expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
       expect(await res.json()).toEqual({ state: "unavailable", reason: build });
@@ -365,6 +371,9 @@ describe("GET /v2/packs/<compat>/<lang> (the entry)", () => {
       const res = await call(`${COMPAT}/fr`);
       expect(res.status).toBe(503);
       expect(res.headers.get("Cache-Control")).toBe("no-store");
+      expect(res.headers.get("Access-Control-Expose-Headers")).toContain(
+        "Retry-After",
+      );
       expect(res.headers.get("Retry-After")).toBe("300");
       expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
       expect(await res.json()).toEqual({ state: "unavailable" });
@@ -546,7 +555,7 @@ describe("requests the route refuses", () => {
       "Range, If-None-Match",
     );
     expect(res.headers.get("Access-Control-Expose-Headers")).toBe(
-      "ETag, Content-Range, Content-Length, Accept-Ranges",
+      "ETag, Content-Range, Content-Length, Accept-Ranges, Retry-After",
     );
   });
 
@@ -564,6 +573,9 @@ describe("requests the route refuses", () => {
     const res = await call(`${COMPAT}/es-419`);
     expect(res.status).toBe(429);
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(res.headers.get("Access-Control-Expose-Headers")).toContain(
+      "Retry-After",
+    );
     expect(res.headers.get("Cache-Control")).toBe("no-store");
   });
 });
@@ -684,7 +696,7 @@ describe("GET /v2/packs/parts/<sha256> (a part)", () => {
     expect(res.headers.get("Content-Length")).toBe("1000");
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
     expect(res.headers.get("Access-Control-Expose-Headers")).toBe(
-      "ETag, Content-Range, Content-Length, Accept-Ranges",
+      "ETag, Content-Range, Content-Length, Accept-Ranges, Retry-After",
     );
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(PART_BYTES);
   });
@@ -827,6 +839,9 @@ describe("GET /v2/packs/parts/<sha256> (a part)", () => {
     expect(res.status).toBe(429);
     expect(res.headers.get("Retry-After")).toBeTruthy();
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(res.headers.get("Access-Control-Expose-Headers")).toContain(
+      "Retry-After",
+    );
     expect(res.headers.get("Cache-Control")).toBe("no-store");
     // The lists' window is still the one that was used up, not the parts'.
     expect((await call(`${PARTS_COMPAT}/es-419`)).status).toBe(429);

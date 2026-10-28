@@ -468,7 +468,7 @@ The list answers as the f1.1 entry does, as in the table above: `200` with its `
   list (`restoreCatalogBookkeeping`) has `catalogedAt` (the import time) and `availability.offline: false`, since the
   list leaves `availability` out.
 - Every 4xx, 429 and the 202 carry `Cache-Control: no-store`; CORS allows any origin and exposes `ETag`,
-  `Content-Range`, `Content-Length` and `Accept-Ranges`.
+  `Content-Range`, `Content-Length`, `Accept-Ranges` and `Retry-After`.
 
 ## Rotation
 

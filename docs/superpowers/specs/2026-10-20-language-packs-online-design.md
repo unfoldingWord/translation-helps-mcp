@@ -164,8 +164,8 @@ v1/<lang>/...                                      MCP views (layout unchanged)
   - `GET /v2/packs/<compat>/<lang>/<sha256>` returns the pack, streamed from R2, with Range and `If-None-Match`
     (`bucket.get(key, { range, onlyIf })`) and `immutable` caching.
   - Either route on an eligible language with no entry dispatches a build and answers `202` («preparing»).
-- **CORS:** allow `Range` and `If-None-Match`, and HEAD; expose `ETag`, `Content-Range`, `Content-Length` and
-  `Accept-Ranges`.
+- **CORS:** allow `Range` and `If-None-Match`, and HEAD; expose `ETag`, `Content-Range`, `Content-Length`,
+  `Accept-Ranges` and `Retry-After`.
 - **Existing routes** (`notes`, `word-links`) keep reading views when they exist; otherwise they answer from Door43 as
   today.
 - **Freshness check:** at most once an hour per language, compare the entry's stamps with Door43's.
