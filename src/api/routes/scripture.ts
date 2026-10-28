@@ -28,8 +28,12 @@ import type {
   ScriptureVersionRole,
 } from "@translation-helps/door43";
 import {
+  bookCodesFromIngredients,
   ingredientCoversBook,
   resolveScriptureVersionRole,
+  isCanonicalUsfmBook,
+  sortUsfmBooksCanonically,
+  usfmToBookName,
 } from "@translation-helps/door43";
 import type { ZipCacheSource } from "@translation-helps/door43";
 import {
@@ -265,23 +269,28 @@ export async function handleScripture(ctx: RouteContext): Promise<Response> {
     // the same stand-in note a success would have carried.
     const languageVersions = versions.filter((v) => v.role !== "original");
     if (languageVersions.length === 0) {
-      const named =
-        extents.length === 0
-          ? (versionsNote ??
-            describeStandIns(entries, cappedEntries, book, language))
-          : null;
+      if (extents.length === 0) {
+        const named =
+          versionsNote ??
+          describeStandIns(entries, cappedEntries, book, language);
+        if (named) {
+          const available = availableBooksSuffix(entries, language);
+          return {
+            ok: false,
+            message: available ? `${named} ${available}` : named,
+          };
+        }
+      }
       return {
         ok: false,
-        message:
-          named ??
-          missingPassageMessage({
-            reference,
-            book,
-            chapter,
-            verseStart,
-            language,
-            extents,
-          }),
+        message: missingPassageMessage({
+          reference,
+          book,
+          chapter,
+          verseStart,
+          language,
+          extents,
+        }),
       };
     }
 
@@ -410,6 +419,28 @@ export function pickPrimaryScriptureEntries(
 }
 
 /**
+ * Union of books listed in the language's catalog entries, English names in
+ * canonical order. Empty-ingredient versions add nothing; null when none list
+ * books (caller keeps today's message with no list).
+ */
+export function availableBooksSuffix(
+  entries: CatalogEntry[],
+  language: string,
+): string | null {
+  const codes = new Set<string>();
+  for (const entry of entries) {
+    for (const code of bookCodesFromIngredients(entry.ingredients)) {
+      if (isCanonicalUsfmBook(code)) {
+        codes.add(code);
+      }
+    }
+  }
+  if (codes.size === 0) return null;
+  const names = sortUsfmBooksCanonically(codes).map(usfmToBookName);
+  return `Books available in ${language}: ${names.join(", ")}.`;
+}
+
+/**
  * Says so when the versions a caller would expect do not have the book:
  * which ones, and what was given in their place, if anything. Null when the
  * usual literal and simplified versions were used.
@@ -434,11 +465,13 @@ export function describeStandIns(
   const lacking = usual.filter((entry) => !picked.includes(entry));
   if (lacking.length === 0) return null;
 
+  const bookName = usfmToBookName(book);
   const verb = lacking.length === 1 ? "does" : "do";
   const standIns = picked.filter((entry) => !usual.includes(entry));
-  return standIns.length > 0
-    ? `The ${list(lacking)} ${verb} not include ${book} yet; the ${list(standIns)} ${standIns.length === 1 ? "is" : "are"} given in ${lacking.length === 1 ? "its" : "their"} place.`
-    : `The ${list(lacking)} ${verb} not include ${book} yet, and no other "${language}" version has it.`;
+  if (standIns.length > 0) {
+    return `The ${list(lacking)} ${verb} not include ${bookName} yet; the ${list(standIns)} ${standIns.length === 1 ? "is" : "are"} given in ${lacking.length === 1 ? "its" : "their"} place.`;
+  }
+  return `The ${list(lacking)} ${verb} not include ${bookName} yet, and no other "${language}" version has it.`;
 }
 
 /**

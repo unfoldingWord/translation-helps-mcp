@@ -216,7 +216,7 @@ describe("scriptureVersionsForBook", () => {
     );
     expect(names(result.picked)).toEqual(["ult", "bsb"]);
     expect(result.versionsNote).toBe(
-      "The UST (simplified) does not include RUT yet; the BSB is given in its place.",
+      "The UST (simplified) does not include Ruth yet; the BSB is given in its place.",
     );
   });
 

@@ -558,6 +558,44 @@ export function bookNameToUsfm(bookName: string): string {
   return BOOK_NAME_TO_USFM[trimmed] ?? trimmed.toUpperCase();
 }
 
+/**
+ * English display name for a USFM code, taken from BOOK_NAME_TO_USFM (first
+ * match wins, so English names beat Spanish aliases and short forms).
+ */
+export function usfmToBookName(usfm: string): string {
+  const code = usfm.trim().toUpperCase();
+  for (const [name, mapped] of Object.entries(BOOK_NAME_TO_USFM)) {
+    if (mapped === code) return name;
+  }
+  return code;
+}
+
+/** True for the 66 Protestant canon USFM codes (values of BOOK_NAME_TO_USFM). */
+export function isCanonicalUsfmBook(usfm: string): boolean {
+  const code = usfm.trim().toUpperCase();
+  for (const mapped of Object.values(BOOK_NAME_TO_USFM)) {
+    if (mapped === code) return true;
+  }
+  return false;
+}
+
+/**
+ * Sort USFM codes in Bible order (Genesis → Revelation) using the insertion
+ * order of BOOK_NAME_TO_USFM. Unknown codes sort after the canon, A–Z.
+ */
+export function sortUsfmBooksCanonically(codes: Iterable<string>): string[] {
+  const order = new Map<string, number>();
+  let i = 0;
+  for (const code of Object.values(BOOK_NAME_TO_USFM)) {
+    if (!order.has(code)) order.set(code, i++);
+  }
+  return [...new Set([...codes].map((c) => c.trim().toUpperCase()))].sort(
+    (a, b) =>
+      (order.get(a) ?? Number.MAX_SAFE_INTEGER) -
+        (order.get(b) ?? Number.MAX_SAFE_INTEGER) || a.localeCompare(b),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Tool-friendly reference parsing
 // ---------------------------------------------------------------------------
