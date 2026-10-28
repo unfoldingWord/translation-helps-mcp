@@ -971,7 +971,8 @@ async function main() {
     process.stdout.write(`${dim("Running")} ${label}… `);
 
     const startMs = Date.now();
-    let result: ScenarioResult;
+    // `!`: workers-types v5 types the global `process` as `any`, so tsc no longer sees process.exit() as `never`.
+    let result!: ScenarioResult;
     try {
       result = await runScenario(scenario);
     } catch (err) {
