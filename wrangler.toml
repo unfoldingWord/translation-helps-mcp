@@ -49,6 +49,43 @@ BASE_PATH = "/v2"
 # MCP_API_KEY is a wrangler secret (not a plaintext var) when enabling auth.
 
 # ---------------------------------------------------------------------------
+# Worker Previews (`npx wrangler preview --config wrangler.toml`, no --env): one copy of
+# translation-helps-mcp-v2 per branch or pull request (https://developers.cloudflare.com/workers/previews/).
+# Not [env.preview], which is the language-packs staging Worker. A preview gets only the bindings below; it runs no
+# crons (previews take no triggers) and gets its own Durable Object storage. It asks for no pack builds: parts
+# dispatch, the parts cleanup and the f1.1 sweep are off, and a request for a missing f1.1 pack only reaches GitHub
+# if someone gives the preview the GitHub App secrets.
+# ---------------------------------------------------------------------------
+
+[previews]
+# The MCP preview calls the production API Worker: an API change is checked in the API's own preview.
+vars = { NODE_ENV = "development", BASE_PATH = "/v2", API_BASE_URL = "https://translation-helps-api-v2.unfoldingword.workers.dev", PACKS_TARGET = "staging", PACKS_PARTS_DISPATCH = "off", PACKS_PARTS_DAILY_CAP = "0", PACKS_SWEEP = "parts", PACKS_CLEANUP = "off", PARTS_CHECKS_PER_RUN = "0" }
+
+[[previews.kv_namespaces]]
+binding = "TRANSLATION_HELPS_CACHE"
+id = "3073e58cc3eb4f16958854a6ec1531e6"
+
+[[previews.r2_buckets]]
+binding = "ZIP_FILES"
+bucket_name = "translation-helps-mcp-zip-persistence"
+
+[[previews.r2_buckets]]
+binding = "LANGUAGE_PACKS"
+bucket_name = "language-packs-staging"
+
+[[previews.analytics_engine_datasets]]
+binding = "ANALYTICS"
+dataset = "translation_helps_metrics"
+
+[[previews.durable_objects.bindings]]
+name = "MCP_AGENT"
+class_name = "TranslationHelpsMCP"
+
+[[previews.services]]
+binding = "API"
+service = "translation-helps-api-v2"
+
+# ---------------------------------------------------------------------------
 # production — new *-v2 workers only; does not touch Pages project
 # translation-helps-mcp (tc-helps.mcp.servant.bible)
 # ---------------------------------------------------------------------------

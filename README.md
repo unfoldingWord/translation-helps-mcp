@@ -156,6 +156,25 @@ npm run deploy:staging
 npm run deploy:prod
 ```
 
+## Previews
+
+`wrangler.toml` (MCP Worker) and `wrangler.api.toml` (API Worker) each have a top-level `previews` block for [Cloudflare Worker Previews](https://developers.cloudflare.com/workers/previews/): one copy of the Worker per branch or pull request. Wrangler 4.135.0 or later is required; this repo pins `wrangler` ^4.140.0 and `@cloudflare/workers-types` v5.
+
+A preview binds only what its `previews` block lists:
+
+- **MCP preview:** the production API Worker `translation-helps-api-v2` through the `API` service binding, the preview KV namespace, the staging R2 buckets, its own Durable Object storage, and the Analytics dataset. A pull request that changes the API is checked through the API's own preview, not through the MCP preview.
+- **API preview:** the preview KV namespace and the staging R2 buckets.
+- Previews share the staging R2 buckets (`language-packs-staging`, and `translation-helps-mcp-zip-persistence`, which production also uses). They run no crons and ask for no pack builds.
+
+Previews are not `[env.preview]`, which is the language-packs staging Workers.
+
+Previews come from Workers Builds once "Builds for Preview branches" is turned on for both Workers, with these preview commands:
+
+- `translation-helps-mcp-v2`: `npx wrangler preview --config wrangler.toml`
+- `translation-helps-api-v2`: `npx wrangler preview --config wrangler.api.toml`
+
+Turning that switch on is done in the Cloudflare dashboard, not in this repo.
+
 ## Compare v1 vs v2 (live MCP)
 
 Re-runnable harness that calls the same logical tool matrix against Pages **v1**

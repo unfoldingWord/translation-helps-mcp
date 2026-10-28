@@ -34,6 +34,27 @@ bucket_name = "language-packs-staging"
 binding = "ANALYTICS"
 dataset = "translation_helps_metrics"
 
+# Worker Previews (`npx wrangler preview --config wrangler.api.toml`, no --env): one copy of
+# translation-helps-api-v2 per branch or pull request. Preview KV, the staging R2 buckets, no crons, no pack builds.
+[previews]
+vars = { NODE_ENV = "development" }
+
+[[previews.kv_namespaces]]
+binding = "TRANSLATION_HELPS_CACHE"
+id = "3073e58cc3eb4f16958854a6ec1531e6"
+
+[[previews.r2_buckets]]
+binding = "ZIP_FILES"
+bucket_name = "translation-helps-mcp-zip-persistence"
+
+[[previews.r2_buckets]]
+binding = "LANGUAGE_PACKS"
+bucket_name = "language-packs-staging"
+
+[[previews.analytics_engine_datasets]]
+binding = "ANALYTICS"
+dataset = "translation_helps_metrics"
+
 [env.production]
 name = "translation-helps-api-v2"
 vars = { NODE_ENV = "production" }
