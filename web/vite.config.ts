@@ -50,6 +50,11 @@ export default defineConfig({
 				target: 'http://127.0.0.1:8787',
 				changeOrigin: true,
 				ws: true
+			},
+			'/v2/mcp': {
+				target: 'http://127.0.0.1:8787',
+				changeOrigin: true,
+				ws: true
 			}
 		},
 		// Configure file watching to include parent src directory
