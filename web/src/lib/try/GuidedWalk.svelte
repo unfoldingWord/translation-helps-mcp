@@ -100,7 +100,8 @@
 		goTo(nextStep(step, delta, canGoDeeper));
 	}
 
-	function openItem(row: MapRow) {
+	/** A row of the map, or an Academy or Words article a link in an answer points to. */
+	function openItem(row: { kind: MapRow['kind']; key: string }) {
 		open = { kind: row.kind, key: row.key };
 		goTo('deeper');
 	}
@@ -362,6 +363,7 @@
 					outcome={runner.answer?.outcome ?? null}
 					pending={runner.pending}
 					onretry={() => runner.retry()}
+					onlink={openItem}
 				/>
 			{/if}
 		{/if}

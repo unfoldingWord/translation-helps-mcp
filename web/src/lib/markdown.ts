@@ -2,14 +2,14 @@ import DOMPurify from 'isomorphic-dompurify';
 import { renderMarkdown as renderDoor43Markdown } from './renderMarkdown';
 
 /**
- * Markdown from the server to safe HTML. `renderMarkdown.ts` parses it and
- * turns Door43 rc:// links into buttons; the result is sanitized here once more,
- * so nothing the server sends can run script. Links keep their DOMPurify-safe
- * schemes (renderMarkdown.ts already turns anything but http(s), #, and / into #).
+ * Markdown from the server to safe HTML. `renderMarkdown.ts` parses it and turns Door43
+ * links (rc://… and relative paths) into buttons when `follow` accepts them, or into plain
+ * text; the result is sanitized here once more, so nothing the server sends can run script.
+ * Only http(s) links stay links.
  */
-export function renderMarkdown(md: string): string {
+export function renderMarkdown(md: string, follow?: (href: string) => boolean): string {
 	if (!md) return '';
-	return DOMPurify.sanitize(renderDoor43Markdown(md), {
+	return DOMPurify.sanitize(renderDoor43Markdown(md, follow), {
 		ALLOWED_TAGS: [
 			'h1',
 			'h2',
@@ -25,6 +25,8 @@ export function renderMarkdown(md: string): string {
 			'li',
 			'strong',
 			'em',
+			'b',
+			'i',
 			'a',
 			'code',
 			'pre',
@@ -38,6 +40,6 @@ export function renderMarkdown(md: string): string {
 			'th',
 			'td'
 		],
-		ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'class', 'data-rc', 'type']
+		ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'class', 'data-rc', 'type', 'align']
 	});
 }

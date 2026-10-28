@@ -4,19 +4,24 @@
 	import type { CallResult } from '$lib/mcp/client';
 	import type { Outcome } from '$lib/mcp/outcome';
 	import { renderedView } from '$lib/try/rendered';
+	import { linkFromAnswer, linkTarget, type LinkTarget } from '$lib/try/links';
+	import { sourceLine } from '$lib/try/sources';
 
 	let {
 		tool = '',
 		result,
 		outcome,
 		pending = false,
-		onretry
+		onretry,
+		onlink
 	}: {
 		tool?: string;
 		result: CallResult | null;
 		outcome: Outcome | null;
 		pending?: boolean;
 		onretry?: () => void;
+		/** Opens an Academy or Words article a link in the answer points to. Without it, links are text. */
+		onlink?: (target: LinkTarget) => void;
 	} = $props();
 
 	type Tab = 'rendered' | 'json' | 'rpc';
@@ -34,6 +39,17 @@
 			? (result.structured.hints as unknown[]).filter((h): h is string => typeof h === 'string')
 			: []
 	);
+	/** Where an answer's content comes from, with its licence. Only under an answer that has content. */
+	const source = $derived(
+		result && outcome?.kind === 'ok' ? sourceLine(tool, result.structured) : null
+	);
+	/** The article this answer is, so its relative links (../kt/love.md) can be resolved. */
+	const from = $derived(linkFromAnswer(tool, result?.structured));
+	const follow = (href: string) => linkTarget(href, from) !== null;
+	function openLink(href: string) {
+		const target = linkTarget(href, from);
+		if (target && onlink) onlink(target);
+	}
 	/** The Rendered view explains a problem; JSON and JSON-RPC still show what came back, if anything did. */
 	const explain = $derived(
 		outcome !== null && outcome.kind !== 'ok' && (tab === 'rendered' || !result)
@@ -91,7 +107,7 @@
 			<p class="text-ink-2 text-sm">Run a call to see what the server returns.</p>
 		{:else if tab === 'rendered' && view}
 			{#if view.kind === 'markdown'}
-				<Markdown source={view.text} />
+				<Markdown source={view.text} {follow} onrc={onlink ? openLink : undefined} />
 			{:else if view.kind === 'json'}
 				{#if view.summary}<p class="text-ink mb-3 text-sm">{view.summary}</p>{/if}
 				<pre class="text-ink overflow-x-auto font-mono text-xs">{view.json}</pre>
@@ -117,4 +133,22 @@
 				)}</pre>
 		{/if}
 	</div>
+	{#if source && !pending}
+		<p class="border-line text-ink-2 border-t px-4 py-2 text-xs">
+			Source on Door43:
+			{#each source.sources as s, i (s.href)}{i ? ', ' : ''}<a
+					class="text-accent hover:underline"
+					href={s.href}
+					target="_blank"
+					rel="noopener noreferrer">{s.label}</a
+				>{/each}
+			·
+			<a
+				class="text-accent hover:underline"
+				href={source.licence.href}
+				target="_blank"
+				rel="license noopener noreferrer">{source.licence.name}</a
+			>
+		</p>
+	{/if}
 </section>

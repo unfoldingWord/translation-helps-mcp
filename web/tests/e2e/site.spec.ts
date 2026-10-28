@@ -138,6 +138,21 @@ test('/chat, /playground and /rag redirect to /try', async ({ page, request }) =
 	}
 });
 
+test('the old doc pages redirect to their new places', async ({ page, request }) => {
+	for (const [old, to, heading] of [
+		['docs/library', /\/v2\/docs\/sdks$/, 'SDKs'],
+		['docs/mcp', /\/v2\/connect$/, 'Connect your assistant']
+	] as const) {
+		const res = await request.get(old, { maxRedirects: 0 });
+		expect(res.status(), old).toBe(308);
+		expect(res.headers()['location'], old).toMatch(to);
+
+		await page.goto(old);
+		await expect(page).toHaveURL(to);
+		await expect(page.getByRole('heading', { name: heading, level: 1 })).toBeVisible();
+	}
+});
+
 test('the OBS walk shows story 1', async ({ page }) => {
 	await openTry(page);
 	await page.getByRole('tab', { name: 'OBS', exact: true }).click();
@@ -147,9 +162,58 @@ test('the OBS walk shows story 1', async ({ page }) => {
 	// The server's title for story 1 joins the line once the story has answered.
 	await expect(result(page).getByText(/Story 1\s*·\s*\S/)).toBeVisible();
 
+	// The Rendered view reads as a story: frame text, not JSON.
+	await expect(result(page).getByText(/This is how God made everything/)).toBeVisible();
+	await expect(result(page).getByText('"frames"')).toHaveCount(0);
+	await expect(result(page).getByRole('link', { name: 'unfoldingWord® OBS' })).toHaveAttribute(
+		'href',
+		'https://git.door43.org/unfoldingWord/en_obs'
+	);
+
 	await next(page).click();
 	await expect(page.getByRole('heading', { name: 'Translation notes' })).toBeVisible();
 	await answered(page, 'get_obs_notes');
+});
+
+test('a link inside a word article opens the linked article', async ({ page }) => {
+	const love = Buffer.from(
+		JSON.stringify({
+			tab: 'guided',
+			lang: 'en',
+			ref: 'John 3:16',
+			step: 'deeper',
+			open: { kind: 'word', key: 'bible/kt/love' }
+		})
+	).toString('base64url');
+	await openTry(page, `#${love}`);
+	await answered(page, 'get_word_article');
+	// The source line credits Translation Words and links the licence.
+	await expect(result(page).getByRole('link', { name: 'unfoldingWord® TW' })).toHaveAttribute(
+		'href',
+		'https://git.door43.org/unfoldingWord/en_tw'
+	);
+	await expect(result(page).getByRole('link', { name: 'CC BY-SA 4.0' })).toHaveAttribute(
+		'href',
+		'https://creativecommons.org/licenses/by-sa/4.0/'
+	);
+	// "See also: covenant" is ../kt/covenant.md in the article: it opens that word article.
+	await result(page).getByRole('button', { name: 'covenant', exact: true }).click();
+	await expect(result(page).getByText('Key term: bible/kt/covenant')).toBeVisible();
+	await expect(result(page).getByRole('heading', { name: 'covenant', exact: true })).toBeVisible({
+		timeout: SLOW
+	});
+	// No link inside Door43 content is a dead "#" link.
+	await expect(result(page).locator('a[href="#"]')).toHaveCount(0);
+});
+
+test('the Check step reads as questions and answers', async ({ page }) => {
+	const check = Buffer.from(
+		JSON.stringify({ tab: 'guided', lang: 'en', ref: 'John 3:16', step: 'check' })
+	).toString('base64url');
+	await openTry(page, `#${check}`);
+	await answered(page, 'get_questions');
+	await expect(result(page).locator('.prose strong').first()).toContainText('?');
+	await expect(result(page).getByText('"questions"')).toHaveCount(0);
 });
 
 /**

@@ -4,7 +4,8 @@
 	import ResultViewer from '$lib/components/ResultViewer.svelte';
 	import { endpoint } from '$lib/endpoint';
 	import type { ObsStepId, TryState } from './hashState';
-	import { toolsState } from './guided';
+	import { deeperCall, toolsState } from './guided';
+	import type { LinkTarget } from './links';
 	import { languageOptions, loadLanguages } from './languages';
 	import { OBS_STEPS, OBS_STORIES, obsCall } from './obs';
 	import { createWalkRunner, revealResult } from './walkRunner.svelte';
@@ -105,6 +106,11 @@
 
 	function openInTools() {
 		onstate(toolsState(call));
+	}
+
+	/** The OBS walk has no step for articles: a link in a note opens its article in Tools. */
+	function openLink(target: LinkTarget) {
+		onstate(toolsState(deeperCall(target, lang, '')));
 	}
 
 	onMount(async () => {
@@ -247,6 +253,7 @@
 			outcome={runner.answer?.outcome ?? null}
 			pending={runner.pending}
 			onretry={() => runner.retry()}
+			onlink={openLink}
 		/>
 
 		{#if following}

@@ -5,6 +5,7 @@
  */
 import type { TryState } from '../try/hashState';
 import type { ResourceId } from '../resources';
+import { questionsAsMarkdown } from '../helpsMarkdown';
 
 export type AnatomyPartId = 'text' | 'notes' | 'words' | 'questions' | 'academy';
 
@@ -157,12 +158,8 @@ export function excerptFrom(id: AnatomyPartId, structured: unknown): string {
 		case 'words':
 		case 'academy':
 			return clip(smallHeadings(str(structured.article)));
-		case 'questions': {
-			const qs = list(structured.questions)
-				.filter((q) => str(q.question))
-				.map((q) => `**${str(q.question)}**\n\n${str(q.response)}`.trim());
-			return clip(qs.join('\n\n'));
-		}
+		case 'questions':
+			return clip(questionsAsMarkdown(structured.questions));
 	}
 }
 

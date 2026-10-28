@@ -7,6 +7,8 @@
 	import { run, type RunResult } from '$lib/mcp/session';
 	import type { ToolInfo } from '$lib/mcp/client';
 	import { argsFromValues, fieldsFromSchema } from './fields';
+	import { deeperCall } from './guided';
+	import type { LinkTarget } from './links';
 	import { visiblePresets, type Preset } from './presets';
 	import { curlFor, jsonRpcFor, mcpConfigFor } from './copyAs';
 	import type { TryState } from './hashState';
@@ -54,7 +56,13 @@
 		onstate({ tab: 'tools', tool: name });
 	}
 
+	const keyOf = (c: { tool: string; args: Record<string, unknown> }) =>
+		JSON.stringify([c.tool, c.args]);
+
 	async function exec(call: { tool: string; args: Record<string, unknown> }) {
+		// The same call while it is still on its way (a double click on Run) is not sent again.
+		// Once it has answered, Run sends it again: the person may want a fresh answer.
+		if (pending && asked && keyOf(asked) === keyOf(call)) return;
 		const mine = ++latest;
 		asked = call;
 		pending = true;
@@ -75,13 +83,24 @@
 		revealOnNarrow(resultEl);
 	}
 
-	function usePreset(p: Preset) {
-		selected = p.tool;
-		values = { ...p.args };
+	/** Fill the form with a call and run it: an example, or an article a link points to. */
+	function open(call: { tool: string; args: Record<string, unknown> }) {
+		selected = call.tool;
+		values = { ...call.args };
 		answer = null;
-		// The form updates on the next tick; run with the preset's own arguments.
-		void exec({ tool: p.tool, args: p.args });
+		// The form updates on the next tick; run with the call's own arguments.
+		void exec(call);
 		void tick().then(() => revealOnNarrow(resultEl));
+	}
+
+	function usePreset(p: Preset) {
+		open({ tool: p.tool, args: p.args });
+	}
+
+	/** A link in an article opens that article here, in the tool that returns it. */
+	function openLink(target: LinkTarget) {
+		const language = typeof asked?.args.language === 'string' ? asked.args.language : 'en';
+		open(deeperCall(target, language, ''));
 	}
 
 	// A shared link with arguments runs right away.
@@ -177,6 +196,7 @@
 				outcome={answer?.outcome ?? null}
 				{pending}
 				onretry={() => asked && exec(asked)}
+				onlink={openLink}
 			/>
 		</div>
 		<div>

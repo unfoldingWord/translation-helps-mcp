@@ -1,0 +1,10 @@
+{
+  "_note": "Captured 2026-10-28 from the production Worker (translation-helps-mcp-v2.unfoldingword.workers.dev) /v2/mcp: tools/call get_word_article {path: bible/kt/love, language: en}. result.content[0].text and result.structuredContent, trimmed (fewer items, shorter text) but in the server's shape.",
+  "text": "Word article: love",
+  "structured": {
+    "language": "en",
+    "requestedLanguage": "en",
+    "path": "bible/kt/love.md",
+    "article": "# love, beloved\n\n## Definition:\n\nTo love another person is to care for that person and do things that will benefit him. There are different meanings for “love” some languages may express using different words:\n\n1. The kind of love that comes from God is focused on the good of others even when it does not benefit oneself. This kind of love cares for others, no matter what they do. God himself is love and is the source of true love.\n\n   * Jesus showed this kind of love by sacrificing his life in order to rescue us from sin and death. He also taught his followers to love others sacrificially.\n   \n\n(trimmed)\n\n(See also: [covenant](../kt/covenant.md), [death](../other/death.md), [sacrifice](../other/sacrifice.md), [save](../kt/save.md), [sin](../kt/sin.md))\n\n## Bible References:\n\n* [1 Corinthians 13:7](rc://en/tn/help/1co/13/07)\n* [1 John 3:2](rc://en/tn/help/1jn/03/02)\n* [1 Thessalonians 4:10](rc://en/tn/help/1th/04/10)\n* [Galatians 5:23](rc://en/tn/help/gal/05/23)\n* [Genesis 29:18](rc://en/tn/help/gen/29/18)\n* [Isaiah 56:6](rc://en/tn/help/isa/56/06)\n\n\n(trimmed)"
+  }
+}

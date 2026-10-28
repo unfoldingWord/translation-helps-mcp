@@ -1,0 +1,28 @@
+{
+  "_note": "Captured 2026-10-28 from the production Worker (translation-helps-mcp-v2.unfoldingword.workers.dev) /v2/mcp: tools/call get_obs_questions {reference: 1, language: en}. result.content[0].text and result.structuredContent, trimmed (fewer items, shorter text) but in the server's shape.",
+  "text": "22 OBS question(s) for OBS 1 (en)",
+  "structured": {
+    "reference": "OBS 1",
+    "language": "en",
+    "questions": [
+      {
+        "reference": "1:1",
+        "id": "es4e",
+        "question": "Where did everything in the universe come from?",
+        "response": "God created everything."
+      },
+      {
+        "reference": "1:1",
+        "id": "pefq",
+        "question": "How long did it take God to create everything?",
+        "response": "He took six days."
+      },
+      {
+        "reference": "1:2",
+        "id": "rp6v",
+        "question": "What was God’s response to the day and night he created on the first day?",
+        "response": "He said they were good."
+      }
+    ]
+  }
+}

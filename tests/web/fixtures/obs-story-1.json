@@ -1,0 +1,28 @@
+{
+  "_note": "Captured 2026-10-28 from the production Worker (translation-helps-mcp-v2.unfoldingword.workers.dev) /v2/mcp: tools/call get_obs_story {reference: 1, language: en}. result.content[0].text and result.structuredContent, trimmed (fewer items, shorter text) but in the server's shape.",
+  "text": "OBS 1 (en) — 16 frame(s)",
+  "structured": {
+    "reference": "OBS 1",
+    "language": "en",
+    "story": 1,
+    "title": "1. The Creation",
+    "frames": [
+      {
+        "index": 1,
+        "imageUrl": "https://cdn.door43.org/obs/jpg/360px/obs-en-01-01.jpg",
+        "text": "This is how God made everything in the beginning. He created the universe and everything in it in six days. After God created the earth it was dark and empty because he had not yet formed anything in it. But God’s Spirit was there over the water."
+      },
+      {
+        "index": 2,
+        "imageUrl": "https://cdn.door43.org/obs/jpg/360px/obs-en-01-02.jpg",
+        "text": "Then God said, “Let there be light!” And there was light. God saw that the light was good and called it “day.” He separated it from the darkness, which he called “night.” God created the light on the first day of creation."
+      },
+      {
+        "index": 3,
+        "imageUrl": "https://cdn.door43.org/obs/jpg/360px/obs-en-01-03.jpg",
+        "text": "On the second day of creation, God said, “Let there be an expanse above the waters.” And there was an expanse. God called this expanse “sky.”"
+      }
+    ],
+    "attribution": "A Bible story from: Genesis 1-2"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "_note": "Captured 2026-10-28 from the production Worker (translation-helps-mcp-v2.unfoldingword.workers.dev) /v2/mcp: tools/call get_academy_article {path: translate/figs-metonymy, language: en}. result.content[0].text and result.structuredContent, trimmed (fewer items, shorter text) but in the server's shape.",
+  "text": "Academy article: figs-metonymy",
+  "structured": {
+    "language": "en",
+    "requestedLanguage": "en",
+    "path": "translate/figs-metonymy/01.md",
+    "article": "### Description\n\nMetonymy is a figure of speech in which an item (either physical or abstract) is called not by its own name, but by the name of something closely associated with it. A metonym is a word or phrase used as a substitute for something that it is associated with.\n\n> … and **the blood** of Jesus his Son cleanses us from every sin. (1 John 1:7b ULT)\n\nThe blood represents Christ’s death.\n\n\n(trimmed)\n\nTo learn about some common metonymies, see [Biblical Imagery — Common Metonymies](../bita-part2/01.md)."
+  }
+}
