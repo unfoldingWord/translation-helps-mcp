@@ -1,9 +1,10 @@
 /**
  * OBS Study Notes (SN) and Study Questions (SQ) — REST + MCP (#67).
  *
- * Fixtures are trimmed from live unfoldingWord/en_obs-sn sn_OBS.tsv and
- * unfoldingWord/en_obs-sq sq_OBS.tsv (same columns as OBS-TN / OBS-TQ;
- * SQ rows include frame ranges like 1:1-8 that must cover a 1:3 request).
+ * Fixtures (./fixtures/obs-study.ts) are trimmed from live
+ * unfoldingWord/en_obs-sn sn_OBS.tsv and unfoldingWord/en_obs-sq sq_OBS.tsv
+ * (same columns as OBS-TN / OBS-TQ; SQ rows include frame ranges like 1:1-8
+ * that must cover a 1:3 request).
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,30 +13,13 @@ import {
   parseObsQuestionsTsv,
   parseObsReference,
 } from "@translation-helps/door43";
-
-/** sn_OBS.tsv columns: Reference ID Tags SupportReference Quote Occurrence Note */
-const SAMPLE_SN_TSV = [
-  "Reference\tID\tTags\tSupportReference\tQuote\tOccurrence\tNote",
-  "1:1\tprf0\t\t\tGod\t1\tThe term **God** refers to the eternal being who created the universe out of nothing.",
-  "1:1\tqs8q\t\t\tthe beginning\t1\tThis refers to the time before anything except God existed.",
-  "1:1\tb70w\t\t\tcreated\t1\tThis term here means that God made it from nothing.",
-  "1:1\twcjr\t\t\tGod's Spirit\t1\tThis is the Holy Spirit.",
-  "1:2\tt4c6\t\t\tlight\t1\tThis light was different than the sun.",
-  "1:3\tbwkg\t\t\tsky\t1\tThis refers to all the space above the earth.",
-  "2:1\tx999\t\t\t\t\tNote for story 2 only.",
-].join("\n");
-
-/** sq_OBS.tsv columns: Reference ID Tags Quote Occurrence Question Response */
-const SAMPLE_SQ_TSV = [
-  "Reference\tID\tTags\tQuote\tOccurrence\tQuestion\tResponse",
-  "front\tvj0h\tintro\t\t\t\tGuide to using OBS study questions.",
-  "1:1-8\ttoi2\tmeaning\t\t\tWhat did God do in order to create everything except the first people?\tGod only spoke, and the universe and everything in it appeared.",
-  "1:9-10\tnqcu\tmeaning\t\t\tIn what way did God decide to make people to be different than the animals?\tGod decided to make people in God's image.",
-  "1:9\tegb5\tapplication\t\t\tIn what way are people like God?\tPeople have some of the characteristics of God.",
-  "1:1-15\ttmdk\tmeaning\t\t\tWhat all did God create?\tGod made the universe and everything in it.",
-  "1:1-16\tkn32\tsummary\t\t\t\tGod created everything that exists.",
-  "2:1\tip61\tmeaning\t\t\tWhat did Adam and Eve need?\tThey had everything in the garden.",
-].join("\n");
+import {
+  SAMPLE_SN_TSV,
+  SAMPLE_SQ_TSV,
+  SQ_1_2_4_IDS,
+  SQ_FRONT_IDS,
+  SQ_STORY_1_IDS,
+} from "./fixtures/obs-study.js";
 
 describe("OBS study TSV fixtures (real-file shapes)", () => {
   it("SN 1:1 returns the four notes for that frame", () => {
@@ -240,6 +224,21 @@ describe("GET /api/v1/obs-study-questions", () => {
     );
     const questions = body.questions as Array<{ id: string }>;
     expect(questions.map((q) => q.id).sort()).toEqual(["kn32", "tmdk", "toi2"]);
+  });
+
+  it.each([
+    ["front", SQ_FRONT_IDS],
+    ["1:2-4", SQ_1_2_4_IDS],
+    ["1", SQ_STORY_1_IDS],
+  ])("returns the same SQ IDs as v1 for reference=%s", async (ref, ids) => {
+    const { body } = await getJson(
+      handleObsStudyQuestions,
+      "/api/v1/obs-study-questions",
+      ref,
+      "en",
+    );
+    const questions = body.questions as Array<{ id: string }>;
+    expect(questions.map((q) => q.id)).toEqual(ids);
   });
 
   it("returns RESOURCE_NOT_AVAILABLE for es-419 with a clear message", async () => {

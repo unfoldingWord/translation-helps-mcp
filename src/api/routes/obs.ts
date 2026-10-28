@@ -16,7 +16,8 @@
 
 import type { RouteContext } from "../worker.js";
 import { json, apiError } from "../worker.js";
-import { getResourceZipUrl, makeFetcher } from "./helpers.js";
+import { getResourceZipUrl, makeFetcher, tryPaths } from "./helpers.js";
+import type { CatalogEntry } from "./helpers.js";
 import {
   parseObsReference,
   formatObsReferenceLabel,
@@ -95,6 +96,18 @@ async function resolveObsZip(
   );
   if (!zip) return null;
   return { language: resolvedLang, zipUrl: zip.zipUrl, entry: zip.entry };
+}
+
+/**
+ * TSV paths for a single-file OBS helps resource: the catalog's first `.tsv`
+ * ingredient, then the conventional file names.
+ */
+function obsTsvPaths(entry: CatalogEntry, fallbacks: string[]): string[] {
+  const fromCatalog = entry.ingredients
+    .map((ing) => (ing.path ?? "").replace(/^\.\//, ""))
+    .find((path) => path.toLowerCase().endsWith(".tsv"));
+  if (!fromCatalog) return fallbacks;
+  return [fromCatalog, ...fallbacks.filter((path) => path !== fromCatalog)];
 }
 
 // ---------------------------------------------------------------------------
@@ -325,12 +338,11 @@ export async function handleObsStudyNotes(
   const fetcher = makeFetcher(env, execCtx);
   const zip = await fetcher.getOrDownloadZip(resolved.zipUrl);
 
-  const tsvPaths = ["sn_OBS.tsv", "sn_obs.tsv"];
-  let tsv: string | null = null;
-  for (const p of tsvPaths) {
-    tsv = await fetcher.extractFileFromZip(zip, p);
-    if (tsv) break;
-  }
+  const tsv = await tryPaths(
+    fetcher,
+    zip,
+    obsTsvPaths(resolved.entry, ["sn_OBS.tsv", "sn_obs.tsv"]),
+  );
 
   if (!tsv) {
     return json({
@@ -386,12 +398,11 @@ export async function handleObsStudyQuestions(
   const fetcher = makeFetcher(env, execCtx);
   const zip = await fetcher.getOrDownloadZip(resolved.zipUrl);
 
-  const tsvPaths = ["sq_OBS.tsv", "sq_obs.tsv"];
-  let tsv: string | null = null;
-  for (const p of tsvPaths) {
-    tsv = await fetcher.extractFileFromZip(zip, p);
-    if (tsv) break;
-  }
+  const tsv = await tryPaths(
+    fetcher,
+    zip,
+    obsTsvPaths(resolved.entry, ["sq_OBS.tsv", "sq_obs.tsv"]),
+  );
 
   if (!tsv) {
     return json({
