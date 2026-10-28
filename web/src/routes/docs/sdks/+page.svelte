@@ -78,8 +78,9 @@
 
 <h2>Python</h2>
 <p>
-	<code>translation-helps-mcp-client</code>. It works with the standard library alone, and has an
-	async client when <code>httpx</code> is installed.
+	<code>translation-helps-mcp-client</code>. The package installs with <code>httpx</code> by
+	default, so it includes both the synchronous client and <code>AsyncTranslationHelpsClient</code>.
+	No extra install command is needed for async support: use the same command shown above.
 	<a class="inline-flex items-center gap-1" href={tree('python-sdk')}
 		>Source and README <ExternalLink size={12} /></a
 	>

@@ -8,11 +8,7 @@ Python client for the Translation Helps MCP v2 server.
 pip install translation-helps-mcp-client
 ```
 
-Or with httpx for async support:
-
-```bash
-pip install translation-helps-mcp-client httpx
-```
+This install already includes `httpx`, so `AsyncTranslationHelpsClient` works without an extra package.
 
 ## Usage
 
