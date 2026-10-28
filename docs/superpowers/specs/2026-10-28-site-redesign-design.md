@@ -93,7 +93,7 @@ On a phone, choosing something scrolls its result into view.
   - it sends one request at a time;
   - it keeps the `mcp-session-id`;
   - each request times out after 30 seconds.
-- In local `vite dev`, where the Worker is not running, the client falls back to `/api/mcp-proxy`, which already runs the tools in-process.
+- In local `vite dev`, Vite proxies `/v2/mcp` to the Worker from `npm run dev:worker`, as it already does for `/mcp`. Without the Worker, Try says it can't reach the server. `/api/mcp-proxy` stays for other local uses.
 
 ## The chat moves to `chat/`
 
