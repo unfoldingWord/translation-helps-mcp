@@ -1,0 +1,275 @@
+{
+  "_note": "Captured 2026-10-28 from staging /v2/mcp: tools/call get_passage_index {reference: John 3:16, language: en}. result.structuredContent, unchanged.",
+  "reference": "John 3:16",
+  "language": "en",
+  "notes": [
+    {
+      "reference": " 3:16",
+      "id": "vg6z",
+      "quote": {
+        "original": "γὰρ",
+        "aligned": "For"
+      },
+      "occurrence": "1",
+      "tags": "rc://*/ta/man/translate/grammar-connect-logic-result",
+      "taArticle": {
+        "path": "translate/grammar-connect-logic-result",
+        "title": "Connect — Reason-and-Result Relationship"
+      }
+    },
+    {
+      "reference": " 3:16",
+      "id": "h4ht",
+      "quote": {
+        "original": "οὕτως … ἠγάπησεν ὁ Θεὸς τὸν κόσμον",
+        "aligned": "God so loved the world"
+      },
+      "occurrence": "1",
+      "tags": "",
+      "taArticle": null
+    },
+    {
+      "reference": " 3:16",
+      "id": "uxc2",
+      "quote": {
+        "original": "τὸν κόσμον",
+        "aligned": "the world"
+      },
+      "occurrence": "1",
+      "tags": "rc://*/ta/man/translate/figs-metonymy",
+      "taArticle": {
+        "path": "translate/figs-metonymy",
+        "title": "Metonymy"
+      }
+    },
+    {
+      "reference": " 3:16",
+      "id": "jen2",
+      "quote": {
+        "original": "ὥστε",
+        "aligned": "that"
+      },
+      "occurrence": "1",
+      "tags": "rc://*/ta/man/translate/grammar-connect-logic-result",
+      "taArticle": {
+        "path": "translate/grammar-connect-logic-result",
+        "title": "Connect — Reason-and-Result Relationship"
+      }
+    },
+    {
+      "reference": " 3:16",
+      "id": "fqk7",
+      "quote": {
+        "original": "τὸν Υἱὸν τὸν μονογενῆ",
+        "aligned": "his One and Only Son"
+      },
+      "occurrence": "1",
+      "tags": "rc://*/ta/man/translate/figs-explicit",
+      "taArticle": {
+        "path": "translate/figs-explicit",
+        "title": "Assumed Knowledge and Implicit Information"
+      }
+    },
+    {
+      "reference": " 3:16",
+      "id": "z8at",
+      "quote": {
+        "original": "τὸν Υἱὸν τὸν μονογενῆ",
+        "aligned": "his One and Only Son"
+      },
+      "occurrence": "1",
+      "tags": "rc://*/ta/man/translate/guidelines-sonofgodprinciples",
+      "taArticle": {
+        "path": "translate/guidelines-sonofgodprinciples",
+        "title": "Translating Son and Father"
+      }
+    },
+    {
+      "reference": " 3:16",
+      "id": "qpc9",
+      "quote": {
+        "original": "τὸν Υἱὸν τὸν μονογενῆ",
+        "aligned": "his One and Only Son"
+      },
+      "occurrence": "1",
+      "tags": "rc://*/ta/man/translate/guidelines-sonofgodprinciples",
+      "taArticle": {
+        "path": "translate/guidelines-sonofgodprinciples",
+        "title": "Translating Son and Father"
+      }
+    }
+  ],
+  "words": [
+    {
+      "reference": " 3:16",
+      "quote": {
+        "original": "ὁ Θεὸς",
+        "aligned": "God"
+      },
+      "occurrence": "1",
+      "twArticle": {
+        "path": "bible/kt/god",
+        "category": "other",
+        "title": "God"
+      }
+    },
+    {
+      "reference": " 3:16",
+      "quote": {
+        "original": "ἠγάπησεν",
+        "aligned": "loved"
+      },
+      "occurrence": "1",
+      "twArticle": {
+        "path": "bible/kt/love",
+        "category": "other",
+        "title": "love, beloved"
+      }
+    },
+    {
+      "reference": " 3:16",
+      "quote": {
+        "original": "κόσμον",
+        "aligned": "world"
+      },
+      "occurrence": "1",
+      "twArticle": {
+        "path": "bible/kt/world",
+        "category": "other",
+        "title": "world, worldly"
+      }
+    },
+    {
+      "reference": " 3:16",
+      "quote": {
+        "original": "Υἱὸν",
+        "aligned": "Son"
+      },
+      "occurrence": "1",
+      "twArticle": {
+        "path": "bible/kt/sonofgod",
+        "category": "other",
+        "title": "Son of God, the Son"
+      }
+    },
+    {
+      "reference": " 3:16",
+      "quote": {
+        "original": "πιστεύων",
+        "aligned": "believing"
+      },
+      "occurrence": "1",
+      "twArticle": {
+        "path": "bible/kt/believe",
+        "category": "other",
+        "title": "believe, believer, belief, unbeliever, unbelief"
+      }
+    },
+    {
+      "reference": " 3:16",
+      "quote": {
+        "original": "εἰς αὐτὸν",
+        "aligned": "in him"
+      },
+      "occurrence": "1",
+      "twArticle": {
+        "path": "bible/kt/inchrist",
+        "category": "other",
+        "title": "in Christ, in Jesus, in the Lord, in him"
+      }
+    },
+    {
+      "reference": " 3:16",
+      "quote": {
+        "original": "ἀπόληται",
+        "aligned": "would … perish"
+      },
+      "occurrence": "1",
+      "twArticle": {
+        "path": "bible/kt/perish",
+        "category": "other",
+        "title": "perish"
+      }
+    },
+    {
+      "reference": " 3:16",
+      "quote": {
+        "original": "αἰώνιον",
+        "aligned": "eternal"
+      },
+      "occurrence": "1",
+      "twArticle": {
+        "path": "bible/kt/eternity",
+        "category": "other",
+        "title": "eternity, everlasting, eternal, forever"
+      }
+    }
+  ],
+  "issues": [
+    {
+      "path": "translate/grammar-connect-logic-result",
+      "title": "Connect — Reason-and-Result Relationship",
+      "count": 2
+    },
+    {
+      "path": "translate/guidelines-sonofgodprinciples",
+      "title": "Translating Son and Father",
+      "count": 2
+    },
+    {
+      "path": "translate/figs-metonymy",
+      "title": "Metonymy",
+      "count": 1
+    },
+    {
+      "path": "translate/figs-explicit",
+      "title": "Assumed Knowledge and Implicit Information",
+      "count": 1
+    }
+  ],
+  "keyTerms": [
+    {
+      "path": "bible/kt/god",
+      "title": "God",
+      "count": 1
+    },
+    {
+      "path": "bible/kt/love",
+      "title": "love, beloved",
+      "count": 1
+    },
+    {
+      "path": "bible/kt/world",
+      "title": "world, worldly",
+      "count": 1
+    },
+    {
+      "path": "bible/kt/sonofgod",
+      "title": "Son of God, the Son",
+      "count": 1
+    },
+    {
+      "path": "bible/kt/believe",
+      "title": "believe, believer, belief, unbeliever, unbelief",
+      "count": 1
+    },
+    {
+      "path": "bible/kt/inchrist",
+      "title": "in Christ, in Jesus, in the Lord, in him",
+      "count": 1
+    },
+    {
+      "path": "bible/kt/perish",
+      "title": "perish",
+      "count": 1
+    },
+    {
+      "path": "bible/kt/eternity",
+      "title": "eternity, everlasting, eternal, forever",
+      "count": 1
+    }
+  ],
+  "meta": {
+    "cache": "kv"
+  }
+}

@@ -3,6 +3,7 @@
 	import Callout from '$lib/components/Callout.svelte';
 	import CopyPill from '$lib/components/CopyPill.svelte';
 	import ToolRunner from '$lib/try/ToolRunner.svelte';
+	import GuidedWalk from '$lib/try/GuidedWalk.svelte';
 	import { endpoint } from '$lib/endpoint';
 	import { connect } from '$lib/mcp/session';
 	import type { ToolInfo } from '$lib/mcp/client';
@@ -121,10 +122,11 @@
 				Coming in the next step: a short walk through an Open Bible Story.
 			</p>
 		{:else}
-			<p class="text-ink-2 text-sm">
-				Coming in the next step: a guided walk through one passage and all its helps. The Tools tab
-				works now.
+			<p class="text-ink-2 mb-5 max-w-2xl text-sm">
+				One passage and all its helps, step by step, in the order an assistant asks the server for
+				them.
 			</p>
+			<GuidedWalk initial={tryState} onstate={save} />
 		{/if}
 	</div>
 </div>
