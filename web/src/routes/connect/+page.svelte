@@ -6,9 +6,9 @@
 	import Button from '$lib/components/Button.svelte';
 	import { CLIENTS } from '$lib/connect/clients';
 	import { DEFAULT_ORIGIN } from '$lib/endpoint';
-	import { API, SITE, endpointFor } from '$lib/site';
+	import { API, SDK_INSTALL, SITE, endpointFor } from '$lib/site';
 
-	/** The page's own address, known only in the browser; the prerendered page shows the staging site. */
+	/** The page's own address, known only in the browser; the prerendered page shows the production Worker's. */
 	let origin = $state(DEFAULT_ORIGIN);
 	onMount(() => {
 		origin = window.location.origin;
@@ -33,11 +33,11 @@
 	const sdkTabs = $derived([
 		{
 			label: 'JavaScript',
-			code: `npm install @translation-helps/mcp-client\n\nimport { TranslationHelpsClient } from "@translation-helps/mcp-client";\n\nconst client = new TranslationHelpsClient({ serverUrl: "${endpoint}" });\nconst passage = await client.getPassage({ reference: "John 3:16", language: "en" });`
+			code: `${SDK_INSTALL.js}\n\nimport { TranslationHelpsClient } from "@translation-helps/mcp-client";\n\nconst client = new TranslationHelpsClient({ serverUrl: "${endpoint}" });\nconst passage = await client.getPassage({ reference: "John 3:16", language: "en" });`
 		},
 		{
 			label: 'Python',
-			code: `pip install translation-helps-mcp-client\n\nfrom translation_helps import TranslationHelpsClient\n\nclient = TranslationHelpsClient(server_url="${endpoint}")\npassage = client.get_passage({"reference": "John 3:16", "language": "en"})`
+			code: `${SDK_INSTALL.python}\n\nfrom translation_helps import TranslationHelpsClient\n\nclient = TranslationHelpsClient(server_url="${endpoint}")\npassage = client.get_passage({"reference": "John 3:16", "language": "en"})`
 		}
 	]);
 
@@ -144,6 +144,11 @@
 		<p class="text-ink-2 mt-2 max-w-2xl">
 			A JavaScript and TypeScript client and a Python client wrap the MCP calls. Pass the server URL
 			shown above.
+		</p>
+		<p class="text-ink-2 mt-2 max-w-2xl">
+			These are the 2.0 clients, which are not on npm or PyPI yet. The packages there under the same
+			names are the older 1.x clients, with other methods. Install 2.0 from the repository, as
+			shown.
 		</p>
 		<div class="mt-5"><CodeTabs tabs={sdkTabs} /></div>
 		<p class="text-ink-2 mt-4 text-sm">

@@ -1,5 +1,5 @@
 {
-  "_note": "Captured 2026-10-28 from staging /v2/mcp: tools/call get_passage {reference: John 3:16, language: es-419}. The JSON-RPC result, unchanged.",
+  "_note": "Captured 2026-10-28 from the production Worker (translation-helps-mcp-v2.unfoldingword.workers.dev) /v2/mcp: tools/call get_passage {reference: John 3:16, language: es-419}. The JSON-RPC result, unchanged.",
   "result": {
     "content": [
       {

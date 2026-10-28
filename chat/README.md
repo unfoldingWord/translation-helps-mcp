@@ -18,7 +18,7 @@ The files keep the paths they had in the website, under `chat/web/src/`:
 - `lib/components/{chat,ui,debug}/`, `lib/stores/`
 - `lib/server/{agents,skillChat.ts,traceEvents.ts,i18n.ts}`
 
-Tests that import these files live in `chat/tests/unit/`. The tests of `src/core/harness/*` (quiz, coach, pacing, panel state and so on) stay in the root `tests/unit/`, because they test code in `src/`, which stays.
+There are no tests for these files at the moment. The tests of `src/core/harness/*` (quiz, coach, pacing, panel state and so on) stay in the root `tests/unit/`, because they test code in `src/`, which stays.
 
 ## Dependencies outside `chat/`
 

@@ -2,7 +2,7 @@
  * Save the home page's sample answers: npx tsx scripts/capture-home-snapshot.ts [origin]
  *
  * Calls each ANATOMY_PARTS call (and get_passage_index for the aligned phrases) in one
- * MCP session against `origin` (default: staging) and writes web/src/lib/home/snapshot.json.
+ * MCP session against `origin` (default: the production Worker, DEFAULT_ORIGIN) and writes web/src/lib/home/snapshot.json.
  * The home page shows these when the live server does not answer. Never run in the build.
  */
 import { writeFileSync } from "node:fs";

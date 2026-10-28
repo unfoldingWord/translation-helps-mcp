@@ -5,9 +5,9 @@
 	import CodeTabs from '$lib/components/CodeTabs.svelte';
 	import { TOOL_GROUPS } from '$lib/catalog';
 	import { DEFAULT_ORIGIN } from '$lib/endpoint';
-	import { SITE, endpointFor } from '$lib/site';
+	import { SDK_INSTALL, SITE, endpointFor } from '$lib/site';
 
-	/** The page's own address, known only in the browser; the prerendered page shows the staging site. */
+	/** The page's own address, known only in the browser; the prerendered page shows the production Worker's. */
 	let origin = $state(DEFAULT_ORIGIN);
 	onMount(() => {
 		origin = window.location.origin;
@@ -23,7 +23,7 @@
 	const jsTabs = $derived([
 		{
 			label: 'Install',
-			code: 'npm install @translation-helps/mcp-client'
+			code: SDK_INSTALL.js
 		},
 		{
 			label: 'Use',
@@ -33,7 +33,7 @@
 	const pyTabs = $derived([
 		{
 			label: 'Install',
-			code: 'pip install translation-helps-mcp-client\n\n# for the async client\npip install translation-helps-mcp-client httpx'
+			code: SDK_INSTALL.python
 		},
 		{
 			label: 'Use',
@@ -55,6 +55,11 @@
 	Two clients wrap the MCP calls, so a script or an app can use the tools without speaking the
 	protocol. One is for JavaScript and TypeScript, one is for Python. They live in the repository
 	under <code>packages/</code>.
+</p>
+<p>
+	These are the 2.0 clients. They are not on npm or PyPI yet: the packages published there under the
+	same names are the older 1.x clients, which have other methods. Until 2.0 is published, install it
+	from the repository, as shown below.
 </p>
 <p>
 	Give each client the server address. The examples below show this site’s own address. The clients

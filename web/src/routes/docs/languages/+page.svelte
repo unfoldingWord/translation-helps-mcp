@@ -102,9 +102,8 @@
 </p>
 <p>
 	When a language or chapter has a pack, the server answers notes and key-term links from it, which
-	is faster and fuller. Where there is none, it reads Door43 directly instead, so the tool still
-	answers. Which languages have a pack grows over time. You do not choose, and no tool argument
-	changes.
+	is faster. Where there is none, it reads Door43 directly instead, so the tool still answers. Which
+	languages have a pack grows over time. You do not choose, and no tool argument changes.
 </p>
 
 <p class="text-sm">

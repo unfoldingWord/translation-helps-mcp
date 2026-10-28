@@ -239,7 +239,7 @@ describe("classifyOutcome", () => {
     });
   });
 
-  it("reads the answer staging gives for a passage that is not available", () => {
+  it("reads the answer the production Worker gives for a passage that is not available", () => {
     const fixture = JSON.parse(
       readFileSync(
         new URL("./fixtures/get-passage-not-available.json", import.meta.url),
@@ -385,7 +385,7 @@ describe("hasParam", () => {
 });
 
 describe("endpoint", () => {
-  it("uses the staging site on the server and the page's own origin in the browser", () => {
+  it("uses the production Worker on the server and the page's own origin in the browser", () => {
     expect(endpoint()).toBe(`${DEFAULT_ORIGIN}/v2/mcp`);
     const g = globalThis as unknown as { window?: unknown };
     g.window = { location: { origin: "http://localhost:8174" } };

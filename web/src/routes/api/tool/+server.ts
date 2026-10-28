@@ -4,9 +4,10 @@
  * Internal server-side tool runner. Calls MCP tool handlers directly using
  * platform.env (Cloudflare bindings), bypassing the WebSocket-only McpAgent.
  *
- * Used by /api/chat → skillChat.ts → callTool() for server-side Skills invocation.
- * Also called by /api/mcp-proxy when MCP_BASE_URL resolves to the same origin
- * (deployed Worker) or when running under wrangler dev.
+ * Called by /api/mcp-proxy when MCP_BASE_URL resolves to the same origin
+ * (deployed Worker) or when running under wrangler dev, and kept for the chat
+ * product (chat/, not built now), whose skillChat.ts calls it. The status page
+ * checks the tools over /mcp, not through this route.
  *
  * Body: { name: string, params: Record<string, unknown>, requestId?: string }
  * Response: { structuredContent: unknown } | { error: string }
