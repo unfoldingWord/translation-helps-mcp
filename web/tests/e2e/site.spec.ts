@@ -76,20 +76,17 @@ test('a language without ULT shows the not-available answer and continues', asyn
 	const steps = page.getByRole('list', { name: 'Steps' });
 	await expect(steps.locator('[aria-current="step"]')).toContainText('Text');
 	// An answer, not a failure: the callout says what is missing, and there is no retry button.
-	await expect(result(page).locator('[role="tabpanel"]')).not.toContainText('Calling the server', {
-		timeout: SLOW
-	});
-	await expect(result(page).getByRole('button', { name: 'Try again' })).toHaveCount(0);
 	const notice = result(page).getByRole('note');
-	await expect(notice).toBeVisible();
+	await expect(notice).toBeVisible({ timeout: SLOW });
 	await expect(notice).toContainText('es-419');
+	await expect(result(page).getByRole('button', { name: 'Try again' })).toHaveCount(0);
 
 	// The walk continues with the next step.
 	await next(page).click();
 	await expect(steps.locator('[aria-current="step"]')).toContainText('Context');
-	await expect(result(page).locator('[role="tabpanel"]')).not.toContainText('Calling the server', {
-		timeout: SLOW
-	});
+	// The server answers the context step for es-419 (it lists what exists, 0 notes): wait for
+	// that answer first, then check that nothing failed.
+	await answered(page, 'get_passage_context');
 	await expect(result(page).getByRole('button', { name: 'Try again' })).toHaveCount(0);
 });
 
@@ -112,11 +109,19 @@ test('a tool runs from the Tools tab', async ({ page }) => {
 test('a broken shared link opens the guided tab', async ({ page }) => {
 	const errors: string[] = [];
 	page.on('pageerror', (e) => errors.push(e.message));
+	const tab = (name: string) => page.getByRole('tab', { name, exact: true });
+
+	// A valid link opens the tab it names, so the hash is read at all.
+	const tools = Buffer.from(JSON.stringify({ tab: 'tools' })).toString('base64url');
+	await openTry(page, `#${tools}`);
+	await expect(tab('Tools')).toHaveAttribute('aria-selected', 'true');
+	await expect(tab('Guided walk')).toHaveAttribute('aria-selected', 'false');
+
+	// A broken one falls back to the guided walk.
+	await page.goto('about:blank');
 	await openTry(page, '#not-a-state');
-	await expect(page.getByRole('tab', { name: 'Guided walk' })).toHaveAttribute(
-		'aria-selected',
-		'true'
-	);
+	await expect(tab('Guided walk')).toHaveAttribute('aria-selected', 'true');
+	await expect(tab('Tools')).toHaveAttribute('aria-selected', 'false');
 	await expect(page.getByRole('list', { name: 'Steps' })).toBeVisible();
 	expect(errors).toEqual([]);
 });
