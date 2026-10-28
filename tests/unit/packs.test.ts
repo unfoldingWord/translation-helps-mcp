@@ -48,6 +48,18 @@ const ENTRY = {
   pack: { path: PACK_KEY, sha256: SHA },
   originals: { path: ORIGINALS_KEY, sha256: ORIGINALS_SHA },
 };
+
+function exposedHeaderNames(res: Response): string[] {
+  const raw = res.headers.get("Access-Control-Expose-Headers");
+  if (!raw) return [];
+  return raw.split(",").map((h) => h.trim());
+}
+
+/** Cross-origin clients need Allow-Origin and Retry-After listed in Expose-Headers. */
+function expectRetryAfterExposed(res: Response) {
+  expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+  expect(exposedHeaderNames(res)).toContain("Retry-After");
+}
 const PACK_BYTES = new Uint8Array(1000).map((_, i) => i % 251);
 
 type Stored = {
@@ -309,10 +321,7 @@ describe("GET /v2/packs/<compat>/<lang> (the entry)", () => {
     const res = await call(`${COMPAT}/fr`);
     expect(res.status).toBe(202);
     expect(res.headers.get("Cache-Control")).toBe("no-store");
-    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
-    expect(res.headers.get("Access-Control-Expose-Headers")).toContain(
-      "Retry-After",
-    );
+    expectRetryAfterExposed(res);
     expect(res.headers.get("Retry-After")).toBe("600");
     expect(await res.json()).toEqual({ state: "preparing" });
     expect(builds).toEqual([
@@ -341,6 +350,7 @@ describe("GET /v2/packs/<compat>/<lang> (the entry)", () => {
       const res = await call(`${COMPAT}/fr`);
       expect(res.status).toBe(202);
       expect(res.headers.get("Cache-Control")).toBe("no-store");
+      expectRetryAfterExposed(res);
       expect(res.headers.get("Retry-After")).toBe("600");
       expect(await res.json()).toEqual({ state: "preparing" });
       expect(points[0]?.blobs?.[3]).toBe(`preparing-${build}`);
@@ -354,11 +364,8 @@ describe("GET /v2/packs/<compat>/<lang> (the entry)", () => {
       const res = await call(`${COMPAT}/fr`);
       expect(res.status).toBe(503);
       expect(res.headers.get("Cache-Control")).toBe("no-store");
-      expect(res.headers.get("Access-Control-Expose-Headers")).toContain(
-        "Retry-After",
-      );
+      expectRetryAfterExposed(res);
       expect(res.headers.get("Retry-After")).toBe("3600");
-      expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
       expect(await res.json()).toEqual({ state: "unavailable", reason: build });
       expect(points[0]?.blobs?.[3]).toBe(`unavailable-${build}`);
     },
@@ -371,11 +378,8 @@ describe("GET /v2/packs/<compat>/<lang> (the entry)", () => {
       const res = await call(`${COMPAT}/fr`);
       expect(res.status).toBe(503);
       expect(res.headers.get("Cache-Control")).toBe("no-store");
-      expect(res.headers.get("Access-Control-Expose-Headers")).toContain(
-        "Retry-After",
-      );
+      expectRetryAfterExposed(res);
       expect(res.headers.get("Retry-After")).toBe("300");
-      expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
       expect(await res.json()).toEqual({ state: "unavailable" });
       expect(builds).toEqual([]);
       expect(points[0]?.blobs?.[3]).toBe("eligibility-unknown");
@@ -572,10 +576,8 @@ describe("requests the route refuses", () => {
     expect((await call(`${COMPAT}/es-419`)).status).toBe(200);
     const res = await call(`${COMPAT}/es-419`);
     expect(res.status).toBe(429);
-    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
-    expect(res.headers.get("Access-Control-Expose-Headers")).toContain(
-      "Retry-After",
-    );
+    expect(res.headers.get("Retry-After")).toBeTruthy();
+    expectRetryAfterExposed(res);
     expect(res.headers.get("Cache-Control")).toBe("no-store");
   });
 });
@@ -838,10 +840,7 @@ describe("GET /v2/packs/parts/<sha256> (a part)", () => {
     const res = await call(`parts/${PART_SHA}`);
     expect(res.status).toBe(429);
     expect(res.headers.get("Retry-After")).toBeTruthy();
-    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
-    expect(res.headers.get("Access-Control-Expose-Headers")).toContain(
-      "Retry-After",
-    );
+    expectRetryAfterExposed(res);
     expect(res.headers.get("Cache-Control")).toBe("no-store");
     // The lists' window is still the one that was used up, not the parts'.
     expect((await call(`${PARTS_COMPAT}/es-419`)).status).toBe(429);
@@ -977,6 +976,8 @@ describe("GET /v2/packs/<parts compat>/<lang> (a parts list)", () => {
     const res = await call(`${PARTS_COMPAT}/es-419`);
     expect(res.status).toBe(202);
     expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expectRetryAfterExposed(res);
+    expect(res.headers.get("Retry-After")).toBe("600");
     expect(await res.json()).toEqual({ state: "preparing" });
     expect(builds).toEqual([
       { compat: PARTS_COMPAT, language: "es-419", reason: "missing" },

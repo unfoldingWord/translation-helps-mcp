@@ -154,6 +154,9 @@ once a staging build of es-419 has published:
       Range GET, GET with `If-None-Match`, and OPTIONS with an `Origin` header, each twice. Status, `ETag` and
       `Access-Control-*` must be identical the second time (served from Pages' cache). Repeat the step-7 checks
       (Content-Length, 416, stamps) with `BASE=https://tc-helps.mcp.servant.bible`.
+- [ ] Through `https://tc-helps.mcp.servant.bible`, a packs response that carries `Retry-After` (for example a 503 or
+      202 for a language with no entry), sent with an `Origin` header, must list `Retry-After` in
+      `Access-Control-Expose-Headers` (the Pages proxy in front could rewrite headers; unit tests do not see it).
 - Parts in production are delivery 3's Task 14, each step with Abel's yes: tc-study lets parts publish to production
   (Task 13); Abel sets tc-study's repository variable `PACKS_PARTS_PRODUCTION` (Task 14 Step 1); `[env.production]`
   gets `PACKS_PARTS_DISPATCH = "on"` and the three parts crons ("Parts: crons" for the cron limit), then
