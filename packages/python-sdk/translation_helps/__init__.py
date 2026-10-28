@@ -33,6 +33,8 @@ from .types import (
     GetObsStoryOptions,
     GetObsNotesOptions,
     GetObsQuestionsOptions,
+    GetObsStudyNotesOptions,
+    GetObsStudyQuestionsOptions,
     ResourceNotAvailable,
     MCPToolResult,
 )
@@ -58,6 +60,8 @@ __all__ = [
     "GetObsStoryOptions",
     "GetObsNotesOptions",
     "GetObsQuestionsOptions",
+    "GetObsStudyNotesOptions",
+    "GetObsStudyQuestionsOptions",
     "ResourceNotAvailable",
     "MCPToolResult",
 ]
