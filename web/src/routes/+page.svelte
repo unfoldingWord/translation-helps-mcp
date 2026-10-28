@@ -167,7 +167,6 @@ Content-Type: application/json
 				articles from unfoldingWord.
 			</p>
 			<div class="mb-8 flex flex-wrap items-center justify-center gap-3">
-				<a href={withBase('/chat')} class="ui-btn ui-btn-solid px-6 py-3"> Open the Chat </a>
 				<a href={withBase('/docs')} class="ui-btn px-4 py-3 text-slate-300 hover:text-slate-100">
 					Read the Docs →
 				</a>
@@ -358,13 +357,6 @@ Content-Type: application/json
 				Bring translation helps into your assistant.
 			</h2>
 			<div class="flex flex-wrap gap-3">
-				<a
-					href={withBase('/chat')}
-					class="inline-flex items-center rounded-full px-5 py-3 text-sm font-medium transition"
-					style="background: var(--bt-cream); color: var(--bt-black);"
-				>
-					Open Chat
-				</a>
 				<a
 					href={withBase('/docs')}
 					class="inline-flex items-center rounded-full border px-5 py-3 text-sm font-medium transition"

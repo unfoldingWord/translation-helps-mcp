@@ -4,8 +4,7 @@
 
 	const TABS = [
 		{ path: '/status', label: 'Status' },
-		{ path: '/metrics', label: 'Metrics' },
-		{ path: '/debug', label: 'Debug' }
+		{ path: '/metrics', label: 'Metrics' }
 	] as const;
 
 	function isOn(path: string, pathname: string): boolean {

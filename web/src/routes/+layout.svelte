@@ -129,9 +129,6 @@
 						{label}
 					</a>
 				{/each}
-				<a href={withBase('/chat')} class="ui-btn ui-btn-solid ml-2 !px-4 !py-2 text-sm">
-					Open Chat
-				</a>
 			</nav>
 
 			<!-- Mobile menu toggle -->
@@ -166,13 +163,6 @@
 							{label}
 						</a>
 					{/each}
-					<a
-						href={withBase('/chat')}
-						on:click={() => (menuOpen = false)}
-						class="ui-btn ui-btn-solid col-span-2 mt-1 justify-center"
-					>
-						Open Chat
-					</a>
 				</div>
 			</nav>
 		{/if}
@@ -212,7 +202,6 @@
 						<a href={withBase('/docs')} class="transition hover:text-sky-300">Docs</a>
 						<a href={withBase('/status')} class="transition hover:text-sky-300">Status</a>
 						<a href={withBase('/metrics')} class="transition hover:text-sky-300">Metrics</a>
-						<a href={withBase('/debug')} class="transition hover:text-sky-300">Debug</a>
 						<a
 							href="https://github.com/unfoldingWord/translation-helps-mcp"
 							target="_blank"

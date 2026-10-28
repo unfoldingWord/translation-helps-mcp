@@ -16,14 +16,6 @@
 		summary: string;
 	}
 
-	interface ChatTest {
-		status: TestStatus;
-		latency: number;
-		error: string;
-		toolsCalled: string[];
-		response: string;
-	}
-
 	function isObj(v: unknown): v is Record<string, unknown> {
 		return typeof v === 'object' && v !== null;
 	}
@@ -190,14 +182,6 @@
 		summary: ''
 	}));
 
-	let chat: ChatTest = {
-		status: 'idle',
-		latency: 0,
-		error: '',
-		toolsCalled: [],
-		response: ''
-	};
-
 	let lastRun = '';
 	let running = false;
 
@@ -285,64 +269,6 @@
 		tests = tests;
 	}
 
-	async function runChatTest() {
-		chat = { status: 'running', latency: 0, error: '', toolsCalled: [], response: '' };
-		const start = Date.now();
-		try {
-			const res = await fetch(withBase('/api/chat'), {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					messages: [{ role: 'user', content: 'What does John 3:16 say in Spanish?' }],
-					language: 'es',
-					model: 'gpt-4o-mini'
-				})
-			});
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-			const reader = res.body?.getReader();
-			const decoder = new TextDecoder();
-			let buffer = '';
-			const toolsCalled: string[] = [];
-			let finalText = '';
-
-			if (reader) {
-				while (true) {
-					const { done, value } = await reader.read();
-					if (done) break;
-					buffer += decoder.decode(value, { stream: true });
-					const lines = buffer.split('\n');
-					buffer = lines.pop() ?? '';
-					for (const line of lines) {
-						if (!line.startsWith('data:')) continue;
-						const raw = line.slice(5).trim();
-						if (raw === '[DONE]') continue;
-						try {
-							const ev = JSON.parse(raw);
-							if (ev.type === 'tool_call' && ev.name) {
-								toolsCalled.push(ev.name);
-							}
-							if (ev.type === 'text' || ev.choices?.[0]?.delta?.content) {
-								finalText += ev.text ?? ev.choices?.[0]?.delta?.content ?? '';
-							}
-						} catch {
-							// non-JSON chunk
-						}
-					}
-				}
-			}
-
-			chat.latency = Date.now() - start;
-			chat.toolsCalled = [...new Set(toolsCalled)];
-			chat.response = finalText.trim().slice(0, 300) || '(response received)';
-			chat.status = 'pass';
-		} catch (e) {
-			chat.latency = Date.now() - start;
-			chat.error = e instanceof Error ? e.message : String(e);
-			chat.status = 'fail';
-		}
-	}
-
 	async function runAll() {
 		if (running) return;
 		running = true;
@@ -356,12 +282,10 @@
 			summary: '',
 			latency: 0
 		}));
-		chat = { status: 'idle', latency: 0, error: '', toolsCalled: [], response: '' };
 
 		// Run tool tests in parallel
 		const toolPromises = tests.map((t) => runTest(t));
-		const chatPromise = runChatTest();
-		await Promise.all([...toolPromises, chatPromise]);
+		await Promise.all(toolPromises);
 
 		running = false;
 	}
@@ -404,8 +328,7 @@
 				<p class="mb-2 text-xs font-semibold tracking-[0.14em] text-sky-400/90 uppercase">Health</p>
 				<h1 class="text-3xl font-semibold tracking-tight text-slate-100">API Health</h1>
 				<p class="mt-2 text-sm text-slate-400">
-					Runs all tool tests against <span class="font-mono text-sky-400">/api/tool</span> and the chat
-					SSE endpoint.
+					Runs all tool tests against <span class="font-mono text-sky-400">/api/tool</span>.
 				</p>
 			</div>
 
@@ -495,60 +418,6 @@
 						</div>
 					</div>
 				{/each}
-			</div>
-		</section>
-
-		<!-- Chat SSE Test -->
-		<section class="mb-8">
-			<h2 class="mb-4 text-lg font-semibold text-slate-100">Chat SSE Endpoint</h2>
-			<div class="ui-card p-5 {cardBorder(chat.status)}">
-				<div class="mb-3 flex items-center justify-between gap-3">
-					<div class="flex items-center gap-2">
-						<span class="text-base {statusColor(chat.status)}">{statusIcon(chat.status)}</span>
-						<span class="font-mono text-sm font-semibold text-slate-200">/api/chat</span>
-						<span class="rounded bg-slate-800 px-2 py-0.5 font-mono text-xs text-slate-400"
-							>SSE stream</span
-						>
-					</div>
-					{#if chat.latency > 0}
-						<span class="font-mono text-xs text-slate-500">{chat.latency}ms</span>
-					{/if}
-				</div>
-
-				{#if chat.status === 'idle'}
-					<p class="text-sm text-slate-600">Waiting to run…</p>
-				{:else if chat.status === 'running'}
-					<div class="flex items-center gap-2 text-sm text-yellow-400">
-						<div
-							class="h-4 w-4 animate-spin rounded-full border-2 border-yellow-800 border-t-yellow-400"
-						></div>
-						Streaming response…
-					</div>
-				{:else if chat.status === 'fail'}
-					<p class="text-sm text-red-400">{chat.error || 'Unknown error'}</p>
-				{:else if chat.status === 'pass'}
-					<div class="space-y-3">
-						{#if chat.toolsCalled.length > 0}
-							<div>
-								<span class="text-xs tracking-wide text-slate-500 uppercase">Tools called</span>
-								<div class="mt-1 flex flex-wrap gap-1.5">
-									{#each chat.toolsCalled as tool}
-										<span
-											class="rounded bg-sky-500/15 px-2 py-0.5 font-mono text-xs text-sky-300 ring-1 ring-sky-500/30"
-											>{tool}</span
-										>
-									{/each}
-								</div>
-							</div>
-						{/if}
-						{#if chat.response}
-							<div>
-								<span class="text-xs tracking-wide text-slate-500 uppercase">Response preview</span>
-								<p class="mt-1 text-sm text-slate-300 italic">"{chat.response}"</p>
-							</div>
-						{/if}
-					</div>
-				{/if}
 			</div>
 		</section>
 
