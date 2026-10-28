@@ -693,18 +693,21 @@ describe("wrangler.toml", () => {
     return vars;
   }
 
-  it("turns parts dispatch on for the preview Worker only, never in production (Task 14 does that)", () => {
+  it("turns parts dispatch on for the preview Worker only, never in production (Task 14 does that) nor in Worker Previews", () => {
     const vars = varsBySection();
     expect(vars["env.preview"]).toContain('PACKS_PARTS_DISPATCH = "on"');
     expect(vars["env.preview"]).toContain('PACKS_TARGET = "staging"');
     expect(vars["env.production"]).toContain('PACKS_TARGET = "production"');
     expect(vars["env.production"]).not.toContain("PACKS_PARTS_DISPATCH");
+    expect(vars["previews"]).toContain('PACKS_PARTS_DISPATCH = "off"');
+    expect(vars["previews"]).toContain('PACKS_PARTS_DAILY_CAP = "0"');
+    expect(vars["previews"]).toContain('PACKS_TARGET = "staging"');
     // Nowhere else outside a comment: the top-level config deploys under the production Worker's name.
     const set = toml()
       .split(/\r?\n/)
       .filter((l) => !l.trimStart().startsWith("#"))
       .filter((l) => l.includes("PACKS_PARTS_DISPATCH"));
-    expect(set).toEqual([vars["env.preview"]]);
+    expect(set).toEqual([vars["previews"], vars["env.preview"]]);
   });
 });
 
