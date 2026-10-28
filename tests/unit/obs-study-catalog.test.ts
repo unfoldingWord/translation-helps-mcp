@@ -17,6 +17,7 @@ import {
 } from "../../src/api/routes/obs.js";
 import { getObsStudyNotesTool } from "../../src/mcp/tools/getObsStudyNotes.js";
 import { getObsStudyQuestionsTool } from "../../src/mcp/tools/getObsStudyQuestions.js";
+import { handleResources } from "../../src/api/routes/resources.js";
 import {
   SAMPLE_SN_TSV,
   SAMPLE_SQ_TSV,
@@ -97,6 +98,16 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
   if (url.pathname === "/api/v1/catalog/search") {
     return Response.json({ ok: true, data: catalogSearch(url) });
   }
+  if (url.pathname === "/api/v1/catalog/list/languages") {
+    const langs = [
+      ...new Set(
+        repos
+          .filter((r) => r.topics.includes("tc-ready"))
+          .map((r) => r.language),
+      ),
+    ];
+    return Response.json({ ok: true, data: langs.map((lang) => ({ lang })) });
+  }
   if (url.pathname.startsWith("/api/v1/catalog/list/")) {
     return Response.json({ ok: true, data: [] });
   }
@@ -159,6 +170,19 @@ async function mcp(
 
 function ids(rows: unknown): string[] {
   return (rows as Array<{ id: string }>).map((r) => r.id);
+}
+
+/** The tool's notAvailable() result, not an ok() wrapping the REST body. */
+function expectMcpNotAvailable(result: {
+  isError?: boolean;
+  structuredContent?: Record<string, unknown>;
+}): void {
+  expect(result.isError).toBe(false);
+  expect(result.structuredContent?.available).toBe(false);
+  expect(result.structuredContent?.code).toBe("RESOURCE_NOT_AVAILABLE");
+  expect(result.structuredContent?.hints).toEqual([
+    expect.stringContaining("list_resources"),
+  ]);
 }
 
 describe("a third language under a non-unfoldingWord owner", () => {
@@ -234,6 +258,24 @@ describe("a third language under a non-unfoldingWord owner", () => {
     expect(String(body.message)).toMatch(
       /No OBS Study Questions resource available for language "xyz"/,
     );
+
+    const result = await mcp(
+      getObsStudyQuestionsTool,
+      handleObsStudyQuestions,
+      "1:3",
+      "xyz",
+    );
+    expectMcpNotAvailable(result);
+  });
+
+  it("is RESOURCE_NOT_AVAILABLE over MCP when the catalog has no SN", async () => {
+    const result = await mcp(
+      getObsStudyNotesTool,
+      handleObsStudyNotes,
+      "1:1",
+      "xyz",
+    );
+    expectMcpNotAvailable(result);
   });
 
   it("skips a row without the tc-ready topic", async () => {
@@ -332,5 +374,197 @@ describe("TSV path from the catalog ingredients", () => {
 
     const body = await rest(handleObsStudyNotes, "1:1", "xyz");
     expect(ids(body.notes)).toEqual(SN_1_1_IDS);
+  });
+});
+
+describe("TSV missing from the zip", () => {
+  const study = [
+    {
+      kind: "Notes",
+      tool: getObsStudyNotesTool,
+      handler: handleObsStudyNotes,
+      subject: "TSV OBS Study Notes",
+      abbreviation: "obs-sn",
+      ingredient: "./sn_OBS_xyz.tsv",
+    },
+    {
+      kind: "Questions",
+      tool: getObsStudyQuestionsTool,
+      handler: handleObsStudyQuestions,
+      subject: "TSV OBS Study Questions",
+      abbreviation: "obs-sq",
+      ingredient: "./sq_OBS_xyz.tsv",
+    },
+  ] as const;
+
+  it.each(study)(
+    "Study $kind is RESOURCE_NOT_AVAILABLE over REST and MCP",
+    async ({ kind, tool, handler, subject, abbreviation, ingredient }) => {
+      addRepo({
+        owner: "xyz_gl",
+        name: `xyz_${abbreviation}`,
+        language: "xyz",
+        subject,
+        abbreviation,
+        ingredients: [{ identifier: "obs", path: ingredient }],
+        files: { "README.md": "no TSV here" },
+      });
+
+      const body = await rest(handler, "1:1", "xyz");
+      expect(body.available).toBe(false);
+      expect(body.code).toBe("RESOURCE_NOT_AVAILABLE");
+      expect(String(body.message)).toBe(
+        `OBS Study ${kind} TSV not found in resource for language "xyz".`,
+      );
+
+      expectMcpNotAvailable(await mcp(tool, handler, "1:1", "xyz"));
+    },
+  );
+});
+
+describe("language variant resolution", () => {
+  it("serves xyz from the only catalog variant xyz-x-abc", async () => {
+    addRepo({
+      owner: "xyz_gl",
+      name: "xyz-x-abc_obs-sn",
+      language: "xyz-x-abc",
+      subject: "TSV OBS Study Notes",
+      abbreviation: "obs-sn",
+      ingredients: [{ identifier: "obs", path: "./sn_OBS.tsv" }],
+      files: { "sn_OBS.tsv": SAMPLE_SN_TSV },
+    });
+    addRepo({
+      owner: "xyz_gl",
+      name: "xyz-x-abc_obs-sq",
+      language: "xyz-x-abc",
+      subject: "TSV OBS Study Questions",
+      abbreviation: "obs-sq",
+      ingredients: [{ identifier: "obs", path: "./sq_OBS.tsv" }],
+      files: { "sq_OBS.tsv": SAMPLE_SQ_TSV },
+    });
+
+    const notes = await rest(handleObsStudyNotes, "1:1", "xyz");
+    expect(notes.language).toBe("xyz-x-abc");
+    expect(ids(notes.notes)).toEqual(SN_1_1_IDS);
+
+    const questions = await rest(handleObsStudyQuestions, "1:3", "xyz");
+    expect(questions.language).toBe("xyz-x-abc");
+    expect(ids(questions.questions)).toEqual(SQ_1_3_IDS);
+
+    const result = await mcp(
+      getObsStudyNotesTool,
+      handleObsStudyNotes,
+      "1:1",
+      "xyz",
+    );
+    expect(result.structuredContent?.language).toBe("xyz-x-abc");
+    expect(ids(result.structuredContent?.notes)).toEqual(SN_1_1_IDS);
+  });
+});
+
+describe("subject labels without the TSV prefix", () => {
+  it("finds Study Notes under subject 'OBS Study Notes'", async () => {
+    addRepo({
+      owner: "xyz_gl",
+      name: "xyz_obs-sn",
+      language: "xyz",
+      subject: "OBS Study Notes",
+      abbreviation: "obs-sn-tsv",
+      ingredients: [{ identifier: "obs", path: "./sn_OBS.tsv" }],
+      files: { "sn_OBS.tsv": SAMPLE_SN_TSV },
+    });
+
+    const body = await rest(handleObsStudyNotes, "1:1", "xyz");
+    expect(ids(body.notes)).toEqual(SN_1_1_IDS);
+  });
+
+  it("finds Study Questions under subject 'OBS Study Questions'", async () => {
+    addRepo({
+      owner: "xyz_gl",
+      name: "xyz_obs-sq",
+      language: "xyz",
+      subject: "OBS Study Questions",
+      abbreviation: "obs-sq-tsv",
+      ingredients: [{ identifier: "obs", path: "./sq_OBS.tsv" }],
+      files: { "sq_OBS.tsv": SAMPLE_SQ_TSV },
+    });
+
+    const body = await rest(handleObsStudyQuestions, "1:3", "xyz");
+    expect(ids(body.questions)).toEqual(SQ_1_3_IDS);
+  });
+});
+
+describe("owner choice", () => {
+  it("prefers unfoldingWord when two owners publish SN for the language", async () => {
+    addRepo({
+      owner: "xyz_gl",
+      name: "xyz_obs-sn",
+      language: "xyz",
+      subject: "TSV OBS Study Notes",
+      abbreviation: "obs-sn",
+      ingredients: [{ identifier: "obs", path: "./sn_OBS.tsv" }],
+      files: {
+        "sn_OBS.tsv":
+          "Reference\tID\tTags\tSupportReference\tQuote\tOccurrence\tNote\n1:1\tzzzz\t\t\tGod\t1\tother owner",
+      },
+    });
+    addRepo({
+      owner: "unfoldingWord",
+      name: "xyz_obs-sn",
+      language: "xyz",
+      subject: "TSV OBS Study Notes",
+      abbreviation: "obs-sn",
+      ingredients: [{ identifier: "obs", path: "./sn_OBS.tsv" }],
+      files: { "sn_OBS.tsv": SAMPLE_SN_TSV },
+    });
+
+    const body = await rest(handleObsStudyNotes, "1:1", "xyz");
+    expect(ids(body.notes)).toEqual(SN_1_1_IDS);
+  });
+});
+
+describe("list_resources", () => {
+  it("lists obsStudyNotes and obsStudyQuestions for a third language", async () => {
+    addRepo({
+      owner: "xyz_gl",
+      name: "xyz_obs-sn",
+      language: "xyz",
+      subject: "TSV OBS Study Notes",
+      abbreviation: "obs-sn-tsv",
+      ingredients: [{ identifier: "obs", path: "./sn_OBS.tsv" }],
+      files: {},
+    });
+    addRepo({
+      owner: "xyz_gl",
+      name: "xyz_obs-sq",
+      language: "xyz",
+      subject: "OBS Study Questions",
+      abbreviation: "obs-sq",
+      ingredients: [{ identifier: "obs", path: "./sq_OBS.tsv" }],
+      files: {},
+    });
+
+    const response = await handleResources({
+      url: new URL("http://internal/api/v1/resources?language=xyz"),
+      env: {} as never,
+    });
+    const body = (await response.json()) as {
+      available: Array<{ type: string; role: string; abbreviation: string }>;
+    };
+    const study = body.available
+      .filter((r) => r.type.startsWith("obsStudy"))
+      .map(({ type, role, abbreviation }) => ({ type, role, abbreviation }));
+    expect(study).toEqual([
+      {
+        type: "obsStudyNotes",
+        role: "obsStudyNotes",
+        abbreviation: "obs-sn-tsv",
+      },
+      {
+        type: "obsStudyQuestions",
+        role: "obsStudyQuestions",
+        abbreviation: "obs-sq",
+      },
+    ]);
   });
 });

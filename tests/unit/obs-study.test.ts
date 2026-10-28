@@ -329,17 +329,36 @@ describe("MCP get_obs_study_notes / get_obs_study_questions", () => {
     expect(questions.map((q) => q.id).sort()).toEqual(["kn32", "tmdk", "toi2"]);
   });
 
-  it("missing language soft-fails RESOURCE_NOT_AVAILABLE with isError false", async () => {
-    const result = await mcpCall(
-      getObsStudyNotesTool,
-      "/api/v1/obs-study-notes",
-      { reference: "1:1", language: "es-419" },
-      handleObsStudyNotes,
-    );
-    expect(result.isError).toBe(false);
-    expect(result.structuredContent?.code).toBe("RESOURCE_NOT_AVAILABLE");
-    expect(result.structuredContent?.available).toBe(false);
-  });
+  it.each([
+    {
+      name: "get_obs_study_notes",
+      tool: getObsStudyNotesTool,
+      apiPath: "/api/v1/obs-study-notes",
+      handler: handleObsStudyNotes,
+    },
+    {
+      name: "get_obs_study_questions",
+      tool: getObsStudyQuestionsTool,
+      apiPath: "/api/v1/obs-study-questions",
+      handler: handleObsStudyQuestions,
+    },
+  ])(
+    "$name: missing language soft-fails RESOURCE_NOT_AVAILABLE with isError false",
+    async ({ tool, apiPath, handler }) => {
+      const result = await mcpCall(
+        tool,
+        apiPath,
+        { reference: "1:1", language: "es-419" },
+        handler,
+      );
+      expect(result.isError).toBe(false);
+      expect(result.structuredContent?.code).toBe("RESOURCE_NOT_AVAILABLE");
+      expect(result.structuredContent?.available).toBe(false);
+      expect(result.structuredContent?.hints).toEqual([
+        expect.stringContaining("list_resources"),
+      ]);
+    },
+  );
 });
 
 describe("tools/list includes study tools", () => {

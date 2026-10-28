@@ -389,11 +389,35 @@ class TranslationHelpsClient:
         return self.call_tool("get_obs_questions", options)
 
     def get_obs_study_notes(self, options: "GetObsStudyNotesOptions") -> Dict[str, Any]:
-        """Fetch OBS Study Notes for a story:frame reference."""
+        """
+        Fetch OBS Study Notes for a story:frame reference.
+
+        Args:
+            options: Dict with ``reference`` (required), ``language`` (optional, default "en").
+
+        Returns:
+            Dictionary with notes list for the requested OBS frame, or
+            ``RESOURCE_NOT_AVAILABLE`` when the language has no Study Notes.
+
+        Example::
+            notes = client.get_obs_study_notes({"reference": "1:1", "language": "en"})
+        """
         return self.call_tool("get_obs_study_notes", options)
 
     def get_obs_study_questions(self, options: "GetObsStudyQuestionsOptions") -> Dict[str, Any]:
-        """Fetch OBS Study Questions (frame-range overlap) for a story:frame reference."""
+        """
+        Fetch OBS Study Questions whose frame range covers a story:frame reference.
+
+        Args:
+            options: Dict with ``reference`` (required), ``language`` (optional, default "en").
+
+        Returns:
+            Dictionary with questions list (rows such as "1:1-8" cover "1:3"), or
+            ``RESOURCE_NOT_AVAILABLE`` when the language has no Study Questions.
+
+        Example::
+            questions = client.get_obs_study_questions({"reference": "1:3", "language": "en"})
+        """
         return self.call_tool("get_obs_study_questions", options)
 
     @staticmethod
@@ -605,11 +629,35 @@ class AsyncTranslationHelpsClient:
         return await self.call_tool("get_obs_questions", options)
 
     async def get_obs_study_notes(self, options: "GetObsStudyNotesOptions") -> Dict[str, Any]:
-        """Fetch OBS Study Notes for a story:frame reference."""
+        """
+        Fetch OBS Study Notes for a story:frame reference.
+
+        Args:
+            options: reference (required), language (optional, default "en")
+
+        Returns:
+            Dictionary with notes list for the requested OBS frame, or
+            RESOURCE_NOT_AVAILABLE when the language has no Study Notes
+
+        Example:
+            notes = await client.get_obs_study_notes({"reference": "1:1", "language": "en"})
+        """
         return await self.call_tool("get_obs_study_notes", options)
 
     async def get_obs_study_questions(self, options: "GetObsStudyQuestionsOptions") -> Dict[str, Any]:
-        """Fetch OBS Study Questions (frame-range overlap) for a story:frame reference."""
+        """
+        Fetch OBS Study Questions whose frame range covers a story:frame reference.
+
+        Args:
+            options: reference (required), language (optional, default "en")
+
+        Returns:
+            Dictionary with questions list (rows such as "1:1-8" cover "1:3"), or
+            RESOURCE_NOT_AVAILABLE when the language has no Study Questions
+
+        Example:
+            questions = await client.get_obs_study_questions({"reference": "1:3", "language": "en"})
+        """
         return await self.call_tool("get_obs_study_questions", options)
 
     @staticmethod
