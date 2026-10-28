@@ -142,7 +142,7 @@ function setup(
     build?: BuildOutcome;
     rpm?: string;
     partsRpm?: string;
-    /** PACKS_PARTS_DISPATCH; unset as in production today. */
+    /** PACKS_PARTS_DISPATCH; unset (parts dispatch off) unless a test sets it. */
     partsDispatch?: string;
   } = {},
 ) {

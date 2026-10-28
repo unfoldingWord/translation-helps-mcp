@@ -3,8 +3,6 @@
  * to the bucket, and a KV counter caps the day.
  */
 
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   CURRENT_PACK_COMPAT,
@@ -16,6 +14,7 @@ import {
   requestBuild,
   type BuildEnv,
 } from "../../src/packs/dispatch";
+import { wranglerToml, wranglerVars } from "./wranglerToml";
 
 const NOW = new Date("2026-10-21T12:00:00Z");
 const COMPAT = "f1.1-u2.3.0-p6000230-q9-a12-t1";
@@ -675,38 +674,26 @@ describe("parts dispatch behind PACKS_PARTS_DISPATCH", () => {
 });
 
 describe("wrangler.toml", () => {
-  const toml = () =>
-    readFileSync(
-      fileURLToPath(new URL("../../wrangler.toml", import.meta.url)),
-      "utf8",
-    );
-
-  /** Each section's inline `vars = { … }` line, by section header (`""` for the top level). */
-  function varsBySection(): Record<string, string> {
-    const vars: Record<string, string> = {};
-    let section = "";
-    for (const line of toml().split(/\r?\n/)) {
-      const header = /^\[+([^\]]+)\]+\s*$/.exec(line);
-      if (header) section = header[1] ?? "";
-      else if (/^vars\s*=/.test(line)) vars[section] = line;
-    }
-    return vars;
-  }
-
-  it("turns parts dispatch on for both preview and production Workers", () => {
-    const vars = varsBySection();
-    expect(vars["env.preview"]).toContain('PACKS_PARTS_DISPATCH = "on"');
-    expect(vars["env.preview"]).toContain('PACKS_TARGET = "staging"');
-    expect(vars["env.production"]).toContain('PACKS_TARGET = "production"');
-    expect(vars["env.production"]).toContain('PACKS_PARTS_DISPATCH = "on"');
-    // Nowhere else outside these env vars lines: the top-level config deploys under the production Worker's name.
-    const set = toml()
+  it("turns parts dispatch on for both preview and production Workers, as partsDispatchEnabled reads it", () => {
+    const vars = wranglerVars();
+    const preview = vars["env.preview"]!;
+    const production = vars["env.production"]!;
+    expect(partsDispatchEnabled(preview)).toBe(true);
+    expect(preview.PACKS_TARGET).toBe("staging");
+    expect(partsDispatchEnabled(production)).toBe(true);
+    expect(production.PACKS_TARGET).toBe("production");
+    // Nowhere else: the top-level config deploys under the production Worker's name.
+    const set = wranglerToml()
       .split(/\r?\n/)
       .filter((l) => !l.trimStart().startsWith("#"))
       .filter((l) => l.includes("PACKS_PARTS_DISPATCH"));
-    expect(set.sort()).toEqual(
-      [vars["env.production"], vars["env.preview"]].sort(),
-    );
+    expect(set).toHaveLength(2);
+    expect(
+      Object.entries(vars)
+        .filter(([, v]) => "PACKS_PARTS_DISPATCH" in v)
+        .map(([section]) => section)
+        .sort(),
+    ).toEqual(["env.preview", "env.production"]);
   });
 });
 
