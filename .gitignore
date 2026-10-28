@@ -71,6 +71,7 @@ ui/.dev.vars
 web/.svelte-kit/
 web/build/
 web/playwright-report/
+web/test-results/
 
 # JS SDK build output
 packages/js-sdk/dist/

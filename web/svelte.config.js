@@ -29,16 +29,6 @@ const config = {
 			relative: false
 		},
 		prerender: {
-			// TEMPORARY (Task 10 removes it): the header and home page link to pages that later
-			// tasks add. Only those four links may 404 while prerendering; any other error fails the build.
-			handleHttpError: ({ status, path, message }) => {
-				const pending = ['/try', '/connect', '/tools', '/docs'].map((p) => BASE_PATH + p);
-				if (status === 404 && pending.includes(path)) {
-					console.warn(`prerender: ${path} is not built yet (pending page)`);
-					return;
-				}
-				throw new Error(message);
-			},
 			// The Try page's hash is its state (see lib/try/hashState.ts), not an element id.
 			handleMissingId: ({ path, message }) => {
 				if (path === BASE_PATH + '/try') return;
