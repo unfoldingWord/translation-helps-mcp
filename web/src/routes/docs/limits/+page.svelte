@@ -126,8 +126,16 @@
 
 <h2>Caching</h2>
 <p>
-	Content from Door43 is cached on the server, so a repeated call is fast. Many answers carry
-	<code>meta.cache</code> to say where they came from (<code>kv</code>, <code>r2</code>,
-	<code>miss</code> or <code>stale</code>). The REST API also lets the network edge keep a good
-	answer for up to an hour.
+	Content from Door43 is cached on the server, so a repeated call is fast. Answers for a passage
+	(scripture, notes, key-term links and questions) carry <code>meta.cache</code> to say where the data
+	came from:
 </p>
+<ul>
+	<li><code>memory</code>: kept in memory by the running copy of the server.</li>
+	<li><code>kv</code>: a stored copy of an earlier answer or download.</li>
+	<li><code>r2</code>: the stored ZIP file of the resource.</li>
+	<li><code>network</code>: downloaded from Door43 for this request.</li>
+	<li><code>pack</code>: read from a <a href="{base}/docs/languages">language pack</a>.</li>
+	<li><code>mixed</code>: scripture only, when its parts came from different places.</li>
+</ul>
+<p>The REST API also lets the network edge keep a good answer for up to an hour.</p>

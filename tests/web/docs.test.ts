@@ -45,6 +45,45 @@ describe("/docs/limits", () => {
     expect(named.has("RATE_LIMITED")).toBe(true);
   });
 
+  it("lists the meta.cache values the server sends, and only those", () => {
+    const caching = page.slice(page.indexOf("<h2>Caching</h2>"));
+    const named = [...caching.matchAll(/<li><code>([a-z0-9]+)<\/code>:/g)].map(
+      (m) => m[1],
+    );
+    expect(named.length).toBeGreaterThanOrEqual(5);
+
+    // Where a response's meta.cache is set: the routes, and the ZIP fetcher whose source they pass on.
+    const sources = [
+      "src/api/routes/scripture.ts",
+      "src/api/routes/notes.ts",
+      "src/api/routes/questions.ts",
+      "src/api/routes/wordLinks.ts",
+      "packages/door43/src/resources/ZipResourceFetcher2.ts",
+    ]
+      .map(read)
+      .join("\n");
+    const cacheLines = sources
+      .split("\n")
+      .filter((l) => /cache|ZipCacheSource/i.test(l));
+    for (const value of named) {
+      expect(
+        cacheLines.some((l) => l.includes(`"${value}"`)),
+        `${value} is not a cache value in src/`,
+      ).toBe(true);
+    }
+
+    // The fetcher's own sources must all be on the page.
+    const union = read(
+      "packages/door43/src/resources/ZipResourceFetcher2.ts",
+    ).match(/type ZipCacheSource = ([^;]+);/)![1];
+    for (const v of union.match(/"(\w+)"/g)!) {
+      expect(named, v).toContain(v.replace(/"/g, ""));
+    }
+    // miss and stale are internal metric values, not response fields.
+    expect(named).not.toContain("miss");
+    expect(named).not.toContain("stale");
+  });
+
   it("agrees with the rate limiter's default", () => {
     expect(read("src/core/rateLimit.ts")).toContain("DEFAULT_RPM = 90");
   });
