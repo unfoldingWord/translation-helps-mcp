@@ -388,6 +388,14 @@ class TranslationHelpsClient:
         """
         return self.call_tool("get_obs_questions", options)
 
+    def get_obs_study_notes(self, options: "GetObsStudyNotesOptions") -> Dict[str, Any]:
+        """Fetch OBS Study Notes for a story:frame reference."""
+        return self.call_tool("get_obs_study_notes", options)
+
+    def get_obs_study_questions(self, options: "GetObsStudyQuestionsOptions") -> Dict[str, Any]:
+        """Fetch OBS Study Questions (frame-range overlap) for a story:frame reference."""
+        return self.call_tool("get_obs_study_questions", options)
+
     @staticmethod
     def parse_result(result: Dict[str, Any]) -> Any:
         """Extract structured data from an MCP tool result (prefer structuredContent)."""
@@ -595,6 +603,14 @@ class AsyncTranslationHelpsClient:
             questions = await client.get_obs_questions({"reference": "1:1", "language": "en"})
         """
         return await self.call_tool("get_obs_questions", options)
+
+    async def get_obs_study_notes(self, options: "GetObsStudyNotesOptions") -> Dict[str, Any]:
+        """Fetch OBS Study Notes for a story:frame reference."""
+        return await self.call_tool("get_obs_study_notes", options)
+
+    async def get_obs_study_questions(self, options: "GetObsStudyQuestionsOptions") -> Dict[str, Any]:
+        """Fetch OBS Study Questions (frame-range overlap) for a story:frame reference."""
+        return await self.call_tool("get_obs_study_questions", options)
 
     @staticmethod
     def parse_result(result: Dict[str, Any]) -> Any:

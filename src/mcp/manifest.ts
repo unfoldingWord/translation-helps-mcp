@@ -355,6 +355,53 @@ export const TOOL_DOC_META: Record<string, ToolDocMeta> = {
       "Missing OBS-TN → RESOURCE_NOT_AVAILABLE soft-fail (isError:false).",
     ],
   },
+  get_obs_study_notes: {
+    category: "obs",
+    summary:
+      "OBS study notes for a story:frame (reader background, not translator TN).",
+    example: { reference: "1:1", language: "en" },
+    exampleResponse: {
+      reference: "OBS 1:1",
+      language: "en",
+      notes: [
+        {
+          id: "prf0",
+          reference: "1:1",
+          quote: "God",
+          note: "The term God refers to the eternal being…",
+        },
+      ],
+    },
+    responseNotes: [
+      "Same TSV shape as OBS-TN; content is study/reader notes rather than translation notes.",
+      "Range and whole-story references return notes for all matching frames in one `notes` array.",
+      "Missing OBS-SN → RESOURCE_NOT_AVAILABLE soft-fail (isError:false).",
+    ],
+  },
+  get_obs_study_questions: {
+    category: "obs",
+    summary:
+      "OBS study questions for a story:frame (ranges like 1:1-8 cover a 1:3 request).",
+    example: { reference: "1:3", language: "en" },
+    exampleResponse: {
+      reference: "OBS 1:3",
+      language: "en",
+      questions: [
+        {
+          id: "toi2",
+          reference: "1:1-8",
+          question:
+            "What did God do in order to create everything except the first people?",
+          response:
+            "God only spoke, and the universe and everything in it appeared.",
+        },
+      ],
+    },
+    responseNotes: [
+      "Rows may use frame ranges; a frame request returns every overlapping question (v1 behavior).",
+      "Missing OBS-SQ → RESOURCE_NOT_AVAILABLE soft-fail (isError:false).",
+    ],
+  },
   get_obs_questions: {
     category: "obs",
     summary: "OBS translation questions for a story:frame.",

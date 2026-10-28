@@ -23,11 +23,13 @@ import { searchArticlesWorkflowTool } from "./tools/searchArticlesWorkflow.js";
 import { getObsStoryTool } from "./tools/getObsStory.js";
 import { getObsNotesTool } from "./tools/getObsNotes.js";
 import { getObsQuestionsTool } from "./tools/getObsQuestions.js";
+import { getObsStudyNotesTool } from "./tools/getObsStudyNotes.js";
+import { getObsStudyQuestionsTool } from "./tools/getObsStudyQuestions.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ToolModule = any;
 
-/** Tools registered on the /mcp McpAgent (10 workflow + 3 OBS). */
+/** Tools registered on the /mcp McpAgent (10 workflow + 5 OBS). */
 export const MCP_TOOLS: ToolModule[] = [
   listLanguagesTool,
   listResourcesTool,
@@ -42,6 +44,8 @@ export const MCP_TOOLS: ToolModule[] = [
   getObsStoryTool,
   getObsNotesTool,
   getObsQuestionsTool,
+  getObsStudyNotesTool,
+  getObsStudyQuestionsTool,
 ];
 
 /** All tools — same as MCP_TOOLS after legacy retirement. */

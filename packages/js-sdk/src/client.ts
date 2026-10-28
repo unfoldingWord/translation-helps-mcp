@@ -34,6 +34,8 @@ import type {
   GetObsStoryOptions,
   GetObsNotesOptions,
   GetObsQuestionsOptions,
+  GetObsStudyNotesOptions,
+  GetObsStudyQuestionsOptions,
   MCPToolResult,
   ToolName,
 } from "./types.js";
@@ -366,6 +368,30 @@ export class TranslationHelpsClient {
   async getObsQuestions(opts: GetObsQuestionsOptions): Promise<MCPToolResult> {
     return this.callTool(
       "get_obs_questions",
+      opts as unknown as Record<string, unknown>,
+    );
+  }
+
+  /**
+   * Fetch OBS Study Notes for a story:frame reference.
+   */
+  async getObsStudyNotes(
+    opts: GetObsStudyNotesOptions,
+  ): Promise<MCPToolResult> {
+    return this.callTool(
+      "get_obs_study_notes",
+      opts as unknown as Record<string, unknown>,
+    );
+  }
+
+  /**
+   * Fetch OBS Study Questions for a story:frame reference (frame-range overlap).
+   */
+  async getObsStudyQuestions(
+    opts: GetObsStudyQuestionsOptions,
+  ): Promise<MCPToolResult> {
+    return this.callTool(
+      "get_obs_study_questions",
       opts as unknown as Record<string, unknown>,
     );
   }
