@@ -45,7 +45,7 @@ id = "3073e58cc3eb4f16958854a6ec1531e6"
 
 [[previews.r2_buckets]]
 binding = "ZIP_FILES"
-bucket_name = "translation-helps-mcp-zip-persistence"
+bucket_name = "translation-helps-mcp-zip-previews"
 
 [[previews.r2_buckets]]
 binding = "LANGUAGE_PACKS"

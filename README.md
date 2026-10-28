@@ -158,13 +158,15 @@ npm run deploy:prod
 
 ## Previews
 
-`wrangler.toml` (MCP Worker) and `wrangler.api.toml` (API Worker) each have a top-level `previews` block for [Cloudflare Worker Previews](https://developers.cloudflare.com/workers/previews/): one copy of the Worker per branch or pull request. Wrangler 4.135.0 or later is required; this repo pins `wrangler` ^4.140.0 and `@cloudflare/workers-types` v5.
+`wrangler.toml` (MCP Worker) and `wrangler.api.toml` (API Worker) each have a top-level `previews` block for [Cloudflare Worker Previews](https://developers.cloudflare.com/workers/previews/): one copy of the Worker per branch or pull request. This setup requires `wrangler` ^4.140.0 (the lockfile has 4.140.0) and `@cloudflare/workers-types` v5.
 
 A preview binds only what its `previews` block lists:
 
-- **MCP preview:** the production API Worker `translation-helps-api-v2` through the `API` service binding, the preview KV namespace, the staging R2 buckets, its own Durable Object storage, and the Analytics dataset. A pull request that changes the API is checked through the API's own preview, not through the MCP preview.
-- **API preview:** the preview KV namespace and the staging R2 buckets.
-- Previews share the staging R2 buckets (`language-packs-staging`, and `translation-helps-mcp-zip-persistence`, which production also uses). They run no crons and ask for no pack builds.
+- **MCP preview:** the production API Worker `translation-helps-api-v2` through the `API` service binding, the preview KV namespace, the staging R2 buckets, the `ASSETS` binding inherited from top-level `[assets]`, its own Durable Object storage, and the Analytics dataset. A pull request that changes the API is checked through the API's own preview, not through the MCP preview.
+- **API preview:** the preview KV namespace, the staging R2 buckets, and the Analytics dataset.
+- Previews share the preview KV namespace (`3073e58cc3eb4f16958854a6ec1531e6`) with the language-packs staging Workers, and write to the same Analytics dataset (`translation_helps_metrics`) as staging and production.
+- Each preview uses the ZIP bucket `translation-helps-mcp-zip-previews` (separate from production `translation-helps-mcp-zip-persistence`), and both previews use `language-packs-staging` for `LANGUAGE_PACKS`.
+- They run no crons and ask for no pack builds.
 
 Previews are not `[env.preview]`, which is the language-packs staging Workers.
 
