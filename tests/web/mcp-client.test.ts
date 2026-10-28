@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { McpHttpClient, parseRpcBody } from "../../web/src/lib/mcp/client";
+import {
+  McpHttpClient,
+  McpHttpError,
+  parseRpcBody,
+} from "../../web/src/lib/mcp/client";
 import { classifyOutcome } from "../../web/src/lib/mcp/outcome";
 import { hasParam } from "../../web/src/lib/mcp/session";
 import { DEFAULT_ORIGIN, endpoint } from "../../web/src/lib/endpoint";
@@ -317,6 +321,48 @@ describe("classifyOutcome", () => {
     expect((named as { message: string }).message).toContain(
       "https://x/v2/mcp",
     );
+  });
+});
+
+describe("classifyOutcome when a proxy answers 5xx", () => {
+  it("treats an empty 500 from the dev proxy as an unreachable server", async () => {
+    const fetchImpl = (async () =>
+      new Response("", { status: 500 })) as typeof fetch;
+    const client = new McpHttpClient("http://localhost:8174/v2/mcp", fetchImpl);
+    const error = await client.initialize().then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(McpHttpError);
+    for (const status of [500, 502, 503, 504]) {
+      const outcome = classifyOutcome({
+        status,
+        error: new McpHttpError(`The server answered ${status}.`, status, null),
+        endpoint: "http://localhost:8174/v2/mcp",
+      });
+      expect(outcome.kind).toBe("error");
+      expect(
+        (outcome as { message: string }).message.startsWith(
+          "Can't reach the server at http://localhost:8174/v2/mcp",
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it("keeps 429 and other statuses as they were", () => {
+    expect(
+      classifyOutcome({
+        status: 429,
+        error: new McpHttpError("x", 429, "12"),
+        retryAfter: "12",
+      }),
+    ).toEqual({ kind: "rate-limited", retryAfterSeconds: 12 });
+    expect(
+      classifyOutcome({
+        status: 404,
+        error: new McpHttpError("The server answered 404.", 404, null),
+      }),
+    ).toEqual({ kind: "error", message: "The server answered 404." });
   });
 });
 
