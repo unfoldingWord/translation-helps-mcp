@@ -131,6 +131,15 @@ body {
 .prose th,
 .prose td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; }
 .prose > :first-child { margin-top: 0; }
+/* Door43 rc:// links (translation notes pointing at Academy or Words articles). */
+.prose .rc-link {
+	color: var(--accent);
+	text-decoration: underline dotted;
+	text-underline-offset: 3px;
+	font: inherit;
+	padding: 0;
+	cursor: default;
+}
 
 /* Entrance: the hero rises once on load. Content stays visible without motion. */
 @media (prefers-reduced-motion: no-preference) {
