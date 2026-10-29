@@ -2,9 +2,8 @@
  * The checks on /status. Plain TypeScript with relative imports only: the tests and the root tsc read it.
  * One check per tool, called with the example the Tools page shows, plus the MCP handshake and the REST API.
  */
-import { TOOL_GROUPS } from './catalog';
+import type { ToolDoc } from './catalog';
 import type { Outcome } from './mcp/outcome';
-import { PRESETS } from './try/presets';
 import { API } from './site';
 
 export type StatusCheck = {
@@ -18,21 +17,17 @@ export type StatusCheck = {
 /** The REST API's health route, which answers `{ status: "ok" }` without touching Door43 (src/api/worker.ts). */
 export const REST_HEALTH_URL = `${API.origin}/health`;
 
-/** The same example the Tools page shows: the first Try example that needs nothing newer than the server has. */
-function exampleArgs(tool: string): Record<string, unknown> {
-	return PRESETS.find((p) => p.tool === tool && !p.needs?.length)?.args ?? {};
+/**
+ * The checks for the tools of the Tools page (`buildToolCatalog`), in its order, each with
+ * the example it shows there: a Try example, or the manifest's when the tool has none.
+ */
+export function statusChecks(tools: Pick<ToolDoc, 'name' | 'example'>[]): StatusCheck[] {
+	return [
+		{ id: 'mcp-initialize', label: 'MCP connection', tool: '', args: {} },
+		{ id: 'rest-health', label: 'REST API', tool: '', args: {} },
+		...tools.map((t) => ({ id: t.name, label: t.name, tool: t.name, args: t.example.args }))
+	];
 }
-
-export const STATUS_CHECKS: StatusCheck[] = [
-	{ id: 'mcp-initialize', label: 'MCP connection', tool: '', args: {} },
-	{ id: 'rest-health', label: 'REST API', tool: '', args: {} },
-	...TOOL_GROUPS.flatMap((g) => g.tools).map((tool) => ({
-		id: tool,
-		label: tool,
-		tool,
-		args: exampleArgs(tool)
-	}))
-];
 
 export type CheckState = 'ok' | 'not-available' | 'failed';
 export type CheckResult = { state: CheckState; ms: number; note: string };

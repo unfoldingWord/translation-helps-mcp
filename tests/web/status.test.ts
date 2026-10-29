@@ -4,15 +4,17 @@ import { buildMcpManifest } from "../../src/mcp/manifest.js";
 import { buildToolCatalog } from "../../web/src/lib/catalog";
 import { API } from "../../web/src/lib/site";
 import {
-  STATUS_CHECKS,
   REST_HEALTH_URL,
   runCheck,
+  statusChecks,
   type CheckIo,
 } from "../../web/src/lib/status";
 
+const docs = buildToolCatalog(buildMcpManifest({ mcpEndpoint: "/v2/mcp" }));
+const STATUS_CHECKS = statusChecks(docs);
 const toolChecks = STATUS_CHECKS.filter((c) => c.tool);
 
-describe("STATUS_CHECKS", () => {
+describe("statusChecks", () => {
   it("checks every registered tool exactly once", () => {
     const names = toolChecks.map((c) => c.tool);
     expect([...names].sort()).toEqual(MCP_TOOLS.map((t) => t.name).sort());
@@ -20,11 +22,29 @@ describe("STATUS_CHECKS", () => {
   });
 
   it("calls each tool with the example the Tools page shows", () => {
-    const docs = buildToolCatalog(buildMcpManifest({ mcpEndpoint: "/v2/mcp" }));
     for (const check of toolChecks) {
       const doc = docs.find((d) => d.name === check.tool);
       expect(check.args, check.tool).toEqual(doc?.example.args);
     }
+  });
+
+  it("calls a tool that has no Try example with the manifest's example, not {}", () => {
+    const example = { reference: "2:1", language: "en" };
+    const [check] = statusChecks(
+      buildToolCatalog({
+        tools: [
+          {
+            name: "get_tool_without_preset",
+            description: "",
+            summary: "",
+            example,
+            inputSchema: { type: "object", properties: {} },
+          },
+        ],
+      }),
+    ).filter((c) => c.tool);
+    expect(check).toMatchObject({ tool: "get_tool_without_preset" });
+    expect(check.args).toEqual(example);
   });
 
   it("adds the REST health check and the MCP initialize check", () => {

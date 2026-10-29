@@ -4,13 +4,16 @@
 	import { endpoint } from '$lib/endpoint';
 	import { McpHttpClient } from '$lib/mcp/client';
 	import { run } from '$lib/mcp/session';
-	import { REST_HEALTH_URL, STATUS_CHECKS, runCheck, type CheckResult } from '$lib/status';
+	import { REST_HEALTH_URL, runCheck, type CheckResult, type StatusCheck } from '$lib/status';
 	import { SITE } from '$lib/site';
+
+	let { data } = $props();
+	const checks = $derived(data.checks as StatusCheck[]);
 
 	/** `waiting` and `running` are states of the page; the rest come from the check. */
 	type Row = { state: 'waiting' | 'running' | CheckResult['state']; ms: number; note: string };
 
-	const blank = (): Row[] => STATUS_CHECKS.map(() => ({ state: 'waiting', ms: 0, note: '' }));
+	const blank = (): Row[] => checks.map(() => ({ state: 'waiting', ms: 0, note: '' }));
 	let rows = $state<Row[]>(blank());
 	let running = $state(false);
 	let finished = $state(false);
@@ -47,7 +50,7 @@
 				(await run(where, tool, args)).outcome
 		};
 		try {
-			for (const [i, check] of STATUS_CHECKS.entries()) {
+			for (const [i, check] of checks.entries()) {
 				rows[i].state = 'running';
 				const result = await runCheck(check, io);
 				rows[i] = { ...result, ms: Math.round(result.ms) };
@@ -103,7 +106,7 @@
 	</div>
 
 	<ul class="border-line bg-surface mt-4 rounded-lg border">
-		{#each STATUS_CHECKS as check, i (check.id)}
+		{#each checks as check, i (check.id)}
 			{@const row = rows[i]}
 			<li class="border-line border-b px-4 py-3 last:border-0">
 				<div class="flex items-center justify-between gap-3">
