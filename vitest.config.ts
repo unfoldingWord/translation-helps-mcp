@@ -47,6 +47,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
+    // Before any test file imports `agents`. Node 20 has no global WebSocket
+    // or URLPattern, and agents reads both. See tests/stubs/webSocket.ts.
+    setupFiles: ["./tests/stubs/webSocket.ts"],
     include: ["tests/**/*.test.ts"],
     exclude: ["**/node_modules/**", "web/**", "packages/**/node_modules/**"],
     coverage: {
