@@ -5,6 +5,12 @@
  * in one place so the two HTTP paths cannot drift.
  */
 
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import {
+  ListToolsRequestSchema,
+  type ListToolsResult,
+} from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { logger } from "../core/logger.js";
 import { recordToolCall } from "../core/metrics.js";
@@ -13,11 +19,13 @@ import {
   ErrorCode,
   type TranslationHelpsError,
 } from "../core/errors.js";
+import { SERVER_NAME, VERSION } from "../core/version.js";
 import { strictToolSchema } from "./jsonSchema.js";
 import { ApiClientError } from "./apiClient.js";
 import { MCP_TOOLS } from "./toolRegistry.js";
 import { PROMPTS } from "./prompts/index.js";
-import type { NormalizingMcpServer } from "./normalizingMcpServer.js";
+import { SERVER_INSTRUCTIONS } from "./instructions.js";
+import { NormalizingMcpServer } from "./normalizingMcpServer.js";
 import type { Env } from "./agent.js";
 
 /** Read the request environment when a tool actually runs, not at registration. */
@@ -65,23 +73,105 @@ function mcpNotAvailable(message: string): {
   };
 }
 
+type ListedTool = ListToolsResult["tools"][number];
+
+/**
+ * Strict input schemas, built once per isolate. `registerTool` still runs per
+ * server, but it reuses these objects instead of wrapping the Zod shape again.
+ */
+let strictInputs: z.ZodType[] | undefined;
+
+function strictInputSchemas(): z.ZodType[] {
+  if (!strictInputs) {
+    strictInputs = MCP_TOOLS.map((tool) => {
+      const schemaShape = (tool.inputSchema as z.ZodObject<z.ZodRawShape>)
+        .shape;
+      return strictToolSchema(schemaShape);
+    });
+  }
+  return strictInputs;
+}
+
+/**
+ * JSON Schema `tools/list` payload, produced once by the SDK and reused.
+ * A fresh server would otherwise convert every Zod schema on every list.
+ * The probe does not install this cache, or the first list would wait on itself.
+ */
+let sdkToolList: Promise<ListedTool[]> | undefined;
+
+function loadSdkToolList(): Promise<ListedTool[]> {
+  sdkToolList ??= captureSdkToolList().catch((error: unknown) => {
+    sdkToolList = undefined;
+    throw error;
+  });
+  return sdkToolList;
+}
+
+async function captureSdkToolList(): Promise<ListedTool[]> {
+  const server = new NormalizingMcpServer(
+    { name: SERVER_NAME, version: VERSION },
+    { instructions: SERVER_INSTRUCTIONS },
+  );
+  registerTranslationHelpsSurface(
+    server,
+    () => {
+      throw new Error("Tool list cache probe does not run tools.");
+    },
+    false,
+  );
+  const [clientTransport, serverTransport] =
+    InMemoryTransport.createLinkedPair();
+  const client = new Client({ name: "schema-cache", version: "0.0.0" });
+  await Promise.all([
+    server.connect(serverTransport),
+    client.connect(clientTransport),
+  ]);
+  let tools: ListedTool[] | undefined;
+  const forward = clientTransport.onmessage;
+  clientTransport.onmessage = (message, extra) => {
+    const result = (message as { result?: { tools?: unknown } }).result;
+    if (Array.isArray(result?.tools)) {
+      tools = structuredClone(result.tools) as ListedTool[];
+    }
+    forward?.(message, extra);
+  };
+  try {
+    await client.listTools();
+  } finally {
+    await client.close().catch(() => {});
+  }
+  if (!tools) {
+    throw new Error("Tool list cache probe did not see a tools/list result.");
+  }
+  return tools;
+}
+
+function installCachedToolList(server: NormalizingMcpServer): void {
+  server.server.setRequestHandler(ListToolsRequestSchema, async () => ({
+    tools: structuredClone(await loadSdkToolList()),
+  }));
+}
+
 export function registerTranslationHelpsServer(
   server: NormalizingMcpServer,
   resolveEnv: ResolveToolEnv,
 ): void {
-  for (const tool of MCP_TOOLS) {
-    const {
-      name,
-      description,
-      inputSchema,
-      outputSchema,
-      annotations,
-      handler,
-    } = tool;
+  registerTranslationHelpsSurface(server, resolveEnv, true);
+}
 
-    // zod 4: `.refine()` no longer wraps in ZodEffects, so `.shape` is
-    // always present on the tool's input schema.
-    const schemaShape = (inputSchema as z.ZodObject<z.ZodRawShape>).shape;
+function registerTranslationHelpsSurface(
+  server: NormalizingMcpServer,
+  resolveEnv: ResolveToolEnv,
+  cacheToolList: boolean,
+): void {
+  const inputs = strictInputSchemas();
+  for (const [index, tool] of MCP_TOOLS.entries()) {
+    const { name, description, outputSchema, annotations, handler } = tool;
+    // inputs[index] is the strict schema for this tool, built once per isolate.
+    const inputSchema = inputs[index];
+    if (!inputSchema) {
+      throw new Error(`Missing cached input schema for ${name}`);
+    }
 
     server.registerTool(
       name,
@@ -90,7 +180,7 @@ export function registerTranslationHelpsServer(
         description,
         // Wrapped (not passed as a bare shape) so tools/list keeps
         // `additionalProperties: false` under zod 4 — see strictToolSchema.
-        inputSchema: strictToolSchema(schemaShape),
+        inputSchema,
         ...(outputSchema ? { outputSchema } : {}),
         annotations: {
           readOnlyHint: annotations.readOnlyHint,
@@ -215,4 +305,6 @@ export function registerTranslationHelpsServer(
       prompt.handler as unknown as PromptCallback,
     );
   }
+
+  if (cacheToolList) installCachedToolList(server);
 }

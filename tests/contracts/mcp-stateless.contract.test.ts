@@ -4,13 +4,15 @@
  * A POST to /v2/mcp or /mcp with no Mcp-Session-Id must be answered without a
  * Durable Object. A request that carries a session id still goes to the
  * McpAgent. The test runtime cannot host Durable Objects, so that path is a
- * namespace double: idFromName records the object name, and fetch returns no
- * WebSocket. Reaching idFromName is the proof the request left the Worker for
- * the agent handler.
+ * namespace double: idFromName records the object name, and fetch returns a
+ * WebSocket that writes one SSE frame. The test checks that frame reaches
+ * the client unchanged.
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
 import worker, { type Env } from "../../src/worker.js";
 import { TranslationHelpsMCP } from "../../src/mcp/agent.js";
 import { NormalizingMcpServer } from "../../src/mcp/normalizingMcpServer.js";
@@ -23,6 +25,13 @@ const MCP_HEADERS = {
   "Content-Type": "application/json",
   Accept: "application/json, text/event-stream",
 };
+
+/**
+ * Bytes the Durable Object double writes on its WebSocket. The Worker must
+ * hand this SSE frame to the client unchanged.
+ */
+const SESSION_SSE_EVENT =
+  'event: message\ndata: {"jsonrpc":"2.0","id":1,"result":{"marker":"durable-object-session-path"}}\n\n';
 
 interface DoNamespace {
   names: string[];
@@ -46,7 +55,28 @@ function durableObjectNamespace(): Env["MCP_AGENT"] & DoNamespace {
           return { method: "initialize" };
         },
         async fetch() {
-          return new Response(null, { status: 500 });
+          const listeners: Array<(event: { data: string }) => void> = [];
+          const ws = {
+            accept() {},
+            close() {},
+            addEventListener(
+              type: string,
+              listener: (event: { data: string }) => void,
+            ) {
+              if (type === "message") listeners.push(listener);
+            },
+            send() {},
+          };
+          // The agents bridge attaches listeners after fetch resolves.
+          setTimeout(() => {
+            const frame = JSON.stringify({
+              type: "cf_mcp_agent_event",
+              event: SESSION_SSE_EVENT,
+              close: true,
+            });
+            for (const listener of listeners) listener({ data: frame });
+          }, 0);
+          return { webSocket: ws };
         },
       };
     },
@@ -161,7 +191,11 @@ async function readJson(response: Response): Promise<{
   result?: {
     serverInfo?: { name?: string; version?: string };
     instructions?: string;
-    tools?: Array<{ name: string; inputSchema?: unknown }>;
+    tools?: Array<{
+      name: string;
+      inputSchema?: unknown;
+      outputSchema?: unknown;
+    }>;
     structuredContent?: Record<string, unknown>;
     isError?: boolean;
   };
@@ -171,7 +205,11 @@ async function readJson(response: Response): Promise<{
     result?: {
       serverInfo?: { name?: string; version?: string };
       instructions?: string;
-      tools?: Array<{ name: string; inputSchema?: unknown }>;
+      tools?: Array<{
+        name: string;
+        inputSchema?: unknown;
+        outputSchema?: unknown;
+      }>;
       structuredContent?: Record<string, unknown>;
       isError?: boolean;
     };
@@ -181,7 +219,7 @@ async function readJson(response: Response): Promise<{
 
 /** Tools/list as TranslationHelpsMCP.init registers them (the Durable Object). */
 async function durableObjectTools(): Promise<
-  Array<{ name: string; inputSchema?: unknown }>
+  Array<{ name: string; inputSchema?: unknown; outputSchema?: unknown }>
 > {
   const server = new NormalizingMcpServer(
     { name: SERVER_NAME, version: VERSION },
@@ -207,7 +245,13 @@ async function durableObjectTools(): Promise<
   return listed.tools.map((tool) => ({
     name: tool.name,
     inputSchema: tool.inputSchema,
+    outputSchema: tool.outputSchema,
   }));
+}
+
+/** Route the SDK client's fetch into the Worker, the way a contract test calls it. */
+function workerFetch(env: Env, ctx: ExecutionContext): FetchLike {
+  return async (url, init) => worker.fetch(new Request(url, init), env, ctx);
 }
 
 describe("stateless MCP worker fetch", () => {
@@ -277,6 +321,7 @@ describe("stateless MCP worker fetch", () => {
     for (const tool of httpTools) {
       const fromDo = doTools.find((candidate) => candidate.name === tool.name);
       expect(tool.inputSchema, tool.name).toEqual(fromDo?.inputSchema);
+      expect(tool.outputSchema, tool.name).toEqual(fromDo?.outputSchema);
     }
     expect(namespace.names).toEqual([]);
   });
@@ -343,8 +388,10 @@ describe("stateless MCP worker fetch", () => {
     );
     const names = (namespace as unknown as DoNamespace).names;
     expect(names).toContain("streamable-http:sess-existing");
-    const body = await readJson(response);
-    expect(body.result?.structuredContent).toBeUndefined();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    expect(response.headers.get("mcp-session-id")).toBe("sess-existing");
+    expect(await response.text()).toBe(SESSION_SSE_EVENT);
   });
 
   it("enforces the API key on a sessionless call", async () => {
@@ -406,5 +453,215 @@ describe("stateless MCP worker fetch", () => {
       expect(text, method).not.toContain("event:");
       expect(namespace.names, method).toEqual([]);
     }
+  });
+
+  it("serves the SDK streamable HTTP client with no session id", async () => {
+    const namespace = durableObjectNamespace();
+    const analytics: AnalyticsSpy = { points: [] };
+    const env = baseEnv(namespace, analytics);
+    const { ctx } = executionContext();
+    const transport = new StreamableHTTPClientTransport(
+      new URL("https://example.test/v2/mcp"),
+      { fetch: workerFetch(env, ctx) },
+    );
+    const client = new Client({ name: "bt-servant-worker", version: "1.0.0" });
+    await client.connect(transport);
+    expect(transport.sessionId).toBeUndefined();
+
+    const listed = await client.listTools();
+    expect(listed.tools.map((tool) => tool.name)).toEqual(
+      MCP_TOOLS.map((tool) => tool.name),
+    );
+    expect(listed.tools).toHaveLength(15);
+
+    const called = await client.callTool({
+      name: "list_languages",
+      arguments: {},
+    });
+    expect(called.isError).not.toBe(true);
+    expect(transport.sessionId).toBeUndefined();
+    await client.close();
+    expect(transport.sessionId).toBeUndefined();
+    expect(namespace.names).toEqual([]);
+  });
+
+  it("does not make one sessionless call wait for another", async () => {
+    let releaseFirst!: () => void;
+    const holdFirst = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    let held = false;
+    let markHeld!: () => void;
+    const heldPromise = new Promise<void>((resolve) => {
+      markHeld = resolve;
+    });
+    const fetcher = {
+      async fetch(input: RequestInfo | URL) {
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
+        if (!url.includes("/api/v1/languages")) {
+          return Response.json(
+            { error: { code: "NOT_FOUND", message: url } },
+            { status: 404 },
+          );
+        }
+        if (!held) {
+          held = true;
+          markHeld();
+          await holdFirst;
+        }
+        return Response.json({
+          languages: [{ code: "en", name: "English", englishName: "English" }],
+        });
+      },
+    } as Fetcher;
+
+    const namespace = durableObjectNamespace();
+    const analytics: AnalyticsSpy = { points: [] };
+    const env = baseEnv(namespace, analytics, { API: fetcher });
+    const { ctx } = executionContext();
+    const call = rpc("tools/call", { name: "list_languages", arguments: {} });
+    const first = postMcp("/v2/mcp", call, env, ctx);
+    await heldPromise;
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const second = postMcp("/v2/mcp", { ...call, id: 2 }, env, ctx);
+    try {
+      const raced = await Promise.race([
+        second.then(() => "second" as const),
+        new Promise<"timeout">((resolve) => {
+          timer = setTimeout(() => resolve("timeout"), 1000);
+        }),
+      ]);
+      expect(raced).toBe("second");
+      const secondResponse = await second;
+      expect(secondResponse.status).toBe(200);
+      expect(secondResponse.headers.get("mcp-session-id")).toBeNull();
+      const body = await readJson(secondResponse);
+      expect(body.result?.isError).not.toBe(true);
+    } finally {
+      clearTimeout(timer);
+      releaseFirst();
+      const firstResponse = await first;
+      expect(firstResponse.status).toBe(200);
+    }
+    expect(namespace.names).toEqual([]);
+  });
+
+  it("accepts a POST whose Accept is only application/json", async () => {
+    const namespace = durableObjectNamespace();
+    const analytics: AnalyticsSpy = { points: [] };
+    const { ctx } = executionContext();
+    const response = await worker.fetch(
+      new Request("https://example.test/v2/mcp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(
+          rpc("initialize", {
+            protocolVersion: "2025-03-26",
+            capabilities: {},
+            clientInfo: { name: "curl", version: "0.0.0" },
+          }),
+        ),
+      }),
+      baseEnv(namespace, analytics),
+      ctx,
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("mcp-session-id")).toBeNull();
+    const body = await readJson(response);
+    expect(body.result?.serverInfo?.version).toBe("2.3.0");
+    expect(namespace.names).toEqual([]);
+  });
+
+  it("accepts a POST with no Accept header", async () => {
+    const namespace = durableObjectNamespace();
+    const analytics: AnalyticsSpy = { points: [] };
+    const { ctx } = executionContext();
+    const response = await worker.fetch(
+      new Request("https://example.test/mcp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          rpc("tools/call", { name: "list_languages", arguments: {} }),
+        ),
+      }),
+      baseEnv(namespace, analytics),
+      ctx,
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("mcp-session-id")).toBeNull();
+    const body = await readJson(response);
+    expect(body.result?.isError).not.toBe(true);
+    expect(namespace.names).toEqual([]);
+  });
+
+  it("treats a blank Mcp-Session-Id as no session", async () => {
+    const namespace = durableObjectNamespace();
+    const analytics: AnalyticsSpy = { points: [] };
+    const env = baseEnv(namespace, analytics);
+    const { ctx } = executionContext();
+    const call = rpc("tools/call", { name: "list_languages", arguments: {} });
+
+    for (const session of ["", "   ", "\t"]) {
+      const response = await postMcp("/v2/mcp", call, env, ctx, {
+        "Mcp-Session-Id": session,
+      });
+      expect(response.status, JSON.stringify(session)).toBe(200);
+      expect(
+        response.headers.get("mcp-session-id"),
+        JSON.stringify(session),
+      ).toBeNull();
+      const body = await readJson(response);
+      expect(body.result?.isError, JSON.stringify(session)).not.toBe(true);
+    }
+    expect(namespace.names).toEqual([]);
+  });
+
+  it("accepts notifications/initialized with no session", async () => {
+    const namespace = durableObjectNamespace();
+    const analytics: AnalyticsSpy = { points: [] };
+    const { ctx } = executionContext();
+    const response = await postMcp(
+      "/v2/mcp",
+      { jsonrpc: "2.0", method: "notifications/initialized" },
+      baseEnv(namespace, analytics),
+      ctx,
+    );
+    expect(response.status).toBe(202);
+    expect(response.headers.get("mcp-session-id")).toBeNull();
+    expect(response.headers.get("content-type") ?? "").not.toContain(
+      "text/event-stream",
+    );
+    expect(namespace.names).toEqual([]);
+  });
+
+  it("enforces X-Api-Key on a sessionless call", async () => {
+    const namespace = durableObjectNamespace();
+    const analytics: AnalyticsSpy = { points: [] };
+    const env = baseEnv(namespace, analytics, { MCP_API_KEY: "secret" });
+    const { ctx } = executionContext();
+    const call = rpc("tools/call", { name: "list_languages", arguments: {} });
+
+    const denied = await postMcp("/v2/mcp", call, env, ctx, {
+      "X-Api-Key": "nope",
+    });
+    expect(denied.status).toBe(401);
+
+    const allowed = await postMcp("/v2/mcp", call, env, ctx, {
+      "X-Api-Key": "secret",
+    });
+    expect(allowed.status).toBe(200);
+    expect(allowed.headers.get("mcp-session-id")).toBeNull();
+    const body = await readJson(allowed);
+    expect(body.result?.isError).not.toBe(true);
+    expect(namespace.names).toEqual([]);
   });
 });
