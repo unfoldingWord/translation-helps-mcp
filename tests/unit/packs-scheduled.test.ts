@@ -23,15 +23,24 @@ import {
   type ScheduledDeps,
   type ScheduledEnv,
 } from "../../src/packs/scheduled";
-import { runDailySweep } from "../../src/packs/freshness";
+import {
+  checkFreshness,
+  runDailySweep,
+  type PackCatalogEntry,
+  type Search,
+} from "../../src/packs/freshness";
 import {
   CURRENT_PACK_COMPAT,
   CURRENT_PARTS_COMPAT,
+  partsDispatchEnabled,
+  requestBuild,
   type BuildOutcome,
 } from "../../src/packs/dispatch";
 import type { PartsCheck, PartsListLite } from "../../src/packs/partsFreshness";
 import { ALERT_TAG, LEDGER } from "../../src/packs/cleanup";
+import type { CatalogEntry } from "@translation-helps/door43";
 import { fakeKv, fakeR2 } from "./fakeR2";
+import { wranglerVars } from "./wranglerToml";
 
 const F11 = CURRENT_PACK_COMPAT;
 const PARTS = CURRENT_PARTS_COMPAT;
@@ -343,7 +352,7 @@ describe("runScheduled: the parts sweep", () => {
     expect(hour).toBe(22);
   });
 
-  it("reads nothing for parts while parts dispatch is off (production today)", async () => {
+  it("reads nothing for parts while parts dispatch is off", async () => {
     const s = setup({
       parts: ["es-419"],
       env: { PACKS_PARTS_DISPATCH: undefined, PACKS_SWEEP: "parts" },
@@ -828,9 +837,14 @@ describe("wrangler.toml: the crons and their vars", () => {
     return m ? (JSON.parse(m[1]!) as string[]) : null;
   };
 
-  it("production keeps only the f1.1 sweep's daily cron; staging has the cleanup, its retries and the parts slice", () => {
+  it("production has all four packs crons; staging has the cleanup, its retries and the parts slice", () => {
     const s = sections();
-    expect(crons(s["env.production.triggers"])).toEqual([F11_SWEEP_CRON]);
+    expect(crons(s["env.production.triggers"])).toEqual([
+      F11_SWEEP_CRON,
+      CLEANUP_CRON,
+      CLEANUP_RETRY_CRON,
+      PARTS_SLICE_CRON,
+    ]);
     expect(crons(s["env.preview.triggers"])).toEqual([
       CLEANUP_CRON,
       CLEANUP_RETRY_CRON,
@@ -844,38 +858,239 @@ describe("wrangler.toml: the crons and their vars", () => {
     ).toEqual(["env.preview.triggers", "env.production.triggers"]);
   });
 
-  it("lists only crons the Worker has a job for, within the Free plan's 5 cron triggers per account", () => {
+  it("lists only crons the Worker has a job for (7 total across production + preview on this Paid account)", () => {
     const s = sections();
     const all = [
       ...crons(s["env.production.triggers"])!,
       ...crons(s["env.preview.triggers"])!,
     ];
     expect(all.every((c) => PACKS_CRONS.includes(c))).toBe(true);
-    expect(all.length).toBeLessThanOrEqual(5);
+    expect(all).toHaveLength(7);
   });
 
-  it("sweeps parts only and cleans up in dry-run on staging; production has no cleanup and no parts dispatch; Worker Previews have every job off", () => {
+  it("sweeps parts only on staging; both staging and production run the cleanup in dry-run, as cleanupMode reads it; Worker Previews have every job off", () => {
     const s = sections();
-    const preview = s["env.preview"]!.join("\n");
-    const production = s["env.production"]!.join("\n");
-    const previews = s["previews"]!.join("\n");
-    expect(preview).toContain('PACKS_SWEEP = "parts"');
-    expect(preview).toContain('PACKS_CLEANUP = "dry-run"');
-    expect(production).not.toContain("PACKS_CLEANUP");
-    expect(production).not.toContain("PACKS_SWEEP");
-    expect(production).not.toContain("PACKS_PARTS_DISPATCH");
-    expect(previews).toContain('PACKS_SWEEP = "parts"');
-    expect(previews).toContain('PACKS_CLEANUP = "off"');
-    expect(previews).toContain('PARTS_CHECKS_PER_RUN = "0"');
-    expect(previews).toContain('PACKS_PARTS_DISPATCH = "off"');
+    const vars = wranglerVars();
+    const preview = vars["env.preview"]!;
+    const production = vars["env.production"]!;
+    const previews = vars["previews"]!;
+    expect(preview.PACKS_SWEEP).toBe("parts");
+    expect(cleanupMode(preview.PACKS_CLEANUP)).toBe("dry-run");
+    expect(cleanupMode(production.PACKS_CLEANUP)).toBe("dry-run");
+    expect("PACKS_SWEEP" in production).toBe(false);
+    expect(previews.PACKS_SWEEP).toBe("parts");
+    expect(previews.PACKS_CLEANUP).toBe("off");
+    expect(cleanupMode(previews.PACKS_CLEANUP)).toBeNull();
+    expect(previews.PARTS_CHECKS_PER_RUN).toBe("0");
+    expect(checksPerRun(previews.PARTS_CHECKS_PER_RUN)).toBe(0);
+    expect(previews.PACKS_PARTS_DISPATCH).toBe("off");
+    expect(partsDispatchEnabled(previews)).toBe(false);
     const anywhere = Object.values(s)
       .flat()
       .filter((l) => /PACKS_CLEANUP|PACKS_SWEEP|PARTS_CHECKS_PER_RUN/.test(l));
-    expect(anywhere).toEqual([
-      ...s["previews"]!.filter((l) => l.startsWith("vars")),
-      ...s["env.preview"]!.filter((l) => l.startsWith("vars")),
+    expect(anywhere.sort()).toEqual(
+      [
+        s["previews"]!.find((l) => l.startsWith("vars"))!,
+        s["env.preview"]!.find((l) => l.startsWith("vars"))!,
+        s["env.production"]!.find((l) => l.startsWith("vars"))!,
+      ].sort(),
+    );
+    expect("PARTS_CHECKS_PER_RUN" in preview).toBe(false);
+    expect("PARTS_CHECKS_PER_RUN" in production).toBe(false);
+  });
+});
+
+describe("production's real vars: the f1.1 cron is unchanged by parts", () => {
+  const production = () => wranglerVars()["env.production"]!;
+  const INSTALLATION = "678";
+  const ROWS: Record<string, CatalogEntry[]> = {
+    en: [row("en", "unfoldingWord", "en_ult", "v86#2026-09-01T00_00_00Z")],
+    "es-419": [
+      row("es-419", "es-419_gl", "es-419_glt", "v43#2026-10-20T00_00_00Z"),
+    ],
+    fr: [row("fr", "fr_gl", "fr_glt", "v9#2026-10-19T00_00_00Z")],
+  };
+
+  function row(
+    language: string,
+    owner: string,
+    name: string,
+    stamp: string,
+  ): CatalogEntry {
+    return { owner, repo: name, name, language, stamp, ingredients: [] };
+  }
+
+  function entry(
+    language: string,
+    stamps: Record<string, string>,
+  ): PackCatalogEntry {
+    return {
+      schema: 1,
+      language,
+      compat: F11,
+      build: { id: "0123456789abcdef", generator: "abc", stamps },
+      createdAt: "2026-10-01T00:00:00Z",
+      pack: {
+        path: `packs/${F11}/${language}/x.langpack.zip`,
+        bytes: 1,
+        sha256: "x",
+      },
+      resources: [],
+    };
+  }
+
+  /**
+   * One production bucket, the same for both runs: en fresh, es-419 behind Door43 (dispatched), fr behind but with a
+   * build running (held), plus production's parts objects, which the f1.1 cron must not touch. The real f1.1 check and
+   * the real dispatch run, with Door43's search, GitHub's POST and the App token (cached in KV) faked.
+   */
+  function world(vars: Record<string, string>) {
+    const r2 = fakeR2({
+      [`catalog/${F11}/en.json`]: JSON.stringify(
+        entry("en", { "unfoldingWord/en/ult": "v86#2026-09-01T00_00_00Z" }),
+      ),
+      [`catalog/${F11}/es-419.json`]: JSON.stringify(
+        entry("es-419", { "es-419_gl/es-419/glt": "v42#2026-08-11T00_00_00Z" }),
+      ),
+      [`catalog/${F11}/fr.json`]: JSON.stringify(
+        entry("fr", { "fr_gl/fr/glt": "v8#2026-08-01T00_00_00Z" }),
+      ),
+      [`catalog/${F11}/originals.json`]: "{}",
+      [`status/${F11}/fr.json`]: JSON.stringify({
+        state: "running",
+        at: at(5).toISOString(),
+        failures: 0,
+        run: "dispatched",
+      }),
+      [`catalog/${PARTS}/es-419.json`]: partsList("es-419"),
+      [`catalog/${PARTS}/originals/${SHA}.json`]: "{}",
+      [`status/${PARTS}/es-419.json`]: JSON.stringify({
+        state: "ok",
+        at: at(1).toISOString(),
+        failures: 0,
+        run: "1",
+      }),
+      "status/builder.json": JSON.stringify({
+        compat: PARTS,
+        code: NEW_CODE,
+        commit: "0".repeat(40),
+        at: "2026-10-20T00:00:00Z",
+      }),
+      [LEDGER]: JSON.stringify({ schema: 1, since: {}, outcomes: {} }),
+    });
+    const { kv, values, puts } = fakeKv();
+    values.set(
+      `packs:github-token:${INSTALLATION}`,
+      JSON.stringify({ token: "cached", until: at(7).getTime() }),
+    );
+    const points: unknown[] = [];
+    const posts: Array<{ url: string; body: unknown }> = [];
+    const env: ScheduledEnv = {
+      ...vars,
+      TRANSLATION_HELPS_CACHE: kv,
+      LANGUAGE_PACKS: r2.bucket,
+      ANALYTICS: {
+        writeDataPoint: (p: unknown) => void points.push(p),
+      } as unknown as AnalyticsEngineDataset,
+      GITHUB_APP_ID: "12345",
+      GITHUB_APP_PRIVATE_KEY: "not read: the token is cached",
+      GITHUB_APP_INSTALLATION_ID: INSTALLATION,
+    };
+    const search: Search = async (language) => ROWS[language] ?? [];
+    const fetchImpl = (async (
+      url: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      posts.push({ url: String(url), body: init?.body });
+      return new Response(null, { status: 204 });
+    }) as typeof fetch;
+    const deps = {
+      now: at(6),
+      checkFreshness: (c: Parameters<typeof checkFreshness>[0]) =>
+        checkFreshness({ ...c, search }),
+      requestBuild: (r: Parameters<typeof requestBuild>[0]) =>
+        requestBuild({ ...r, fetch: fetchImpl }),
+    };
+    return { r2, env, deps, kvPuts: puts, points, posts };
+  }
+
+  /** Runs `fn` with console.log and console.error captured, in order. */
+  async function logsOf(fn: () => Promise<void>): Promise<string[]> {
+    const lines: string[] = [];
+    const log = console.log;
+    const error = console.error;
+    console.log = (...a: unknown[]) => void lines.push(`log ${a.join(" ")}`);
+    console.error = (...a: unknown[]) =>
+      void lines.push(`error ${a.join(" ")}`);
+    try {
+      await fn();
+    } finally {
+      console.log = log;
+      console.error = error;
+    }
+    return lines;
+  }
+
+  it("reads as the code reads it: parts dispatch on, cleanup dry-run, PACKS_SWEEP unset, target production", () => {
+    const vars = production();
+    expect(partsDispatchEnabled(vars)).toBe(true);
+    expect(cleanupMode(vars.PACKS_CLEANUP)).toBe("dry-run");
+    expect("PACKS_SWEEP" in vars).toBe(false);
+    expect(vars.PACKS_TARGET).toBe("production");
+    expect(checksPerRun(vars.PARTS_CHECKS_PER_RUN)).toBe(PARTS_CHECKS_PER_RUN);
+  });
+
+  it("the 06:17 cron makes the same R2, KV, GitHub and Analytics calls runDailySweep made with production's old vars", async () => {
+    const now = production();
+    const {
+      PACKS_PARTS_DISPATCH: _on,
+      PACKS_CLEANUP: _dryRun,
+      ...before
+    } = now;
+    expect(partsDispatchEnabled(before)).toBe(false);
+    expect(cleanupMode(before.PACKS_CLEANUP)).toBeNull();
+
+    const today = world(now);
+    const todayLogs = await logsOf(() =>
+      runScheduled(today.env, {} as ExecutionContext, {
+        ...today.deps,
+        cron: F11_SWEEP_CRON,
+        scheduledTime: at(6).getTime(),
+      }),
+    );
+    const old = world(before);
+    const oldLogs = await logsOf(() =>
+      runDailySweep(old.env, {} as ExecutionContext, old.deps),
+    );
+
+    expect(today.r2.ops).toEqual(old.r2.ops);
+    expect(today.kvPuts).toEqual(old.kvPuts);
+    expect(today.posts).toEqual(old.posts);
+    expect(today.points).toEqual(old.points);
+    expect(todayLogs).toEqual(oldLogs);
+
+    // What both did: es-419 dispatched with the f1.1 body (no parts input), fr held by its running build, en fresh.
+    expect(today.posts).toEqual([
+      {
+        url: "https://api.github.com/repos/unfoldingWord/tc-study/actions/workflows/language-packs.yml/dispatches",
+        body: `{"ref":"master","inputs":{"language":"es-419","mode":"publish","target":"production","compat":"${F11}"}}`,
+      },
     ]);
-    expect(preview).not.toContain("PARTS_CHECKS_PER_RUN");
+    expect(todayLogs).toEqual([
+      `log [packs] stale ${F11}/es-419: dispatched`,
+      `log [packs] stale ${F11}/fr: running`,
+    ]);
+    expect(
+      today.r2.ops.filter((op) => op.op === "put").map((op) => op.key),
+    ).toEqual([`status/${F11}/es-419.json`]);
+    // Nothing outside f1.1's catalog and statuses: no parts list, builder file, parts status or cleanup ledger.
+    expect(
+      today.r2.ops.every(
+        (op) =>
+          op.key?.startsWith(`catalog/${F11}/`) ||
+          op.key?.startsWith(`status/${F11}/`),
+      ),
+    ).toBe(true);
   });
 });
 

@@ -7,7 +7,7 @@
  * - `7 3 * * *`: the parts cleanup, when `PACKS_CLEANUP` is `dry-run` or `delete` (anything else is off);
  * - `7 4,5 * * *`: the cleanup again, only when the day's run was postponed or aborted (the ledger records each day's
  *   outcome); a day with no outcome at all is not retried but logged under `[packs] cleanup-alert:`. One cron string
- *   for both retries: the Free plan allows 5 cron triggers in the whole account;
+ *   for both retries, as both are the same job;
  * - `37 * * * *`: the parts languages whose `fnv1a32(language) % 24` is the hour, so each is checked once a day and
  *   the Door43 and GitHub requests are spread across the day. Only while parts dispatch is on: a check that may not
  *   ask for a build reads nothing.

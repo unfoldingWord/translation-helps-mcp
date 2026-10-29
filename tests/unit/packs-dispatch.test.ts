@@ -3,8 +3,6 @@
  * to the bucket, and a KV counter caps the day.
  */
 
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   CURRENT_PACK_COMPAT,
@@ -16,6 +14,7 @@ import {
   requestBuild,
   type BuildEnv,
 } from "../../src/packs/dispatch";
+import { wranglerToml, wranglerVars } from "./wranglerToml";
 
 const NOW = new Date("2026-10-21T12:00:00Z");
 const COMPAT = "f1.1-u2.3.0-p6000230-q9-a12-t1";
@@ -124,7 +123,7 @@ function setup(
     kvFailing?: { get?: string; put?: string };
     secrets?: boolean;
     privateKey?: string;
-    /** PACKS_PARTS_DISPATCH; unset as in production today. */
+    /** PACKS_PARTS_DISPATCH override for the test env. */
     partsDispatch?: string;
   } = {},
 ) {
@@ -675,39 +674,32 @@ describe("parts dispatch behind PACKS_PARTS_DISPATCH", () => {
 });
 
 describe("wrangler.toml", () => {
-  const toml = () =>
-    readFileSync(
-      fileURLToPath(new URL("../../wrangler.toml", import.meta.url)),
-      "utf8",
-    );
-
-  /** Each section's inline `vars = { … }` line, by section header (`""` for the top level). */
-  function varsBySection(): Record<string, string> {
-    const vars: Record<string, string> = {};
-    let section = "";
-    for (const line of toml().split(/\r?\n/)) {
-      const header = /^\[+([^\]]+)\]+\s*$/.exec(line);
-      if (header) section = header[1] ?? "";
-      else if (/^vars\s*=/.test(line)) vars[section] = line;
-    }
-    return vars;
-  }
-
-  it("turns parts dispatch on for the preview Worker only, never in production (Task 14 does that) nor in Worker Previews", () => {
-    const vars = varsBySection();
-    expect(vars["env.preview"]).toContain('PACKS_PARTS_DISPATCH = "on"');
-    expect(vars["env.preview"]).toContain('PACKS_TARGET = "staging"');
-    expect(vars["env.production"]).toContain('PACKS_TARGET = "production"');
-    expect(vars["env.production"]).not.toContain("PACKS_PARTS_DISPATCH");
-    expect(vars["previews"]).toContain('PACKS_PARTS_DISPATCH = "off"');
-    expect(vars["previews"]).toContain('PACKS_PARTS_DAILY_CAP = "0"');
-    expect(vars["previews"]).toContain('PACKS_TARGET = "staging"');
+  it("turns parts dispatch on for both preview and production Workers and off in Worker Previews, as partsDispatchEnabled reads it", () => {
+    const vars = wranglerVars();
+    const preview = vars["env.preview"]!;
+    const production = vars["env.production"]!;
+    const previews = vars["previews"]!;
+    expect(partsDispatchEnabled(preview)).toBe(true);
+    expect(preview.PACKS_TARGET).toBe("staging");
+    expect(partsDispatchEnabled(production)).toBe(true);
+    expect(production.PACKS_TARGET).toBe("production");
+    expect(previews.PACKS_PARTS_DISPATCH).toBe("off");
+    expect(partsDispatchEnabled(previews)).toBe(false);
+    expect(previews.PACKS_PARTS_DAILY_CAP).toBe("0");
+    expect(previews.PACKS_TARGET).toBe("staging");
     // Nowhere else outside a comment: the top-level config deploys under the production Worker's name.
-    const set = toml()
+    const set = wranglerToml()
       .split(/\r?\n/)
       .filter((l) => !l.trimStart().startsWith("#"))
       .filter((l) => l.includes("PACKS_PARTS_DISPATCH"));
-    expect(set).toEqual([vars["previews"], vars["env.preview"]]);
+    expect(set).toHaveLength(3);
+    expect(set.every((l) => /^vars\s*=/.test(l))).toBe(true);
+    expect(
+      Object.entries(vars)
+        .filter(([, v]) => "PACKS_PARTS_DISPATCH" in v)
+        .map(([section]) => section)
+        .sort(),
+    ).toEqual(["env.preview", "env.production", "previews"]);
   });
 });
 

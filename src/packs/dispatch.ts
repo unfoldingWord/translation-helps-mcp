@@ -98,8 +98,8 @@ export function isPartsCompat(compat: string): boolean {
 }
 
 /**
- * Whether this Worker may ask for parts builds at all. Off until the workflow may publish parts to the Worker's
- * target (staging now; production after delivery 3's Task 14), because a parts dispatch the workflow refuses
+ * Whether this Worker may ask for parts builds at all. On only where the workflow may publish parts to the Worker's
+ * target (staging, and production since delivery 3's Task 13), because a parts dispatch the workflow refuses
  * would be marked failed and cool the language for nothing. The parts freshness check and the sweep check it
  * before observing anything, and `requestBuild` checks it again.
  */

@@ -58,7 +58,7 @@ export interface Env extends DispatchEnv {
   RATE_LIMIT_RPM?: string;
   /** Max part requests/min per IP for /v2/packs/parts/, counted apart. Default 600; 0 = off. */
   PARTS_RATE_LIMIT_RPM?: string;
-  /** `on` lets this Worker ask for parts builds; unset (production until delivery 3's Task 14) is off. */
+  /** `on` lets this Worker ask for parts builds (preview and production); unset, or anything else, is off. */
   PACKS_PARTS_DISPATCH?: string;
   /** Counted parts dispatches a day, apart from f1.1's cap of 20. Default 20; 0 = none. */
   PACKS_PARTS_DAILY_CAP?: string;
