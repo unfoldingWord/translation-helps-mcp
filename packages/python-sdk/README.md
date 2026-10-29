@@ -184,6 +184,7 @@ notes = client.get_obs_notes({"reference": "3:1-3", "language": "spa"})
 | ------------------------------- | ----------- | ---------- | --------------------------------------------------------------------------- |
 | `get_obs_story(opts)`           | `reference` | `language` | Fetch OBS story text and frames for a story:frame reference (e.g. "3:1-3"). |
 | `get_obs_notes(opts)`           | `reference` | `language` | Fetch OBS Translation Notes for a story:frame reference.                    |
+| `get_obs_index(opts)`           | `reference` | `language` | Compact OBS index: notes and key terms, no article bodies.                  |
 | `get_obs_questions(opts)`       | `reference` | `language` | Fetch OBS Translation Questions for a story:frame reference.                |
 | `get_obs_study_notes(opts)`     | `reference` | `language` | Fetch OBS Study Notes for a story:frame reference.                          |
 | `get_obs_study_questions(opts)` | `reference` | `language` | Fetch OBS Study Questions (frame ranges) for a story:frame.                 |

@@ -535,7 +535,38 @@ export const API_MANIFEST: ApiManifest = {
             id: "obs-n1",
             reference: "1:1",
             quote: "God",
+            supportReference: "rc://*/ta/man/translate/figs-idiom",
+            supportReferenceTitle: "Idiom",
+            occurrence: "1",
             note: "This refers to the one true God…",
+          },
+        ],
+      },
+    },
+    {
+      method: "GET",
+      path: "/obs-word-links",
+      summary: "OBS translation word links",
+      description:
+        "Key terms for an OBS story:frame. Each row carries twArticle.{path,category,title} and no article body.",
+      adapts: ["OBS Translation Words Links"],
+      params: [OBS_REF, LANG],
+      exampleRequest: "/api/v1/obs-word-links?reference=1:3&language=en",
+      exampleResponse: {
+        reference: "OBS 1:3",
+        language: "en",
+        words: [
+          {
+            reference: "1:3",
+            id: "b1",
+            tags: "keyterm",
+            origWords: "God",
+            occurrence: "1",
+            twArticle: {
+              path: "bible/kt/god",
+              category: "kt",
+              title: "God",
+            },
           },
         ],
       },

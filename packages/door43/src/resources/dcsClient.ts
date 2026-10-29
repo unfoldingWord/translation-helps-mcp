@@ -5,7 +5,13 @@
  * The Catalog API lives at /api/v1/catalog/* — NOT at a separate host.
  *
  * Key invariants:
- *   - Every catalog request includes topic=tc-ready (centralised in buildCatalogUrl).
+ *   - Catalog requests include topic=tc-ready (centralised in buildCatalogUrl),
+ *     except OBS helps. Those search stage=prod, one subject at a time, with
+ *     no topic. Open Bible Stories, Bible resources, and listLanguages keep
+ *     the topic. When several owners match, one extra search with
+ *     topic=tc-ready (same language and subject) marks the overlap. Rows that
+ *     already list topics are used as they are. A failed lookup leaves topics
+ *     unknown and is not cached; owner order applies for that request only.
  *   - Catalog-first discovery; Gitea tree fallback only when catalog returns nothing.
  *   - Catalog JSON responses are cached in KV (24 h TTL) with 1 h
  *     stale-while-revalidate freshness.
@@ -178,7 +184,42 @@ const SUBJECT_TO_SUFFIX: Record<string, string> = {
   "OBS Study Notes": "obs-sn",
   "TSV OBS Study Questions": "obs-sq",
   "OBS Study Questions": "obs-sq",
+  "TSV OBS Translation Words Links": "obs-twl",
+  "OBS Translation Words Links": "obs-twl",
 };
+
+/**
+ * OBS helps searched like tc-study: stage=prod, one subject, no topic.
+ * The story text (Open Bible Stories) is not in this set.
+ */
+const OBS_HELPS_SUBJECTS: ReadonlySet<string> = new Set([
+  "TSV OBS Translation Notes",
+  "OBS Translation Notes",
+  "TSV OBS Translation Questions",
+  "OBS Translation Questions",
+  "TSV OBS Translation Words Links",
+  "OBS Translation Words Links",
+  "TSV OBS Study Notes",
+  "OBS Study Notes",
+  "TSV OBS Study Questions",
+  "OBS Study Questions",
+]);
+
+function subjectParts(subject: string | undefined): string[] {
+  if (!subject) return [];
+  return subject
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+/** True when every label in a comma-joined subject is an OBS help. */
+function isObsHelpsSubject(subject: string | undefined): boolean {
+  const parts = subjectParts(subject);
+  return (
+    parts.length > 0 && parts.every((part) => OBS_HELPS_SUBJECTS.has(part))
+  );
+}
 
 /** All catalog subject labels that map to a given repo-suffix abbreviation. */
 export function subjectsForAbbreviation(abbreviation: string): string[] {
@@ -234,6 +275,11 @@ export interface CatalogEntry {
    * the packs freshness check does too. Absent on rows cached before it existed.
    */
   hasRelease?: boolean;
+  /**
+   * Door43 topics, when known. A catalog search that filters on `topic` does not
+   * return this list. Absent means unknown; an empty array means the repo has none.
+   */
+  topics?: string[];
 }
 
 export interface LanguageEntry {
@@ -263,6 +309,8 @@ interface CatalogApiEntry {
   branch_or_tag_name?: string;
   zipball_url?: string;
   release?: { tag_name?: string; published_at?: string };
+  /** Present only when the caller asked for them. Search rows usually omit this. */
+  topics?: unknown;
   ingredients?: Array<{
     identifier?: string;
     path?: string;
@@ -284,22 +332,35 @@ interface CatalogListResponse {
 }
 
 // ---------------------------------------------------------------------------
-// URL builder — always includes CATALOG_DEFAULTS (topic=tc-ready etc.)
+// URL builder — CATALOG_DEFAULTS (topic=tc-ready, stage=prod), unless OBS helps opt out.
 // ---------------------------------------------------------------------------
 
 /**
- * Build a catalog API URL, always injecting CATALOG_DEFAULTS.
+ * Build a catalog API URL, injecting CATALOG_DEFAULTS.
  * Extra params override defaults when provided (e.g. stage can be overridden).
+ * `requireTcReady: false` drops topic and leaves stage=prod.
  */
 function buildCatalogUrl(
   endpoint: string,
   extra: Record<string, string | undefined> = {},
+  options?: { requireTcReady?: boolean },
 ): string {
   const params = new URLSearchParams({ ...CATALOG_DEFAULTS });
+  if (options?.requireTcReady === false) params.delete("topic");
   for (const [k, v] of Object.entries(extra)) {
     if (v !== undefined && v !== "") params.set(k, v);
   }
   return `${GITEA_API}/${endpoint}?${params.toString()}`;
+}
+
+/**
+ * OBS helps omit topic unless the caller forces it on.
+ * Every other subject keeps topic=tc-ready.
+ */
+function omitTcReadyTopic(opts: CatalogSearchOptions): boolean {
+  if (opts.requireTcReady === true) return false;
+  if (opts.requireTcReady === false) return true;
+  return isObsHelpsSubject(opts.subject);
 }
 
 // ---------------------------------------------------------------------------
@@ -377,7 +438,12 @@ export interface CatalogSearchOptions {
   stage?: "prod" | "preprod" | "latest";
   /** Rows per page; Door43's default applies when omitted. */
   limit?: number;
-  /** Pass false only in exceptional cases (tests). Default true = tc-ready applied. */
+  /**
+   * When false, the search omits topic=tc-ready (stage=prod stays).
+   * Default: true, except OBS help subjects, which omit the topic when this
+   * is left unset. Pass true to force the topic even for an OBS help.
+   */
+  requireTcReady?: boolean;
   kv?: CatalogKVCache | null;
   /** Keeps background KV writes and refreshes alive after the response (a Worker's ExecutionContext). */
   ctx?: WaitUntilHost;
@@ -389,12 +455,42 @@ export interface CatalogSearchOptions {
 }
 
 /**
- * Search the DCS Catalog. Always applies topic=tc-ready.
- * Returns zero or more CatalogEntry objects mapped from the API response.
+ * Search the DCS Catalog.
+ * Bible and other subjects include topic=tc-ready. OBS helps (not the story
+ * text) are one subject per request, stage=prod, with no topic — Door43 ANDs
+ * a comma-joined subject list. Returns zero or more CatalogEntry objects.
  */
 export async function catalogSearch(
   opts: CatalogSearchOptions,
 ): Promise<CatalogEntry[]> {
+  if (
+    opts.subject &&
+    opts.requireTcReady !== true &&
+    isObsHelpsSubject(opts.subject)
+  ) {
+    const parts = subjectParts(opts.subject);
+    if (parts.length > 1) {
+      const merged: CatalogEntry[] = [];
+      const seen = new Set<string>();
+      for (const subject of parts) {
+        const rows = await catalogSearch({
+          ...opts,
+          subject,
+          requireTcReady: false,
+        });
+        for (const row of rows) {
+          const key = `${row.owner}/${row.repo}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          merged.push(row);
+        }
+      }
+      // Each subject may return a single different owner. Rank those together.
+      if (merged.length > 1) await markMergedOwners(merged, opts);
+      return merged;
+    }
+  }
+
   const extra: Record<string, string | undefined> = {
     showIngredients: "true",
   };
@@ -405,7 +501,9 @@ export async function catalogSearch(
   if (opts.stage) extra.stage = opts.stage;
   if (opts.limit !== undefined) extra.limit = String(opts.limit);
 
-  const url = buildCatalogUrl("catalog/search", extra);
+  const url = buildCatalogUrl("catalog/search", extra, {
+    requireTcReady: !omitTcReadyTopic(opts),
+  });
   const cacheKey = `catalog:search:${url}`;
   if (opts.fresh) return fetchAndStoreCatalogSearch(url, cacheKey, null);
 
@@ -451,6 +549,14 @@ async function fetchAndStoreCatalogSearch(
   }
 
   const entries = (resp.data ?? []).map(mapApiEntry);
+  if (!new URL(url).searchParams.has("topic") && entries.length > 1) {
+    const known = await markTcReadyByCatalogSearch(entries, url);
+    if (!known) {
+      // Do not cache a choice made while the tc-ready lookup was down.
+      rememberFailedTopicLookup(entries);
+      return entries;
+    }
+  }
   processCacheSet(cacheKey, entries);
   kvPutBackground(kv, cacheKey, wrapCatalogCache(entries), undefined, ctx);
   return entries;
@@ -492,6 +598,98 @@ function catalogStamp(raw: {
   return "nostamp";
 }
 
+function topicsFromApi(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  return raw.filter((topic): topic is string => typeof topic === "string");
+}
+
+/**
+ * Rows whose tc-ready lookup failed and were not cached. A later merge of the
+ * same objects must not probe them again. Cached rows are never added: a
+ * failure on those stays unknown so the next request can try again.
+ */
+const topicLookupFailed = new WeakSet<CatalogEntry>();
+
+function repoIdentity(owner: string, repo: string): string {
+  return `${owner.toLowerCase()}\0${repo.toLowerCase()}`;
+}
+
+/**
+ * Door43's catalog search can filter on topic but does not return the list
+ * (Oct 2026). When several owners match, one extra search for the same
+ * language and subject with topic=tc-ready marks the rows that appear in
+ * both. Rows that already carry `topics` stay. Returns false when that
+ * lookup fails: topics stay unset (unknown, not "no tc-ready").
+ */
+async function markTcReadyByCatalogSearch(
+  entries: CatalogEntry[],
+  unfilteredUrl: string,
+): Promise<boolean> {
+  const unmarked = entries.filter(
+    (entry) => entry.topics === undefined && !topicLookupFailed.has(entry),
+  );
+  if (unmarked.length === 0) return true;
+
+  const readyUrl = new URL(unfilteredUrl);
+  readyUrl.searchParams.set("topic", "tc-ready");
+  try {
+    const resp = await apiFetch<CatalogSearchResponse>(readyUrl.toString());
+    if (resp.ok === false || !Array.isArray(resp.data)) return false;
+    const ready = new Set(
+      resp.data.map((raw) => repoIdentity(raw.owner ?? "", raw.name ?? "")),
+    );
+    for (const entry of unmarked) {
+      const id = repoIdentity(entry.owner, entry.repo || entry.name);
+      entry.topics = ready.has(id) ? ["tc-ready"] : [];
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function rememberFailedTopicLookup(entries: CatalogEntry[]): void {
+  for (const entry of entries) {
+    if (entry.topics === undefined) topicLookupFailed.add(entry);
+  }
+}
+
+/**
+ * One tc-ready search per subject for rows that a single-owner search left
+ * unmarked. Does not record a failure on those rows: they may already sit in
+ * the process cache, and the next request should try the lookup again.
+ */
+async function markMergedOwners(
+  entries: CatalogEntry[],
+  opts: CatalogSearchOptions,
+): Promise<void> {
+  const groups = new Map<string, CatalogEntry[]>();
+  for (const entry of entries) {
+    if (entry.topics !== undefined || topicLookupFailed.has(entry)) continue;
+    const subject = entry.subject?.trim();
+    if (!subject) continue;
+    const group = groups.get(subject);
+    if (group) group.push(entry);
+    else groups.set(subject, [entry]);
+  }
+  for (const [subject, group] of groups) {
+    const url = buildCatalogUrl(
+      "catalog/search",
+      {
+        showIngredients: "true",
+        lang: opts.lang,
+        subject,
+        abbreviation: opts.abbreviation,
+        owner: opts.owner,
+        stage: opts.stage,
+        limit: opts.limit !== undefined ? String(opts.limit) : undefined,
+      },
+      { requireTcReady: false },
+    );
+    await markTcReadyByCatalogSearch(group, url);
+  }
+}
+
 /** Map a raw CatalogApiEntry to our CatalogEntry shape. */
 function mapApiEntry(raw: CatalogApiEntry): CatalogEntry {
   const ingredients = (raw.ingredients ?? []).map((ing) => ({
@@ -518,6 +716,7 @@ function mapApiEntry(raw: CatalogApiEntry): CatalogEntry {
     language: raw.language,
     stamp: catalogStamp(raw),
     hasRelease: Boolean(raw.release?.tag_name),
+    topics: topicsFromApi(raw.topics),
   };
 }
 
@@ -789,11 +988,17 @@ function VARIANT_INFLIGHT(
 }
 
 /**
- * Prefer entries matching `preferredSubject` (when set), then `preferredOwner`.
+ * Prefer a hit that also has the tc-ready topic, when any row carries topics.
+ * Then entries matching `preferredSubject` (when set), then `preferredOwner`.
  * Many gateway languages publish TW/TA under community orgs
  * (e.g. es-419_gl, translationCore-Create-BCS) rather than unfoldingWord.
  * Abbreviation "obs" can match both Open Bible Stories and OBS Theological
  * Formation — subject preference avoids wiring the wrong zip.
+ *
+ * Rows from a topic=tc-ready search usually omit `topics`. They keep the
+ * subject-then-owner order. OBS helps omit the topic filter, so several
+ * owners can match; a row marked tc-ready (from the row itself, or from one
+ * extra catalog search) wins before that order. Unknown topics do not.
  */
 export function pickPreferredCatalogEntry(
   results: CatalogEntry[],
@@ -802,11 +1007,14 @@ export function pickPreferredCatalogEntry(
 ): CatalogEntry | undefined {
   if (results.length === 0) return undefined;
 
+  const ready = results.filter((r) => r.topics?.includes("tc-ready"));
+  const candidates = ready.length > 0 ? ready : results;
+
   const subjectNorm = preferredSubject?.trim().toLowerCase();
   const subjectPool = subjectNorm
-    ? results.filter((r) => (r.subject ?? "").toLowerCase() === subjectNorm)
+    ? candidates.filter((r) => (r.subject ?? "").toLowerCase() === subjectNorm)
     : [];
-  const pool = subjectPool.length > 0 ? subjectPool : results;
+  const pool = subjectPool.length > 0 ? subjectPool : candidates;
 
   if (!preferredOwner) return pool[0];
   return (
@@ -842,6 +1050,9 @@ export async function getResourceZipUrl(
   const preferredSubject = subject.includes(",")
     ? subject.split(",")[0]?.trim()
     : subject;
+  // Abbreviation search sends topic=tc-ready and no subject. OBS helps must
+  // be one subject at a time, with no topic, so that search is skipped.
+  const obsHelps = isObsHelpsSubject(subject);
 
   const zipFromEntry = (
     entry: CatalogEntry,
@@ -854,7 +1065,7 @@ export async function getResourceZipUrl(
 
   // 1. Try Catalog by abbreviation (most precise — avoids ULT/UST confusion).
   //    Still pass subject so "obs" prefers Open Bible Stories over obs-tf.
-  if (abbreviation) {
+  if (abbreviation && !obsHelps) {
     const results = await catalogSearch({
       lang: languageCode,
       abbreviation,
@@ -882,6 +1093,7 @@ export async function getResourceZipUrl(
       lang: languageCode,
       subject: subjectQuery,
       kv,
+      ...(obsHelps ? { requireTcReady: false } : {}),
     });
     const entry = pickPreferredCatalogEntry(
       results,

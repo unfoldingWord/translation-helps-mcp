@@ -9,6 +9,7 @@ import {
   parseObsStoryMarkdown,
   parseObsNotesTsv,
   parseObsQuestionsTsv,
+  parseObsWordLinksTsv,
 } from "@translation-helps/door43";
 
 // ---------------------------------------------------------------------------
@@ -227,5 +228,53 @@ describe("parseObsQuestionsTsv", () => {
     const ref = parseObsReference("1:3")!;
     const questions = parseObsQuestionsTsv(SAMPLE_TQ_TSV, ref);
     expect(questions).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseObsWordLinksTsv
+// ---------------------------------------------------------------------------
+const SAMPLE_TWL_TSV = [
+  "Reference\tID\tTags\tOrigWords\tOccurrence\tTWLink",
+  "1:3\tb1\tkeyterm\tGod\t1\trc://*/tw/dict/bible/kt/god",
+  "1:1-8\trange1\tkeyterm\tcreate\t1\trc://*/tw/dict/bible/kt/create",
+  "2:1\tc1\tkeyterm\tNoah\t1\trc://*/tw/dict/bible/kt/noah",
+  "1:3\tbad",
+].join("\n");
+
+describe("parseObsWordLinksTsv", () => {
+  it("returns the row for a single frame", () => {
+    const rows = parseObsWordLinksTsv(
+      SAMPLE_TWL_TSV,
+      parseObsReference("2:1")!,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      reference: "2:1",
+      id: "c1",
+      tags: "keyterm",
+      origWords: "Noah",
+      occurrence: "1",
+      twLink: "rc://*/tw/dict/bible/kt/noah",
+    });
+  });
+
+  it("includes a row whose Reference column is a frame range that overlaps", () => {
+    const rows = parseObsWordLinksTsv(
+      SAMPLE_TWL_TSV,
+      parseObsReference("1:5")!,
+    );
+    expect(rows.map((row) => row.id)).toEqual(["range1"]);
+    expect(rows[0]?.reference).toBe("1:1-8");
+    expect(rows[0]?.twLink).toBe("rc://*/tw/dict/bible/kt/create");
+  });
+
+  it("drops a malformed row with too few columns", () => {
+    const rows = parseObsWordLinksTsv(
+      SAMPLE_TWL_TSV,
+      parseObsReference("1:3")!,
+    );
+    expect(rows.map((row) => row.id)).toEqual(["b1", "range1"]);
+    expect(rows.some((row) => row.id === "bad")).toBe(false);
   });
 });

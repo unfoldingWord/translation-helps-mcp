@@ -277,6 +277,22 @@ describe("Class O: OBS story and frame assembly", () => {
     ).toEqual({ reference: "7:1-3" });
   });
 
+  it("assembles get_obs_index story and frame into 1:3", () => {
+    expect(
+      normalizeToolArgs("get_obs_index", {
+        story: 1,
+        frame: 3,
+        language: "en",
+      }),
+    ).toEqual({ reference: "1:3", language: "en" });
+  });
+
+  it("assembles get_obs_index story_number alone into 1", () => {
+    expect(normalizeToolArgs("get_obs_index", { story_number: 1 })).toEqual({
+      reference: "1",
+    });
+  });
+
   it("leaves arguments unchanged when reference is already set", () => {
     const input = { reference: "1:1", story: 3 };
     expect(normalizeToolArgs("get_obs_story", input)).toEqual(input);
@@ -343,7 +359,16 @@ describe("Class O: OBS story and frame assembly", () => {
 
   it("does not assemble book/chapter/verse on an OBS tool", () => {
     const input = { book: "JHN", chapter: 3, verse: 16 };
-    expect(normalizeToolArgs("get_obs_story", input)).toEqual(input);
+    for (const tool of [
+      "get_obs_story",
+      "get_obs_notes",
+      "get_obs_questions",
+      "get_obs_study_notes",
+      "get_obs_study_questions",
+      "get_obs_index",
+    ]) {
+      expect(normalizeToolArgs(tool, input)).toEqual(input);
+    }
   });
 
   it("still assembles a Bible reference for get_passage", () => {

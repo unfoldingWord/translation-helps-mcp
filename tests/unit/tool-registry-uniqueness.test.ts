@@ -17,10 +17,11 @@ describe("MCP_TOOLS uniqueness", () => {
     expect(names.length).toBe(unique.size);
   });
 
-  it("includes all 5 OBS tools in MCP_TOOLS", () => {
+  it("includes all 6 OBS tools in MCP_TOOLS", () => {
     const names = MCP_TOOLS.map((t) => t.name as string);
     expect(names).toContain("get_obs_story");
     expect(names).toContain("get_obs_notes");
+    expect(names).toContain("get_obs_index");
     expect(names).toContain("get_obs_questions");
     expect(names).toContain("get_obs_study_notes");
     expect(names).toContain("get_obs_study_questions");
@@ -40,8 +41,8 @@ describe("MCP_TOOLS uniqueness", () => {
     expect(names).toContain("search_articles");
   });
 
-  it("has exactly 15 tools", () => {
-    expect(MCP_TOOLS.length).toBe(15);
+  it("has exactly 16 tools", () => {
+    expect(MCP_TOOLS.length).toBe(16);
   });
 });
 

@@ -310,6 +310,52 @@ export function parseObsNotesTsv(tsv: string, ref: ObsReference): ObsNoteRow[] {
   return results;
 }
 
+export interface ObsWordLinkRow {
+  reference: string;
+  id: string;
+  tags: string;
+  origWords: string;
+  occurrence: string;
+  /** Raw TWLink cell, for example rc://star/tw/dict/bible/kt/god. */
+  twLink: string;
+}
+
+/**
+ * Parse the unified OBS Translation Words Links TSV (twl_OBS.tsv).
+ *
+ * Columns: Reference  ID  Tags  OrigWords  Occurrence  TWLink
+ * Reference format matches the other OBS TSVs (`story:frame`, including
+ * frame ranges such as `1:1-8`). Filtering uses the same overlap rules.
+ */
+export function parseObsWordLinksTsv(
+  tsv: string,
+  ref: ObsReference,
+): ObsWordLinkRow[] {
+  const lines = tsv.split("\n");
+  const results: ObsWordLinkRow[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim()) continue;
+    const cols = line.split("\t");
+    if (cols.length < 6) continue;
+
+    const [rowRef, id, tags, origWords, occurrence, twLink] = cols;
+    if (!rowRef) continue;
+    if (!matchesObsRef(rowRef, ref)) continue;
+
+    results.push({
+      reference: rowRef,
+      id: id ?? "",
+      tags: tags ?? "",
+      origWords: (origWords ?? "").trim(),
+      occurrence: occurrence ?? "",
+      twLink: (twLink ?? "").trim(),
+    });
+  }
+  return results;
+}
+
 /**
  * Parse the unified OBS Translation Questions TSV (tq_OBS.tsv).
  *

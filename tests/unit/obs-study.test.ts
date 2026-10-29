@@ -370,7 +370,7 @@ describe("tools/list includes study tools", () => {
     expect(TOOL_REGISTRY["get_obs_study_questions"]).toBeDefined();
   });
 
-  it("has exactly 15 tools (13 prior + 2 study)", () => {
-    expect(MCP_TOOLS).toHaveLength(15);
+  it("has exactly 16 tools (15 prior + get_obs_index)", () => {
+    expect(MCP_TOOLS).toHaveLength(16);
   });
 });

@@ -101,6 +101,7 @@ export {
   parseObsStoryMarkdown,
   parseObsNotesTsv,
   parseObsQuestionsTsv,
+  parseObsWordLinksTsv,
   filterObsStoryFrames,
   obsStoryPath,
   storyFilename,
@@ -111,6 +112,7 @@ export type {
   ObsStory,
   ObsNoteRow,
   ObsQuestionRow,
+  ObsWordLinkRow,
 } from "./resources/obs.js";
 
 // rc:// links

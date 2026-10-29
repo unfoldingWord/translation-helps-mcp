@@ -355,6 +355,50 @@ export const TOOL_DOC_META: Record<string, ToolDocMeta> = {
       "Missing OBS-TN → RESOURCE_NOT_AVAILABLE soft-fail (isError:false).",
     ],
   },
+  get_obs_index: {
+    category: "obs",
+    summary:
+      "Compact index of OBS notes and key terms for a story:frame (no article bodies).",
+    example: { reference: "1:3", language: "en" },
+    exampleResponse: {
+      reference: "OBS 1:3",
+      language: "en",
+      notes: [
+        {
+          reference: "1:3",
+          id: "n3",
+          quote: "heaven",
+          occurrence: "1",
+          taArticle: { path: "translate/figs-idiom", title: "Idiom" },
+        },
+      ],
+      words: [
+        {
+          reference: "1:3",
+          id: "b1",
+          tags: "keyterm",
+          origWords: "God",
+          occurrence: "1",
+          twArticle: { path: "bible/kt/god", category: "kt", title: "God" },
+        },
+      ],
+      keyTerms: [
+        {
+          path: "bible/kt/god",
+          category: "kt",
+          title: "God",
+          count: 1,
+          frames: ["1:3"],
+        },
+      ],
+    },
+    responseNotes: [
+      "No note bodies and no article bodies. Drill with get_obs_notes and get_word_article(twArticle.path).",
+      "keyTerms[] is deduped by twArticle.path.",
+      "available:false only when the language has neither OBS notes nor OBS word links.",
+      "A failed fetch of one side sets notesError or wordLinksError. That is an error, not a missing resource.",
+    ],
+  },
   get_obs_study_notes: {
     category: "obs",
     summary:

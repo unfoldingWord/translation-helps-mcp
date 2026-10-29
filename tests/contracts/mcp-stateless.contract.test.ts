@@ -141,6 +141,26 @@ function apiFetcher(): Fetcher {
           frames: [{ index: 5, imageUrl: null, text: "frame text" }],
         });
       }
+      if (
+        url.includes("/api/v1/obs-notes") ||
+        url.includes("/api/v1/obs-word-links")
+      ) {
+        const parsed = new URL(url);
+        const reference = parsed.searchParams.get("reference");
+        const language = parsed.searchParams.get("language") ?? "en";
+        if (url.includes("/api/v1/obs-word-links")) {
+          return Response.json({
+            reference,
+            language,
+            words: [],
+          });
+        }
+        return Response.json({
+          reference,
+          language,
+          notes: [],
+        });
+      }
       if (url.includes("/api/v1/prefetch")) {
         return new Response(null, { status: 202 });
       }
@@ -344,7 +364,9 @@ describe("stateless MCP worker fetch", () => {
       doTools.map((tool) => tool.name),
     );
     expect(httpTools).toHaveLength(MCP_TOOLS.length);
-    expect(httpTools).toHaveLength(15);
+    expect(httpTools).toHaveLength(16);
+    expect(httpTools.map((tool) => tool.name)).toContain("get_obs_index");
+    expect(doTools.map((tool) => tool.name)).toContain("get_obs_index");
     for (const tool of httpTools) {
       const fromDo = doTools.find((candidate) => candidate.name === tool.name);
       expect(tool.inputSchema, tool.name).toEqual(fromDo?.inputSchema);
@@ -354,7 +376,7 @@ describe("stateless MCP worker fetch", () => {
   });
 
   it("answers initialize with the server version and no session header", async () => {
-    expect(VERSION).toBe("2.3.0");
+    expect(VERSION).toBe("2.4.0");
     const namespace = durableObjectNamespace();
     const analytics: AnalyticsSpy = { points: [] };
     const { ctx } = executionContext();
@@ -373,7 +395,7 @@ describe("stateless MCP worker fetch", () => {
     const body = await readJson(response);
     expect(body.result?.serverInfo).toEqual({
       name: SERVER_NAME,
-      version: "2.3.0",
+      version: "2.4.0",
     });
     expect(body.result?.instructions).toContain("You are Ezer");
     expect(namespace.names).toEqual([]);
@@ -420,6 +442,28 @@ describe("stateless MCP worker fetch", () => {
     const body = await readJson(response);
     expect(body.result?.isError).not.toBe(true);
     expect(body.result?.structuredContent?.reference).toBe("3:5");
+    expect(namespace.names).toEqual([]);
+  });
+
+  it("normalizes get_obs_index story and frame on the stateless path", async () => {
+    const namespace = durableObjectNamespace();
+    const analytics: AnalyticsSpy = { points: [] };
+    const { ctx } = executionContext();
+    const response = await postMcp(
+      "/v2/mcp",
+      rpc("tools/call", {
+        name: "get_obs_index",
+        arguments: { story: 1, frame: 3, language: "en" },
+      }),
+      baseEnv(namespace, analytics),
+      ctx,
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("mcp-session-id")).toBeNull();
+    const body = await readJson(response);
+    expect(body.result?.isError).not.toBe(true);
+    expect(body.result?.structuredContent?.reference).toBe("1:3");
+    expect(body.result?.structuredContent?.language).toBe("en");
     expect(namespace.names).toEqual([]);
   });
 
@@ -523,7 +567,8 @@ describe("stateless MCP worker fetch", () => {
     expect(listed.tools.map((tool) => tool.name)).toEqual(
       MCP_TOOLS.map((tool) => tool.name),
     );
-    expect(listed.tools).toHaveLength(15);
+    expect(listed.tools).toHaveLength(16);
+    expect(listed.tools.map((tool) => tool.name)).toContain("get_obs_index");
 
     const called = await client.callTool({
       name: "list_languages",
@@ -632,7 +677,7 @@ describe("stateless MCP worker fetch", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("mcp-session-id")).toBeNull();
     const body = await readJson(response);
-    expect(body.result?.serverInfo?.version).toBe("2.3.0");
+    expect(body.result?.serverInfo?.version).toBe("2.4.0");
     expect(namespace.names).toEqual([]);
   });
 
