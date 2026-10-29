@@ -33,7 +33,13 @@ import { handleQuote } from "./routes/quote.js";
 import { handleSearch } from "./routes/search.js";
 import { handleResources } from "./routes/resources.js";
 import { handlePrefetch } from "./routes/prefetch.js";
-import { handleObs, handleObsNotes, handleObsQuestions } from "./routes/obs.js";
+import {
+  handleObs,
+  handleObsNotes,
+  handleObsQuestions,
+  handleObsStudyNotes,
+  handleObsStudyQuestions,
+} from "./routes/obs.js";
 import { API_MANIFEST } from "./manifest.js";
 import { enforceRateLimit } from "../core/rateLimit.js";
 
@@ -82,6 +88,8 @@ const EDGE_CACHEABLE = new Set([
   "/obs",
   "/obs-notes",
   "/obs-questions",
+  "/obs-study-notes",
+  "/obs-study-questions",
 ]);
 
 function isEdgeCacheablePath(routePath: string): boolean {
@@ -236,6 +244,10 @@ export default {
         if (routePath === "/obs-notes") return await handleObsNotes(ctx);
         if (routePath === "/obs-questions")
           return await handleObsQuestions(ctx);
+        if (routePath === "/obs-study-notes")
+          return await handleObsStudyNotes(ctx);
+        if (routePath === "/obs-study-questions")
+          return await handleObsStudyQuestions(ctx);
 
         return apiError("NOT_FOUND", `Unknown route: ${routePath}`, 404);
       } catch (err: unknown) {

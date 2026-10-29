@@ -39,6 +39,14 @@ const ALL_SUBJECTS = [
     subject: "TSV OBS Translation Questions,OBS Translation Questions",
     type: "obsQuestions" as const,
   },
+  {
+    subject: "TSV OBS Study Notes,OBS Study Notes",
+    type: "obsStudyNotes" as const,
+  },
+  {
+    subject: "TSV OBS Study Questions,OBS Study Questions",
+    type: "obsStudyQuestions" as const,
+  },
 ];
 
 /** Resource types whose catalog ingredients are typically USFM books. */

@@ -47,26 +47,28 @@ curl -X POST https://translation-helps-mcp-v2.workers.dev/mcp \
 
 ### Progressive-Disclosure Workflow Tools (on `/mcp`)
 
-These 13 tools are the MCP surface (also available at `POST /api/tool`). They are
+These 15 tools are the MCP surface (also available at `POST /api/tool`). They are
 designed for a progressive, conversation-style retrieval flow and accept flexible
 argument forms (see [Argument Normalization](#argument-normalization) below).
 All tools call the REST Data API via `ApiClient`.
 
-| Tool                  | Description                                                   |
-| --------------------- | ------------------------------------------------------------- |
-| `list_languages`      | All available language codes (with optional substring filter) |
-| `list_resources`      | Availability summary of resource types for a language         |
-| `get_passage`         | Bible text in all available versions for a reference          |
-| `get_passage_context` | Notes, Translation Words, and questions for a passage         |
-| `get_passage_index`   | Chapter-level index of available notes for quick navigation   |
-| `get_note`            | Single exegetical note by reference + quote                   |
-| `get_academy_article` | Translation Academy article by path (e.g. `figs-metaphor`)    |
-| `get_word_article`    | Translation Words dictionary entry by path                    |
-| `get_questions`       | Comprehension/discussion questions for a passage              |
-| `search_articles`     | Lexical search over TA + TW catalogs                          |
-| `get_obs_story`       | Open Bible Stories story text by number                       |
-| `get_obs_notes`       | Translation notes for an OBS story                            |
-| `get_obs_questions`   | Discussion questions for an OBS story                         |
+| Tool                      | Description                                                   |
+| ------------------------- | ------------------------------------------------------------- |
+| `list_languages`          | All available language codes (with optional substring filter) |
+| `list_resources`          | Availability summary of resource types for a language         |
+| `get_passage`             | Bible text in all available versions for a reference          |
+| `get_passage_context`     | Notes, Translation Words, and questions for a passage         |
+| `get_passage_index`       | Chapter-level index of available notes for quick navigation   |
+| `get_note`                | Single exegetical note by reference + quote                   |
+| `get_academy_article`     | Translation Academy article by path (e.g. `figs-metaphor`)    |
+| `get_word_article`        | Translation Words dictionary entry by path                    |
+| `get_questions`           | Comprehension/discussion questions for a passage              |
+| `search_articles`         | Lexical search over TA + TW catalogs                          |
+| `get_obs_story`           | Open Bible Stories story text by number                       |
+| `get_obs_notes`           | Translation notes for an OBS story                            |
+| `get_obs_questions`       | Translation questions for an OBS story                        |
+| `get_obs_study_notes`     | Study notes for an OBS story (reader/discussion)              |
+| `get_obs_study_questions` | Study questions for an OBS story (frame ranges)               |
 
 ## Argument Normalization
 
@@ -155,6 +157,27 @@ npm run deploy:staging
 # Deploy to production
 npm run deploy:prod
 ```
+
+## Previews
+
+`wrangler.toml` (MCP Worker) and `wrangler.api.toml` (API Worker) each have a top-level `previews` block for [Cloudflare Worker Previews](https://developers.cloudflare.com/workers/previews/): one copy of the Worker per branch or pull request. This setup requires `wrangler` ^4.140.0 (the lockfile has 4.140.0) and `@cloudflare/workers-types` v5.
+
+A preview binds only what its `previews` block lists:
+
+- **MCP preview:** the production API Worker `translation-helps-api-v2` through the `API` service binding, the preview KV namespace, the staging R2 buckets, the `ASSETS` binding inherited from top-level `[assets]`, its own Durable Object storage, and the Analytics dataset. A pull request that changes the API is checked through the API's own preview, not through the MCP preview.
+- **API preview:** the preview KV namespace, the staging R2 buckets, and the Analytics dataset.
+- Previews share the preview KV namespace (`3073e58cc3eb4f16958854a6ec1531e6`) with the language-packs staging Workers, and write to the same Analytics dataset (`translation_helps_metrics`) as staging and production.
+- Each preview uses the ZIP bucket `translation-helps-mcp-zip-previews` (separate from production `translation-helps-mcp-zip-persistence`), and both previews use `language-packs-staging` for `LANGUAGE_PACKS`.
+- They run no crons and ask for no pack builds.
+
+Previews are not `[env.preview]`, which is the language-packs staging Workers.
+
+Previews come from Workers Builds once "Builds for Preview branches" is turned on for both Workers, with these preview commands:
+
+- `translation-helps-mcp-v2`: `npx wrangler preview --config wrangler.toml`
+- `translation-helps-api-v2`: `npx wrangler preview --config wrangler.api.toml`
+
+Turning that switch on is done in the Cloudflare dashboard, not in this repo.
 
 ## Compare v1 vs v2 (live MCP)
 

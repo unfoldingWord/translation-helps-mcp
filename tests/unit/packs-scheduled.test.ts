@@ -854,22 +854,28 @@ describe("wrangler.toml: the crons and their vars", () => {
     expect(all.length).toBeLessThanOrEqual(5);
   });
 
-  it("sweeps parts only and cleans up in dry-run on staging; production has no cleanup and no parts dispatch", () => {
+  it("sweeps parts only and cleans up in dry-run on staging; production has no cleanup and no parts dispatch; Worker Previews have every job off", () => {
     const s = sections();
     const preview = s["env.preview"]!.join("\n");
     const production = s["env.production"]!.join("\n");
+    const previews = s["previews"]!.join("\n");
     expect(preview).toContain('PACKS_SWEEP = "parts"');
     expect(preview).toContain('PACKS_CLEANUP = "dry-run"');
     expect(production).not.toContain("PACKS_CLEANUP");
     expect(production).not.toContain("PACKS_SWEEP");
     expect(production).not.toContain("PACKS_PARTS_DISPATCH");
+    expect(previews).toContain('PACKS_SWEEP = "parts"');
+    expect(previews).toContain('PACKS_CLEANUP = "off"');
+    expect(previews).toContain('PARTS_CHECKS_PER_RUN = "0"');
+    expect(previews).toContain('PACKS_PARTS_DISPATCH = "off"');
     const anywhere = Object.values(s)
       .flat()
       .filter((l) => /PACKS_CLEANUP|PACKS_SWEEP|PARTS_CHECKS_PER_RUN/.test(l));
-    expect(anywhere).toEqual(
-      s["env.preview"]!.filter((l) => l.startsWith("vars")),
-    );
-    expect(anywhere.join()).not.toContain("PARTS_CHECKS_PER_RUN");
+    expect(anywhere).toEqual([
+      ...s["previews"]!.filter((l) => l.startsWith("vars")),
+      ...s["env.preview"]!.filter((l) => l.startsWith("vars")),
+    ]);
+    expect(preview).not.toContain("PARTS_CHECKS_PER_RUN");
   });
 });
 

@@ -142,6 +142,8 @@ After updating SDKs, verify:
 | `get_obs_story` | `getObsStory()` | `get_obs_story()` | OBS story text |
 | `get_obs_notes` | `getObsNotes()` | `get_obs_notes()` | OBS translation notes |
 | `get_obs_questions` | `getObsQuestions()` | `get_obs_questions()` | OBS comprehension questions |
+| `get_obs_study_notes` | `getObsStudyNotes()` | `get_obs_study_notes()` | OBS study notes |
+| `get_obs_study_questions` | `getObsStudyQuestions()` | `get_obs_study_questions()` | OBS study questions (frame ranges) |
 
 ## 🚀 When Adding a New Tool
 

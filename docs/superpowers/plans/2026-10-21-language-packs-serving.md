@@ -45,7 +45,7 @@ Engine, cron triggers), Vitest 3 (MCP repo), bun test (tc-study).
   - pack: `application/zip`, `Cache-Control: public, max-age=31536000, immutable`, Range → 206;
   - CORS: `Access-Control-Allow-Origin: *` (the Pages cache in front does not vary by Origin), allows
     `GET, HEAD, OPTIONS` and headers `Range, If-None-Match`, and exposes
-    `ETag, Content-Range, Content-Length, Accept-Ranges`;
+    `ETag, Content-Range, Content-Length, Accept-Ranges, Retry-After`;
   - an eligible language with no entry → `202 {"state":"preparing"}`, `Cache-Control: no-store`;
   - every 4xx (404 not eligible, 400 bad path, 416) carries `Cache-Control: no-store`.
 - **Two layers in front of the Worker on `tc-helps.mcp.servant.bible`** (main's Pages app proxies `/v2/*` through

@@ -127,6 +127,18 @@ class GetObsQuestionsOptions(TypedDict, total=False):
     language: Optional[str]    # BCP-47 (default "en"); ISO 639-2/639-3 aliases accepted (e.g. "spa")
 
 
+class GetObsStudyNotesOptions(TypedDict, total=False):
+    """Options for get_obs_study_notes — fetch OBS Study Notes."""
+    reference: str             # Required — e.g. "1:1", "3:1-3", "3"
+    language: Optional[str]    # BCP-47 (default "en"); ISO aliases accepted
+
+
+class GetObsStudyQuestionsOptions(TypedDict, total=False):
+    """Options for get_obs_study_questions — fetch OBS Study Questions (frame ranges)."""
+    reference: str             # Required — e.g. "1:3" (matches covering ranges like 1:1-8)
+    language: Optional[str]    # BCP-47 (default "en"); ISO aliases accepted
+
+
 # Shared MCP shapes
 class MCPTool(TypedDict, total=False):
     name: str

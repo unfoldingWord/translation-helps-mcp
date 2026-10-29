@@ -561,5 +561,51 @@ export const API_MANIFEST: ApiManifest = {
         ],
       },
     },
+    {
+      method: "GET",
+      path: "/obs-study-notes",
+      summary: "OBS study notes",
+      description:
+        "Study notes for an OBS story:frame (reader/discussion background; not translator TN).",
+      adapts: ["OBS Study Notes"],
+      params: [OBS_REF, LANG],
+      exampleRequest: "/api/v1/obs-study-notes?reference=1:1&language=en",
+      exampleResponse: {
+        reference: "OBS 1:1",
+        language: "en",
+        notes: [
+          {
+            id: "prf0",
+            reference: "1:1",
+            quote: "God",
+            note: "The term God refers to the eternal being…",
+          },
+        ],
+      },
+    },
+    {
+      method: "GET",
+      path: "/obs-study-questions",
+      summary: "OBS study questions",
+      description:
+        "Study/discussion questions for an OBS story:frame. Rows may cover frame ranges (e.g. 1:1-8); a request for 1:3 returns questions whose range covers that frame.",
+      adapts: ["OBS Study Questions"],
+      params: [OBS_REF, LANG],
+      exampleRequest: "/api/v1/obs-study-questions?reference=1:3&language=en",
+      exampleResponse: {
+        reference: "OBS 1:3",
+        language: "en",
+        questions: [
+          {
+            id: "toi2",
+            reference: "1:1-8",
+            question:
+              "What did God do in order to create everything except the first people?",
+            response:
+              "God only spoke, and the universe and everything in it appeared.",
+          },
+        ],
+      },
+    },
   ],
 };

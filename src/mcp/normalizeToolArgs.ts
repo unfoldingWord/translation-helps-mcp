@@ -32,6 +32,8 @@ const REFERENCE_TOOLS = new Set([
   "get_note",
   "get_questions",
   "get_obs_story",
+  "get_obs_study_notes",
+  "get_obs_study_questions",
 ]);
 
 // ---------------------------------------------------------------------------

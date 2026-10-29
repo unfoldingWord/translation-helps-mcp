@@ -52,7 +52,8 @@ export const getObsStoryTool: ToolModule<typeof inputSchema> = {
     "OBS is a set of 50 illustrated Bible stories designed for communities without written Scripture. " +
     "Returns the story title and one or more frame objects, each containing the frame text and image URL. " +
     'Use reference "1:1" for story 1, frame 1; "3:1-3" for frames 1–3; "2" for all frames of story 2. ' +
-    "Use get_obs_notes and get_obs_questions for translation helps on the same reference. " +
+    "Use get_obs_notes and get_obs_questions for translation helps on the same reference, " +
+    "and get_obs_study_notes and get_obs_study_questions for study helps. " +
     "Missing OBS for the language: soft-fail with RESOURCE_NOT_AVAILABLE (isError:false).",
   inputSchema,
   outputSchema,
