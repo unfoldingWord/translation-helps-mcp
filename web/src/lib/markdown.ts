@@ -2,10 +2,17 @@ import DOMPurify from 'isomorphic-dompurify';
 import { renderMarkdown as renderDoor43Markdown } from './renderMarkdown';
 
 /**
- * Markdown from the server to safe HTML. `renderMarkdown.ts` parses it and turns Door43
- * links (rc://… and relative paths) into buttons when `follow` accepts them, or into plain
- * text; the result is sanitized here once more, so nothing the server sends can run script.
- * Only http(s) links stay links.
+ * Markdown from the server to HTML for `{@html}`. `renderMarkdown.ts` parses it and turns
+ * Door43 links (rc://… and relative paths) into buttons when `follow` accepts them, or into
+ * plain text, and DOMPurify sanitizes the result there and once more here.
+ *
+ * The sanitizing happens only in the browser. In SSR and prerendering DOMPurify is a stub
+ * that returns its input (`dompurify-ssr-stub.ts`, aliased in `vite.config.ts`), so the
+ * output is not safe there. So `Markdown.svelte` must be shown only in the browser: the home
+ * page waits for mount, and `ResultViewer` has nothing to show until a call made in the
+ * browser has answered. In the browser, HTML that the
+ * markdown carries is filtered to the tags and attributes below, so it can run no script,
+ * but an `<a href>` written as HTML in the markdown stays a link with its own address.
  */
 export function renderMarkdown(md: string, follow?: (href: string) => boolean): string {
 	if (!md) return '';

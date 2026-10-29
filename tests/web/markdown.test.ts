@@ -24,6 +24,14 @@ describe("renderMarkdown", () => {
     );
   });
 
+  it("renders the inline markdown inside an http link", () => {
+    const html = renderMarkdown("[**amor** y `fe`](https://door43.org)");
+    expect(html).toMatch(
+      /<a [^>]*href="https:\/\/door43\.org"[^>]*><strong>amor<\/strong> y <code>fe<\/code><\/a>/,
+    );
+    expect(html).not.toContain("**");
+  });
+
   it("turns Door43 rc:// links the page can open into labelled buttons", () => {
     const html = renderMarkdown(
       "See [[rc://*/ta/man/translate/figs-metaphor]]",

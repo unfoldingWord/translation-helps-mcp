@@ -87,11 +87,12 @@ const md = new Marked({
 	gfm: true,
 	breaks: false,
 	renderer: {
-		link({ href, title, text }: Tokens.Link): string {
+		link({ href, title, text, tokens }: Tokens.Link): string {
 			const url = href ?? '';
 			if (/^https?:\/\//i.test(url)) {
 				const titleAttr = title ? ` title="${escapeAttr(title)}"` : '';
-				return `<a href="${escapeAttr(url)}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+				const inner = this.parser.parseInline(tokens);
+				return `<a href="${escapeAttr(url)}"${titleAttr} target="_blank" rel="noopener noreferrer">${inner}</a>`;
 			}
 			// Everything else (rc://, ../kt/love.md, #, /…) has no address outside Door43.
 			const label =
