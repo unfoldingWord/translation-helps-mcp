@@ -212,3 +212,120 @@ describe("Combined normalization", () => {
     expect(result.language).toBe("de");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Class O: OBS story + frame → reference
+// ---------------------------------------------------------------------------
+describe("Class O: OBS story and frame assembly", () => {
+  it("assembles get_obs_story story_number and frame_number into 3:5", () => {
+    const result = normalizeToolArgs("get_obs_story", {
+      story_number: 3,
+      frame_number: 5,
+    });
+    expect(result).toEqual({ reference: "3:5" });
+  });
+
+  it("assembles string story, string frame, and numeric endFrame into a range", () => {
+    const result = normalizeToolArgs("get_obs_story", {
+      story: "3",
+      frame: "5",
+      endFrame: 8,
+    });
+    expect(result).toEqual({ reference: "3:5-8" });
+  });
+
+  it("assembles a story number alone", () => {
+    expect(normalizeToolArgs("get_obs_story", { story: 3 })).toEqual({
+      reference: "3",
+    });
+  });
+
+  it("keeps language while assembling camelCase story and frame", () => {
+    const result = normalizeToolArgs("get_obs_story", {
+      storyNumber: 3,
+      frameNumber: 5,
+      language: "es-419",
+    });
+    expect(result).toEqual({ reference: "3:5", language: "es-419" });
+  });
+
+  it("assembles get_obs_notes the same way", () => {
+    expect(
+      normalizeToolArgs("get_obs_notes", { story_number: 3, frame_number: 5 }),
+    ).toEqual({ reference: "3:5" });
+  });
+
+  it("assembles get_obs_questions the same way", () => {
+    expect(
+      normalizeToolArgs("get_obs_questions", {
+        story_number: 3,
+        frame_number: 5,
+      }),
+    ).toEqual({ reference: "3:5" });
+  });
+
+  it("assembles get_obs_study_notes and get_obs_study_questions", () => {
+    expect(
+      normalizeToolArgs("get_obs_study_notes", { story: 2, frame: 4 }),
+    ).toEqual({ reference: "2:4" });
+    expect(
+      normalizeToolArgs("get_obs_study_questions", {
+        obs: "7",
+        startFrame: 1,
+        lastFrame: 3,
+      }),
+    ).toEqual({ reference: "7:1-3" });
+  });
+
+  it("leaves arguments unchanged when reference is already set", () => {
+    const input = { reference: "1:1", story: 3 };
+    expect(normalizeToolArgs("get_obs_story", input)).toEqual(input);
+  });
+
+  it("does not assemble story 0 or story 51", () => {
+    expect(normalizeToolArgs("get_obs_story", { story: 0 })).toEqual({
+      story: 0,
+    });
+    expect(normalizeToolArgs("get_obs_story", { story: 51 })).toEqual({
+      story: 51,
+    });
+  });
+
+  it("does not assemble a non-integer story", () => {
+    const input = { story: 3.5, frame: 1 };
+    expect(normalizeToolArgs("get_obs_story", input)).toEqual(input);
+  });
+
+  it("does not assemble a frame without a story", () => {
+    expect(normalizeToolArgs("get_obs_story", { frame: 5 })).toEqual({
+      frame: 5,
+    });
+  });
+
+  it("does not assemble an end frame without a start frame", () => {
+    const input = { story: 3, endFrame: 8 };
+    expect(normalizeToolArgs("get_obs_story", input)).toEqual(input);
+  });
+
+  it("does not assemble book/chapter/verse on an OBS tool", () => {
+    const input = { book: "JHN", chapter: 3, verse: 16 };
+    expect(normalizeToolArgs("get_obs_story", input)).toEqual(input);
+  });
+
+  it("still assembles a Bible reference for get_passage", () => {
+    const result = normalizeToolArgs("get_passage", {
+      book: "JHN",
+      chapter: 3,
+      verse: 16,
+    });
+    expect(result.reference).toBe("JHN 3:16");
+    expect(result.book).toBeUndefined();
+    expect(result.chapter).toBeUndefined();
+    expect(result.verse).toBeUndefined();
+  });
+
+  it("does not treat get_obs_notes as a path tool", () => {
+    const input = { word_id: "kt/love", reference: "3:5" };
+    expect(normalizeToolArgs("get_obs_notes", input)).toEqual(input);
+  });
+});

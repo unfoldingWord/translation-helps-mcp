@@ -32,7 +32,8 @@ export const LANGUAGE_DESCRIPTION =
 export const OBS_REFERENCE_DESCRIPTION =
   'Examples: "1:1" (single frame), "3:1-3" (frames 1–3 inclusive), "3" (whole story), "1:0" (story title), "front" (front matter). ' +
   'Optional "OBS" prefix ("OBS 3:1-3"). Story numbers 1–50; frames are 1-indexed. ' +
-  'Inverted ranges (e.g. "3:5-2") are invalid.';
+  'Inverted ranges (e.g. "3:5-2") are invalid. ' +
+  "`story` and `frame` as separate numbers are also accepted.";
 
 export const FORMAT_DESCRIPTION =
   'Output format: "text" for plain prose, "json" for structured data (default), "md" for Markdown.';
