@@ -1,17 +1,17 @@
 #!/usr/bin/env npx tsx
 /**
- * scripts/test-chat.ts
+ * chat/scripts/test-chat.ts
  *
- * CLI test harness for the /api/chat SSE endpoint.
+ * CLI test harness for the chat's /api/chat SSE endpoint.
  *
  * Usage:
- *   npx tsx scripts/test-chat.ts              # run all scenarios
- *   npx tsx scripts/test-chat.ts --judge      # enable LLM-as-judge evaluation
- *   npx tsx scripts/test-chat.ts --scenario 1 # run scenario by 1-based index
- *   npx tsx scripts/test-chat.ts --url http://localhost:9000  # custom base URL
+ *   npx tsx chat/scripts/test-chat.ts              # run all scenarios
+ *   npx tsx chat/scripts/test-chat.ts --judge      # enable LLM-as-judge evaluation
+ *   npx tsx chat/scripts/test-chat.ts --scenario 1 # run scenario by 1-based index
+ *   npx tsx chat/scripts/test-chat.ts --url http://localhost:9000  # custom base URL
  *
- * Requires the Vite dev server (port 8174) to be running:
- *   cd web && npm run dev
+ * Requires a running chat app that serves /api/chat (see chat/README.md); by default
+ * it calls a Vite dev server on port 8174.
  */
 
 // A module of its own: with no import or export TypeScript treats this file as a

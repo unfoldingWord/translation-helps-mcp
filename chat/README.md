@@ -17,18 +17,21 @@ The files keep the paths they had in the website, under `chat/web/src/`:
 - `routes/chat/` (page), `routes/api/chat/` and `routes/api/agent/` (streaming endpoints), `routes/api/languages/`, `routes/(system)/debug/`
 - `lib/components/{chat,ui,debug}/`, `lib/stores/`
 - `lib/server/{agents,skillChat.ts,traceEvents.ts,i18n.ts}`
+- `lib/paths.ts` (`withBase`, `apiFetch`): the website no longer has it, so the chat keeps its own copy.
 
-There are no tests for these files at the moment. The tests of `src/core/harness/*` (quiz, coach, pacing, panel state and so on) stay in the root `tests/unit/`, because they test code in `src/`, which stays.
+Next to them, `chat/scripts/test-chat.ts` is a harness that sends scenarios to `/api/chat` of a running chat app (`npx tsx chat/scripts/test-chat.ts`, `--judge` for LLM-as-judge scoring). It is not an npm script of the repository any more.
+
+There are no unit tests for these files at the moment. The tests of `src/core/harness/*` (quiz, coach, pacing, panel state and so on) stay in the root `tests/unit/`, because they test code in `src/`, which stays.
 
 ## Dependencies outside `chat/`
 
 The moved code still imports these, so it only builds if they are available at the same paths as in the website:
 
 - `src/core/harness/*`, and the other `$core/*` modules it uses (`$core` is `src/core`): `src/core/checklist`, `src/core/drafts`, `src/core/rag/providers`.
-- `web/src/lib/renderMarkdown.ts` (and its `isomorphic-dompurify` setup in `web/vite.config.ts`).
-- `web/src/lib/paths.ts` (`withBase`) and `web/src/lib/server/runTool.ts` (in-process tool calls).
+- `web/src/lib/renderMarkdown.ts` (and its `isomorphic-dompurify` setup in `web/vite.config.ts`). Its `renderMarkdown(text, follow)` turns a Door43 link (`rc://…` or a relative path) into a `[data-rc]` button only when `follow(href)` returns true; without `follow` every such link is plain text. The chat calls it with the text alone (for example `TranslationNoteCard.svelte`), so to get the `[data-rc]` buttons back each of those calls must pass `follow`, such as `renderMarkdown(text, () => true)`.
+- `web/src/lib/server/runTool.ts` (in-process tool calls).
 - `@translation-helps/door43` (`packages/door43`).
 - The Worker's `/v2/api/tool` endpoint, for tool calls that do not run in process.
 - SvelteKit `$env/dynamic/private` for the OpenAI key.
 
-To run the chat again, copy `chat/web/src/` back over `web/src/`, or build it as its own SvelteKit app that provides the aliases above.
+To run the chat again, copy `chat/web/src/` back over `web/src/` (this brings `lib/paths.ts` back too) and add `follow` to the `renderMarkdown` calls as above, or build it as its own SvelteKit app that provides the aliases above.
