@@ -218,7 +218,7 @@ export async function handleObsNotes(ctx: RouteContext): Promise<Response> {
       language,
       available: false,
       code: "RESOURCE_NOT_AVAILABLE",
-      message: `No OBS Translation Notes resource available for language "${language}". Catalog subject "TSV OBS Translation Notes" (tc-ready) was not found.`,
+      message: `No OBS Translation Notes resource available for language "${language}". Catalog subject "TSV OBS Translation Notes" was not found.`,
     });
   }
 
@@ -294,7 +294,7 @@ export async function handleObsQuestions(ctx: RouteContext): Promise<Response> {
       language,
       available: false,
       code: "RESOURCE_NOT_AVAILABLE",
-      message: `No OBS Translation Questions resource available for language "${language}". Catalog subject "TSV OBS Translation Questions" (tc-ready) was not found.`,
+      message: `No OBS Translation Questions resource available for language "${language}". Catalog subject "TSV OBS Translation Questions" was not found.`,
     });
   }
 
@@ -355,7 +355,7 @@ export async function handleObsStudyNotes(
       language,
       available: false,
       code: "RESOURCE_NOT_AVAILABLE",
-      message: `No OBS Study Notes resource available for language "${language}". Catalog subject "TSV OBS Study Notes" (tc-ready) was not found.`,
+      message: `No OBS Study Notes resource available for language "${language}". Catalog subject "TSV OBS Study Notes" was not found.`,
     });
   }
 
@@ -415,7 +415,7 @@ export async function handleObsStudyQuestions(
       language,
       available: false,
       code: "RESOURCE_NOT_AVAILABLE",
-      message: `No OBS Study Questions resource available for language "${language}". Catalog subject "TSV OBS Study Questions" (tc-ready) was not found.`,
+      message: `No OBS Study Questions resource available for language "${language}". Catalog subject "TSV OBS Study Questions" was not found.`,
     });
   }
 
@@ -477,7 +477,7 @@ export async function handleObsWordLinks(ctx: RouteContext): Promise<Response> {
       language,
       available: false,
       code: "RESOURCE_NOT_AVAILABLE",
-      message: `No OBS Translation Words Links resource available for language "${language}". Catalog subject "TSV OBS Translation Words Links" (tc-ready) was not found.`,
+      message: `No OBS Translation Words Links resource available for language "${language}". Catalog subject "TSV OBS Translation Words Links" was not found.`,
     });
   }
 

@@ -278,7 +278,7 @@ describe("a third language under a non-unfoldingWord owner", () => {
     expectMcpNotAvailable(result);
   });
 
-  it("skips a row without the tc-ready topic", async () => {
+  it("finds a Study Notes row that has no tc-ready topic", async () => {
     addRepo({
       owner: "xyz_gl",
       name: "xyz_obs-sn",
@@ -291,7 +291,8 @@ describe("a third language under a non-unfoldingWord owner", () => {
     });
 
     const body = await rest(handleObsStudyNotes, "1:1", "xyz");
-    expect(body.code).toBe("RESOURCE_NOT_AVAILABLE");
+    expect(body.available).not.toBe(false);
+    expect(ids(body.notes)).toEqual(SN_1_1_IDS);
   });
 });
 

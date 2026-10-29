@@ -44,10 +44,11 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
-// buildCatalogUrl — verify topic=tc-ready is always injected
+// Default searches still inject topic=tc-ready. OBS helps opt out in
+// obs-helps-topic.test.ts.
 // ---------------------------------------------------------------------------
 
-describe("catalogSearch always includes topic=tc-ready", () => {
+describe("catalogSearch includes topic=tc-ready by default", () => {
   it("injects topic=tc-ready in the URL", async () => {
     mockFetch({
       "catalog/search": {
@@ -605,7 +606,10 @@ describe("catalogSearch stamps each row like bt-synergy's resourceContentStamp",
     mockFetch({
       "catalog/search": {
         ok: true,
-        data: [hit({}), hit({ name: "es-419_gst", branch_or_tag_name: undefined })],
+        data: [
+          hit({}),
+          hit({ name: "es-419_gst", branch_or_tag_name: undefined }),
+        ],
       },
     });
     const rows = await catalogSearch({ lang: "es-419" });
