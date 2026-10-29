@@ -145,7 +145,9 @@ export interface ResourceAvailability {
     | "questions"
     | "obs"
     | "obsNotes"
-    | "obsQuestions";
+    | "obsQuestions"
+    | "obsStudyNotes"
+    | "obsStudyQuestions";
   /** USFM book codes from catalog ingredients when book-scoped. */
   books?: string[];
   bookCount?: number;

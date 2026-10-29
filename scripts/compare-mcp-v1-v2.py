@@ -21,6 +21,8 @@ Tool name mapping (v1 ≠ v2 surface):
   get_obs_story           → fetch_obs / get_obs_story
   get_obs_notes           → fetch_obs_translation_notes / get_obs_notes
   get_obs_questions       → fetch_obs_translation_questions / get_obs_questions
+  get_obs_study_notes     → fetch_obs_study_notes / get_obs_study_notes
+  get_obs_study_questions → fetch_obs_study_questions / get_obs_study_questions
 
 Usage:
   py -3.11 scripts/compare-mcp-v1-v2.py
@@ -485,6 +487,19 @@ def obs_fingerprint(data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def obs_row_ids(data: dict[str, Any]) -> list[str]:
+    """Row IDs in file order (v1 `items`, v2 `notes` / `questions`)."""
+    for key in ("notes", "questions", "items"):
+        val = data.get(key)
+        if isinstance(val, list):
+            return [
+                str(r.get("id") or r.get("ID") or "")
+                for r in val
+                if isinstance(r, dict)
+            ]
+    return []
+
+
 def fingerprint(logical: str, data: Any, err: str | None) -> dict[str, Any]:
     fp: dict[str, Any] = {"ok": err is None, "error_code": None}
     if err:
@@ -572,6 +587,12 @@ def fingerprint(logical: str, data: Any, err: str | None) -> dict[str, Any]:
                 fp["question_count"] = len(items)
         elif logical == "get_obs_notes":
             fp["note_count"] = note_count(data)
+        elif logical == "get_obs_study_notes":
+            fp["note_count"] = note_count(data)
+            fp["ids"] = obs_row_ids(data)
+        elif logical == "get_obs_study_questions":
+            fp["question_count"] = question_count(data)
+            fp["ids"] = obs_row_ids(data)
         else:
             fp.update(obs_fingerprint(data))
     else:
@@ -923,6 +944,27 @@ def build_cases() -> list[Case]:
                     {"language": lang, "reference": "1"},
                 ),
                 v2=SideCall("get_obs_questions", {"language": lang, "reference": "1"}),
+            )
+        )
+
+    # OBS study helps — "id" also publishes SN/SQ; SQ 1:3 exercises frame ranges.
+    for lang in (*langs, *(["id"] if "id" not in langs else [])):
+        cases.append(
+            Case(
+                id=f"get_obs_study_notes:{lang}:1:1",
+                logical="get_obs_study_notes",
+                params={"language": lang, "reference": "1:1"},
+                v1=SideCall("fetch_obs_study_notes", {"language": lang, "reference": "1:1"}),
+                v2=SideCall("get_obs_study_notes", {"language": lang, "reference": "1:1"}),
+            )
+        )
+        cases.append(
+            Case(
+                id=f"get_obs_study_questions:{lang}:1:3",
+                logical="get_obs_study_questions",
+                params={"language": lang, "reference": "1:3"},
+                v1=SideCall("fetch_obs_study_questions", {"language": lang, "reference": "1:3"}),
+                v2=SideCall("get_obs_study_questions", {"language": lang, "reference": "1:3"}),
             )
         )
 
