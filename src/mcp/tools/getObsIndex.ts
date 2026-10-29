@@ -14,7 +14,7 @@ import {
   withNotAvailableOutput,
   type ToolModule,
 } from "./shared.js";
-import { ApiClient } from "../apiClient.js";
+import { ApiClient, ApiClientError } from "../apiClient.js";
 import type { Env } from "../agent.js";
 import { rcToTaPath, resolveTitleFromPath } from "@translation-helps/door43";
 
@@ -124,7 +124,7 @@ export const getObsIndexTool: ToolModule<typeof inputSchema> = {
     const linksSide = classifySide(linksRes);
 
     if (notesSide.kind === "failed" && linksSide.kind === "failed") {
-      throw notesSide.reason;
+      throw bothSidesFailed(notesSide.reason, linksSide.reason);
     }
 
     if (notesSide.kind === "missing" && linksSide.kind === "missing") {
@@ -253,6 +253,27 @@ function classifySide(res: FetchedSide): ResourceSide {
 function failureText(reason: unknown): string {
   if (reason instanceof Error && reason.message) return reason.message;
   return String(reason ?? "unknown error");
+}
+
+/** Both fetches failed. Keep each reason; a lone notes error used to hide the other. */
+function bothSidesFailed(notesReason: unknown, linksReason: unknown): Error {
+  const message =
+    `OBS Translation Notes failed (${failureText(notesReason)}). ` +
+    `OBS Translation Words Links failed (${failureText(linksReason)}).`;
+  if (
+    notesReason instanceof ApiClientError &&
+    linksReason instanceof ApiClientError
+  ) {
+    const status =
+      notesReason.status >= 500 ? notesReason.status : linksReason.status;
+    return new ApiClientError(
+      notesReason.code,
+      message,
+      status,
+      notesReason.retryable || linksReason.retryable,
+    );
+  }
+  return new Error(message);
 }
 
 function compactObsNote(note: Record<string, unknown>): {

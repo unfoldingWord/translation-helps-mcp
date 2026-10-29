@@ -369,7 +369,7 @@ export const TOOL_DOC_META: Record<string, ToolDocMeta> = {
           id: "n3",
           quote: "heaven",
           occurrence: "1",
-          taArticle: { path: "translate/figs-idiom", title: "Figs Idiom" },
+          taArticle: { path: "translate/figs-idiom", title: "Idiom" },
         },
       ],
       words: [

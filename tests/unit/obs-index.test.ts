@@ -36,6 +36,7 @@ const catalog = vi.hoisted(() => ({
     ["bible/kt/noah", "Noah"],
   ]),
   failNotes: false,
+  failWordLinks: false,
 }));
 
 vi.mock("@translation-helps/door43", async (importOriginal) => {
@@ -110,6 +111,7 @@ beforeEach(() => {
   catalog.zips.clear();
   catalog.files.clear();
   catalog.failNotes = false;
+  catalog.failWordLinks = false;
   catalog.titles.clear();
   catalog.titles.set("bible/kt/god", "God");
   catalog.titles.set("bible/kt/create", "Create (verb)");
@@ -212,6 +214,18 @@ async function callIndex(
             error: {
               code: "UPSTREAM",
               message: "zip download failed",
+              retryable: true,
+            },
+          }),
+          { status: 503, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (url.pathname.endsWith("/obs-word-links") && catalog.failWordLinks) {
+        return new Response(
+          JSON.stringify({
+            error: {
+              code: "UPSTREAM",
+              message: "word links zip failed",
               retryable: true,
             },
           }),
@@ -330,6 +344,44 @@ describe("get_obs_index", () => {
     const summary = result.content?.[0]?.text ?? "";
     expect(summary).toMatch(/fail/i);
     expect(summary).not.toMatch(/not available/i);
+  });
+
+  it("says word links failed when the word-links fetch errors and notes succeed", async () => {
+    catalog.failWordLinks = true;
+    const result = await callIndex("1:3", "en");
+    expect(result.isError).not.toBe(true);
+    expect(result.structuredContent?.available).not.toBe(false);
+    const notes = result.structuredContent?.notes as Array<
+      Record<string, unknown>
+    >;
+    expect(notes.length).toBeGreaterThan(0);
+    expect(notes[0]).not.toHaveProperty("note");
+    expect(result.structuredContent?.words).toEqual([]);
+    expect(result.structuredContent?.wordLinksError).toBe(
+      "word links zip failed",
+    );
+    expect(result.structuredContent?.notesError).toBeUndefined();
+    const message = String(result.structuredContent?.message ?? "");
+    expect(message).toMatch(/fail/i);
+    expect(message).not.toMatch(/not available/i);
+    const summary = result.content?.[0]?.text ?? "";
+    expect(summary).toMatch(/fail/i);
+    expect(summary).not.toMatch(/not available/i);
+  });
+
+  it("keeps both reasons when notes and word links both fail", async () => {
+    catalog.failNotes = true;
+    catalog.failWordLinks = true;
+    let thrown: unknown;
+    try {
+      await callIndex("1:3", "en");
+    } catch (err) {
+      thrown = err;
+    }
+    expect(thrown).toBeInstanceOf(Error);
+    const message = thrown instanceof Error ? thrown.message : String(thrown);
+    expect(message).toContain("zip download failed");
+    expect(message).toContain("word links zip failed");
   });
 
   it("uses the catalog TA title when it differs from the slug", async () => {

@@ -203,6 +203,27 @@ describe("representative success fixtures", () => {
     });
   });
 
+  it("get_obs_index with a partial word-links error", () => {
+    expectOk("get_obs_index", {
+      reference: "1:3",
+      language: "en",
+      notes: [
+        {
+          reference: "1:3",
+          id: "n3",
+          quote: "heaven",
+          occurrence: "1",
+          taArticle: { path: "translate/figs-idiom", title: "Idiom" },
+        },
+      ],
+      words: [],
+      keyTerms: [],
+      wordLinksError: "word links zip failed",
+      message:
+        'OBS Translation Words Links failed to load for language "en" (word links zip failed).',
+    });
+  });
+
   it("get_obs_story", () => {
     expectOk("get_obs_story", {
       reference: "1:1",
