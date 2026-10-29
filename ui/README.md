@@ -69,6 +69,19 @@ npm run build
 
 ## 🎯 How to Use
 
+### v1 Routes Now Redirect to v2
+
+- The v1 site pages now return a temporary `302` redirect to v2 pages.
+- `"/"` and legacy top-level content pages redirect to `"/v2/"`.
+- Legacy feature pages redirect to their closest v2 equivalents:
+  - `"/getting-started"` → `"/v2/connect"`
+  - `"/mcp-tools"` → `"/v2/tools"`
+  - `"/api-explorer"` and `"/api-explorer-v2"` → `"/v2/try"`
+  - `"/chat"`, `"/chat/sdk-integration"`, and `"/docs/*"` → `"/v2/docs"`
+- API and MCP endpoints are unchanged and do not redirect:
+  - `"/api/*"` stays on v1
+  - `"/mcp"` stays on v1
+
 ### 1. **Overview Page** (`/`)
 
 - Learn about the Translation Helps MCP Server
