@@ -307,6 +307,40 @@ describe("Class O: OBS story and frame assembly", () => {
     expect(normalizeToolArgs("get_obs_story", input)).toEqual(input);
   });
 
+  it("assembles frame 0, the story title", () => {
+    expect(normalizeToolArgs("get_obs_story", { story: 3, frame: 0 })).toEqual({
+      reference: "3:0",
+    });
+  });
+
+  it("appends a non-integer end frame the way Class C appends a bad endVerse", () => {
+    expect(
+      normalizeToolArgs("get_passage", {
+        book: "JHN",
+        chapter: 3,
+        verse: 16,
+        endVerse: "8x",
+      }).reference,
+    ).toBe("JHN 3:16-8x");
+    expect(
+      normalizeToolArgs("get_obs_story", {
+        story: 3,
+        frame: 5,
+        endFrame: "8x",
+      }),
+    ).toEqual({ reference: "3:5-8x" });
+  });
+
+  it("assembles when reference is only whitespace", () => {
+    expect(
+      normalizeToolArgs("get_obs_story", {
+        reference: "   ",
+        story_number: 3,
+        frame_number: 5,
+      }),
+    ).toEqual({ reference: "3:5" });
+  });
+
   it("does not assemble book/chapter/verse on an OBS tool", () => {
     const input = { book: "JHN", chapter: 3, verse: 16 };
     expect(normalizeToolArgs("get_obs_story", input)).toEqual(input);

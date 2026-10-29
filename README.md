@@ -76,6 +76,7 @@ The MCP server accepts flexible argument shapes from LLMs that may not always
 produce the exact parameter names defined in tool schemas:
 
 - **Decomposed references**: `{book, chapter, verse}` → `reference` (`"JHN 3:16"`)
+- **OBS story and frame**: `{story, frame}` → `reference` (`"3:5"`) on the OBS tools
 - **Path synonyms**: `word_id`, `article_id`, `term_id` → `path`
 - **Language aliases**: `language_code`, `lang` → `language`
 - **Null coercion**: `null` or array-typed `arguments` objects are treated as `{}`

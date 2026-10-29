@@ -155,8 +155,11 @@ function integerToken(value: unknown): number | undefined {
  * Build "{story}", "{story}:{frame}", or "{story}:{frame}-{endFrame}" and
  * remove the keys that were used. No-op when the story is not an integer
  * 1–50, when a frame is present without a story, when an end frame is
- * present without a start frame, or when a present frame or end frame is
- * not an integer. Those cases leave the args for Zod.
+ * present without a start frame, or when a present frame is not an integer.
+ * A non-integer end frame is appended as text, the same way Class C appends
+ * a bad endVerse ("3:5-8x"), so the OBS parser rejects the range instead of
+ * the call failing for a missing reference. Those no-op cases leave the args
+ * for Zod.
  */
 function assembleObsReference(args: Record<string, unknown>): void {
   let storyKey: string | undefined;
@@ -195,7 +198,6 @@ function assembleObsReference(args: Record<string, unknown>): void {
     return;
   }
   if (frameKey !== undefined && frameInvalid) return;
-  if (endKey !== undefined && endInvalid) return;
   // An end frame with no start frame is not one of the three reference
   // shapes. Leave the args so Zod reports the missing reference.
   if (endKey !== undefined && frameKey === undefined) return;
@@ -205,9 +207,13 @@ function assembleObsReference(args: Record<string, unknown>): void {
   if (frameUsed) {
     ref += `:${String(frameVal)}`;
   }
-  const endUsed = frameUsed && endKey !== undefined && endVal !== undefined;
-  if (endUsed) {
-    ref += `-${String(endVal)}`;
+  // Class C stringifies endVerse and appends it whenever a verse is present,
+  // including a non-integer such as "8x". Do the same for end frame, and
+  // still drop the key so strict schemas do not see an extra field.
+  const endUsed = frameUsed && endKey !== undefined;
+  if (endUsed && endKey !== undefined) {
+    const endText = endInvalid ? String(args[endKey]) : String(endVal);
+    if (endText !== "") ref += `-${endText}`;
   }
 
   args.reference = ref;
@@ -312,7 +318,7 @@ export function normalizeToolArgs(
   const referenceMissing =
     args.reference === undefined ||
     args.reference === null ||
-    args.reference === "";
+    (typeof args.reference === "string" && args.reference.trim() === "");
 
   // ── Class C: decomposed reference assembly (Bible tools only) ─────────────
   if (
