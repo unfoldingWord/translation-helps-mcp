@@ -30,6 +30,8 @@ const out = new URL("../web/src/lib/home/snapshot.json", import.meta.url);
 function fail(message: string): never {
   console.error(`capture-home-snapshot: ${message}`);
   process.exit(1);
+  // workers-types v5 types global `process` as `any`, so tsc no longer sees exit() as `never`.
+  throw new Error(message);
 }
 
 async function main() {
