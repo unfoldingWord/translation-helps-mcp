@@ -176,7 +176,10 @@ deploys production. There is no hand deploy.
        be identical the second time (served from Pages' cache). Repeat the checks of "7. First real checks"
        (Content-Length, 416, stamps) with `BASE=https://tc-helps.mcp.servant.bible`. Watch the next run of each
        production cron ("Parts: crons").
-8. [ ] After at least a week of `dry-run` logs on production, read with
+8. [ ] Through `https://tc-helps.mcp.servant.bible`, a packs response that carries `Retry-After` (for example a 503
+       or 202 for a language with no entry), sent with an `Origin` header, must list `Retry-After` in
+       `Access-Control-Expose-Headers` (the Pages proxy in front could rewrite headers; unit tests do not see it).
+9. [ ] After at least a week of `dry-run` logs on production, read with
        `npx wrangler tail --config wrangler.toml --env production` (counts and MB that match what lists dropped),
        switch `PACKS_CLEANUP` to `delete` with Abel's yes, merged into `v2` like the rest.
 
@@ -495,7 +498,7 @@ The list answers as the f1.1 entry does, as in the table above: `200` with its `
   list (`restoreCatalogBookkeeping`) has `catalogedAt` (the import time) and `availability.offline: false`, since the
   list leaves `availability` out.
 - Every 4xx, 429 and the 202 carry `Cache-Control: no-store`; CORS allows any origin and exposes `ETag`,
-  `Content-Range`, `Content-Length` and `Accept-Ranges`.
+  `Content-Range`, `Content-Length`, `Accept-Ranges` and `Retry-After`.
 
 ## Rotation
 

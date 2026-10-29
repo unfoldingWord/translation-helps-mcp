@@ -3,6 +3,8 @@
  *   GET /api/v1/obs         — story text (frames)
  *   GET /api/v1/obs-notes   — translation notes for a story:frame
  *   GET /api/v1/obs-questions — translation questions for a story:frame
+ *   GET /api/v1/obs-study-notes — study notes for a story:frame
+ *   GET /api/v1/obs-study-questions — study questions (frame ranges) for a story:frame
  *
  * Query params (all routes): reference=<story:frame>&language=<lang>
  *   reference: OBS reference — "1:1" (single frame), "3:1-3" (frames 1–3 inclusive),
@@ -14,7 +16,8 @@
 
 import type { RouteContext } from "../worker.js";
 import { json, apiError } from "../worker.js";
-import { getResourceZipUrl, makeFetcher } from "./helpers.js";
+import { getResourceZipUrl, makeFetcher, tryPaths } from "./helpers.js";
+import type { CatalogEntry } from "./helpers.js";
 import {
   parseObsReference,
   formatObsReferenceLabel,
@@ -33,6 +36,8 @@ const OBS_STORY_SUBJECT = "Open Bible Stories";
 const OBS_TN_SUBJECT = "TSV OBS Translation Notes,OBS Translation Notes";
 const OBS_TQ_SUBJECT =
   "TSV OBS Translation Questions,OBS Translation Questions";
+const OBS_SN_SUBJECT = "TSV OBS Study Notes,OBS Study Notes";
+const OBS_SQ_SUBJECT = "TSV OBS Study Questions,OBS Study Questions";
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -91,6 +96,18 @@ async function resolveObsZip(
   );
   if (!zip) return null;
   return { language: resolvedLang, zipUrl: zip.zipUrl, entry: zip.entry };
+}
+
+/**
+ * TSV paths for a single-file OBS helps resource: the catalog's first `.tsv`
+ * ingredient, then the conventional file names.
+ */
+function obsTsvPaths(entry: CatalogEntry, fallbacks: string[]): string[] {
+  const fromCatalog = entry.ingredients
+    .map((ing) => (ing.path ?? "").replace(/^\.\//, ""))
+    .find((path) => path.toLowerCase().endsWith(".tsv"));
+  if (!fromCatalog) return fallbacks;
+  return [fromCatalog, ...fallbacks.filter((path) => path !== fromCatalog)];
 }
 
 // ---------------------------------------------------------------------------
@@ -274,6 +291,126 @@ export async function handleObsQuestions(ctx: RouteContext): Promise<Response> {
       available: false,
       code: "RESOURCE_NOT_AVAILABLE",
       message: `OBS Translation Questions TSV not found in resource for language "${resolved.language}".`,
+    });
+  }
+
+  const questions = parseObsQuestionsTsv(tsv, obsRef);
+  return json({
+    reference: displayReference,
+    language: resolved.language,
+    questions,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/obs-study-notes — OBS study notes
+// ---------------------------------------------------------------------------
+
+export async function handleObsStudyNotes(
+  ctx: RouteContext,
+): Promise<Response> {
+  const { url, env, execCtx } = ctx;
+
+  let params: ReturnType<typeof requireObsParams>;
+  try {
+    params = requireObsParams(url);
+  } catch (e) {
+    return apiError("BAD_REQUEST", (e as Error).message, 400);
+  }
+
+  const { language, obsRef, displayReference } = params;
+
+  const resolved = await resolveObsZip(
+    language,
+    OBS_SN_SUBJECT,
+    env.TRANSLATION_HELPS_CACHE,
+  );
+  if (!resolved) {
+    return json({
+      reference: displayReference,
+      language,
+      available: false,
+      code: "RESOURCE_NOT_AVAILABLE",
+      message: `No OBS Study Notes resource available for language "${language}". Catalog subject "TSV OBS Study Notes" (tc-ready) was not found.`,
+    });
+  }
+
+  const fetcher = makeFetcher(env, execCtx);
+  const zip = await fetcher.getOrDownloadZip(resolved.zipUrl);
+
+  const tsv = await tryPaths(
+    fetcher,
+    zip,
+    obsTsvPaths(resolved.entry, ["sn_OBS.tsv", "sn_obs.tsv"]),
+  );
+
+  if (!tsv) {
+    return json({
+      reference: displayReference,
+      language: resolved.language,
+      available: false,
+      code: "RESOURCE_NOT_AVAILABLE",
+      message: `OBS Study Notes TSV not found in resource for language "${resolved.language}".`,
+    });
+  }
+
+  const notes = parseObsNotesTsv(tsv, obsRef);
+  return json({
+    reference: displayReference,
+    language: resolved.language,
+    notes,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/obs-study-questions — OBS study questions
+// ---------------------------------------------------------------------------
+
+export async function handleObsStudyQuestions(
+  ctx: RouteContext,
+): Promise<Response> {
+  const { url, env, execCtx } = ctx;
+
+  let params: ReturnType<typeof requireObsParams>;
+  try {
+    params = requireObsParams(url);
+  } catch (e) {
+    return apiError("BAD_REQUEST", (e as Error).message, 400);
+  }
+
+  const { language, obsRef, displayReference } = params;
+
+  const resolved = await resolveObsZip(
+    language,
+    OBS_SQ_SUBJECT,
+    env.TRANSLATION_HELPS_CACHE,
+  );
+  if (!resolved) {
+    return json({
+      reference: displayReference,
+      language,
+      available: false,
+      code: "RESOURCE_NOT_AVAILABLE",
+      message: `No OBS Study Questions resource available for language "${language}". Catalog subject "TSV OBS Study Questions" (tc-ready) was not found.`,
+    });
+  }
+
+  const fetcher = makeFetcher(env, execCtx);
+  const zip = await fetcher.getOrDownloadZip(resolved.zipUrl);
+
+  const tsv = await tryPaths(
+    fetcher,
+    zip,
+    obsTsvPaths(resolved.entry, ["sq_OBS.tsv", "sq_obs.tsv"]),
+  );
+
+  if (!tsv) {
+    return json({
+      reference: displayReference,
+      language: resolved.language,
+      available: false,
+      code: "RESOURCE_NOT_AVAILABLE",
+      message: `OBS Study Questions TSV not found in resource for language "${resolved.language}".`,
     });
   }
 

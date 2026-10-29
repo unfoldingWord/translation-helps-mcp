@@ -98,7 +98,7 @@ const CORS: Record<string, string> = {
   "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
   "Access-Control-Allow-Headers": "Range, If-None-Match",
   "Access-Control-Expose-Headers":
-    "ETag, Content-Range, Content-Length, Accept-Ranges",
+    "ETag, Content-Range, Content-Length, Accept-Ranges, Retry-After",
 };
 const NO_STORE = "no-store";
 const IMMUTABLE = "public, max-age=31536000, immutable";

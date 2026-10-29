@@ -174,6 +174,10 @@ const SUBJECT_TO_SUFFIX: Record<string, string> = {
   "OBS Translation Notes": "obs-tn",
   "TSV OBS Translation Questions": "obs-tq",
   "OBS Translation Questions": "obs-tq",
+  "TSV OBS Study Notes": "obs-sn",
+  "OBS Study Notes": "obs-sn",
+  "TSV OBS Study Questions": "obs-sq",
+  "OBS Study Questions": "obs-sq",
 };
 
 /** All catalog subject labels that map to a given repo-suffix abbreviation. */
@@ -416,7 +420,10 @@ export async function catalogSearch(
     if (parsed) {
       processCacheSet(cacheKey, parsed.data);
       if (parsed.stale) {
-        background(refreshCatalogSearch(url, cacheKey, opts.kv, opts.ctx), opts.ctx);
+        background(
+          refreshCatalogSearch(url, cacheKey, opts.kv, opts.ctx),
+          opts.ctx,
+        );
       }
       return parsed.data;
     }

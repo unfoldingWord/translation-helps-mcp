@@ -10,6 +10,8 @@
  *   OBS text     — repo {lang}_obs          content/NN.md (01.md … 50.md)
  *   OBS tN       — repo {lang}_obs-tn       tn_OBS.tsv (single file)
  *   OBS tQ       — repo {lang}_obs-tq       tq_OBS.tsv (single file)
+ *   OBS sN       — repo {lang}_obs-sn       sn_OBS.tsv (same columns as tN)
+ *   OBS sQ       — repo {lang}_obs-sq       sq_OBS.tsv (same columns as tQ; frame ranges)
  *
  * Reference: upstream issue unfoldingWord/translation-helps-mcp #32
  */

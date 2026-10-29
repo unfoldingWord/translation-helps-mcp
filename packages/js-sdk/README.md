@@ -152,13 +152,27 @@ Language accepts BCP-47 (`"es"`) or ISO 639-2/639-3 aliases (`"spa"`).
 ```typescript
 const story = await client.getObsStory({ reference: "3:1-3", language: "spa" });
 const notes = await client.getObsNotes({ reference: "3:1-3", language: "spa" });
+
+// Study helps for discussion groups (only languages whose catalog publishes them)
+const studyNotes = await client.getObsStudyNotes({
+  reference: "1:1",
+  language: "en",
+});
+const studyQuestions = await client.getObsStudyQuestions({
+  reference: "1:3",
+  language: "en",
+});
 ```
 
-| Method                  | Options                        | Description                                                             |
-| ----------------------- | ------------------------------ | ----------------------------------------------------------------------- |
-| `getObsStory(opts)`     | `reference` (req), `language?` | OBS story text and frames for a story:frame reference (e.g. `"3:1-3"`). |
-| `getObsNotes(opts)`     | `reference` (req), `language?` | OBS Translation Notes for a story:frame reference.                      |
-| `getObsQuestions(opts)` | `reference` (req), `language?` | OBS Translation Questions for a story:frame reference.                  |
+| Method                       | Options                        | Description                                                                                                |
+| ---------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `getObsStory(opts)`          | `reference` (req), `language?` | OBS story text and frames for a story:frame reference (e.g. `"3:1-3"`).                                    |
+| `getObsNotes(opts)`          | `reference` (req), `language?` | OBS Translation Notes for a story:frame reference.                                                         |
+| `getObsQuestions(opts)`      | `reference` (req), `language?` | OBS Translation Questions for a story:frame reference.                                                     |
+| `getObsStudyNotes(opts)`     | `reference` (req), `language?` | OBS Study Notes for a story:frame reference.                                                               |
+| `getObsStudyQuestions(opts)` | `reference` (req), `language?` | OBS Study Questions whose frame range covers the reference (e.g. `"1:3"` also returns rows for `"1:1-8"`). |
+
+A language without Study Notes or Study Questions returns `RESOURCE_NOT_AVAILABLE` with `isError: false`.
 
 ### Migration from legacy tools
 
