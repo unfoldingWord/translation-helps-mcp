@@ -169,7 +169,7 @@ async function scripture(
 
 /**
  * The agent turns a scripture 404 into RESOURCE_NOT_AVAILABLE with
- * isError false (src/mcp/agent.ts). This mirrors that branch so a 200
+ * isError false (src/mcp/registerServer.ts). This mirrors that branch so a 200
  * that only carries the original cannot pass as a soft-fail.
  */
 async function passageAsMcp(

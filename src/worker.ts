@@ -5,7 +5,8 @@
  * existing production site at the domain root is never replaced.
  *
  * Routing (BASE_PATH = /v2):
- *   /v2/mcp[/]*  → TranslationHelpsMCP McpAgent (Durable Object)
+ *   /v2/mcp[/]*  → MCP. No Mcp-Session-Id: stateless JSON-RPC (no Durable Object).
+ *                  With Mcp-Session-Id: TranslationHelpsMCP McpAgent, unchanged.
  *   /v2/api/tool → direct tool runner (for /api/mcp-proxy and the chat product in chat/)
  *   /v2/packs/*  → language packs for tc-study, streamed from R2
  *   /v2/*        → SvelteKit website (Workers Assets)
@@ -13,7 +14,8 @@
  *   /            → redirect → /v2/
  */
 
-import { TranslationHelpsMCP } from "./mcp/agent.js";
+import { TranslationHelpsMCP, type Env as ToolEnv } from "./mcp/agent.js";
+import { handleStatelessMcpRequest } from "./mcp/stateless.js";
 import { logger } from "./core/logger.js";
 import { normalizeToolArgs } from "./mcp/normalizeToolArgs.js";
 import { TOOL_REGISTRY } from "./mcp/toolRegistry.js";
@@ -80,6 +82,44 @@ const MCP_CORS = {
     "Content-Type, Authorization, X-Api-Key, Mcp-Session-Id",
 };
 
+function mcpSessionId(request: Request): string | null {
+  const value = request.headers.get("mcp-session-id");
+  if (value === null) return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/** GET/DELETE (and anything else) with no session: no stream, no Durable Object. */
+function mcpMethodNotAllowed(): Response {
+  return new Response(
+    JSON.stringify({
+      jsonrpc: "2.0",
+      id: null,
+      error: { code: -32000, message: "Method not allowed." },
+    }),
+    {
+      status: 405,
+      headers: {
+        Allow: "POST",
+        "Content-Type": "application/json",
+        ...MCP_CORS,
+      },
+    },
+  );
+}
+
+function withMcpCors(response: Response): Response {
+  const headers = new Headers(response.headers);
+  for (const [name, value] of Object.entries(MCP_CORS)) {
+    headers.set(name, value);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export default {
   async fetch(
     request: Request,
@@ -110,8 +150,29 @@ export default {
       if (authDenied) return authDenied;
       const limited = enforceRateLimit(request, env.RATE_LIMIT_RPM, MCP_CORS);
       if (limited) return limited;
-      if (isMcpRoot) return mcpHandlerRoot.fetch(request, env, ctx);
-      return mcpHandlerV2.fetch(request, env, ctx);
+
+      // A session opened before this deploy, or a client that still speaks
+      // the sessionful transport, keeps using the Durable Object.
+      if (mcpSessionId(request)) {
+        if (isMcpRoot) return mcpHandlerRoot.fetch(request, env, ctx);
+        return mcpHandlerV2.fetch(request, env, ctx);
+      }
+
+      // Stateless servers do not offer a standalone SSE stream or a session
+      // to delete. Answer 405 here so the transport never opens one.
+      if (request.method !== "POST") {
+        return mcpMethodNotAllowed();
+      }
+
+      const statelessEnv: ToolEnv = {
+        ...env,
+        waitUntil: (promise: Promise<unknown>) => {
+          ctx.waitUntil(promise);
+        },
+      };
+      return withMcpCors(
+        await handleStatelessMcpRequest(request, statelessEnv),
+      );
     }
 
     if (

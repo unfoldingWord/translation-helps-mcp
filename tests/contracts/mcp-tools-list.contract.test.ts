@@ -36,7 +36,7 @@ let tools: WireTool[];
 beforeAll(async () => {
   const server = new McpServer({ name: "test", version: "0.0.0" });
 
-  // Mirror the registration in src/mcp/agent.ts init().
+  // Mirror the registration in src/mcp/registerServer.ts.
   for (const tool of MCP_TOOLS) {
     const shape = (tool.inputSchema as z.ZodObject<z.ZodRawShape>).shape;
     server.registerTool(

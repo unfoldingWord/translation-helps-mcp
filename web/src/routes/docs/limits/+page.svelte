@@ -1,6 +1,6 @@
 <script lang="ts">
 	// Sources: src/core/rateLimit.ts (limit, headers, 429 body), src/core/errors.ts (codes and the status of each),
-	// src/mcp/agent.ts and src/worker.ts (the soft answer and how errors are sent),
+	// src/mcp/registerServer.ts and src/worker.ts (the soft answer and how errors are sent),
 	// src/mcp/manifest.ts (response notes), src/api/worker.ts (REST errors, edge cache).
 	import { base } from '$app/paths';
 	import CodeTabs from '$lib/components/CodeTabs.svelte';
