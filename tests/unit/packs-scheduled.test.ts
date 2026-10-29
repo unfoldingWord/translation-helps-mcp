@@ -868,25 +868,35 @@ describe("wrangler.toml: the crons and their vars", () => {
     expect(all).toHaveLength(7);
   });
 
-  it("sweeps parts only on staging; both staging and production run the cleanup in dry-run, as cleanupMode reads it", () => {
+  it("sweeps parts only on staging; both staging and production run the cleanup in dry-run, as cleanupMode reads it; Worker Previews have every job off", () => {
     const s = sections();
     const vars = wranglerVars();
     const preview = vars["env.preview"]!;
     const production = vars["env.production"]!;
+    const previews = vars["previews"]!;
     expect(preview.PACKS_SWEEP).toBe("parts");
     expect(cleanupMode(preview.PACKS_CLEANUP)).toBe("dry-run");
     expect(cleanupMode(production.PACKS_CLEANUP)).toBe("dry-run");
     expect("PACKS_SWEEP" in production).toBe(false);
+    expect(previews.PACKS_SWEEP).toBe("parts");
+    expect(previews.PACKS_CLEANUP).toBe("off");
+    expect(cleanupMode(previews.PACKS_CLEANUP)).toBeNull();
+    expect(previews.PARTS_CHECKS_PER_RUN).toBe("0");
+    expect(checksPerRun(previews.PARTS_CHECKS_PER_RUN)).toBe(0);
+    expect(previews.PACKS_PARTS_DISPATCH).toBe("off");
+    expect(partsDispatchEnabled(previews)).toBe(false);
     const anywhere = Object.values(s)
       .flat()
       .filter((l) => /PACKS_CLEANUP|PACKS_SWEEP|PARTS_CHECKS_PER_RUN/.test(l));
     expect(anywhere.sort()).toEqual(
       [
+        s["previews"]!.find((l) => l.startsWith("vars"))!,
         s["env.preview"]!.find((l) => l.startsWith("vars"))!,
         s["env.production"]!.find((l) => l.startsWith("vars"))!,
       ].sort(),
     );
-    expect(anywhere.join()).not.toContain("PARTS_CHECKS_PER_RUN");
+    expect("PARTS_CHECKS_PER_RUN" in preview).toBe(false);
+    expect("PARTS_CHECKS_PER_RUN" in production).toBe(false);
   });
 });
 

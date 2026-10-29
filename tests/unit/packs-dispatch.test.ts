@@ -674,26 +674,32 @@ describe("parts dispatch behind PACKS_PARTS_DISPATCH", () => {
 });
 
 describe("wrangler.toml", () => {
-  it("turns parts dispatch on for both preview and production Workers, as partsDispatchEnabled reads it", () => {
+  it("turns parts dispatch on for both preview and production Workers and off in Worker Previews, as partsDispatchEnabled reads it", () => {
     const vars = wranglerVars();
     const preview = vars["env.preview"]!;
     const production = vars["env.production"]!;
+    const previews = vars["previews"]!;
     expect(partsDispatchEnabled(preview)).toBe(true);
     expect(preview.PACKS_TARGET).toBe("staging");
     expect(partsDispatchEnabled(production)).toBe(true);
     expect(production.PACKS_TARGET).toBe("production");
-    // Nowhere else: the top-level config deploys under the production Worker's name.
+    expect(previews.PACKS_PARTS_DISPATCH).toBe("off");
+    expect(partsDispatchEnabled(previews)).toBe(false);
+    expect(previews.PACKS_PARTS_DAILY_CAP).toBe("0");
+    expect(previews.PACKS_TARGET).toBe("staging");
+    // Nowhere else outside a comment: the top-level config deploys under the production Worker's name.
     const set = wranglerToml()
       .split(/\r?\n/)
       .filter((l) => !l.trimStart().startsWith("#"))
       .filter((l) => l.includes("PACKS_PARTS_DISPATCH"));
-    expect(set).toHaveLength(2);
+    expect(set).toHaveLength(3);
+    expect(set.every((l) => /^vars\s*=/.test(l))).toBe(true);
     expect(
       Object.entries(vars)
         .filter(([, v]) => "PACKS_PARTS_DISPATCH" in v)
         .map(([section]) => section)
         .sort(),
-    ).toEqual(["env.preview", "env.production"]);
+    ).toEqual(["env.preview", "env.production", "previews"]);
   });
 });
 
