@@ -1,113 +1,140 @@
 <script lang="ts">
-	import { withBase } from '$lib/paths.js';
-	import CodeBlock from '$lib/components/docs/CodeBlock.svelte';
-	import DocHeader from '$lib/components/docs/DocHeader.svelte';
+	import { onMount } from 'svelte';
+	import { base } from '$app/paths';
+	import { ExternalLink } from 'lucide-svelte';
+	import CodeTabs from '$lib/components/CodeTabs.svelte';
+	import { TOOL_GROUPS } from '$lib/catalog';
+	import { DEFAULT_ORIGIN } from '$lib/endpoint';
+	import { SDK_INSTALL, SITE, endpointFor } from '$lib/site';
 
-	const MCP_URL = 'https://tc-helps.mcp.servant.bible/v2/mcp';
-	const WORKERS_MCP = 'https://translation-helps-mcp-v2.unfoldingword.workers.dev/v2/mcp';
+	/** The page's own address, known only in the browser; the prerendered page shows the production Worker's. */
+	let origin = $state(DEFAULT_ORIGIN);
+	onMount(() => {
+		origin = window.location.origin;
+	});
+	const endpoint = $derived(endpointFor(origin));
 
-	const jsInstall = `npm install @translation-helps/mcp-client`;
+	const tree = (path: string) => `${SITE.repo}/tree/v2/packages/${path}`;
 
-	const jsExample = `import { TranslationHelpsClient } from "@translation-helps/mcp-client";
+	const tools = TOOL_GROUPS.flatMap((g) => g.tools);
+	/** get_passage_index → getPassageIndex (the JavaScript client names its methods this way). */
+	const camel = (name: string) => name.replace(/_(\w)/g, (_, c: string) => c.toUpperCase());
 
-const client = new TranslationHelpsClient({
-  serverUrl: "${MCP_URL}",
-});
-
-const passage = await client.getPassage({
-  reference: "TIT 2:12",
-  language: "en",
-});
-
-const index = await client.getPassageIndex({
-  reference: "TIT 2:12",
-  language: "en",
-});`;
-
-	const pyInstall = `pip install translation-helps-mcp-client`;
-
-	const pyExample = `from translation_helps import TranslationHelpsClient
-
-client = TranslationHelpsClient(
-    server_url="${MCP_URL}",
-)
-
-passage = await client.get_passage({
-    "reference": "TIT 2:12",
-    "language": "en",
-})`;
+	const jsTabs = $derived([
+		{
+			label: 'Install',
+			code: SDK_INSTALL.js
+		},
+		{
+			label: 'Use',
+			code: `import {\n  TranslationHelpsClient,\n  getStructuredContent,\n  isResourceNotAvailable,\n} from "@translation-helps/mcp-client";\n\nconst client = new TranslationHelpsClient({ serverUrl: "${endpoint}" });\n\nconst index = await client.getPassageIndex({ reference: "Titus 1:1", language: "en" });\nconst data = getStructuredContent(index);\n\nif (isResourceNotAvailable(data)) {\n  console.log(data.message); // an answer, not a failure\n}`
+		}
+	]);
+	const pyTabs = $derived([
+		{
+			label: 'Install',
+			code: SDK_INSTALL.python
+		},
+		{
+			label: 'Use',
+			code: `from translation_helps import (\n    TranslationHelpsClient,\n    get_structured_content,\n    is_resource_not_available,\n)\n\nclient = TranslationHelpsClient(server_url="${endpoint}")\n\nindex = client.get_passage_index({"reference": "Titus 1:1", "language": "en"})\ndata = get_structured_content(index)\n\nif is_resource_not_available(data):\n    print(data["message"])  # an answer, not a failure`
+		}
+	]);
 </script>
 
 <svelte:head>
-	<title>Client SDKs — Docs</title>
+	<title>SDKs · Docs · {SITE.name}</title>
+	<meta
+		name="description"
+		content="The JavaScript, TypeScript and Python clients for Translation Helps MCP, and the library packages in the repository."
+	/>
 </svelte:head>
 
-<DocHeader
-	eyebrow="SDKs"
-	title="Client SDKs"
-	description="Typed JS/TS and Python clients over the MCP endpoint — so application code doesn't speak JSON-RPC by hand."
-/>
+<h1>SDKs</h1>
+<p>
+	Two clients wrap the MCP calls, so a script or an app can use the tools without speaking the
+	protocol. One is for JavaScript and TypeScript, one is for Python. They live in the repository
+	under <code>packages/</code>.
+</p>
+<p>
+	These are the 2.0 clients. They are not on npm or PyPI yet: the packages published there under the
+	same names are the older 1.x clients, which have other methods. Until 2.0 is published, install it
+	from the repository, as shown below.
+</p>
+<p>
+	Give each client the server address. The examples below show this site’s own address. The clients
+	also have a built-in default address; pass yours so that you know which server answers.
+</p>
 
-<div
-	class="mb-8 rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3 text-sm leading-relaxed text-slate-300"
->
-	Wraps the
-	<a
-		href={withBase('/docs/mcp')}
-		class="font-medium text-sky-300 underline-offset-2 hover:underline">MCP tools</a
-	>. Prefer plain HTTP? See the
-	<a
-		href={withBase('/docs/api')}
-		class="font-medium text-sky-300 underline-offset-2 hover:underline">REST API</a
-	>. Need raw Door43 access?
-	<a
-		href={withBase('/docs/library')}
-		class="font-medium text-sky-300 underline-offset-2 hover:underline">Door43 library</a
+<h2>JavaScript and TypeScript</h2>
+<p>
+	<code>@translation-helps/mcp-client</code>, MIT licence. It has a typed method for each tool and
+	helpers to read the answer.
+	<a class="inline-flex items-center gap-1" href={tree('js-sdk')}
+		>Source and README <ExternalLink size={12} /></a
 	>
-	(internal today).
+</p>
+<div class="mt-3 min-w-0"><CodeTabs tabs={jsTabs} /></div>
+
+<h2>Python</h2>
+<p>
+	<code>translation-helps-mcp-client</code>. The command below installs <code>httpx</code> with it,
+	so both clients work: <code>TranslationHelpsClient</code> (synchronous) and
+	<code>AsyncTranslationHelpsClient</code>. No extra install is needed for the async client.
+	<a class="inline-flex items-center gap-1" href={tree('python-sdk')}
+		>Source and README <ExternalLink size={12} /></a
+	>
+</p>
+<div class="mt-3 min-w-0"><CodeTabs tabs={pyTabs} /></div>
+
+<h2>One method for each tool</h2>
+<p>
+	Both clients follow the <a href="{base}/docs/workflow">workflow</a>: the method names are the tool
+	names. Arguments are the ones on the <a href="{base}/tools">tools page</a>.
+</p>
+<div class="mt-3 overflow-x-auto">
+	<table class="w-full min-w-[26rem] border-collapse text-left text-sm">
+		<thead>
+			<tr class="border-line text-ink-2 border-b text-xs">
+				<th class="py-2 pr-4 font-normal">Tool</th>
+				<th class="py-2 pr-4 font-normal">JavaScript</th>
+				<th class="py-2 font-normal">Python</th>
+			</tr>
+		</thead>
+		<tbody>
+			{#each tools as t (t)}
+				<tr class="border-line border-b last:border-0">
+					<td class="py-1.5 pr-4"
+						><a class="font-mono text-[13px]" href="{base}/tools#{t}">{t}</a></td
+					>
+					<td class="text-ink-2 py-1.5 pr-4 font-mono text-[13px]">{camel(t)}()</td>
+					<td class="text-ink-2 py-1.5 font-mono text-[13px]">{t}()</td>
+				</tr>
+			{/each}
+		</tbody>
+	</table>
 </div>
 
-<section class="mb-12">
-	<h2>JavaScript / TypeScript</h2>
-	<p class="mb-3 text-sm text-slate-400">
-		Package: <code>@translation-helps/mcp-client</code>
-	</p>
-	<div class="mb-4">
-		<CodeBlock code={jsInstall} lang="bash" filename="terminal" />
-	</div>
-	<CodeBlock code={jsExample} lang="typescript" filename="example.ts" />
-</section>
-
-<section class="mb-12">
-	<h2>Python</h2>
-	<p class="mb-3 text-sm text-slate-400">
-		Package: <code>translation-helps-mcp-client</code>
-	</p>
-	<div class="mb-4">
-		<CodeBlock code={pyInstall} lang="bash" filename="terminal" />
-	</div>
-	<CodeBlock code={pyExample} lang="python" filename="example.py" />
-</section>
-
-<section class="mb-10">
-	<h2>MCP URLs</h2>
-	<div class="space-y-3">
-		<div class="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-			<p class="mb-2 text-xs font-medium tracking-wider text-slate-500 uppercase">
-				Production (custom domain)
-			</p>
-			<code class="font-mono text-sm break-all text-emerald-300">{MCP_URL}</code>
-		</div>
-		<div class="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-			<p class="mb-2 text-xs font-medium tracking-wider text-slate-500 uppercase">
-				Direct workers.dev
-			</p>
-			<code class="font-mono text-sm break-all text-emerald-300">{WORKERS_MCP}</code>
-		</div>
-	</div>
-</section>
-
-<p class="text-sm text-slate-500">
-	Source: <code>packages/js-sdk/</code>, <code>packages/python-sdk/</code> ·
-	<a href={withBase('/docs/mcp')}>← MCP server</a>
+<h2>Reading an answer</h2>
+<p>
+	An answer has <code>content</code> (text), <code>structuredContent</code> (the data, which both
+	helpers prefer), and <code>isError</code>. When a language or book lacks a resource, the answer is
+	not an error: <code>isError</code> is false and the data says <code>available: false</code>. The
+	helper <code>isResourceNotAvailable</code> (Python: <code>is_resource_not_available</code>) tests
+	for it. <a href="{base}/docs/limits">Limits and errors</a> lists the codes.
 </p>
+
+<h2>Library packages</h2>
+<p>The repository holds two more packages under <code>@translation-helps/</code>.</p>
+<ul>
+	<li>
+		<code>door43</code>: the code the server uses to read Door43. It searches the catalog, downloads
+		a resource’s ZIP file, and parses USFM and TSV into verses, notes, questions and articles. It is
+		an internal workspace package, not published to npm.
+		<a href={tree('door43')}>Source</a>
+	</li>
+	<li>
+		<code>shared-prompts</code>: retired. Its system prompts moved into the two clients above.
+		<a href={tree('shared-prompts')}>Notes</a>
+	</li>
+</ul>

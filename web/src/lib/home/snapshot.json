@@ -1,0 +1,51 @@
+{
+	"text": "**ULT** · For God so loved the world, that he gave his One and Only Son, so that everyone believing in him would not perish but would have eternal life.\n\n**UST** · {This is} because God loved the world’s people in this way, so that he gave his Unique Son in order that anyone who trusts in his Son would not die but would live forever.",
+	"notes": "**“the world”** · τὸν κόσμον\n\nHere, **world** refers to the people who live in it. If this might confuse your readers, you could express the meaning plainly. Alternate translation: [the people in the world]\n\n*Academy lesson: Metonymy*",
+	"words": "### love, beloved\n\n### Definition:\n\nTo love another person is to care for that person and do things that will benefit him. There are different meanings for “love” some languages may express using different words:\n\n1. The kind of love that comes from God is focused on the good of others even when it does not benefit oneself. This kind of love cares for others, no matter what they do. God himself is love and is the source of true love.\n\n…",
+	"academy": "### Description\n\nMetonymy is a figure of speech in which an item (either physical or abstract) is called not by its own name, but by the name of something closely associated with it. A metonym is a word or phrase used as a substitute for something that it is associated with.\n\n> … and **the blood** of Jesus his Son cleanses us from every sin. (1 John 1:7b ULT)\n\nThe blood represents Christ’s death.\n\n> And he took **the cup** in the same way after supper, saying, “**This cup** is the new covenant in my blood, which is poured out for you.” (Luke 22:20 ULT)\n\nThe cup represents the wine that is in the cup.\n\n…",
+	"questions": "**How did God show he loved the world?**\n\nHe showed his love by giving his Only Son, that whoever believes in him should not perish but have everlasting life.",
+	"hero": {
+		"notes": [
+			{
+				"id": "uxc2",
+				"original": "τὸν κόσμον",
+				"aligned": "the world",
+				"academy": "Metonymy",
+				"note": "Here, **world** refers to the people who live in it. If this might confuse your readers, you could express the meaning plainly. Alternate translation: [the people in the world]"
+			},
+			{
+				"id": "fqk7",
+				"original": "τὸν Υἱὸν τὸν μονογενῆ",
+				"aligned": "his One and Only Son",
+				"academy": "Assumed Knowledge and Implicit Information",
+				"note": "Here, **One and Only Son** refers to Jesus. If this might confuse your readers, you could express the meaning explicitly. Alternate translation: [his One and Only Son, Jesus]"
+			},
+			{
+				"id": "h4ht",
+				"original": "οὕτως … ἠγάπησεν ὁ Θεὸς τὸν κόσμον",
+				"aligned": "God so loved the world",
+				"academy": null,
+				"note": "Here, **so** could refer to: (1) the manner in which God loved the world. Alternate translation, as in the UST: [God loved the world in this way]; (2) the degree to which God loved the world. Alternate translation: [God loved the world so much]; (3) both the manner in which and the degree to which God loved the world. For this interpretation, see the discussion of John’s use of double meaning in Part 3 of the Introduction to this book. Alternate translation: [in this way God loved the world so much]"
+			},
+			{
+				"id": "vg6z",
+				"original": "γὰρ",
+				"aligned": "For",
+				"academy": "Connect — Reason-and-Result Relationship",
+				"note": "**For** here indicates that Jesus is giving a reason why the statement in the previous two verses is true. If it would be helpful in your language, you could express the meaning explicitly. Alternate translation: [This is true because]"
+			}
+		],
+		"counts": {
+			"notes": 7,
+			"keyTerms": 8,
+			"academy": 4,
+			"questions": 1
+		}
+	},
+	"verse": {
+		"original": "οὕτως γὰρ ἠγάπησεν ὁ Θεὸς τὸν κόσμον, ὥστε τὸν Υἱὸν τὸν μονογενῆ ἔδωκεν, ἵνα πᾶς ὁ πιστεύων εἰς αὐτὸν μὴ ἀπόληται, ἀλλ’ ἔχῃ ζωὴν αἰώνιον.",
+		"translation": "For God so loved the world, that he gave his One and Only Son, so that everyone believing in him would not perish but would have eternal life."
+	},
+	"capturedAt": "2026-10-29",
+	"origin": "https://translation-helps-mcp-v2.unfoldingword.workers.dev"
+}

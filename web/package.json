@@ -10,7 +10,8 @@
 		"check": "npx @sveltejs/kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "npx @sveltejs/kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
-		"lint": "prettier --check . && eslint ."
+		"lint": "prettier --check . && eslint .",
+		"test:e2e": "npm run build && playwright test"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",

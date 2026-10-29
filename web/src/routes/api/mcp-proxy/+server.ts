@@ -17,7 +17,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env as privateEnv } from '$env/dynamic/private';
 import { toJsonSchema } from '$mcp/jsonSchema.js';
-import { withBase } from '$lib/paths.js';
+import { base } from '$app/paths';
 import { canRunToolsInProcess, runToolInProcess } from '$lib/server/runTool.js';
 import { MCP_TOOLS, TOOL_REGISTRY } from '$mcp/toolRegistry.js';
 
@@ -79,7 +79,7 @@ export const POST: RequestHandler = async ({ request, platform, url }) => {
 
 			const mcpBase = platform?.env?.MCP_BASE_URL ?? privateEnv?.MCP_BASE_URL ?? url.origin;
 
-			const toolUrl = `${String(mcpBase).replace(/\/$/, '')}${withBase('/api/tool')}`;
+			const toolUrl = `${String(mcpBase).replace(/\/$/, '')}${base}/api/tool`;
 
 			const res = await fetch(toolUrl, {
 				method: 'POST',

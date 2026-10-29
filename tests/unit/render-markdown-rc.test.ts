@@ -26,14 +26,25 @@ describe("Door43 markdown / rc:// wiki-links", () => {
     expect(out).toBe("Line1\n\n## Heading");
   });
 
-  it("renders rc links as styled chips and headings as HTML", () => {
+  it("renders rc links the page can open as styled chips and headings as HTML", () => {
     const html = renderMarkdown(
       "Ver: [[rc://es-419/ta/man/translate/translate-names]]\\n\\n## Parte 2",
+      () => true,
     );
     expect(html).toContain('class="rc-link rc-link--ta"');
     expect(html).toContain("Translate Names");
     expect(html).toContain("<h2>");
     expect(html).not.toContain("[[rc://");
+  });
+
+  it('renders rc and relative links the page cannot open as their text, never href="#"', () => {
+    const html = renderMarkdown(
+      "Ver: [[rc://es-419/ta/man/translate/translate-names]] y [amor](../kt/love.md)",
+    );
+    expect(html).toContain("Translate Names");
+    expect(html).toContain("amor");
+    expect(html).not.toContain('href="#"');
+    expect(html).not.toContain("<button");
   });
 
   it("labels and kinds", () => {

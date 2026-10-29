@@ -28,6 +28,13 @@ const config = {
 			base: BASE_PATH,
 			relative: false
 		},
+		prerender: {
+			// The Try page's hash is its state (see lib/try/hashState.ts), not an element id.
+			handleMissingId: ({ path, message }) => {
+				if (path === BASE_PATH + '/try') return;
+				throw new Error(message);
+			}
+		},
 		// Prevent Node.js modules from being bundled for Cloudflare
 		alias: {
 			$lib: './src/lib',

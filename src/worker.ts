@@ -6,7 +6,7 @@
  *
  * Routing (BASE_PATH = /v2):
  *   /v2/mcp[/]*  → TranslationHelpsMCP McpAgent (Durable Object)
- *   /v2/api/tool → direct tool runner (Skills chat layer)
+ *   /v2/api/tool → direct tool runner (for /api/mcp-proxy and the chat product in chat/)
  *   /v2/packs/*  → language packs for tc-study, streamed from R2
  *   /v2/*        → SvelteKit website (Workers Assets)
  *   /mcp[/]*     → alias of /v2/mcp (workers.dev convenience)

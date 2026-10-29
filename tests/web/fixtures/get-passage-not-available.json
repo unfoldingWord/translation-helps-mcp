@@ -1,0 +1,20 @@
+{
+  "_note": "Captured 2026-10-28 from the production Worker (translation-helps-mcp-v2.unfoldingword.workers.dev) /v2/mcp: tools/call get_passage {reference: John 3:16, language: es-419}. The JSON-RPC result, unchanged.",
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"available\":false,\"code\":\"RESOURCE_NOT_AVAILABLE\",\"message\":\"The TPL (literal) and GST (simplified) do not include JHN yet, and no other \\\"es-419\\\" version has it.\",\"hints\":[\"Run list_resources to see what is available for this language.\"]}"
+      }
+    ],
+    "structuredContent": {
+      "available": false,
+      "code": "RESOURCE_NOT_AVAILABLE",
+      "message": "The TPL (literal) and GST (simplified) do not include JHN yet, and no other \"es-419\" version has it.",
+      "hints": [
+        "Run list_resources to see what is available for this language."
+      ]
+    },
+    "isError": false
+  }
+}

@@ -1,4 +1,4 @@
-import { marked, type Tokens } from 'marked';
+import { Marked, type Tokens } from 'marked';
 import DOMPurify from 'isomorphic-dompurify';
 
 /**
@@ -53,20 +53,18 @@ export function preprocessDoor43Markdown(text: string): string {
 }
 
 /**
- * Door43 rc:// links (TA/TW/TN cross-references) don't resolve to any stable
- * public URL, so we render them as in-app buttons instead of dead external
- * links. A delegated click handler (see TranslationNoteCard) reads `data-rc`
- * and asks the assistant to explain that specific article/term in chat —
- * this mirrors how tc-study treats rc:// links as internal navigation.
+ * Door43 links that point inside Door43 (rc://… and relative paths like ../kt/love.md)
+ * have no public URL. A link the page can open becomes a button whose `data-rc` holds the
+ * address; the page's click handler opens the article. Any other one becomes its text.
  */
-function renderRcAnchor(href: string, text: string): string {
+function renderInternalLink(href: string, label: string, follow: boolean): string {
+	if (!follow) return `<span>${escapeHtml(label)}</span>`;
 	const kind = rcLinkKind(href);
-	const label = text?.trim() && !text.startsWith('rc://') ? text.trim() : rcLinkDisplayName(href);
 	const kindClass =
 		kind === 'ta' ? 'rc-link--ta' : kind === 'tw' ? 'rc-link--tw' : 'rc-link--other';
 	return (
 		`<button type="button" class="rc-link ${kindClass}" ` +
-		`title="${escapeAttr(href)}" data-rc="${escapeAttr(href)}">${escapeHtml(label)}</button>`
+		`title="Open ${escapeAttr(label)}" data-rc="${escapeAttr(href)}">${escapeHtml(label)}</button>`
 	);
 }
 
@@ -82,54 +80,93 @@ function escapeAttr(s: string): string {
 	return escapeHtml(s).replace(/'/g, '&#39;');
 }
 
-const renderer = new marked.Renderer();
-renderer.link = ({ href, title, text }: Tokens.Link): string => {
-	const url = href ?? '';
-	if (url.startsWith('rc://')) {
-		return renderRcAnchor(url, text);
-	}
-	const titleAttr = title ? ` title="${escapeAttr(title)}"` : '';
-	const safe = url.startsWith('http') || url.startsWith('/') || url.startsWith('#') ? url : '#';
-	return `<a href="${escapeAttr(safe)}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
-};
+/** Which Door43 links of the text being parsed the page can open. Set only during `parse`. */
+let canFollow: ((href: string) => boolean) | undefined;
 
-marked.setOptions({
+const md = new Marked({
 	gfm: true,
 	breaks: false,
-	renderer
+	renderer: {
+		link({ href, title, text, tokens }: Tokens.Link): string {
+			const url = href ?? '';
+			if (/^https?:\/\//i.test(url)) {
+				const titleAttr = title ? ` title="${escapeAttr(title)}"` : '';
+				const inner = this.parser.parseInline(tokens);
+				return `<a href="${escapeAttr(url)}"${titleAttr} target="_blank" rel="noopener noreferrer">${inner}</a>`;
+			}
+			// Everything else (rc://, ../kt/love.md, #, /…) has no address outside Door43.
+			const label =
+				text?.trim() && !text.trim().startsWith('rc://') ? text.trim() : rcLinkDisplayName(url);
+			return renderInternalLink(url, label, !!canFollow?.(url));
+		}
+	}
 });
 
-/** Render markdown to sanitized HTML. Safe for {@html} usage. */
-export function renderMarkdown(text: string): string {
+/** The classes this file sets on links. Door43 content may not bring classes of its own. */
+const OWN_CLASS = /^rc-link(--(ta|tw|other))?$/;
+
+function keepOwnClasses(
+	_node: Element,
+	data: { attrName: string; attrValue: string; keepAttr: boolean }
+) {
+	if (data.attrName !== 'class') return;
+	const kept = data.attrValue.split(/\s+/).filter((c) => OWN_CLASS.test(c));
+	if (kept.length) data.attrValue = kept.join(' ');
+	else data.keepAttr = false;
+}
+
+/**
+ * Render markdown to sanitized HTML. Safe for {@html} usage.
+ * `follow` says which Door43 links (rc://… or relative) the page can open: those become
+ * buttons with `data-rc`, the others plain text. Without it, all of them are plain text.
+ */
+export function renderMarkdown(text: string, follow?: (href: string) => boolean): string {
 	if (!text) return '';
 	const normalized = preprocessDoor43Markdown(text);
-	const raw = marked.parse(normalized) as string;
-	return DOMPurify.sanitize(raw, {
-		ALLOWED_TAGS: [
-			'p',
-			'br',
-			'strong',
-			'em',
-			'b',
-			'i',
-			'ul',
-			'ol',
-			'li',
-			'blockquote',
-			'code',
-			'pre',
-			'h1',
-			'h2',
-			'h3',
-			'h4',
-			'h5',
-			'h6',
-			'a',
-			'span',
-			'button',
-			'hr'
-		],
-		ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'class', 'data-rc', 'type'],
-		ADD_ATTR: ['target']
-	});
+	let raw: string;
+	canFollow = follow;
+	try {
+		raw = md.parse(normalized) as string;
+	} finally {
+		canFollow = undefined;
+	}
+	DOMPurify.addHook('uponSanitizeAttribute', keepOwnClasses);
+	try {
+		return DOMPurify.sanitize(raw, {
+			ALLOWED_TAGS: [
+				'p',
+				'br',
+				'strong',
+				'em',
+				'b',
+				'i',
+				'ul',
+				'ol',
+				'li',
+				'blockquote',
+				'code',
+				'pre',
+				'h1',
+				'h2',
+				'h3',
+				'h4',
+				'h5',
+				'h6',
+				'a',
+				'span',
+				'button',
+				'hr',
+				'table',
+				'thead',
+				'tbody',
+				'tr',
+				'th',
+				'td'
+			],
+			ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'class', 'data-rc', 'type', 'align'],
+			ADD_ATTR: ['target']
+		});
+	} finally {
+		DOMPurify.removeHook('uponSanitizeAttribute', keepOwnClasses);
+	}
 }

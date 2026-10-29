@@ -1,164 +1,130 @@
 <script lang="ts">
-	import { withBase } from '$lib/paths.js';
-	import CodeBlock from '$lib/components/docs/CodeBlock.svelte';
-	import DocHeader from '$lib/components/docs/DocHeader.svelte';
+	import { base } from '$app/paths';
 	import { ExternalLink } from 'lucide-svelte';
-	import type { PageData } from './$types';
+	import CodeTabs from '$lib/components/CodeTabs.svelte';
+	import CopyPill from '$lib/components/CopyPill.svelte';
+	import { API, SITE } from '$lib/site';
 
-	let { data }: { data: PageData } = $props();
+	let { data } = $props();
 	const manifest = $derived(data.manifest);
 
-	const API_ORIGIN = 'https://translation-helps-api-v2.unfoldingword.workers.dev';
-
-	function tryUrl(exampleRequest: string): string {
-		return `${API_ORIGIN}${exampleRequest}`;
-	}
-
-	function methodClass(method: string): string {
-		if (method === 'GET') return 'bg-emerald-500/15 text-emerald-300 ring-emerald-500/30';
-		if (method === 'POST') return 'bg-sky-500/15 text-sky-300 ring-sky-500/30';
-		return 'bg-slate-700 text-slate-200';
-	}
+	const apiBase = $derived(`${API.origin}${manifest.basePath}`);
+	/** Notes in the manifest mark code with backticks. */
+	const pieces = (text: string) => text.split('`').map((t, i) => ({ text: t, code: i % 2 === 1 }));
+	const slug = (path: string) => 'ep-' + path.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
+	const fullUrl = (exampleRequest: string) => `${API.origin}${exampleRequest}`;
+	const errorShape = `{\n  "error": {\n    "code": "RATE_LIMITED",\n    "message": "…",\n    "retryable": true\n  }\n}`;
 </script>
 
 <svelte:head>
-	<title>REST API — Docs</title>
+	<title>REST API · Docs · {SITE.name}</title>
+	<meta
+		name="description"
+		content="The Translation Helps REST API: every endpoint, its parameters and an example answer. GET requests, JSON answers, no key."
+	/>
 </svelte:head>
 
-<DocHeader eyebrow="HTTP" title="REST API" description={manifest.description} />
+{#snippet rich(text: string)}
+	{#each pieces(text) as piece, i (i)}{#if piece.code}<code>{piece.text}</code
+			>{:else}{piece.text}{/if}{/each}
+{/snippet}
 
-<div
-	class="mb-8 rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3 text-sm leading-relaxed text-slate-300"
->
-	Data layer used by the
-	<a
-		href={withBase('/docs/mcp')}
-		class="font-medium text-sky-300 underline-offset-2 hover:underline">MCP tools</a
-	>
-	via <code>ApiClient</code>. Also available for apps that prefer plain HTTP.
-</div>
+<h1>REST API</h1>
+<p>
+	The same data as the MCP tools, over plain HTTP: GET requests that answer in JSON, with no key or
+	account. The MCP tools call this API underneath, so the two always agree. Use it from an app, a
+	script, or anything that does not speak MCP.
+</p>
 
-<div class="mb-8 flex flex-wrap gap-2 text-sm">
-	<span
-		class="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-1.5"
-	>
-		<span class="text-slate-500">Base</span>
-		<code class="text-emerald-300">{manifest.basePath}</code>
-	</span>
-	<span
-		class="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-1.5"
-	>
-		<span class="text-slate-500">Library</span>
-		<code class="text-sky-300">{manifest.library}</code>
-	</span>
-	<span
-		class="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-1.5"
-	>
-		<span class="text-slate-500">Manifest</span>
-		<code class="text-emerald-300">GET {manifest.basePath}/_manifest</code>
-	</span>
-</div>
+<div class="mt-5 min-w-0"><CopyPill value={apiBase} label="Copy the API base URL" /></div>
+<p class="text-sm">
+	The list of endpoints below is also served by the API itself, at <code>GET /api/v1/_manifest</code
+	>. Answers carry open CORS headers, so a browser page can call them. The same
+	<a href="{base}/docs/limits">rate limit</a> applies.
+</p>
 
-<div
-	class="mb-10 rounded-xl border border-slate-800 bg-gradient-to-r from-slate-900/80 to-slate-950 px-4 py-3 text-sm"
->
-	<span class="text-slate-500">Public base</span>
-	<code class="ml-2 break-all text-emerald-300">{API_ORIGIN}</code>
-</div>
+<h2>Errors</h2>
+<p>
+	A failed request answers with a 4xx or 5xx status and this body. <code>retryable</code> tells you whether
+	trying again can help.
+</p>
+<div class="mt-3"><CodeTabs tabs={[{ label: 'JSON', code: errorShape }]} /></div>
 
-{#each manifest.endpoints as ep}
-	<article
-		class="mb-5 overflow-hidden rounded-2xl border border-slate-800/90 bg-slate-900/40 shadow-sm shadow-black/20"
+<h2>Endpoints</h2>
+<ul class="grid list-none grid-cols-1 gap-x-6 gap-y-1 p-0 sm:grid-cols-2">
+	{#each manifest.endpoints as ep (ep.path)}
+		<li class="mt-0 min-w-0">
+			<a class="font-mono text-sm break-all" href="#{slug(ep.path)}">{ep.path}</a>
+			<span class="text-ink-2 text-xs"> · {ep.summary}</span>
+		</li>
+	{/each}
+</ul>
+
+{#each manifest.endpoints as ep (ep.path)}
+	<section
+		id={slug(ep.path)}
+		class="border-line bg-surface mt-6 scroll-mt-20 rounded-lg border p-4 sm:p-5"
 	>
-		<div class="border-b border-slate-800/80 px-5 py-4">
-			<div class="mb-2 flex flex-wrap items-center gap-2">
-				<span
-					class="rounded-md px-2 py-0.5 font-mono text-[11px] font-bold tracking-wide ring-1 {methodClass(
-						ep.method
-					)}">{ep.method}</span
-				>
-				<code class="font-mono text-sm text-slate-100">{manifest.basePath}{ep.path}</code>
-			</div>
-			<h2 class="!mt-0 !border-0 !pb-0 text-lg !font-semibold text-slate-100">{ep.summary}</h2>
-			<p class="mt-2 text-sm leading-relaxed text-slate-400">{ep.description}</p>
-			{#if ep.adapts.length}
-				<p class="mt-2 text-xs text-slate-500">
-					Adapts <span class="text-slate-400">{ep.adapts.join(' · ')}</span>
-				</p>
-			{/if}
+		<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+			<span class="border-line-strong text-ink-2 rounded border px-1.5 font-mono text-xs"
+				>{ep.method}</span
+			>
+			<h3 class="text-ink mt-0 font-mono text-base break-all">{manifest.basePath}{ep.path}</h3>
 		</div>
+		<p class="text-ink mt-2">{ep.summary}</p>
+		<p class="mt-1 text-sm">{@render rich(ep.description)}</p>
+		{#if ep.adapts.length}
+			<p class="mt-2 text-xs">Reads from: {ep.adapts.join(' · ')}</p>
+		{/if}
 
 		{#if ep.params.length}
-			<div class="overflow-x-auto px-5 py-3">
-				<table class="w-full text-left text-xs">
-					<thead class="text-[10px] tracking-wider text-slate-500 uppercase">
-						<tr>
-							<th class="py-2 pr-3 font-medium">Param</th>
-							<th class="py-2 pr-3 font-medium">In</th>
-							<th class="py-2 pr-3 font-medium">Type</th>
-							<th class="py-2 font-medium">Description</th>
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-slate-800/80 text-slate-300">
-						{#each ep.params as p}
-							<tr>
-								<td class="py-2 pr-3 font-mono text-sky-300">
-									{p.name}{#if p.required}<span class="text-amber-400">*</span>{/if}
-								</td>
-								<td class="py-2 pr-3 text-slate-500">{p.in}</td>
-								<td class="py-2 pr-3 text-slate-400">{p.type}</td>
-								<td class="py-2 leading-relaxed text-slate-400">{p.description}</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
+			<h4 class="text-ink-2 mt-5 text-xs font-medium tracking-wide uppercase">Parameters</h4>
+			<ul class="divide-line mt-2 list-none divide-y p-0">
+				{#each ep.params as p (p.name)}
+					<li class="mt-0 py-2.5 first:pt-0">
+						<div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+							<code class="text-[13px]">{p.name}</code>
+							<span class="text-ink-2 font-mono text-xs">{p.type} · {p.in}</span>
+							<span class="text-xs {p.required ? 'text-accent-2' : 'text-ink-2'}"
+								>{p.required ? 'required' : 'optional'}</span
+							>
+							{#if p.default !== undefined}
+								<span class="text-ink-2 text-xs">default <code>{String(p.default)}</code></span>
+							{/if}
+						</div>
+						<p class="mt-1 text-sm">{@render rich(p.description)}</p>
+					</li>
+				{/each}
+			</ul>
 		{/if}
 
-		<div
-			class="flex flex-wrap items-center gap-3 border-t border-slate-800/80 bg-slate-950/40 px-5 py-3"
-		>
-			<code
-				class="min-w-0 flex-1 truncate rounded-md bg-slate-950 px-2 py-1.5 font-mono text-xs text-emerald-300/95"
-				>{ep.exampleRequest}</code
-			>
-			<a
-				href={tryUrl(ep.exampleRequest)}
-				target="_blank"
-				rel="noopener"
-				class="inline-flex items-center gap-1.5 rounded-md bg-sky-500/15 px-2.5 py-1.5 text-xs font-medium text-sky-300 ring-1 ring-sky-500/30 transition hover:bg-sky-500/25"
-			>
-				Try it
-				<ExternalLink class="h-3 w-3" />
-			</a>
+		<h4 class="text-ink-2 mt-5 text-xs font-medium tracking-wide uppercase">Example request</h4>
+		<div class="mt-2 min-w-0">
+			<CodeTabs tabs={[{ label: 'curl', code: `curl "${fullUrl(ep.exampleRequest)}"` }]} />
 		</div>
+		{#if ep.method === 'GET'}
+			<p class="mt-2 text-sm">
+				<a class="inline-flex items-center gap-1" href={fullUrl(ep.exampleRequest)}>
+					Open in your browser <ExternalLink size={12} />
+				</a>
+			</p>
+		{/if}
 
 		{#if ep.exampleResponse !== undefined}
-			<div class="border-t border-slate-800/80 px-5 py-4">
-				<p class="mb-2 text-[10px] font-semibold tracking-wider text-slate-500 uppercase">
-					Example response
-				</p>
-				<CodeBlock
-					code={JSON.stringify(ep.exampleResponse, null, 2)}
-					lang="json"
-					filename="200 OK"
-				/>
+			<details class="mt-3">
+				<summary class="text-ink-2 hover:text-ink cursor-pointer text-sm">Example response</summary>
+				<pre
+					class="border-line bg-bg text-ink mt-2 overflow-x-auto rounded-md border p-3 font-mono text-xs">{JSON.stringify(
+						ep.exampleResponse,
+						null,
+						2
+					)}</pre>
 				{#if ep.responseNotes?.length}
-					<ul class="mt-3 space-y-1 text-xs leading-relaxed text-slate-500">
-						{#each ep.responseNotes as note}
-							<li class="flex gap-2">
-								<span class="shrink-0 text-slate-600">•</span>
-								<span>{note}</span>
-							</li>
-						{/each}
+					<ul class="text-sm">
+						{#each ep.responseNotes as note (note)}<li>{@render rich(note)}</li>{/each}
 					</ul>
 				{/if}
-			</div>
+			</details>
 		{/if}
-	</article>
+	</section>
 {/each}
-
-<section class="mt-10">
-	<h2>Fetch the live manifest</h2>
-	<CodeBlock code={`curl "${API_ORIGIN}/api/v1/_manifest"`} lang="bash" filename="terminal" />
-</section>

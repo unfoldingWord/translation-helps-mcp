@@ -1,6 +1,4 @@
 import { API_MANIFEST } from '$api/manifest.js';
-import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async () => {
-	return { manifest: API_MANIFEST };
-};
+// The endpoint list comes from the API's own manifest (also served at GET /api/v1/_manifest).
+export const load = () => ({ manifest: API_MANIFEST });

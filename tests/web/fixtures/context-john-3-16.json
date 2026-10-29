@@ -1,0 +1,60 @@
+{
+  "_note": "Captured 2026-10-28 from the production Worker (translation-helps-mcp-v2.unfoldingword.workers.dev) /v2/mcp: tools/call get_passage_context {reference: John 3:16, language: en}. result.content[0].text and result.structuredContent, trimmed (fewer items, shorter text) but in the server's shape.",
+  "text": "2 context note(s), 5 resource type(s) available",
+  "structured": {
+    "reference": "John 3:16",
+    "language": "en",
+    "context": [
+      {
+        "book": "",
+        "chapter": "front",
+        "verse": "intro",
+        "id": "t6za",
+        "supportReference": "",
+        "quote": "",
+        "occurrence": "0",
+        "note": "# Introduction to John\n\n## Part 1: General Introduction\n\n### Outline of John\n\n1. Introduction about who Jesus is ([1:1–18](../01/01.md))\n2. John the Baptizer baptizes Jesus, and Jesus chooses 12 disciples ([1:19–51](../01/19.md))\n3. Jesus preaches, teaches, and heals people (2–11)\n4. The seven days before Jesus’ death (12–19)\n    * Mary anoints the feet of Jesus ([12:1–11](../12/01.md))\n    * Jesus rides a donkey into Jerusalem ([12:12–19](../12/12.md))\n\n(trimmed)",
+        "supportReferenceTitle": null,
+        "gatewayQuote": {
+          "original": "",
+          "aligned": ""
+        },
+        "scope": "book"
+      },
+      {
+        "book": "",
+        "chapter": "3",
+        "verse": "intro",
+        "id": "i7a7",
+        "supportReference": "",
+        "quote": "",
+        "occurrence": "0",
+        "note": "# John 3 Chapter Introduction\n\n## Structure and Formatting\n\n1. Jesus teaches Nicodemus about being born again ([3:1–21](../03/01.md))\n2. John the Baptist testifies about Jesus ([3:22–36](../03/22.md))\n\n## Religious and Cultural Concepts in This Chapter\n\n### Light and Darkness\n\n\n(trimmed)",
+        "supportReferenceTitle": null,
+        "gatewayQuote": {
+          "original": "",
+          "aligned": ""
+        },
+        "scope": "chapter"
+      }
+    ],
+    "availability": [
+      {
+        "type": "words",
+        "subject": "Translation Words",
+        "abbreviation": "tw",
+        "role": "words",
+        "owner": "unfoldingWord"
+      },
+      {
+        "type": "academy",
+        "subject": "Translation Academy",
+        "abbreviation": "ta",
+        "role": "academy",
+        "owner": "unfoldingWord"
+      }
+    ],
+    "book": "JOHN",
+    "chapter": "3"
+  }
+}

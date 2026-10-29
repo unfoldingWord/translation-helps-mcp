@@ -1,0 +1,21 @@
+{
+  "_note": "Captured 2026-10-28 from the production Worker (translation-helps-mcp-v2.unfoldingword.workers.dev) /v2/mcp: tools/call get_questions {reference: John 3:16, language: en}. result.content[0].text and result.structuredContent, trimmed (fewer items, shorter text) but in the server's shape.",
+  "text": "1 question(s) for John 3:16 [kv]",
+  "structured": {
+    "reference": "John 3:16",
+    "language": "en",
+    "questions": [
+      {
+        "book": "",
+        "chapter": "3",
+        "verse": "16",
+        "id": "th1d",
+        "question": "How did God show he loved the world?",
+        "response": "He showed his love by giving his Only Son, that whoever believes in him should not perish but have everlasting life."
+      }
+    ],
+    "meta": {
+      "cache": "kv"
+    }
+  }
+}

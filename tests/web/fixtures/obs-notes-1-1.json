@@ -1,0 +1,26 @@
+{
+  "_note": "Captured 2026-10-28 from the production Worker (translation-helps-mcp-v2.unfoldingword.workers.dev) /v2/mcp: tools/call get_obs_notes {reference: 1:1, language: en}. result.content[0].text and result.structuredContent, trimmed (fewer items, shorter text) but in the server's shape.",
+  "text": "8 OBS note(s) for OBS 1:1 (en)",
+  "structured": {
+    "reference": "OBS 1:1",
+    "language": "en",
+    "notes": [
+      {
+        "reference": "1:1",
+        "id": "lm48",
+        "supportReference": "",
+        "quote": "the beginning",
+        "occurrence": "1",
+        "note": "This could mean ‘the beginning of all things,’ before anything existed except God."
+      },
+      {
+        "reference": "1:1",
+        "id": "qyk4",
+        "supportReference": "",
+        "quote": "created",
+        "occurrence": "1",
+        "note": "This term here means that God made it from nothing."
+      }
+    ]
+  }
+}

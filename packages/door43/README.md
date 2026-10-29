@@ -79,4 +79,4 @@ See `src/platform.ts`.
 
 - REST API (`src/api`) adapts these into `/api/v1/*` HTTP endpoints
 - MCP tools (`src/mcp`) mostly call the REST API; legacy tools import this package directly
-- Website docs: `/v2/docs/library`
+- Website docs: `/v2/docs/sdks`

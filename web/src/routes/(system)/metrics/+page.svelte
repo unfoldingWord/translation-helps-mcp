@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { withBase } from '$lib/paths.js';
+	import { base } from '$app/paths';
+	import { RotateCw } from 'lucide-svelte';
+	import { SITE } from '$lib/site';
 
 	type MetricRow = {
 		tool: string;
@@ -11,20 +13,23 @@
 		cacheHitRate: number;
 	};
 
-	let metrics: MetricRow[] = [];
-	let loading = true;
-	let error = '';
-	let lastRefreshed = '';
+	let metrics = $state<MetricRow[]>([]);
+	let loading = $state(true);
+	let error = $state('');
+	let note = $state('');
+	let updated = $state('');
 
-	async function loadMetrics() {
+	async function load() {
 		loading = true;
 		error = '';
 		try {
-			const res = await fetch(withBase('/api/metrics'));
+			const res = await fetch(`${base}/api/metrics`);
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const data = (await res.json()) as { metrics?: MetricRow[] };
+			const data = (await res.json()) as { metrics?: MetricRow[]; note?: string; error?: string };
 			metrics = data.metrics ?? [];
-			lastRefreshed = new Date().toLocaleTimeString();
+			note = data.note ?? '';
+			error = data.error ?? '';
+			updated = new Date().toLocaleTimeString();
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 		} finally {
@@ -32,127 +37,110 @@
 		}
 	}
 
-	onMount(loadMetrics);
+	onMount(load);
+
+	const totalCalls = $derived(metrics.reduce((a, m) => a + m.calls, 0));
+	const mean = (pick: (m: MetricRow) => number) =>
+		metrics.length ? metrics.reduce((a, m) => a + pick(m), 0) / metrics.length : 0;
+	const pct = (v: number, digits = 1) => `${(v * 100).toFixed(digits)}%`;
+
+	const cards = $derived([
+		{ label: 'Calls, last 24 hours', value: totalCalls.toLocaleString() },
+		{ label: 'Median time (P50)', value: `${Math.round(mean((m) => m.p50Ms))} ms` },
+		{ label: 'Served from cache', value: pct(mean((m) => m.cacheHitRate)) },
+		{ label: 'Calls with an error', value: pct(mean((m) => m.errorRate)) }
+	]);
 </script>
 
 <svelte:head>
-	<title>Metrics — Translation Helps MCP</title>
+	<title>Metrics · {SITE.name}</title>
+	<meta
+		name="description"
+		content="How many calls each tool got in the last 24 hours, and how fast it answered."
+	/>
 </svelte:head>
 
-<div class="page-shell">
-	<div class="mx-auto max-w-6xl px-4 py-10">
-		<div class="mb-8 flex items-center justify-between">
-			<div>
-				<p class="mb-2 text-xs font-semibold tracking-[0.14em] text-sky-400/90 uppercase">
-					Observability
-				</p>
-				<h1 class="mb-1 text-3xl font-semibold tracking-tight text-slate-100">
-					Performance Metrics
-				</h1>
-				<p class="text-sm text-slate-400">
-					Powered by Cloudflare Analytics Engine · {lastRefreshed ? `Updated ${lastRefreshed}` : ''}
-				</p>
-			</div>
-			<button onclick={loadMetrics} disabled={loading} class="ui-btn px-4 py-2">
-				{loading ? '…' : '↻'} Refresh
-			</button>
-		</div>
+<div class="mx-auto max-w-5xl px-4 py-14">
+	<p class="text-accent-2 font-mono text-xs tracking-wide uppercase">System</p>
+	<h1 class="text-ink mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Metrics</h1>
+	<p class="text-ink-2 mt-3 max-w-2xl">
+		Calls to each tool in the last 24 hours, from Cloudflare Analytics Engine. The last three cards
+		are the mean of the per-tool figures below, not weighted by calls.
+	</p>
 
-		{#if error}
-			<div
-				class="mb-6 rounded-lg border border-yellow-800 bg-yellow-950 p-4 text-sm text-yellow-300"
-			>
-				⚠ {error} — Metrics require a deployed Cloudflare Worker with Analytics Engine configured.
-			</div>
-		{/if}
-
-		{#if loading}
-			<div class="mb-8 grid grid-cols-4 gap-4">
-				{#each Array(4) as _}
-					<div class="h-24 animate-pulse rounded-xl bg-slate-900 p-5"></div>
-				{/each}
-			</div>
-		{:else if metrics.length > 0}
-			{@const totalCalls = metrics.reduce((a, m) => a + m.calls, 0)}
-			{@const avgP50 = Math.round(metrics.reduce((a, m) => a + m.p50Ms, 0) / metrics.length)}
-			{@const avgErrorRate = (
-				(metrics.reduce((a, m) => a + m.errorRate, 0) / metrics.length) *
-				100
-			).toFixed(1)}
-			{@const avgCacheHit = (
-				(metrics.reduce((a, m) => a + m.cacheHitRate, 0) / metrics.length) *
-				100
-			).toFixed(1)}
-			<!-- Summary cards -->
-			<div class="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-				<div class="ui-card p-5">
-					<div class="text-3xl font-bold text-slate-100">{totalCalls.toLocaleString()}</div>
-					<div class="mt-1 text-sm text-slate-400">Total Calls</div>
-				</div>
-				<div class="ui-card p-5">
-					<div class="text-3xl font-bold text-sky-300">{avgP50}ms</div>
-					<div class="mt-1 text-sm text-slate-400">Avg P50 Latency</div>
-				</div>
-				<div class="ui-card p-5">
-					<div class="text-3xl font-bold text-emerald-300">{avgCacheHit}%</div>
-					<div class="mt-1 text-sm text-slate-400">Avg Cache Hit Rate</div>
-				</div>
-				<div class="ui-card p-5">
-					<div
-						class="text-3xl font-bold {Number(avgErrorRate) > 5
-							? 'text-red-400'
-							: 'text-green-300'}"
-					>
-						{avgErrorRate}%
-					</div>
-					<div class="mt-1 text-sm text-slate-400">Avg Error Rate</div>
-				</div>
-			</div>
-
-			<!-- Per-tool table -->
-			<div class="ui-card overflow-hidden">
-				<table class="w-full text-sm">
-					<thead>
-						<tr class="border-b border-slate-800 text-xs tracking-wider text-slate-400 uppercase">
-							<th class="p-4 text-left">Tool</th>
-							<th class="p-4 text-right">Calls</th>
-							<th class="p-4 text-right">P50</th>
-							<th class="p-4 text-right">P95</th>
-							<th class="p-4 text-right">Cache Hit</th>
-							<th class="p-4 text-right">Error Rate</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each metrics as row}
-							<tr class="border-t border-slate-800 transition-colors hover:bg-slate-800/50">
-								<td class="p-4 font-mono text-xs text-sky-300">{row.tool}</td>
-								<td class="p-4 text-right text-slate-100">{row.calls.toLocaleString()}</td>
-								<td class="p-4 text-right text-slate-300">{row.p50Ms}ms</td>
-								<td class="p-4 text-right text-slate-300">{row.p95Ms}ms</td>
-								<td
-									class="p-4 text-right {row.cacheHitRate > 0.7
-										? 'text-green-400'
-										: 'text-yellow-400'}">{(row.cacheHitRate * 100).toFixed(0)}%</td
-								>
-								<td
-									class="p-4 text-right {row.errorRate > 0.05 ? 'text-red-400' : 'text-green-400'}"
-									>{(row.errorRate * 100).toFixed(1)}%</td
-								>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
-		{:else}
-			<div class="py-16 text-center text-slate-500">
-				<div class="mb-4 text-4xl">📊</div>
-				<p class="mb-2 text-lg">No metrics data yet</p>
-				<p class="text-sm">
-					Call some tools via the <a href={withBase('/playground')} class="text-sky-400 underline"
-						>Playground</a
-					> and refresh.
-				</p>
-			</div>
-		{/if}
+	<div class="mt-8 flex flex-wrap items-center justify-between gap-3">
+		<p class="text-ink-2 text-sm" aria-live="polite">{updated ? `Updated ${updated}` : ''}</p>
+		<button
+			type="button"
+			onclick={load}
+			disabled={loading}
+			class="border-line-strong bg-surface text-ink hover:border-accent inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm disabled:opacity-60"
+		>
+			<RotateCw size={15} class={loading ? 'animate-spin' : ''} aria-hidden="true" />
+			Refresh
+		</button>
 	</div>
+
+	{#if error}
+		<p
+			class="border-line-strong bg-surface text-danger mt-4 rounded-lg border p-4 text-sm"
+			role="alert"
+		>
+			Failed to load the metrics: {error}
+		</p>
+	{/if}
+
+	{#if loading && !metrics.length}
+		<p class="text-ink-2 mt-6 text-sm">Loading…</p>
+	{:else if metrics.length}
+		<dl class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+			{#each cards as card (card.label)}
+				<div class="border-line bg-surface rounded-lg border p-4">
+					<dd class="text-ink text-2xl font-semibold tracking-tight">{card.value}</dd>
+					<dt class="text-ink-2 mt-1 text-xs">{card.label}</dt>
+				</div>
+			{/each}
+		</dl>
+
+		<div class="border-line bg-surface mt-6 overflow-x-auto rounded-lg border">
+			<table class="w-full min-w-[34rem] border-collapse text-left text-sm whitespace-nowrap">
+				<thead>
+					<tr class="border-line text-ink-2 border-b text-xs">
+						<th class="px-4 py-3 font-normal">Tool</th>
+						<th class="px-4 py-3 text-right font-normal">Calls</th>
+						<th class="px-4 py-3 text-right font-normal">P50</th>
+						<th class="px-4 py-3 text-right font-normal">P95</th>
+						<th class="px-4 py-3 text-right font-normal">From cache</th>
+						<th class="px-4 py-3 text-right font-normal">Errors</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each metrics as row (row.tool)}
+						<tr class="border-line border-b last:border-0">
+							<td class="text-ink px-4 py-2.5 font-mono text-[13px]">{row.tool}</td>
+							<td class="text-ink px-4 py-2.5 text-right">{row.calls.toLocaleString()}</td>
+							<td class="text-ink-2 px-4 py-2.5 text-right">{row.p50Ms} ms</td>
+							<td class="text-ink-2 px-4 py-2.5 text-right">{row.p95Ms} ms</td>
+							<td class="text-ink-2 px-4 py-2.5 text-right">{pct(row.cacheHitRate, 0)}</td>
+							<td
+								class="px-4 py-2.5 text-right {row.errorRate > 0.05 ? 'text-danger' : 'text-ink-2'}"
+							>
+								{pct(row.errorRate)}{row.errorRate > 0.05 ? ' (high)' : ''}
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+	{:else if !error}
+		<div class="border-line bg-surface mt-6 rounded-lg border p-6">
+			<p class="text-ink">No metrics yet.</p>
+			<p class="text-ink-2 mt-1 text-sm">
+				{note
+					? 'This server is not set up to read its metrics.'
+					: 'Nothing was recorded in the last 24 hours.'}
+				Make a few calls on <a class="text-accent hover:underline" href="{base}/try">Try</a> and refresh.
+			</p>
+		</div>
+	{/if}
 </div>
