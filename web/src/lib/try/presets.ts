@@ -98,6 +98,16 @@ export const PRESETS: Preset[] = [
 		label: 'OBS story 1 questions',
 		tool: 'get_obs_questions',
 		args: { reference: '1', language: 'en' }
+	},
+	{
+		label: 'OBS story 1 study notes',
+		tool: 'get_obs_study_notes',
+		args: { reference: '1', language: 'en' }
+	},
+	{
+		label: 'OBS story 1 study questions',
+		tool: 'get_obs_study_questions',
+		args: { reference: '1', language: 'en' }
 	}
 ];
 

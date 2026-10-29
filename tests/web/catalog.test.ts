@@ -14,7 +14,13 @@ const EXPECTED: Record<string, string[]> = {
     "get_questions",
   ],
   articles: ["get_note", "get_academy_article", "get_word_article"],
-  obs: ["get_obs_story", "get_obs_notes", "get_obs_questions"],
+  obs: [
+    "get_obs_story",
+    "get_obs_notes",
+    "get_obs_questions",
+    "get_obs_study_notes",
+    "get_obs_study_questions",
+  ],
 };
 
 describe("buildToolCatalog", () => {

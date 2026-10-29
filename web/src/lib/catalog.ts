@@ -42,8 +42,14 @@ export const TOOL_GROUPS: { id: ToolGroup; heading: string; line: string; tools:
 	{
 		id: 'obs',
 		heading: 'Open Bible Stories',
-		line: 'A story, its notes and its questions.',
-		tools: ['get_obs_story', 'get_obs_notes', 'get_obs_questions']
+		line: 'A story, its translation notes and questions, and its study notes and questions.',
+		tools: [
+			'get_obs_story',
+			'get_obs_notes',
+			'get_obs_questions',
+			'get_obs_study_notes',
+			'get_obs_study_questions'
+		]
 	}
 ];
 

@@ -11,7 +11,21 @@
 	];
 	const obsHelps = [
 		{ name: 'Open Bible Stories notes', tool: 'get_obs_notes', href: `${DOOR43}/en_obs-tn` },
-		{ name: 'Open Bible Stories questions', tool: 'get_obs_questions', href: `${DOOR43}/en_obs-tq` }
+		{
+			name: 'Open Bible Stories questions',
+			tool: 'get_obs_questions',
+			href: `${DOOR43}/en_obs-tq`
+		},
+		{
+			name: 'Open Bible Stories study notes',
+			tool: 'get_obs_study_notes',
+			href: `${DOOR43}/en_obs-sn`
+		},
+		{
+			name: 'Open Bible Stories study questions',
+			tool: 'get_obs_study_questions',
+			href: `${DOOR43}/en_obs-sq`
+		}
 	];
 </script>
 
@@ -72,8 +86,8 @@
 	New Testament) and the <a href={original[1].href}>UHB</a> (Hebrew Bible).
 </p>
 <p>
-	<span class="text-ink">Open Bible Stories has its own helps.</span> A story comes with notes and questions
-	of its own, from separate tools:
+	<span class="text-ink">Open Bible Stories has its own helps.</span> A story comes with translation
+	notes and questions, and study notes and questions, of its own, from separate tools:
 </p>
 <ul>
 	{#each obsHelps as h (h.tool)}

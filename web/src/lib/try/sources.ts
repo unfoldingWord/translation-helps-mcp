@@ -34,6 +34,14 @@ const OTHER: Record<string, SourceLink> = {
 	get_obs_questions: {
 		label: 'unfoldingWord® OBS Translation Questions',
 		href: `${DOOR43}/unfoldingWord/en_obs-tq`
+	},
+	get_obs_study_notes: {
+		label: 'unfoldingWord® OBS Study Notes',
+		href: `${DOOR43}/unfoldingWord/en_obs-sn`
+	},
+	get_obs_study_questions: {
+		label: 'unfoldingWord® OBS Study Questions',
+		href: `${DOOR43}/unfoldingWord/en_obs-sq`
 	}
 };
 

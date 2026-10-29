@@ -30,6 +30,12 @@ describe("sourceLine: where an answer comes from", () => {
     expect(hrefs("get_obs_questions")).toEqual([
       "https://git.door43.org/unfoldingWord/en_obs-tq",
     ]);
+    expect(hrefs("get_obs_study_notes")).toEqual([
+      "https://git.door43.org/unfoldingWord/en_obs-sn",
+    ]);
+    expect(hrefs("get_obs_study_questions")).toEqual([
+      "https://git.door43.org/unfoldingWord/en_obs-sq",
+    ]);
     expect(hrefs("get_passage_context")).toEqual([repo("tn")]);
   });
 
