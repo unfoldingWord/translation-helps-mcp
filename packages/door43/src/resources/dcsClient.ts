@@ -8,7 +8,10 @@
  *   - Catalog requests include topic=tc-ready (centralised in buildCatalogUrl),
  *     except OBS helps. Those search stage=prod, one subject at a time, with
  *     no topic. Open Bible Stories, Bible resources, and listLanguages keep
- *     the topic.
+ *     the topic. When several owners match, one extra search with
+ *     topic=tc-ready (same language and subject) marks the overlap. Rows that
+ *     already list topics are used as they are. A failed lookup leaves topics
+ *     unknown and is not cached; owner order applies for that request only.
  *   - Catalog-first discovery; Gitea tree fallback only when catalog returns nothing.
  *   - Catalog JSON responses are cached in KV (24 h TTL) with 1 h
  *     stale-while-revalidate freshness.
@@ -483,7 +486,7 @@ export async function catalogSearch(
         }
       }
       // Each subject may return a single different owner. Rank those together.
-      if (merged.length > 1) await attachRepoTopics(merged);
+      if (merged.length > 1) await markMergedOwners(merged, opts);
       return merged;
     }
   }
@@ -547,7 +550,12 @@ async function fetchAndStoreCatalogSearch(
 
   const entries = (resp.data ?? []).map(mapApiEntry);
   if (!new URL(url).searchParams.has("topic") && entries.length > 1) {
-    await attachRepoTopics(entries);
+    const known = await markTcReadyByCatalogSearch(entries, url);
+    if (!known) {
+      // Do not cache a choice made while the tc-ready lookup was down.
+      rememberFailedTopicLookup(entries);
+      return entries;
+    }
   }
   processCacheSet(cacheKey, entries);
   kvPutBackground(kv, cacheKey, wrapCatalogCache(entries), undefined, ctx);
@@ -596,27 +604,90 @@ function topicsFromApi(raw: unknown): string[] | undefined {
 }
 
 /**
- * Catalog search can filter on topic but does not return the list (Door43,
- * Oct 2026). When several owners match an OBS help, read each repo's topics
- * so a tc-ready hit can be preferred. Rows that already carry `topics` stay.
+ * Rows whose tc-ready lookup failed and were not cached. A later merge of the
+ * same objects must not probe them again. Cached rows are never added: a
+ * failure on those stays unknown so the next request can try again.
  */
-async function attachRepoTopics(entries: CatalogEntry[]): Promise<void> {
-  await Promise.all(
-    entries.map(async (entry) => {
-      if (entry.topics !== undefined) return;
-      const owner = encodeURIComponent(entry.owner);
-      const repo = encodeURIComponent(entry.repo || entry.name);
-      try {
-        const resp = await apiFetch<{ topics?: unknown }>(
-          `${GITEA_API}/repos/${owner}/${repo}/topics`,
-        );
-        entry.topics = topicsFromApi(resp.topics) ?? [];
-      } catch {
-        // Unknown stays empty so owner order still applies. The search itself succeeded.
-        entry.topics = [];
-      }
-    }),
+const topicLookupFailed = new WeakSet<CatalogEntry>();
+
+function repoIdentity(owner: string, repo: string): string {
+  return `${owner.toLowerCase()}\0${repo.toLowerCase()}`;
+}
+
+/**
+ * Door43's catalog search can filter on topic but does not return the list
+ * (Oct 2026). When several owners match, one extra search for the same
+ * language and subject with topic=tc-ready marks the rows that appear in
+ * both. Rows that already carry `topics` stay. Returns false when that
+ * lookup fails: topics stay unset (unknown, not "no tc-ready").
+ */
+async function markTcReadyByCatalogSearch(
+  entries: CatalogEntry[],
+  unfilteredUrl: string,
+): Promise<boolean> {
+  const unmarked = entries.filter(
+    (entry) => entry.topics === undefined && !topicLookupFailed.has(entry),
   );
+  if (unmarked.length === 0) return true;
+
+  const readyUrl = new URL(unfilteredUrl);
+  readyUrl.searchParams.set("topic", "tc-ready");
+  try {
+    const resp = await apiFetch<CatalogSearchResponse>(readyUrl.toString());
+    if (resp.ok === false || !Array.isArray(resp.data)) return false;
+    const ready = new Set(
+      resp.data.map((raw) => repoIdentity(raw.owner ?? "", raw.name ?? "")),
+    );
+    for (const entry of unmarked) {
+      const id = repoIdentity(entry.owner, entry.repo || entry.name);
+      entry.topics = ready.has(id) ? ["tc-ready"] : [];
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function rememberFailedTopicLookup(entries: CatalogEntry[]): void {
+  for (const entry of entries) {
+    if (entry.topics === undefined) topicLookupFailed.add(entry);
+  }
+}
+
+/**
+ * One tc-ready search per subject for rows that a single-owner search left
+ * unmarked. Does not record a failure on those rows: they may already sit in
+ * the process cache, and the next request should try the lookup again.
+ */
+async function markMergedOwners(
+  entries: CatalogEntry[],
+  opts: CatalogSearchOptions,
+): Promise<void> {
+  const groups = new Map<string, CatalogEntry[]>();
+  for (const entry of entries) {
+    if (entry.topics !== undefined || topicLookupFailed.has(entry)) continue;
+    const subject = entry.subject?.trim();
+    if (!subject) continue;
+    const group = groups.get(subject);
+    if (group) group.push(entry);
+    else groups.set(subject, [entry]);
+  }
+  for (const [subject, group] of groups) {
+    const url = buildCatalogUrl(
+      "catalog/search",
+      {
+        showIngredients: "true",
+        lang: opts.lang,
+        subject,
+        abbreviation: opts.abbreviation,
+        owner: opts.owner,
+        stage: opts.stage,
+        limit: opts.limit !== undefined ? String(opts.limit) : undefined,
+      },
+      { requireTcReady: false },
+    );
+    await markTcReadyByCatalogSearch(group, url);
+  }
 }
 
 /** Map a raw CatalogApiEntry to our CatalogEntry shape. */
@@ -926,7 +997,8 @@ function VARIANT_INFLIGHT(
  *
  * Rows from a topic=tc-ready search usually omit `topics`. They keep the
  * subject-then-owner order. OBS helps omit the topic filter, so several
- * owners can match; a tc-ready one wins before that order.
+ * owners can match; a row marked tc-ready (from the row itself, or from one
+ * extra catalog search) wins before that order. Unknown topics do not.
  */
 export function pickPreferredCatalogEntry(
   results: CatalogEntry[],

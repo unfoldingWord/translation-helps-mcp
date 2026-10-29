@@ -2,9 +2,10 @@
  * OBS helps follow tc-study: stage=prod, one subject, no topic=tc-ready.
  * Bible notes and Open Bible Stories still require the topic.
  *
- * Door43's catalog search does not return a topics list on each row, so a
- * fixture that must prefer tc-ready among two owners answers
- * GET /repos/{owner}/{repo}/topics instead.
+ * Door43's catalog search does not return a topics list on each row. When
+ * several owners match, one extra catalog search with topic=tc-ready marks
+ * the overlap. `topics: null` omits that list from the row; `repoTopics`
+ * is what the tc-ready search returns.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -35,6 +36,8 @@ interface FakeRepo {
 
 const repos: FakeRepo[] = [];
 const searchUrls: string[] = [];
+let topicEndpointHits = 0;
+let failTcReadyLookup = false;
 let zipSeq = 0;
 
 function addRepo(
@@ -70,13 +73,16 @@ function catalogRow(repo: FakeRepo): Record<string, unknown> {
   return row;
 }
 
+/** Topics the tc-ready catalog search should match. A null row list is omitted. */
+function listedTopics(repo: FakeRepo): string[] {
+  return repo.topics ?? repo.repoTopics;
+}
+
 function catalogSearch(url: URL): Record<string, unknown>[] {
   const p = url.searchParams;
   const subject = p.get("subject");
   return repos
-    .filter(
-      (r) => !p.get("topic") || (r.topics ?? []).includes(p.get("topic")!),
-    )
+    .filter((r) => !p.get("topic") || listedTopics(r).includes(p.get("topic")!))
     .filter((r) => !p.get("lang") || r.language === p.get("lang"))
     .filter(
       (r) => !p.get("abbreviation") || r.abbreviation === p.get("abbreviation"),
@@ -95,6 +101,9 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
   );
   if (url.pathname === "/api/v1/catalog/search") {
     searchUrls.push(url.href);
+    if (failTcReadyLookup && url.searchParams.get("topic") === "tc-ready") {
+      return new Response("down", { status: 503 });
+    }
     return Response.json({ ok: true, data: catalogSearch(url) });
   }
   if (url.pathname === "/api/v1/catalog/list/languages") {
@@ -114,6 +123,7 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
     /^\/api\/v1\/repos\/([^/]+)\/([^/]+)\/topics$/,
   );
   if (topicMatch) {
+    topicEndpointHits += 1;
     const owner = decodeURIComponent(topicMatch[1]!);
     const name = decodeURIComponent(topicMatch[2]!);
     const repo = repos.find((r) => r.owner === owner && r.name === name);
@@ -135,6 +145,8 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
 beforeEach(() => {
   repos.length = 0;
   searchUrls.length = 0;
+  topicEndpointHits = 0;
+  failTcReadyLookup = false;
   clearCatalogProcessCache();
   vi.stubGlobal("fetch", fetchMock);
 });
@@ -147,6 +159,16 @@ function obsSearchUrls(): URL[] {
   return searchUrls
     .map((href) => new URL(href))
     .filter((url) => (url.searchParams.get("subject") ?? "").includes("OBS"));
+}
+
+function searchesFor(subject: string, topic: string | null): URL[] {
+  return obsSearchUrls().filter(
+    (url) =>
+      url.searchParams.get("subject") === subject &&
+      (topic === null
+        ? !url.searchParams.has("topic")
+        : url.searchParams.get("topic") === topic),
+  );
 }
 
 function expectObsHelpsSearch(url: URL): void {
@@ -195,16 +217,23 @@ async function rest(
   handler: typeof handleObsNotes,
   reference: string,
   language: string,
+  env: Record<string, unknown> = {},
 ): Promise<Record<string, unknown>> {
   const response = await handler({
     url: new URL(
       `http://internal/api/v1/obs?reference=${encodeURIComponent(reference)}&language=${encodeURIComponent(language)}`,
     ),
-    env: {} as never,
+    env: env as never,
   });
   expect(response.status).toBe(200);
   return (await response.json()) as Record<string, unknown>;
 }
+
+function wordIds(body: Record<string, unknown>): string[] {
+  return (body.words as Array<{ id: string }>).map((word) => word.id);
+}
+
+const TWL_SUBJECT = "TSV OBS Translation Words Links";
 
 describe("OBS helps without topic=tc-ready", () => {
   it("get_obs_index returns id 1:3 key terms from a repo with no tc-ready topic", async () => {
@@ -285,20 +314,33 @@ describe("OBS helps without topic=tc-ready", () => {
     for (const url of obsUrls) expectObsHelpsSearch(url);
   });
 
-  it("prefers the owner that has tc-ready when two owners match without the topic filter", async () => {
+  it("prefers tc-ready with one catalog search, not one topics request per owner", async () => {
     twlRepo("unfoldingWord", "xx", "from-uw", null);
     twlRepo("other_gl", "xx", "from-ready", null);
     repos[0]!.repoTopics = [];
     repos[1]!.repoTopics = ["tc-ready"];
 
     const body = await rest(handleObsWordLinks, "1:3", "xx");
-    expect((body.words as Array<{ id: string }>).map((w) => w.id)).toEqual([
-      "from-ready",
-    ]);
+    expect(wordIds(body)).toEqual(["from-ready"]);
+    expect(topicEndpointHits).toBe(0);
 
-    const obsUrls = obsSearchUrls();
-    expect(obsUrls.length).toBeGreaterThan(0);
-    for (const url of obsUrls) expectObsHelpsSearch(url);
+    const plain = searchesFor(TWL_SUBJECT, null);
+    expect(plain.length).toBeGreaterThan(0);
+    for (const url of plain) expectObsHelpsSearch(url);
+    const ready = searchesFor(TWL_SUBJECT, "tc-ready");
+    expect(ready).toHaveLength(1);
+    expect(ready[0]!.searchParams.get("stage")).toBe("prod");
+    expect(ready[0]!.searchParams.getAll("subject")).toEqual([TWL_SUBJECT]);
+  });
+
+  it("uses topics already on the catalog rows and does not search again", async () => {
+    twlRepo("unfoldingWord", "row", "from-uw", ["draft"]);
+    twlRepo("other_gl", "row", "from-ready", ["tc-ready"]);
+
+    const body = await rest(handleObsWordLinks, "1:3", "row");
+    expect(wordIds(body)).toEqual(["from-ready"]);
+    expect(topicEndpointHits).toBe(0);
+    expect(searchesFor(TWL_SUBJECT, "tc-ready")).toHaveLength(0);
   });
 
   it("keeps the usual owner order when neither repo has tc-ready", async () => {
@@ -308,9 +350,81 @@ describe("OBS helps without topic=tc-ready", () => {
     repos[1]!.repoTopics = [];
 
     const body = await rest(handleObsWordLinks, "1:3", "yy");
-    expect((body.words as Array<{ id: string }>).map((w) => w.id)).toEqual([
-      "from-uw",
-    ]);
+    expect(wordIds(body)).toEqual(["from-uw"]);
+    expect(topicEndpointHits).toBe(0);
+  });
+
+  it("does not cache an owner choice when the tc-ready lookup fails", async () => {
+    twlRepo("other_gl", "nf", "from-other", null);
+    twlRepo("unfoldingWord", "nf", "from-uw", null);
+    repos[0]!.repoTopics = ["tc-ready"];
+    repos[1]!.repoTopics = [];
+    failTcReadyLookup = true;
+
+    const puts: string[] = [];
+    const kv = {
+      get: async () => null,
+      put: async (key: string) => {
+        puts.push(key);
+      },
+    };
+
+    const first = await rest(handleObsWordLinks, "1:3", "nf", {
+      TRANSLATION_HELPS_CACHE: kv,
+    });
+    expect(wordIds(first)).toEqual(["from-uw"]);
+    expect(topicEndpointHits).toBe(0);
+    const unfilteredAfterFirst = searchesFor(TWL_SUBJECT, null).length;
+    expect(unfilteredAfterFirst).toBeGreaterThan(0);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const cachedTwl = puts.filter((key) => {
+      if (!key.startsWith("catalog:search:")) return false;
+      const url = new URL(key.slice("catalog:search:".length));
+      return url.searchParams.get("subject") === TWL_SUBJECT;
+    });
+    expect(cachedTwl).toEqual([]);
+
+    const second = await rest(handleObsWordLinks, "1:3", "nf", {
+      TRANSLATION_HELPS_CACHE: kv,
+    });
+    expect(wordIds(second)).toEqual(["from-uw"]);
+    expect(searchesFor(TWL_SUBJECT, null).length).toBeGreaterThan(
+      unfilteredAfterFirst,
+    );
+  });
+
+  it("a repo that gains tc-ready wins after the catalog cache expires", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-29T12:00:00Z"));
+    try {
+      twlRepo("other_gl", "qa", "from-other", null);
+      twlRepo("unfoldingWord", "qa", "from-uw", null);
+      repos[0]!.repoTopics = [];
+      repos[1]!.repoTopics = [];
+
+      const first = await rest(handleObsWordLinks, "1:3", "qa");
+      expect(wordIds(first)).toEqual(["from-uw"]);
+      const readyAfterFirst = searchesFor(TWL_SUBJECT, "tc-ready").length;
+      expect(readyAfterFirst).toBe(1);
+
+      repos[0]!.repoTopics = ["tc-ready"];
+      vi.setSystemTime(new Date("2026-10-29T12:59:00Z"));
+      const cached = await rest(handleObsWordLinks, "1:3", "qa");
+      expect(wordIds(cached)).toEqual(["from-uw"]);
+      expect(searchesFor(TWL_SUBJECT, "tc-ready")).toHaveLength(
+        readyAfterFirst,
+      );
+
+      vi.setSystemTime(new Date("2026-10-29T13:00:01Z"));
+      const refreshed = await rest(handleObsWordLinks, "1:3", "qa");
+      expect(wordIds(refreshed)).toEqual(["from-other"]);
+      expect(searchesFor(TWL_SUBJECT, "tc-ready").length).toBeGreaterThan(
+        readyAfterFirst,
+      );
+      expect(topicEndpointHits).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
