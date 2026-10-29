@@ -128,4 +128,29 @@ describe("get_obs_story decomposed args through the real handler", () => {
       }),
     ]);
   });
+
+  it("rejects a non-integer end frame as an invalid OBS reference", async () => {
+    const params = getObsStoryTool.inputSchema.parse(
+      normalizeToolArgs("get_obs_story", {
+        story: 3,
+        frame: 5,
+        endFrame: "8x",
+        language: "en",
+      }),
+    );
+    expect(params.reference).toBe("3:5-8x");
+
+    const api = {
+      async fetch(input: RequestInfo | URL): Promise<Response> {
+        const url = new URL(
+          String(input instanceof Request ? input.url : input),
+        );
+        return handleObs({ url, env: {} as never });
+      },
+    };
+
+    await expect(
+      getObsStoryTool.handler(params, { API: api } as never, "test"),
+    ).rejects.toThrow(/Invalid OBS reference: "3:5-8x"/);
+  });
 });

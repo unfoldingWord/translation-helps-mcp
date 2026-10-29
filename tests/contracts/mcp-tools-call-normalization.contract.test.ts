@@ -114,7 +114,7 @@ describe("NormalizingMcpServer tools/call normalization", () => {
     expect(args?.verse).toBeUndefined();
   });
 
-  it("assembles get_obs_story story_number and frame_number into frame 5 of story 3", async () => {
+  it("assembles get_obs_story story_number and frame_number into reference 3:5", async () => {
     const result = await client.callTool({
       name: "get_obs_story",
       arguments: { story_number: 3, frame_number: 5 },
