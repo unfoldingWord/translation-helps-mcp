@@ -396,6 +396,7 @@ export const TOOL_DOC_META: Record<string, ToolDocMeta> = {
       "No note bodies and no article bodies. Drill with get_obs_notes and get_word_article(twArticle.path).",
       "keyTerms[] is deduped by twArticle.path.",
       "available:false only when the language has neither OBS notes nor OBS word links.",
+      "A failed fetch of one side sets notesError or wordLinksError. That is an error, not a missing resource.",
     ],
   },
   get_obs_study_notes: {

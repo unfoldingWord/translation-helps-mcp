@@ -35,6 +35,7 @@ const catalog = vi.hoisted(() => ({
     ["bible/kt/create", "Create (verb)"],
     ["bible/kt/noah", "Noah"],
   ]),
+  failNotes: false,
 }));
 
 vi.mock("@translation-helps/door43", async (importOriginal) => {
@@ -108,6 +109,11 @@ function putSubject(language: string, subject: string, zipName: string): void {
 beforeEach(() => {
   catalog.zips.clear();
   catalog.files.clear();
+  catalog.failNotes = false;
+  catalog.titles.clear();
+  catalog.titles.set("bible/kt/god", "God");
+  catalog.titles.set("bible/kt/create", "Create (verb)");
+  catalog.titles.set("bible/kt/noah", "Noah");
   catalog.files.set("twl_OBS.tsv", SAMPLE_TWL_TSV);
   catalog.files.set("tn_OBS.tsv", SAMPLE_TN_TSV);
   putSubject("en", TWL_SUBJECT, "obs-twl");
@@ -189,6 +195,7 @@ async function callIndex(
 ): Promise<{
   isError?: boolean;
   structuredContent?: Record<string, unknown>;
+  content?: Array<{ type: string; text: string }>;
 }> {
   const api = {
     async fetch(input: RequestInfo | URL): Promise<Response> {
@@ -199,6 +206,18 @@ async function callIndex(
             ? input.href
             : input.url;
       const url = new URL(href);
+      if (url.pathname.endsWith("/obs-notes") && catalog.failNotes) {
+        return new Response(
+          JSON.stringify({
+            error: {
+              code: "UPSTREAM",
+              message: "zip download failed",
+              retryable: true,
+            },
+          }),
+          { status: 503, headers: { "content-type": "application/json" } },
+        );
+      }
       const handler = url.pathname.endsWith("/obs-word-links")
         ? handleObsWordLinks
         : url.pathname.endsWith("/obs-notes")
@@ -218,6 +237,7 @@ async function callIndex(
   )) as {
     isError?: boolean;
     structuredContent?: Record<string, unknown>;
+    content?: Array<{ type: string; text: string }>;
   };
 }
 
@@ -293,6 +313,35 @@ describe("get_obs_index", () => {
     expect(result.isError).toBe(false);
     expect(result.structuredContent?.available).toBe(false);
     expect(result.structuredContent?.code).toBe("RESOURCE_NOT_AVAILABLE");
+  });
+
+  it("says notes failed when the notes fetch errors and word links succeed", async () => {
+    catalog.failNotes = true;
+    const result = await callIndex("1:3", "en");
+    expect(result.isError).not.toBe(true);
+    expect(result.structuredContent?.available).not.toBe(false);
+    const words = result.structuredContent?.words as WordRow[];
+    expect(words.map((w) => w.id)).toEqual(["b1", "b2"]);
+    expect(result.structuredContent?.notes).toEqual([]);
+    expect(result.structuredContent?.notesError).toBe("zip download failed");
+    const message = String(result.structuredContent?.message ?? "");
+    expect(message).toMatch(/fail/i);
+    expect(message).not.toMatch(/not available/i);
+    const summary = result.content?.[0]?.text ?? "";
+    expect(summary).toMatch(/fail/i);
+    expect(summary).not.toMatch(/not available/i);
+  });
+
+  it("uses the catalog TA title when it differs from the slug", async () => {
+    catalog.titles.set("translate/figs-idiom", "Idiom");
+    const result = await callIndex("1:3", "en");
+    const notes = result.structuredContent?.notes as Array<{
+      taArticle: { path: string; title: string } | null;
+    }>;
+    expect(notes[0]?.taArticle).toEqual({
+      path: "translate/figs-idiom",
+      title: "Idiom",
+    });
   });
 });
 

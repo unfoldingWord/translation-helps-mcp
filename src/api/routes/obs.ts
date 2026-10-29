@@ -243,7 +243,23 @@ export async function handleObsNotes(ctx: RouteContext): Promise<Response> {
     });
   }
 
-  const notes = parseObsNotesTsv(tsv, obsRef);
+  const parsed = parseObsNotesTsv(tsv, obsRef);
+
+  let taMap = new Map<string, string>();
+  try {
+    taMap = await getArticleTitleMap("ta", resolved.language, env);
+  } catch {
+    taMap = new Map();
+  }
+
+  const notes = parsed.map((note) => ({
+    ...note,
+    supportReferenceTitle: note.supportReference
+      ? (resolveTitleFromToc(taMap, note.supportReference, "ta") ??
+        resolveTitleFromPath(note.supportReference))
+      : null,
+  }));
+
   return json({
     reference: displayReference,
     language: resolved.language,

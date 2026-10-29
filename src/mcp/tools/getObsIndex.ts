@@ -73,6 +73,18 @@ const outputSchema = withNotAvailableOutput({
       }),
     )
     .optional(),
+  notesError: z
+    .string()
+    .optional()
+    .describe(
+      "Set when fetching OBS notes failed. This is an error, not a missing resource.",
+    ),
+  wordLinksError: z
+    .string()
+    .optional()
+    .describe(
+      "Set when fetching OBS word links failed. This is an error, not a missing resource.",
+    ),
 });
 
 export const getObsIndexTool: ToolModule<typeof inputSchema> = {
@@ -81,6 +93,7 @@ export const getObsIndexTool: ToolModule<typeof inputSchema> = {
     "Compact index of OBS translation notes and key terms for a story:frame — NO article bodies. " +
     "notes[] has reference, id, quote, occurrence, and taArticle.{path,title}. " +
     "words[] has each key-term row with twArticle.{path,category,title}; keyTerms[] rolls those up by path with a count and the frames. " +
+    "A failed fetch sets notesError or wordLinksError; that is not a missing resource. available:false only when neither resource exists. " +
     "AFTER this: `get_word_article(twArticle.path)`, `get_obs_notes` for full notes.",
   inputSchema,
   outputSchema,
@@ -107,17 +120,16 @@ export const getObsIndexTool: ToolModule<typeof inputSchema> = {
         .catch((reason: unknown) => ({ ok: false as const, reason })),
     ]);
 
-    const notesMissing = !notesRes.ok || notesRes.value.available === false;
-    const linksMissing = !linksRes.ok || linksRes.value.available === false;
+    const notesSide = classifySide(notesRes);
+    const linksSide = classifySide(linksRes);
 
-    if (notesMissing && linksMissing) {
-      if (!notesRes.ok && !linksRes.ok) throw notesRes.reason;
-      const detail = [notesRes, linksRes]
-        .map((side) =>
-          side.ok && side.value.available === false
-            ? String(side.value.message ?? "")
-            : "",
-        )
+    if (notesSide.kind === "failed" && linksSide.kind === "failed") {
+      throw notesSide.reason;
+    }
+
+    if (notesSide.kind === "missing" && linksSide.kind === "missing") {
+      const detail = [notesSide, linksSide]
+        .map((side) => String(side.value.message ?? ""))
         .filter(Boolean)
         .join(" ");
       return notAvailable(
@@ -126,33 +138,74 @@ export const getObsIndexTool: ToolModule<typeof inputSchema> = {
       );
     }
 
-    const notes = notesMissing
-      ? []
-      : (
-          (notesRes.ok ? notesRes.value.notes : []) as Array<
-            Record<string, unknown>
-          >
-        ).map(compactObsNote);
-    const words = linksMissing
-      ? []
-      : ((linksRes.ok ? linksRes.value.words : []) as WordRow[]);
+    const notes =
+      notesSide.kind === "ok"
+        ? ((notesSide.value.notes ?? []) as Array<Record<string, unknown>>).map(
+            compactObsNote,
+          )
+        : [];
+    const words =
+      linksSide.kind === "ok"
+        ? ((linksSide.value.words ?? []) as WordRow[])
+        : [];
     const keyTerms = buildKeyTerms(words);
 
-    const present = linksMissing ? notesRes : linksRes;
+    const present =
+      linksSide.kind === "ok"
+        ? linksSide
+        : notesSide.kind === "ok"
+          ? notesSide
+          : linksSide.kind === "missing"
+            ? linksSide
+            : notesSide.kind === "missing"
+              ? notesSide
+              : null;
     const referenceOut =
-      present.ok && present.value.reference != null
+      present?.value.reference != null
         ? String(present.value.reference)
         : reference;
     const languageOut =
-      present.ok && present.value.language != null
+      present?.value.language != null
         ? String(present.value.language)
         : language;
 
-    const missingLabel = notesMissing
-      ? "OBS Translation Notes"
-      : linksMissing
-        ? "OBS Translation Words Links"
-        : "";
+    const notesError =
+      notesSide.kind === "failed" ? failureText(notesSide.reason) : undefined;
+    const wordLinksError =
+      linksSide.kind === "failed" ? failureText(linksSide.reason) : undefined;
+
+    const messages: string[] = [];
+    if (notesSide.kind === "missing") {
+      messages.push(
+        `OBS Translation Notes are not available for language "${languageOut}".`,
+      );
+    }
+    if (linksSide.kind === "missing") {
+      messages.push(
+        `OBS Translation Words Links are not available for language "${languageOut}".`,
+      );
+    }
+    if (notesError) {
+      messages.push(
+        `OBS Translation Notes failed to load for language "${languageOut}" (${notesError}).`,
+      );
+    }
+    if (wordLinksError) {
+      messages.push(
+        `OBS Translation Words Links failed to load for language "${languageOut}" (${wordLinksError}).`,
+      );
+    }
+
+    const gapParts: string[] = [];
+    if (notesSide.kind === "missing")
+      gapParts.push("Missing: OBS Translation Notes.");
+    if (linksSide.kind === "missing") {
+      gapParts.push("Missing: OBS Translation Words Links.");
+    }
+    if (notesError) gapParts.push("OBS Translation Notes fetch failed.");
+    if (wordLinksError)
+      gapParts.push("OBS Translation Words Links fetch failed.");
+    const gap = gapParts.length ? ` ${gapParts.join(" ")}` : "";
 
     const data = {
       reference: referenceOut,
@@ -160,14 +213,11 @@ export const getObsIndexTool: ToolModule<typeof inputSchema> = {
       words,
       notes,
       keyTerms,
-      ...(missingLabel
-        ? {
-            message: `${missingLabel} are not available for language "${languageOut}".`,
-          }
-        : {}),
+      ...(notesError ? { notesError } : {}),
+      ...(wordLinksError ? { wordLinksError } : {}),
+      ...(messages.length ? { message: messages.join(" ") } : {}),
     };
 
-    const gap = missingLabel ? ` Missing: ${missingLabel}.` : "";
     return ok(
       data,
       `${notes.length} OBS note(s), ${words.length} key term row(s), ${keyTerms.length} key term(s) for ${referenceOut} (${languageOut}).${gap}`,
@@ -184,6 +234,27 @@ interface WordRow {
   twArticle: { path: string; category: string; title: string } | null;
 }
 
+type FetchedSide =
+  | { ok: true; value: Record<string, unknown> }
+  | { ok: false; reason: unknown };
+
+type ResourceSide =
+  | { kind: "ok"; value: Record<string, unknown> }
+  | { kind: "missing"; value: Record<string, unknown> }
+  | { kind: "failed"; reason: unknown };
+
+function classifySide(res: FetchedSide): ResourceSide {
+  if (!res.ok) return { kind: "failed", reason: res.reason };
+  if (res.value.available === false)
+    return { kind: "missing", value: res.value };
+  return { kind: "ok", value: res.value };
+}
+
+function failureText(reason: unknown): string {
+  if (reason instanceof Error && reason.message) return reason.message;
+  return String(reason ?? "unknown error");
+}
+
 function compactObsNote(note: Record<string, unknown>): {
   reference: string;
   id: string;
@@ -193,14 +264,17 @@ function compactObsNote(note: Record<string, unknown>): {
 } {
   const supportReference = String(note["supportReference"] ?? "");
   const path = supportReference ? rcToTaPath(supportReference) : null;
+  const title = String(
+    note["supportReferenceTitle"] ??
+      resolveTitleFromPath(supportReference) ??
+      "",
+  );
   return {
     reference: String(note["reference"] ?? ""),
     id: String(note["id"] ?? ""),
     quote: String(note["quote"] ?? ""),
     occurrence: String(note["occurrence"] ?? ""),
-    taArticle: path
-      ? { path, title: resolveTitleFromPath(supportReference) ?? "" }
-      : null,
+    taArticle: path ? { path, title } : null,
   };
 }
 
