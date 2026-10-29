@@ -4,18 +4,27 @@ Python client for the Translation Helps MCP v2 server.
 
 ## Installation
 
+The 2.0 client is not on PyPI yet (the package published there under this name is the
+1.x client, which has other methods). Install it from the `v2` branch of the repository:
+
 ```bash
-pip install translation-helps-mcp-client
+pip install "git+https://github.com/unfoldingWord/translation-helps-mcp.git@v2#subdirectory=packages/python-sdk"
 ```
 
-This install already includes `httpx`, so `AsyncTranslationHelpsClient` works without an extra package.
+Once 2.0 is on PyPI, `pip install translation-helps-mcp-client` will install it.
+
+Either install brings `httpx`, a required dependency, so both `TranslationHelpsClient`
+and `AsyncTranslationHelpsClient` work without an extra package.
 
 ## Usage
 
 The server uses a **progressive-disclosure workflow** — call tools in order to
 orient, survey, drill, and check a Bible passage.
 
-### Synchronous (built-in urllib)
+### Synchronous
+
+`TranslationHelpsClient` sends its requests with `httpx`, and falls back to the standard
+library's `urllib` if `httpx` is not installed.
 
 ```python
 from translation_helps import (
