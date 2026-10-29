@@ -1,3 +1,2 @@
-// since there's no dynamic data here, we can prerender
-// it so that it gets served as a static asset in production
-export const prerender = true;
+// Not prerendered: a static asset would bypass the /v2 redirect in hooks.server.ts
+export const prerender = false;

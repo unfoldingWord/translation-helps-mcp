@@ -30,7 +30,10 @@ jobs:
         run: |
           cd ui && npx wrangler pages dev .svelte-kit/cloudflare --port 8788 &
           sleep 8
-          curl -f http://localhost:8788/about | grep -q "About"
+          # v1 pages redirect to the v2 site; /api/* and /mcp stay on v1
+          read -r status location < <(curl -s -o /dev/null -w "%{http_code} %{redirect_url}" http://localhost:8788/)
+          [ "$status" = "302" ] && [ "$location" = "http://localhost:8788/v2/" ] \
+            || (echo "GET / expected 302 to /v2/, got $status $location" && exit 1)
           # Use a real API route — bare /api has no index route and 404s (issue #26)
           curl -f http://localhost:8788/api/health | grep -q "healthy"
           status=$(curl -s -o /dev/null -w "%{http_code}" -X GET \

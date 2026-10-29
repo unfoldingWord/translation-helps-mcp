@@ -27,16 +27,18 @@ const V1_PAGE_REDIRECTS = [
 ] as const;
 
 function getV1RedirectTarget(pathname: string): string | undefined {
+	const path = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+
 	for (const [source, target] of V1_PAGE_REDIRECTS) {
 		if (source.endsWith('/*')) {
-			const prefix = source.slice(0, -1);
-			if (pathname.startsWith(prefix)) {
+			const base = source.slice(0, -2);
+			if (path === base || path.startsWith(`${base}/`)) {
 				return target;
 			}
 			continue;
 		}
 
-		if (pathname === source) {
+		if (path === source) {
 			return target;
 		}
 	}
@@ -60,7 +62,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 		return proxyToV2(event.request, event.platform);
 	}
 
-	if (!building && (event.request.method === 'GET' || event.request.method === 'HEAD')) {
+	if (
+		!building &&
+		!event.isDataRequest &&
+		(event.request.method === 'GET' || event.request.method === 'HEAD')
+	) {
 		const redirectTarget = getV1RedirectTarget(event.url.pathname);
 		if (redirectTarget) {
 			const requestUrl = new URL(event.request.url);
