@@ -27,6 +27,12 @@ import { PROMPTS } from "./prompts/index.js";
 import { SERVER_INSTRUCTIONS } from "./instructions.js";
 import { NormalizingMcpServer } from "./normalizingMcpServer.js";
 import type { Env } from "./agent.js";
+import {
+  bindToolListCacheReset,
+  consumeDroppedPrivateListHandler,
+  consumeToolListProbeFailure,
+  noteToolListProbeAttempt,
+} from "./toolListCacheForTests.js";
 
 /** Read the request environment when a tool actually runs, not at registration. */
 export type ResolveToolEnv = () => Env;
@@ -99,26 +105,10 @@ function strictInputSchemas(): z.ZodType[] {
  * A failed probe is not stored: the next list tries again.
  */
 let sdkToolList: Promise<ListedTool[]> | undefined;
-let probeAttempts = 0;
-let probeFailuresRemaining = 0;
 
-/** Drop the cached list so a test can watch the next probe. */
-export function resetToolListCacheForTests(): void {
+bindToolListCacheReset(() => {
   sdkToolList = undefined;
-  probeAttempts = 0;
-  probeFailuresRemaining = 0;
-}
-
-/** The next cache probe throws before it talks to the SDK. */
-export function failNextToolListProbeForTests(): void {
-  probeFailuresRemaining += 1;
-  sdkToolList = undefined;
-}
-
-/** How many cache probes this isolate has started since the last reset. */
-export function toolListProbeAttemptsForTests(): number {
-  return probeAttempts;
-}
+});
 
 function loadSdkToolList(): Promise<ListedTool[]> {
   sdkToolList ??= captureSdkToolList().catch((error: unknown) => {
@@ -129,9 +119,8 @@ function loadSdkToolList(): Promise<ListedTool[]> {
 }
 
 async function captureSdkToolList(): Promise<ListedTool[]> {
-  probeAttempts += 1;
-  if (probeFailuresRemaining > 0) {
-    probeFailuresRemaining -= 1;
+  noteToolListProbeAttempt();
+  if (consumeToolListProbeFailure()) {
     throw new Error("Tool list cache probe failed.");
   }
   const server = new NormalizingMcpServer(
@@ -172,24 +161,67 @@ async function captureSdkToolList(): Promise<ListedTool[]> {
   return tools;
 }
 
+/**
+ * Uncached tools/list through the public client. Used when the SDK's private
+ * handler map is missing or no longer a Map of functions, so a probe failure
+ * does not become a 500 until the isolate restarts.
+ */
+async function listToolsViaPublicClient(): Promise<ListedTool[]> {
+  const server = new NormalizingMcpServer(
+    { name: SERVER_NAME, version: VERSION },
+    { instructions: SERVER_INSTRUCTIONS },
+  );
+  registerTranslationHelpsSurface(
+    server,
+    () => {
+      throw new Error("Uncached tool list does not run tools.");
+    },
+    false,
+  );
+  const [clientTransport, serverTransport] =
+    InMemoryTransport.createLinkedPair();
+  const client = new Client({ name: "tool-list-fallback", version: "0.0.0" });
+  await Promise.all([
+    server.connect(serverTransport),
+    client.connect(clientTransport),
+  ]);
+  try {
+    const listed = await client.listTools();
+    return structuredClone(listed.tools);
+  } finally {
+    await client.close().catch(() => {});
+  }
+}
+
 type StoredListHandler = (
   request: unknown,
   extra: unknown,
 ) => Promise<ListToolsResult> | ListToolsResult;
 
 /**
- * The handler the SDK installed while registering tools. The cache replaces
- * it, and a failed probe calls this one for that request only.
+ * The handler the SDK installed while registering tools, if that private map
+ * is still a Map of functions. A missing or reshaped field returns undefined
+ * so the caller can list through the public client instead of throwing.
+ * The map is restored before this returns: request dispatch still needs it.
  */
 function sdkListToolsHandler(
   server: NormalizingMcpServer,
 ): StoredListHandler | undefined {
-  const handlers = (
-    server.server as unknown as {
-      _requestHandlers?: Map<string, StoredListHandler>;
-    }
-  )._requestHandlers;
-  return handlers?.get("tools/list");
+  const record = server.server as unknown as { _requestHandlers?: unknown };
+  const saved = record._requestHandlers;
+  if (consumeDroppedPrivateListHandler()) {
+    record._requestHandlers = undefined;
+  }
+  try {
+    const handlers = record._requestHandlers;
+    if (!(handlers instanceof Map)) return undefined;
+    const handler = handlers.get("tools/list");
+    return typeof handler === "function"
+      ? (handler as StoredListHandler)
+      : undefined;
+  } finally {
+    record._requestHandlers = saved;
+  }
 }
 
 function installCachedToolList(server: NormalizingMcpServer): void {
@@ -201,12 +233,25 @@ function installCachedToolList(server: NormalizingMcpServer): void {
         return { tools: structuredClone(await loadSdkToolList()) };
       } catch (error) {
         // Do not keep the failure. loadSdkToolList already dropped it, so the
-        // next list probes again. This request uses the SDK's own listing.
+        // next list probes again. This request uses the SDK's own listing
+        // when that handler is still there. Otherwise it lists through the
+        // public client, which does not read `_requestHandlers`.
         logger.warn("tool:list_cache_fallback", {
           reason: error instanceof Error ? error.message : String(error),
         });
-        if (!fallback) throw error;
-        return fallback(request, extra);
+        if (fallback) {
+          try {
+            return await fallback(request, extra);
+          } catch (handlerError) {
+            logger.warn("tool:list_private_handler_failed", {
+              reason:
+                handlerError instanceof Error
+                  ? handlerError.message
+                  : String(handlerError),
+            });
+          }
+        }
+        return { tools: await listToolsViaPublicClient() };
       }
     },
   );

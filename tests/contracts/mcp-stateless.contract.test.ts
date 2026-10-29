@@ -13,6 +13,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
+import { CfWorkerJsonSchemaValidator } from "@modelcontextprotocol/sdk/validation/cfworker";
 import worker, { type Env } from "../../src/worker.js";
 import { TranslationHelpsMCP } from "../../src/mcp/agent.js";
 import { NormalizingMcpServer } from "../../src/mcp/normalizingMcpServer.js";
@@ -20,10 +21,11 @@ import { SERVER_INSTRUCTIONS } from "../../src/mcp/instructions.js";
 import { MCP_TOOLS } from "../../src/mcp/toolRegistry.js";
 import { PROMPTS } from "../../src/mcp/prompts/index.js";
 import {
+  dropPrivateToolListHandlerForTests,
   failNextToolListProbeForTests,
   resetToolListCacheForTests,
   toolListProbeAttemptsForTests,
-} from "../../src/mcp/registerServer.js";
+} from "../../src/mcp/toolListCacheForTests.js";
 import { SERVER_NAME, VERSION } from "../../src/core/version.js";
 import { resetRateLimitStoreForTests } from "../../src/core/rateLimit.js";
 
@@ -31,6 +33,13 @@ const MCP_HEADERS = {
   "Content-Type": "application/json",
   Accept: "application/json, text/event-stream",
 };
+
+/**
+ * BT Servant's streamable-http client validates tool output with the cfworker
+ * provider. workerd forbids Ajv's `new Function`. One instance, as in
+ * bt-servant-worker `streamable-http-client.ts`.
+ */
+const JSON_SCHEMA_VALIDATOR = new CfWorkerJsonSchemaValidator();
 
 /**
  * Bytes the Durable Object double writes on its WebSocket. The Worker must
@@ -472,7 +481,10 @@ describe("stateless MCP worker fetch", () => {
       new URL("https://example.test/v2/mcp"),
       { fetch: workerFetch(env, ctx) },
     );
-    const client = new Client({ name: "bt-servant-worker", version: "1.0.0" });
+    const client = new Client(
+      { name: "bt-servant-worker", version: "1.0.0" },
+      { jsonSchemaValidator: JSON_SCHEMA_VALIDATOR },
+    );
     await client.connect(transport);
     expect(transport.sessionId).toBeUndefined();
 
@@ -725,6 +737,40 @@ describe("stateless MCP worker fetch", () => {
       expect(cached.status).toBe(200);
       const cachedBody = await readJson(cached);
       expect(cachedBody.result?.tools).toEqual(warmedBody.result?.tools);
+      expect(toolListProbeAttemptsForTests()).toBe(2);
+    } finally {
+      resetToolListCacheForTests();
+    }
+    expect(namespace.names).toEqual([]);
+  });
+
+  it("lists tools when the SDK private handler map is missing", async () => {
+    resetToolListCacheForTests();
+    dropPrivateToolListHandlerForTests();
+    failNextToolListProbeForTests();
+    const namespace = durableObjectNamespace();
+    const analytics: AnalyticsSpy = { points: [] };
+    const env = baseEnv(namespace, analytics);
+    const { ctx } = executionContext();
+    const list = rpc("tools/list", {});
+
+    try {
+      const response = await postMcp("/v2/mcp", list, env, ctx);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("mcp-session-id")).toBeNull();
+      const body = await readJson(response);
+      expect(body.error).toBeUndefined();
+      expect(body.result?.tools?.map((tool) => tool.name)).toEqual(
+        MCP_TOOLS.map((tool) => tool.name),
+      );
+      expect(toolListProbeAttemptsForTests()).toBe(1);
+
+      const warmed = await postMcp("/v2/mcp", { ...list, id: 2 }, env, ctx);
+      expect(warmed.status).toBe(200);
+      const warmedBody = await readJson(warmed);
+      expect(warmedBody.result?.tools?.map((tool) => tool.name)).toEqual(
+        MCP_TOOLS.map((tool) => tool.name),
+      );
       expect(toolListProbeAttemptsForTests()).toBe(2);
     } finally {
       resetToolListCacheForTests();
