@@ -2,7 +2,7 @@
  * Protocol-level contract tests for tools/call argument normalization (#44).
  *
  * Drives NormalizingMcpServer over InMemoryTransport (same registration as
- * src/mcp/agent.ts) and asserts handlers receive normalized args. A plain
+ * src/mcp/registerServer.ts) and asserts handlers receive normalized args. A plain
  * McpServer negative control proves normalization happens on the transport path.
  */
 import { describe, it, expect, beforeAll } from "vitest";

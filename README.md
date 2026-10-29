@@ -97,13 +97,15 @@ validation on both tool entry points:
 
 ```
 Cloudflare Worker
-├── /mcp  →  TranslationHelpsMCP (McpAgent Durable Object)
-│            Streamable HTTP + SSE, structured outputs, trace IDs
+├── /mcp and /v2/mcp
+│   ├── POST without Mcp-Session-Id → stateless JSON-RPC (no Durable Object)
+│   ├── request with Mcp-Session-Id → TranslationHelpsMCP (McpAgent Durable Object)
+│   └── GET or DELETE without a session → 405, no stream
 └── /*    →  SvelteKit website (Workers Assets)
              Landing · Playground · Docs · Metrics
 ```
 
-- **Transport**: Streamable HTTP + SSE via `McpAgent` (Cloudflare Durable Objects)
+- **Transport**: A POST with no `Mcp-Session-Id` is answered by the stateless SDK transport and does not create a Durable Object. A request that already carries `Mcp-Session-Id` still uses Streamable HTTP + SSE via `McpAgent`. GET and DELETE without a session answer **405**.
 - **Storage**: KV (resource + catalog cache) + R2 (ZIP persistence)
 - **Article discovery**: Lexical search over TA/TW catalogs (`search_articles`) — no vector store required
 - **Observability**: Analytics Engine metrics, structured JSON logs

@@ -23,8 +23,9 @@ describe("/docs/limits", () => {
 
   it("names only error codes the server has", () => {
     const errors = read("src/core/errors.ts");
-    // RESOURCE_NOT_AVAILABLE is not in the taxonomy: tools send it as a soft answer (src/mcp/agent.ts).
-    const agent = read("src/mcp/agent.ts");
+    // RESOURCE_NOT_AVAILABLE is not in the taxonomy: tools send it as a soft answer
+    // (src/mcp/registerServer.ts, used by the Durable Object and the stateless path).
+    const agent = read("src/mcp/registerServer.ts");
     const known = new Set(
       [...errors.matchAll(/^\s+[A-Z_]{4,}: "([A-Z_]+)"/gm)].map((m) => m[1]),
     );
