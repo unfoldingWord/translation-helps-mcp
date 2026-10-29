@@ -46,8 +46,8 @@ describe("withNotAvailableOutput", () => {
 });
 
 describe("all MCP tools declare a validating outputSchema", () => {
-  it("registers exactly 15 tools", () => {
-    expect(MCP_TOOLS).toHaveLength(15);
+  it("registers exactly 16 tools", () => {
+    expect(MCP_TOOLS).toHaveLength(16);
   });
 
   for (const tool of MCP_TOOLS) {

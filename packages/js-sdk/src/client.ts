@@ -34,6 +34,7 @@ import type {
   GetObsStoryOptions,
   GetObsNotesOptions,
   GetObsQuestionsOptions,
+  GetObsIndexOptions,
   GetObsStudyNotesOptions,
   GetObsStudyQuestionsOptions,
   MCPToolResult,
@@ -368,6 +369,21 @@ export class TranslationHelpsClient {
   async getObsQuestions(opts: GetObsQuestionsOptions): Promise<MCPToolResult> {
     return this.callTool(
       "get_obs_questions",
+      opts as unknown as Record<string, unknown>,
+    );
+  }
+
+  /**
+   * Compact index of OBS notes and key terms for a story:frame.
+   * No article bodies. Follow with `getWordArticle(twArticle.path)`
+   * and `getObsNotes` for the full notes.
+   *
+   * @example
+   * const index = await client.getObsIndex({ reference: "1:3", language: "en" });
+   */
+  async getObsIndex(opts: GetObsIndexOptions): Promise<MCPToolResult> {
+    return this.callTool(
+      "get_obs_index",
       opts as unknown as Record<string, unknown>,
     );
   }

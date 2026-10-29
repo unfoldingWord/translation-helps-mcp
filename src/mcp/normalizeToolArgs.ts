@@ -43,6 +43,7 @@ const OBS_REFERENCE_TOOLS = new Set([
   "get_obs_questions",
   "get_obs_study_notes",
   "get_obs_study_questions",
+  "get_obs_index",
 ]);
 
 // ---------------------------------------------------------------------------

@@ -95,6 +95,11 @@ export const PRESETS: Preset[] = [
 	},
 	{ label: 'OBS story 1 notes', tool: 'get_obs_notes', args: { reference: '1', language: 'en' } },
 	{
+		label: 'OBS story 1 key terms',
+		tool: 'get_obs_index',
+		args: { reference: '1:3', language: 'en' }
+	},
+	{
 		label: 'OBS story 1 questions',
 		tool: 'get_obs_questions',
 		args: { reference: '1', language: 'en' }

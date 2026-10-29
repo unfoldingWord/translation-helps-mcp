@@ -388,6 +388,25 @@ class TranslationHelpsClient:
         """
         return self.call_tool("get_obs_questions", options)
 
+    def get_obs_index(self, options: "GetObsIndexOptions") -> Dict[str, Any]:
+        """
+        Compact index of OBS notes and key terms for a story:frame reference.
+
+        No article bodies. Follow with ``get_word_article`` on ``twArticle.path``
+        and ``get_obs_notes`` for the full notes. ``available`` is false only when
+        the language has neither resource.
+
+        Args:
+            options: Dict with ``reference`` (required), ``language`` (optional, default "en").
+
+        Returns:
+            Dictionary with ``notes``, ``words``, and ``keyTerms``.
+
+        Example::
+            index = client.get_obs_index({"reference": "1:3", "language": "en"})
+        """
+        return self.call_tool("get_obs_index", options)
+
     def get_obs_study_notes(self, options: "GetObsStudyNotesOptions") -> Dict[str, Any]:
         """
         Fetch OBS Study Notes for a story:frame reference.
@@ -627,6 +646,22 @@ class AsyncTranslationHelpsClient:
             questions = await client.get_obs_questions({"reference": "1:1", "language": "en"})
         """
         return await self.call_tool("get_obs_questions", options)
+
+    async def get_obs_index(self, options: "GetObsIndexOptions") -> Dict[str, Any]:
+        """
+        Compact index of OBS notes and key terms for a story:frame reference.
+
+        Args:
+            options: reference (required), language (optional, default "en")
+
+        Returns:
+            Dictionary with notes, words, and keyTerms, or RESOURCE_NOT_AVAILABLE
+            when the language has neither.
+
+        Example:
+            index = await client.get_obs_index({"reference": "1:3", "language": "en"})
+        """
+        return await self.call_tool("get_obs_index", options)
 
     async def get_obs_study_notes(self, options: "GetObsStudyNotesOptions") -> Dict[str, Any]:
         """

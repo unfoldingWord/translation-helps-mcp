@@ -36,6 +36,7 @@ import { handlePrefetch } from "./routes/prefetch.js";
 import {
   handleObs,
   handleObsNotes,
+  handleObsWordLinks,
   handleObsQuestions,
   handleObsStudyNotes,
   handleObsStudyQuestions,
@@ -87,6 +88,7 @@ const EDGE_CACHEABLE = new Set([
   "/resources",
   "/obs",
   "/obs-notes",
+  "/obs-word-links",
   "/obs-questions",
   "/obs-study-notes",
   "/obs-study-questions",
@@ -242,6 +244,8 @@ export default {
         // --- Open Bible Stories ---
         if (routePath === "/obs") return await handleObs(ctx);
         if (routePath === "/obs-notes") return await handleObsNotes(ctx);
+        if (routePath === "/obs-word-links")
+          return await handleObsWordLinks(ctx);
         if (routePath === "/obs-questions")
           return await handleObsQuestions(ctx);
         if (routePath === "/obs-study-notes")

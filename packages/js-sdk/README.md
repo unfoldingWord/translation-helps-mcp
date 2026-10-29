@@ -169,6 +169,7 @@ const studyQuestions = await client.getObsStudyQuestions({
 | ---------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
 | `getObsStory(opts)`          | `reference` (req), `language?` | OBS story text and frames for a story:frame reference (e.g. `"3:1-3"`).                                    |
 | `getObsNotes(opts)`          | `reference` (req), `language?` | OBS Translation Notes for a story:frame reference.                                                         |
+| `getObsIndex(opts)`          | `reference` (req), `language?` | Compact OBS index: notes and key terms (`twArticle.path`) with no article bodies.                          |
 | `getObsQuestions(opts)`      | `reference` (req), `language?` | OBS Translation Questions for a story:frame reference.                                                     |
 | `getObsStudyNotes(opts)`     | `reference` (req), `language?` | OBS Study Notes for a story:frame reference.                                                               |
 | `getObsStudyQuestions(opts)` | `reference` (req), `language?` | OBS Study Questions whose frame range covers the reference (e.g. `"1:3"` also returns rows for `"1:1-8"`). |

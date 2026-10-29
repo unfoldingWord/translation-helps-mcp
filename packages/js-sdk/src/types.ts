@@ -22,7 +22,7 @@ export interface ClientOptions {
   headers?: Record<string, string>;
 }
 
-/** Tool names exposed on the MCP surface (15 tools) */
+/** Tool names exposed on the MCP surface (16 tools) */
 export type ToolName =
   | "list_languages"
   | "list_resources"
@@ -37,6 +37,7 @@ export type ToolName =
   // OBS tools
   | "get_obs_story"
   | "get_obs_notes"
+  | "get_obs_index"
   | "get_obs_questions"
   | "get_obs_study_notes"
   | "get_obs_study_questions";
@@ -277,6 +278,16 @@ export interface GetObsQuestionsOptions {
    * BCP-47 language code (default: "en").
    * ISO 639-2/639-3 aliases accepted (e.g. "spa" → "es", may resolve to "es-419").
    */
+  language?: string;
+}
+
+export interface GetObsIndexOptions {
+  /**
+   * OBS story:frame reference.
+   * Examples: "1:1" (single frame), "3:1-3" (frames 1–3 inclusive), "3" (whole story).
+   */
+  reference: string;
+  /** BCP-47 language code (default: "en"). */
   language?: string;
 }
 

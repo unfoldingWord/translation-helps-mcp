@@ -47,7 +47,7 @@ curl -X POST https://translation-helps-mcp-v2.workers.dev/mcp \
 
 ### Progressive-Disclosure Workflow Tools (on `/mcp`)
 
-These 15 tools are the MCP surface (also available at `POST /api/tool`). They are
+These 16 tools are the MCP surface (also available at `POST /api/tool`). They are
 designed for a progressive, conversation-style retrieval flow and accept flexible
 argument forms (see [Argument Normalization](#argument-normalization) below).
 All tools call the REST Data API via `ApiClient`.
@@ -66,6 +66,7 @@ All tools call the REST Data API via `ApiClient`.
 | `search_articles`         | Lexical search over TA + TW catalogs                          |
 | `get_obs_story`           | Open Bible Stories story text by number                       |
 | `get_obs_notes`           | Translation notes for an OBS story                            |
+| `get_obs_index`           | Compact index of OBS notes and key terms (no article bodies)  |
 | `get_obs_questions`       | Translation questions for an OBS story                        |
 | `get_obs_study_notes`     | Study notes for an OBS story (reader/discussion)              |
 | `get_obs_study_questions` | Study questions for an OBS story (frame ranges)               |

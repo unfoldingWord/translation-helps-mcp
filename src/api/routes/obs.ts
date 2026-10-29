@@ -2,6 +2,7 @@
  * OBS REST routes:
  *   GET /api/v1/obs         — story text (frames)
  *   GET /api/v1/obs-notes   — translation notes for a story:frame
+ *   GET /api/v1/obs-word-links — key terms (TWL) for a story:frame
  *   GET /api/v1/obs-questions — translation questions for a story:frame
  *   GET /api/v1/obs-study-notes — study notes for a story:frame
  *   GET /api/v1/obs-study-questions — study questions (frame ranges) for a story:frame
@@ -24,9 +25,14 @@ import {
   parseObsStoryMarkdown,
   parseObsNotesTsv,
   parseObsQuestionsTsv,
+  parseObsWordLinksTsv,
   filterObsStoryFrames,
   obsStoryPath,
   resolveCatalogLanguage,
+  rcToTwPath,
+  getArticleTitleMap,
+  resolveTitleFromToc,
+  resolveTitleFromPath,
   type ObsReference,
 } from "@translation-helps/door43";
 
@@ -34,6 +40,8 @@ import {
 // languages that omit the "TSV " prefix (e.g. es-419 OBS TQ).
 const OBS_STORY_SUBJECT = "Open Bible Stories";
 const OBS_TN_SUBJECT = "TSV OBS Translation Notes,OBS Translation Notes";
+const OBS_TWL_SUBJECT =
+  "TSV OBS Translation Words Links,OBS Translation Words Links";
 const OBS_TQ_SUBJECT =
   "TSV OBS Translation Questions,OBS Translation Questions";
 const OBS_SN_SUBJECT = "TSV OBS Study Notes,OBS Study Notes";
@@ -419,5 +427,92 @@ export async function handleObsStudyQuestions(
     reference: displayReference,
     language: resolved.language,
     questions,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/obs-word-links — OBS translation word links (key terms)
+// ---------------------------------------------------------------------------
+
+function twCategory(path: string): string {
+  return path.match(/^bible\/([^/]+)\//)?.[1] ?? "other";
+}
+
+export async function handleObsWordLinks(ctx: RouteContext): Promise<Response> {
+  const { url, env, execCtx } = ctx;
+
+  let params: ReturnType<typeof requireObsParams>;
+  try {
+    params = requireObsParams(url);
+  } catch (e) {
+    return apiError("BAD_REQUEST", (e as Error).message, 400);
+  }
+
+  const { language, obsRef, displayReference } = params;
+
+  const resolved = await resolveObsZip(
+    language,
+    OBS_TWL_SUBJECT,
+    env.TRANSLATION_HELPS_CACHE,
+  );
+  if (!resolved) {
+    return json({
+      reference: displayReference,
+      language,
+      available: false,
+      code: "RESOURCE_NOT_AVAILABLE",
+      message: `No OBS Translation Words Links resource available for language "${language}". Catalog subject "TSV OBS Translation Words Links" (tc-ready) was not found.`,
+    });
+  }
+
+  const fetcher = makeFetcher(env, execCtx);
+  const zip = await fetcher.getOrDownloadZip(resolved.zipUrl);
+
+  const tsv = await tryPaths(
+    fetcher,
+    zip,
+    obsTsvPaths(resolved.entry, ["twl_OBS.tsv", "twl_obs.tsv"]),
+  );
+
+  if (!tsv) {
+    return json({
+      reference: displayReference,
+      language: resolved.language,
+      available: false,
+      code: "RESOURCE_NOT_AVAILABLE",
+      message: `OBS Translation Words Links TSV not found in resource for language "${resolved.language}".`,
+    });
+  }
+
+  const rows = parseObsWordLinksTsv(tsv, obsRef);
+
+  let twMap = new Map<string, string>();
+  try {
+    twMap = await getArticleTitleMap("tw", resolved.language, env);
+  } catch {
+    twMap = new Map();
+  }
+
+  const words = rows.map((row) => {
+    const path = rcToTwPath(row.twLink);
+    const title = path
+      ? (resolveTitleFromToc(twMap, path, "tw") ??
+        resolveTitleFromPath(path) ??
+        "")
+      : "";
+    return {
+      reference: row.reference,
+      id: row.id,
+      tags: row.tags,
+      origWords: row.origWords,
+      occurrence: row.occurrence,
+      twArticle: path ? { path, category: twCategory(path), title } : null,
+    };
+  });
+
+  return json({
+    reference: displayReference,
+    language: resolved.language,
+    words,
   });
 }
