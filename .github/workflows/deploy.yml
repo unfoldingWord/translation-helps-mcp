@@ -28,15 +28,9 @@ jobs:
 
       - name: Test routing (Cloudflare)
         run: |
-          cd ui && npx wrangler pages dev .svelte-kit/cloudflare --port 8788 &
-          sleep 8
-          # v1 pages redirect to the v2 site; /api/* and /mcp stay on v1
-          read -r status location < <(curl -s -o /dev/null -w "%{http_code} %{redirect_url}" http://localhost:8788/)
-          [ "$status" = "302" ] && [ "$location" = "http://localhost:8788/v2/" ] \
-            || (echo "GET / expected 302 to /v2/, got $status $location" && exit 1)
-          # Use a real API route — bare /api has no index route and 404s (issue #26)
-          curl -f http://localhost:8788/api/health | grep -q "healthy"
-          status=$(curl -s -o /dev/null -w "%{http_code}" -X GET \
-            -H "Accept: text/event-stream" http://localhost:8788/api/mcp)
-          [ "$status" = "405" ] || (echo "GET /api/mcp expected 405, got $status" && exit 1)
+          cd ui
+          npx wrangler pages dev .svelte-kit/cloudflare --port 8788 &
+          # Waits for the server, then checks every v1 page redirect from
+          # src/lib/v1-page-redirects.json and that /api/* and /mcp stay on v1
+          node scripts/check-routing.js http://localhost:8788 90
           pkill -f "wrangler"

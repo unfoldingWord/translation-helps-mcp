@@ -8,23 +8,10 @@
  */
 import type { Handle } from '@sveltejs/kit';
 import { building } from '$app/environment';
+// Also read by scripts/check-routing.js, the post-build routing check in CI.
+import V1_PAGE_REDIRECTS from '$lib/v1-page-redirects.json';
 
 const V2_FALLBACK_ORIGIN = 'https://translation-helps-mcp-v2.unfoldingword.workers.dev';
-const V1_PAGE_REDIRECTS = [
-	['/getting-started', '/v2/connect'],
-	['/mcp-tools', '/v2/tools'],
-	['/api-explorer', '/v2/try'],
-	['/api-explorer-v2', '/v2/try'],
-	['/chat', '/v2/docs'],
-	['/chat/sdk-integration', '/v2/docs'],
-	['/docs/*', '/v2/docs'],
-	['/', '/v2/'],
-	['/about', '/v2/'],
-	['/changelog', '/v2/'],
-	['/performance', '/v2/'],
-	['/rag-manifesto', '/v2/'],
-	['/whitepaper', '/v2/']
-] as const;
 
 function getV1RedirectTarget(pathname: string): string | undefined {
 	const path = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;

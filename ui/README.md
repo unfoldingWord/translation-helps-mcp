@@ -69,7 +69,7 @@ npm run build
 
 ## 🎯 Routes
 
-The v1 pages are no longer served. Every `GET`/`HEAD` to a v1 page answers a temporary `302` to the v2 site (`/v2/`), keeping the query string. The list lives in `src/hooks.server.ts`:
+The v1 pages are no longer served. Every `GET`/`HEAD` to a v1 page answers a temporary `302` to the v2 site (`/v2/`), keeping the query string. The hook in `src/hooks.server.ts` reads the list from `src/lib/v1-page-redirects.json`, and so does `scripts/check-routing.js`, the routing check CI runs on the built app:
 
 - `/getting-started` → `/v2/connect`
 - `/mcp-tools` → `/v2/tools`
