@@ -131,6 +131,16 @@ function apiFetcher(): Fetcher {
           ],
         });
       }
+      if (url.includes("/api/v1/obs?") || url.endsWith("/api/v1/obs")) {
+        const parsed = new URL(url);
+        return Response.json({
+          reference: parsed.searchParams.get("reference"),
+          language: parsed.searchParams.get("language") ?? "en",
+          story: 3,
+          frame: 5,
+          frames: [{ index: 5, imageUrl: null, text: "frame text" }],
+        });
+      }
       if (url.includes("/api/v1/prefetch")) {
         return new Response(null, { status: 202 });
       }
@@ -389,6 +399,27 @@ describe("stateless MCP worker fetch", () => {
     expect(body.result?.structuredContent?.reference).toBe("JHN 3:16");
     expect(jobs.length).toBeGreaterThan(0);
     await Promise.all(jobs);
+    expect(namespace.names).toEqual([]);
+  });
+
+  it("normalizes get_obs_story story_number and frame_number on the stateless path", async () => {
+    const namespace = durableObjectNamespace();
+    const analytics: AnalyticsSpy = { points: [] };
+    const { ctx } = executionContext();
+    const response = await postMcp(
+      "/v2/mcp",
+      rpc("tools/call", {
+        name: "get_obs_story",
+        arguments: { story_number: 3, frame_number: 5, language: "en" },
+      }),
+      baseEnv(namespace, analytics),
+      ctx,
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("mcp-session-id")).toBeNull();
+    const body = await readJson(response);
+    expect(body.result?.isError).not.toBe(true);
+    expect(body.result?.structuredContent?.reference).toBe("3:5");
     expect(namespace.names).toEqual([]);
   });
 
