@@ -458,6 +458,15 @@ describe("get_obs_index over the MCP transport", () => {
     const definition = listed.tools.find((t) => t.name === "get_obs_index");
     expect(definition).toBeDefined();
     expect(JSON.stringify(definition).length).toBeGreaterThan(100);
+    const referenceField = (
+      MCP_TOOLS.find((t) => t.name === "get_obs_index")?.inputSchema as
+        | z.ZodObject<z.ZodRawShape>
+        | undefined
+    )?.shape.reference as z.ZodTypeAny | undefined;
+    const referenceDesc = referenceField?.description ?? "";
+    expect(referenceDesc).toContain(
+      "`story` and `frame` as separate numbers are also accepted.",
+    );
 
     const called = await client.callTool({
       name: "get_obs_index",
