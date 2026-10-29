@@ -31,7 +31,27 @@ function registerAllTools(server: McpServer, record: RecordedArgs): void {
         ...(tool.outputSchema ? { outputSchema: tool.outputSchema } : {}),
       },
       async (rawParams: unknown) => {
-        record[tool.name] = rawParams as Record<string, unknown>;
+        const params = rawParams as Record<string, unknown>;
+        record[tool.name] = params;
+        // get_obs_story's output schema requires structuredContent. Echo the
+        // normalized reference so a successful call reports that story and frame.
+        if (tool.name === "get_obs_story") {
+          const reference =
+            typeof params.reference === "string" ? params.reference : "";
+          const [storyPart, framePart] = reference.split(":");
+          const story = Number(storyPart);
+          const frame = framePart === undefined ? undefined : Number(framePart);
+          return {
+            content: [{ type: "text" as const, text: reference }],
+            structuredContent: {
+              reference,
+              ...(Number.isInteger(story) ? { story } : {}),
+              ...(frame !== undefined && Number.isInteger(frame)
+                ? { frame }
+                : {}),
+            },
+          };
+        }
         return { content: [{ type: "text" as const, text: "ok" }] };
       },
     );
@@ -92,6 +112,26 @@ describe("NormalizingMcpServer tools/call normalization", () => {
     expect(args?.book).toBeUndefined();
     expect(args?.chapter).toBeUndefined();
     expect(args?.verse).toBeUndefined();
+  });
+
+  it("assembles get_obs_story story_number and frame_number into reference 3:5", async () => {
+    const result = await client.callTool({
+      name: "get_obs_story",
+      arguments: { story_number: 3, frame_number: 5 },
+    });
+    expect(result.isError).not.toBe(true);
+    const structured = result.structuredContent as {
+      reference?: string;
+      story?: number;
+      frame?: number;
+    };
+    expect(structured.reference).toBe("3:5");
+    expect(structured.story).toBe(3);
+    expect(structured.frame).toBe(5);
+    const args = recorded.get_obs_story;
+    expect(args?.reference).toBe("3:5");
+    expect(args?.story_number).toBeUndefined();
+    expect(args?.frame_number).toBeUndefined();
   });
 
   it("strips bogus_key while keeping known get_passage fields", async () => {

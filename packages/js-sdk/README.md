@@ -147,6 +147,7 @@ All methods return `MCPToolResult` (`content`, optional `structuredContent`, opt
 #### Open Bible Stories (OBS)
 
 Reference examples: `"1:1"` (single frame), `"3:1-3"` (frames 1–3), `"3"` (whole story).
+`story` and `frame` as separate numbers are also accepted (`{story, frame}` → `"3:5"`).
 Language accepts BCP-47 (`"es"`) or ISO 639-2/639-3 aliases (`"spa"`).
 
 ```typescript

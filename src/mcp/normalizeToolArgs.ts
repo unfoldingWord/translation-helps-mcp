@@ -9,6 +9,7 @@
  *   Class B: path synonyms (word, term, word_id, article_id, …) → path
  *   Class C: decomposed {book, chapter, verse} → single reference string
  *   Class D: language_code / lang → language
+ *   Class O: decomposed {story, frame} → OBS reference (OBS tools only)
  */
 
 // ---------------------------------------------------------------------------
@@ -16,13 +17,7 @@
 // ---------------------------------------------------------------------------
 
 /** Tools whose Zod schemas require a `path` parameter. */
-const PATH_TOOLS = new Set([
-  "get_academy_article",
-  "get_word_article",
-  // OBS tools
-  "get_obs_notes",
-  "get_obs_questions",
-]);
+const PATH_TOOLS = new Set(["get_academy_article", "get_word_article"]);
 
 /** Tools whose Zod schemas require a `reference` parameter. */
 const REFERENCE_TOOLS = new Set([
@@ -32,6 +27,20 @@ const REFERENCE_TOOLS = new Set([
   "get_note",
   "get_questions",
   "get_obs_story",
+  "get_obs_notes",
+  "get_obs_questions",
+  "get_obs_study_notes",
+  "get_obs_study_questions",
+]);
+
+/**
+ * OBS tools. Class C must not turn book/chapter/verse into a Bible reference
+ * for these; Class O assembles story/frame instead.
+ */
+const OBS_REFERENCE_TOOLS = new Set([
+  "get_obs_story",
+  "get_obs_notes",
+  "get_obs_questions",
   "get_obs_study_notes",
   "get_obs_study_questions",
 ]);
@@ -99,6 +108,118 @@ function classifyPathSynonym(nk: string): string | null {
 /** Returns true if a normalized key looks like a book identifier. */
 function isBookKey(nk: string): boolean {
   return nk === "book" || nk.startsWith("book");
+}
+
+// ---------------------------------------------------------------------------
+// OBS reference assembly (Class O)
+// ---------------------------------------------------------------------------
+
+/** Story keys after `normKey`: story, story_number, story_id, obs_story, obs. */
+const OBS_STORY_KEYS = new Set([
+  "story",
+  "storynumber",
+  "storyid",
+  "obsstory",
+  "obs",
+]);
+
+/** Frame keys after `normKey`: frame, frame_number, frame_start, start_frame. */
+const OBS_FRAME_KEYS = new Set([
+  "frame",
+  "framenumber",
+  "framestart",
+  "startframe",
+]);
+
+/** End-frame keys after `normKey`: end_frame, frame_end, last_frame. */
+const OBS_END_FRAME_KEYS = new Set(["endframe", "frameend", "lastframe"]);
+
+/**
+ * Integer from a number or a numeric string. Anything else is not a token
+ * we can place in an OBS reference — the caller leaves the args for Zod.
+ */
+function integerToken(value: unknown): number | undefined {
+  if (typeof value === "number") {
+    return Number.isSafeInteger(value) ? value : undefined;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!/^[+-]?\d+$/.test(trimmed)) return undefined;
+    const n = Number(trimmed);
+    return Number.isSafeInteger(n) ? n : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Build "{story}", "{story}:{frame}", or "{story}:{frame}-{endFrame}" and
+ * remove the keys that were used. No-op when the story is not an integer
+ * 1–50, when a frame is present without a story, when an end frame is
+ * present without a start frame, or when a present frame is not an integer.
+ * A non-integer end frame is appended as text, the same way Class C appends
+ * a bad endVerse ("3:5-8x"), so the OBS parser rejects the range instead of
+ * the call failing for a missing reference. Those no-op cases leave the args
+ * for Zod.
+ */
+function assembleObsReference(args: Record<string, unknown>): void {
+  let storyKey: string | undefined;
+  let storyVal: number | undefined;
+  let frameKey: string | undefined;
+  let frameVal: number | undefined;
+  let frameInvalid = false;
+  let endKey: string | undefined;
+  let endVal: number | undefined;
+  let endInvalid = false;
+
+  for (const k of Object.keys(args)) {
+    const nk = normKey(k);
+    if (OBS_STORY_KEYS.has(nk) && storyKey === undefined) {
+      storyKey = k;
+      storyVal = integerToken(args[k]);
+    } else if (OBS_FRAME_KEYS.has(nk) && frameKey === undefined) {
+      frameKey = k;
+      const n = integerToken(args[k]);
+      if (n === undefined) frameInvalid = true;
+      else frameVal = n;
+    } else if (OBS_END_FRAME_KEYS.has(nk) && endKey === undefined) {
+      endKey = k;
+      const n = integerToken(args[k]);
+      if (n === undefined) endInvalid = true;
+      else endVal = n;
+    }
+  }
+
+  if (
+    storyKey === undefined ||
+    storyVal === undefined ||
+    storyVal < 1 ||
+    storyVal > 50
+  ) {
+    return;
+  }
+  if (frameKey !== undefined && frameInvalid) return;
+  // An end frame with no start frame is not one of the three reference
+  // shapes. Leave the args so Zod reports the missing reference.
+  if (endKey !== undefined && frameKey === undefined) return;
+
+  let ref = String(storyVal);
+  const frameUsed = frameKey !== undefined && frameVal !== undefined;
+  if (frameUsed) {
+    ref += `:${String(frameVal)}`;
+  }
+  // Class C stringifies endVerse and appends it whenever a verse is present,
+  // including a non-integer such as "8x". Do the same for end frame, and
+  // still drop the key so strict schemas do not see an extra field.
+  const endUsed = frameUsed && endKey !== undefined;
+  if (endUsed && endKey !== undefined) {
+    const endText = endInvalid ? String(args[endKey]) : String(endVal);
+    if (endText !== "") ref += `-${endText}`;
+  }
+
+  args.reference = ref;
+  delete args[storyKey];
+  if (frameUsed && frameKey !== undefined) delete args[frameKey];
+  if (endUsed && endKey !== undefined) delete args[endKey];
 }
 
 // ---------------------------------------------------------------------------
@@ -194,12 +315,16 @@ export function normalizeToolArgs(
     }
   }
 
-  // ── Class C: decomposed reference assembly ─────────────────────────────────
+  const referenceMissing =
+    args.reference === undefined ||
+    args.reference === null ||
+    (typeof args.reference === "string" && args.reference.trim() === "");
+
+  // ── Class C: decomposed reference assembly (Bible tools only) ─────────────
   if (
     REFERENCE_TOOLS.has(toolName) &&
-    (args.reference === undefined ||
-      args.reference === null ||
-      args.reference === "")
+    !OBS_REFERENCE_TOOLS.has(toolName) &&
+    referenceMissing
   ) {
     let bookVal: string | undefined;
     let bookKey: string | undefined;
@@ -246,6 +371,11 @@ export function normalizeToolArgs(
       if (verseKey) delete args[verseKey];
       if (endVerseKey) delete args[endVerseKey];
     }
+  }
+
+  // ── Class O: OBS story + frame → reference ────────────────────────────────
+  if (OBS_REFERENCE_TOOLS.has(toolName) && referenceMissing) {
+    assembleObsReference(args);
   }
 
   return args;
