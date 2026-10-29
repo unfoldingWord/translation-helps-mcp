@@ -9,10 +9,18 @@
 	import { endpoint } from '$lib/endpoint';
 	import { SITE } from '$lib/site';
 	import { LICENCE, RESOURCES } from '$lib/resources';
-	import { PASSAGE, type HomeSnapshot } from '$lib/home/anatomy';
+	import { TOOL_GROUPS } from '$lib/catalog';
+	import { PASSAGE, heroFacts, heroSlides, walkState, type HomeSnapshot } from '$lib/home/anatomy';
+	import { encodeTryState } from '$lib/try/hashState';
 	import snapshotJson from '$lib/home/snapshot.json';
 
 	const snapshot = snapshotJson as HomeSnapshot;
+	const TOOL_COUNT = TOOL_GROUPS.flatMap((g) => g.tools).length;
+	const slides = heroSlides(snapshot.hero);
+	const facts = heroFacts(snapshot.hero.counts).map((f) => ({
+		text: f.text,
+		href: `${base}/try${encodeTryState(walkState(f.step))}`
+	}));
 	const UGNT = 'https://git.door43.org/unfoldingWord/el-x-koine_ugnt';
 	const ULT = RESOURCES.find((r) => r.id === 'ult')!.door43;
 
@@ -26,7 +34,7 @@
 		{
 			who: 'For developers',
 			title: 'An MCP server and a REST API',
-			text: 'Thirteen read-only tools over Streamable HTTP, the same data as a REST API, and SDKs for JavaScript and Python. No key, no sign-up.',
+			text: `${TOOL_COUNT} read-only tools over Streamable HTTP, the same data as a REST API, and SDKs for JavaScript and Python. No key, no sign-up.`,
 			href: `${base}/connect`,
 			link: 'Connect your assistant'
 		},
@@ -83,15 +91,16 @@
 
 		<div class="rise rise-2 min-w-0">
 			<AlignedQuote
-				rows={snapshot.alignment}
+				{slides}
+				{facts}
 				verse={snapshot.verse}
 				reference={PASSAGE.reference}
 				labels={{ original: 'Greek · UGNT', translation: 'English · ULT' }}
 			/>
 			<p class="text-ink-2 mt-3 text-xs">
-				Each note knows the Greek words it is about and the English words that translate them (<code
-					class="font-mono">get_passage_index</code
-				>). Text:
+				Each translation note names the Greek words it is about and the ULT words aligned to them.
+				The line joins one note’s two quotes: the server does not align whole verses. Saved answers
+				from {snapshot.capturedAt}. Text:
 				<a class="hover:text-ink underline underline-offset-2" href={UGNT}>UGNT</a> and
 				<a class="hover:text-ink underline underline-offset-2" href={ULT}>ULT</a>,
 				<a class="hover:text-ink underline underline-offset-2" href={LICENCE.href}>{LICENCE.name}</a

@@ -1,30 +1,34 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import { highlight, type AlignmentRow } from '$lib/home/anatomy';
+	import { highlight, type HeroSlide } from '$lib/home/anatomy';
 
 	/**
 	 * Two uses:
 	 * - `original` + `aligned`: one pair inline (the map of helps on the Try page);
-	 * - `rows` + `verse`: the verse in Greek and English with each aligned phrase marked
-	 *   and joined by a line, cycling through `rows` (the home page hero).
+	 * - `slides` + `verse`: the home page hero. The verse in Greek and English with one note's
+	 *   two quotes marked and joined by a line, the note under it, and `facts` (what the server
+	 *   returns for the verse) at the foot. It cycles note by note.
 	 */
 	let {
 		original = '',
 		aligned = '',
-		rows = [],
+		slides = [],
+		facts = [],
 		verse,
 		reference = '',
 		labels = { original: 'Greek', translation: 'English' },
-		interval = 4200
+		interval = 7000
 	}: {
 		original?: string;
 		aligned?: string;
-		rows?: AlignmentRow[];
+		slides?: HeroSlide[];
+		facts?: { text: string; href: string }[];
 		verse?: { original: string; translation: string };
 		reference?: string;
 		labels?: { original: string; translation: string };
 		interval?: number;
 	} = $props();
+	const rows = $derived(slides);
 
 	let at = $state(0);
 	let paused = $state(false);
@@ -138,31 +142,64 @@
 					>{:else}{p.text}{/if}{/each}
 		</p>
 
-		<figcaption
-			class="border-line mt-6 flex flex-wrap items-center justify-between gap-3 border-t pt-4"
-		>
-			<p class="min-w-0 text-sm">
-				<span lang="grc" class="text-accent-2 font-serif">{row.original}</span>
-				<span class="text-ink-2" aria-hidden="true"> → </span>
-				<span class="text-ink font-semibold">{row.aligned}</span>
-			</p>
-			<div class="flex items-center gap-1.5" role="group" aria-label="Aligned phrases">
-				{#each rows as r, i (r.original)}
-					<button
-						type="button"
-						class="flex h-6 w-6 items-center justify-center rounded-full"
-						aria-label="Show “{r.aligned}”"
-						aria-pressed={i === at}
-						onclick={() => show(i)}
+		<figcaption class="border-line mt-6 border-t pt-4">
+			<div class="flex items-center justify-between gap-3">
+				<p class="text-accent-2 font-mono text-[11px] tracking-wide uppercase">Translation note</p>
+				<div class="flex items-center gap-1" role="group" aria-label="Notes on this verse">
+					{#each rows as r, i (r.id)}
+						<button
+							type="button"
+							class="flex h-6 w-6 items-center justify-center rounded-full"
+							aria-label="Show the note on “{r.aligned}”"
+							aria-pressed={i === at}
+							onclick={() => show(i)}
+						>
+							<span
+								class="block h-2 rounded-full transition-all motion-reduce:transition-none {i === at
+									? 'bg-accent-2 w-5'
+									: 'bg-line-strong w-2'}"
+							></span>
+						</button>
+					{/each}
+				</div>
+			</div>
+			<!-- Every note sits in the same cell, so the box keeps the height of the longest one. -->
+			<div class="mt-2 grid">
+				{#each rows as r, i (r.id)}
+					<div
+						class="[grid-area:1/1] {i === at ? '' : 'invisible'}"
+						data-slide={i === at ? 'current' : undefined}
 					>
-						<span
-							class="block h-2 rounded-full transition-all {i === at
-								? 'bg-accent-2 w-5'
-								: 'bg-line-strong w-2'}"
-						></span>
-					</button>
+						<p class="text-sm">
+							<span lang="grc" class="text-accent-2 font-serif">{r.original}</span>
+							<span class="text-ink-2" aria-hidden="true"> → </span>
+							<span class="text-ink font-semibold">{r.aligned}</span>
+						</p>
+						<p class="text-ink mt-1.5 text-sm leading-relaxed" data-note>{r.lead}</p>
+						{#if r.academy}
+							<p class="text-ink-2 mt-1.5 text-xs">
+								Academy topic: <span class="text-ink">{r.academy}</span>
+							</p>
+						{/if}
+					</div>
 				{/each}
 			</div>
+			<p class="text-ink-2 mt-2 font-mono text-[11px]">
+				get_passage_index <span aria-hidden="true">→</span><span class="sr-only">, then</span> get_note
+			</p>
+			{#if facts.length}
+				<ul
+					class="border-line text-ink-2 mt-4 flex flex-wrap gap-x-2 gap-y-1 border-t pt-3 text-xs"
+					aria-label="What the server returns for {reference}"
+				>
+					{#each facts as f, i (f.text)}
+						<li>
+							{#if i > 0}<span aria-hidden="true">·</span>{/if}
+							<a class="hover:text-ink underline underline-offset-2" href={f.href}>{f.text}</a>
+						</li>
+					{/each}
+				</ul>
+			{/if}
 		</figcaption>
 	</figure>
 {:else}

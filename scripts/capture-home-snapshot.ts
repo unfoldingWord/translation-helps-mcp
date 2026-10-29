@@ -1,9 +1,11 @@
 /**
  * Save the home page's sample answers: npx tsx scripts/capture-home-snapshot.ts [origin]
  *
- * Calls each ANATOMY_PARTS call (and get_passage_index for the aligned phrases) in one
- * MCP session against `origin` (default: the production Worker, DEFAULT_ORIGIN) and writes web/src/lib/home/snapshot.json.
- * The home page shows these when the live server does not answer. Never run in the build.
+ * Calls each ANATOMY_PARTS call, then for the hero get_passage_index (the notes, their
+ * quotes and Academy topics, and the counts), get_note for each hero note's text, and
+ * get_questions for the count of questions, all in one MCP session against `origin`
+ * (default: the production Worker, DEFAULT_ORIGIN). Writes web/src/lib/home/snapshot.json.
+ * The home page shows only these until someone chooses a part. Never run in the build.
  */
 import { writeFileSync } from "node:fs";
 import { McpHttpClient } from "../web/src/lib/mcp/client";
@@ -12,10 +14,13 @@ import { endpointFor } from "../web/src/lib/site";
 import {
   ANATOMY_PARTS,
   PASSAGE,
-  alignmentRows,
   excerptFrom,
+  heroCounts,
+  heroNotes,
+  noteTextFrom,
   stripVerseNumber,
   type AnatomyPartId,
+  type HeroNote,
   type HomeSnapshot,
 } from "../web/src/lib/home/anatomy";
 
@@ -54,8 +59,16 @@ async function main() {
   }
 
   const index = await call("get_passage_index", { ...PASSAGE });
-  const alignment = alignmentRows(index);
-  if (alignment.length < 2) fail("fewer than two aligned phrases");
+  const picked = heroNotes(index);
+  if (picked.length < 2) fail("fewer than two notes with aligned quotes");
+  const notes: HeroNote[] = [];
+  for (const n of picked) {
+    const note = noteTextFrom(await call("get_note", { ...PASSAGE, id: n.id }));
+    if (!note) fail(`note ${n.id} has no text`);
+    notes.push({ ...n, note });
+  }
+  const counts = heroCounts(index, await call("get_questions", { ...PASSAGE }));
+  if (!counts.notes) fail("the index lists no notes");
 
   const verseOf = (role: string) =>
     stripVerseNumber(String(versions.find((v) => v.role === role)?.text ?? ""));
@@ -68,7 +81,7 @@ async function main() {
 
   const snapshot: HomeSnapshot = {
     ...excerpts,
-    alignment,
+    hero: { notes, counts },
     verse,
     capturedAt: new Date().toISOString().slice(0, 10),
     origin,

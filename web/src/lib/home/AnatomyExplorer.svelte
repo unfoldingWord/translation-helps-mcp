@@ -4,7 +4,7 @@
 	import { ArrowRight, ExternalLink } from 'lucide-svelte';
 	import Markdown from '$lib/components/Markdown.svelte';
 	import { endpoint } from '$lib/endpoint';
-	import { connect, run } from '$lib/mcp/session';
+	import { run } from '$lib/mcp/session';
 	import { encodeTryState } from '$lib/try/hashState';
 	import { revealOnNarrow } from '$lib/reveal';
 	import { RESOURCES } from '$lib/resources';
@@ -20,7 +20,6 @@
 	const saved = snapshotJson as HomeSnapshot;
 	let selected = $state<AnatomyPart>(ANATOMY_PARTS[1]);
 	let live = $state<Partial<Record<AnatomyPart['id'], string>>>({});
-	let online = $state(false);
 	let mounted = $state(false);
 	let card = $state<HTMLElement>();
 
@@ -33,12 +32,21 @@
 		`${base}/try${encodeTryState({ tab: 'tools', tool: selected.call.tool, args: selected.call.args })}`
 	);
 
-	/** Ask the live server for a part. A failure keeps the saved excerpt; nothing else changes. */
+	/**
+	 * Ask the live server for a part. The page shows the saved answers and opens no MCP
+	 * session until someone chooses a part. A failure keeps the saved excerpt.
+	 */
+	const asking = new Set<AnatomyPart['id']>();
 	async function load(p: AnatomyPart) {
-		if (!online || live[p.id]) return;
-		const { result, outcome } = await run(endpoint(), p.call.tool, p.call.args);
-		const text = outcome.kind === 'ok' ? excerptFrom(p.id, result?.structured) : '';
-		if (text) live = { ...live, [p.id]: text };
+		if (live[p.id] || asking.has(p.id)) return;
+		asking.add(p.id);
+		try {
+			const { result, outcome } = await run(endpoint(), p.call.tool, p.call.args);
+			const text = outcome.kind === 'ok' ? excerptFrom(p.id, result?.structured) : '';
+			if (text) live = { ...live, [p.id]: text };
+		} finally {
+			asking.delete(p.id);
+		}
 	}
 
 	function choose(p: AnatomyPart) {
@@ -47,15 +55,8 @@
 		revealOnNarrow(card);
 	}
 
-	onMount(async () => {
+	onMount(() => {
 		mounted = true;
-		try {
-			await connect(endpoint());
-			online = true;
-			void load(selected);
-		} catch {
-			online = false;
-		}
 	});
 </script>
 

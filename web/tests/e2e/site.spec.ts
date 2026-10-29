@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 
 // These tests drive the built site against local Workers (see playwright.config.ts). The
@@ -124,6 +125,80 @@ test('a broken shared link opens the guided tab', async ({ page }) => {
 	await expect(tab('Tools')).toHaveAttribute('aria-selected', 'false');
 	await expect(page.getByRole('list', { name: 'Steps' })).toBeVisible();
 	expect(errors).toEqual([]);
+});
+
+test('the home page calls the MCP server only when a part is chosen', async ({ page }) => {
+	const calls: { method?: string; tool?: string }[] = [];
+	page.on('request', (req) => {
+		if (!/\/mcp\/?$/.test(new URL(req.url()).pathname)) return;
+		let body: { method?: string; params?: { name?: string } } = {};
+		try {
+			body = JSON.parse(req.postData() ?? '{}');
+		} catch {
+			// Not JSON-RPC: still a request to /mcp, so it is counted.
+		}
+		calls.push(
+			body.params?.name ? { method: body.method, tool: body.params.name } : { method: body.method }
+		);
+	});
+
+	await page.goto('');
+	await page.waitForLoadState('networkidle');
+	await expect(page.getByText(/Saved answer ·/)).toBeVisible();
+	await expect(page.getByText('Translation note', { exact: true })).toBeVisible();
+	expect(calls).toEqual([]);
+
+	await page.getByRole('button', { name: /Key terms/ }).click();
+	await expect(page.getByText(/Live from the server/)).toBeVisible({ timeout: SLOW });
+	expect(calls).toEqual([
+		{ method: 'initialize' },
+		{ method: 'notifications/initialized' },
+		{ method: 'tools/call', tool: 'get_word_article' }
+	]);
+});
+
+test('the home hero shows one note at a time, and rotates unless paused', async ({ page }) => {
+	// Run from web/ (npm run test:e2e): the saved answers the hero shows.
+	const hero = JSON.parse(readFileSync('src/lib/home/snapshot.json', 'utf8')).hero as {
+		notes: { aligned: string }[];
+	};
+	const figure = page.locator('figure').filter({ has: page.getByText('Translation note') });
+	const dots = figure.getByRole('group', { name: 'Notes on this verse' }).getByRole('button');
+	const marked = figure.locator('mark[data-mark="translation"]');
+	const note = figure.locator('[data-slide="current"]');
+	const pressed = async () => {
+		for (let i = 0; i < (await dots.count()); i++)
+			if ((await dots.nth(i).getAttribute('aria-pressed')) === 'true') return i;
+		return -1;
+	};
+
+	await page.goto('');
+	await expect(dots).toHaveCount(hero.notes.length);
+	await expect(dots.first()).toHaveAttribute('aria-pressed', 'true');
+	await expect(marked).toHaveText(hero.notes[0].aligned);
+	await expect(note).toContainText(hero.notes[0].aligned);
+	await expect(figure.getByRole('list', { name: /What the server returns/ })).toContainText(
+		/\d+ notes\s*·\s*\d+ key terms?\s*·\s*\d+ questions?\s*·\s*\d+ Academy topics?/
+	);
+
+	// Left alone, it moves to the next note: the marked phrase and the note change together.
+	await expect(dots.nth(1)).toHaveAttribute('aria-pressed', 'true', { timeout: 12_000 });
+	await expect(marked).toHaveText(hero.notes[1].aligned);
+	await expect(note).toContainText(hero.notes[1].aligned);
+
+	// A dot shows its note. Under the pointer, it stays there.
+	await dots.nth(3).click();
+	await expect(marked).toHaveText(hero.notes[3].aligned);
+	await page.waitForTimeout(9_000);
+	expect(await pressed()).toBe(3);
+
+	// With reduced motion it does not move on its own.
+	await page.emulateMedia({ reducedMotion: 'reduce' });
+	await page.goto('');
+	await page.mouse.move(0, 0);
+	await expect(dots.first()).toHaveAttribute('aria-pressed', 'true');
+	await page.waitForTimeout(9_000);
+	expect(await pressed()).toBe(0);
 });
 
 test('/chat, /playground and /rag redirect to /try', async ({ page, request }) => {
