@@ -18,6 +18,12 @@ import { TranslationHelpsMCP } from "../../src/mcp/agent.js";
 import { NormalizingMcpServer } from "../../src/mcp/normalizingMcpServer.js";
 import { SERVER_INSTRUCTIONS } from "../../src/mcp/instructions.js";
 import { MCP_TOOLS } from "../../src/mcp/toolRegistry.js";
+import { PROMPTS } from "../../src/mcp/prompts/index.js";
+import {
+  failNextToolListProbeForTests,
+  resetToolListCacheForTests,
+  toolListProbeAttemptsForTests,
+} from "../../src/mcp/registerServer.js";
 import { SERVER_NAME, VERSION } from "../../src/core/version.js";
 import { resetRateLimitStoreForTests } from "../../src/core/rateLimit.js";
 
@@ -196,6 +202,7 @@ async function readJson(response: Response): Promise<{
       inputSchema?: unknown;
       outputSchema?: unknown;
     }>;
+    prompts?: Array<{ name: string; description?: string }>;
     structuredContent?: Record<string, unknown>;
     isError?: boolean;
   };
@@ -210,6 +217,7 @@ async function readJson(response: Response): Promise<{
         inputSchema?: unknown;
         outputSchema?: unknown;
       }>;
+      prompts?: Array<{ name: string; description?: string }>;
       structuredContent?: Record<string, unknown>;
       isError?: boolean;
     };
@@ -528,20 +536,24 @@ describe("stateless MCP worker fetch", () => {
     const first = postMcp("/v2/mcp", call, env, ctx);
     await heldPromise;
 
+    // The first handler stays blocked until the second call resolves. A shared
+    // queue deadlocks here. The ceiling only fails that hang; success does not
+    // depend on finishing inside a fixed window.
+    const ceilingMs = 15_000;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const second = postMcp("/v2/mcp", { ...call, id: 2 }, env, ctx);
     try {
       const raced = await Promise.race([
-        second.then(() => "second" as const),
-        new Promise<"timeout">((resolve) => {
-          timer = setTimeout(() => resolve("timeout"), 1000);
+        second.then((response) => ({ kind: "second" as const, response })),
+        new Promise<{ kind: "timeout" }>((resolve) => {
+          timer = setTimeout(() => resolve({ kind: "timeout" }), ceilingMs);
         }),
       ]);
-      expect(raced).toBe("second");
-      const secondResponse = await second;
-      expect(secondResponse.status).toBe(200);
-      expect(secondResponse.headers.get("mcp-session-id")).toBeNull();
-      const body = await readJson(secondResponse);
+      expect(raced.kind).toBe("second");
+      if (raced.kind !== "second") return;
+      expect(raced.response.status).toBe(200);
+      expect(raced.response.headers.get("mcp-session-id")).toBeNull();
+      const body = await readJson(raced.response);
       expect(body.result?.isError).not.toBe(true);
     } finally {
       clearTimeout(timer);
@@ -550,7 +562,7 @@ describe("stateless MCP worker fetch", () => {
       expect(firstResponse.status).toBe(200);
     }
     expect(namespace.names).toEqual([]);
-  });
+  }, 20_000);
 
   it("accepts a POST whose Accept is only application/json", async () => {
     const namespace = durableObjectNamespace();
@@ -662,6 +674,61 @@ describe("stateless MCP worker fetch", () => {
     expect(allowed.headers.get("mcp-session-id")).toBeNull();
     const body = await readJson(allowed);
     expect(body.result?.isError).not.toBe(true);
+    expect(namespace.names).toEqual([]);
+  });
+
+  it("lists prompts with no session", async () => {
+    const namespace = durableObjectNamespace();
+    const analytics: AnalyticsSpy = { points: [] };
+    const { ctx } = executionContext();
+    const response = await postMcp(
+      "/v2/mcp",
+      rpc("prompts/list", {}),
+      baseEnv(namespace, analytics),
+      ctx,
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("mcp-session-id")).toBeNull();
+    const body = await readJson(response);
+    expect(body.result?.prompts?.map((prompt) => prompt.name)).toEqual(
+      PROMPTS.map((prompt) => prompt.name),
+    );
+    expect(namespace.names).toEqual([]);
+  });
+
+  it("lists tools when the cache probe fails once, then uses the cache", async () => {
+    resetToolListCacheForTests();
+    failNextToolListProbeForTests();
+    const namespace = durableObjectNamespace();
+    const analytics: AnalyticsSpy = { points: [] };
+    const env = baseEnv(namespace, analytics);
+    const { ctx } = executionContext();
+    const list = rpc("tools/list", {});
+
+    try {
+      const fallback = await postMcp("/v2/mcp", list, env, ctx);
+      expect(fallback.status).toBe(200);
+      expect(fallback.headers.get("mcp-session-id")).toBeNull();
+      const fallbackBody = await readJson(fallback);
+      expect(fallbackBody.result?.tools?.map((tool) => tool.name)).toEqual(
+        MCP_TOOLS.map((tool) => tool.name),
+      );
+      expect(toolListProbeAttemptsForTests()).toBe(1);
+
+      const warmed = await postMcp("/v2/mcp", { ...list, id: 2 }, env, ctx);
+      expect(warmed.status).toBe(200);
+      const warmedBody = await readJson(warmed);
+      expect(warmedBody.result?.tools).toEqual(fallbackBody.result?.tools);
+      expect(toolListProbeAttemptsForTests()).toBe(2);
+
+      const cached = await postMcp("/v2/mcp", { ...list, id: 3 }, env, ctx);
+      expect(cached.status).toBe(200);
+      const cachedBody = await readJson(cached);
+      expect(cachedBody.result?.tools).toEqual(warmedBody.result?.tools);
+      expect(toolListProbeAttemptsForTests()).toBe(2);
+    } finally {
+      resetToolListCacheForTests();
+    }
     expect(namespace.names).toEqual([]);
   });
 });

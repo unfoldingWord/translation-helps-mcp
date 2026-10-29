@@ -96,8 +96,29 @@ function strictInputSchemas(): z.ZodType[] {
  * JSON Schema `tools/list` payload, produced once by the SDK and reused.
  * A fresh server would otherwise convert every Zod schema on every list.
  * The probe does not install this cache, or the first list would wait on itself.
+ * A failed probe is not stored: the next list tries again.
  */
 let sdkToolList: Promise<ListedTool[]> | undefined;
+let probeAttempts = 0;
+let probeFailuresRemaining = 0;
+
+/** Drop the cached list so a test can watch the next probe. */
+export function resetToolListCacheForTests(): void {
+  sdkToolList = undefined;
+  probeAttempts = 0;
+  probeFailuresRemaining = 0;
+}
+
+/** The next cache probe throws before it talks to the SDK. */
+export function failNextToolListProbeForTests(): void {
+  probeFailuresRemaining += 1;
+  sdkToolList = undefined;
+}
+
+/** How many cache probes this isolate has started since the last reset. */
+export function toolListProbeAttemptsForTests(): number {
+  return probeAttempts;
+}
 
 function loadSdkToolList(): Promise<ListedTool[]> {
   sdkToolList ??= captureSdkToolList().catch((error: unknown) => {
@@ -108,6 +129,11 @@ function loadSdkToolList(): Promise<ListedTool[]> {
 }
 
 async function captureSdkToolList(): Promise<ListedTool[]> {
+  probeAttempts += 1;
+  if (probeFailuresRemaining > 0) {
+    probeFailuresRemaining -= 1;
+    throw new Error("Tool list cache probe failed.");
+  }
   const server = new NormalizingMcpServer(
     { name: SERVER_NAME, version: VERSION },
     { instructions: SERVER_INSTRUCTIONS },
@@ -146,10 +172,44 @@ async function captureSdkToolList(): Promise<ListedTool[]> {
   return tools;
 }
 
+type StoredListHandler = (
+  request: unknown,
+  extra: unknown,
+) => Promise<ListToolsResult> | ListToolsResult;
+
+/**
+ * The handler the SDK installed while registering tools. The cache replaces
+ * it, and a failed probe calls this one for that request only.
+ */
+function sdkListToolsHandler(
+  server: NormalizingMcpServer,
+): StoredListHandler | undefined {
+  const handlers = (
+    server.server as unknown as {
+      _requestHandlers?: Map<string, StoredListHandler>;
+    }
+  )._requestHandlers;
+  return handlers?.get("tools/list");
+}
+
 function installCachedToolList(server: NormalizingMcpServer): void {
-  server.server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: structuredClone(await loadSdkToolList()),
-  }));
+  const fallback = sdkListToolsHandler(server);
+  server.server.setRequestHandler(
+    ListToolsRequestSchema,
+    async (request, extra) => {
+      try {
+        return { tools: structuredClone(await loadSdkToolList()) };
+      } catch (error) {
+        // Do not keep the failure. loadSdkToolList already dropped it, so the
+        // next list probes again. This request uses the SDK's own listing.
+        logger.warn("tool:list_cache_fallback", {
+          reason: error instanceof Error ? error.message : String(error),
+        });
+        if (!fallback) throw error;
+        return fallback(request, extra);
+      }
+    },
+  );
 }
 
 export function registerTranslationHelpsServer(
