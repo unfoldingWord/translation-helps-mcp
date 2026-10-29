@@ -67,34 +67,19 @@ The UI will be available at `http://localhost:5173`
 npm run build
 ```
 
-## 🎯 How to Use
+## 🎯 Routes
 
-### 1. **Overview Page** (`/`)
+The v1 pages are no longer served. Every `GET`/`HEAD` to a v1 page answers a temporary `302` to the v2 site (`/v2/`), keeping the query string. The hook in `src/hooks.server.ts` reads the list from `src/lib/v1-page-redirects.json`, and so does `scripts/check-routing.js`, the routing check CI runs on the built app:
 
-- Learn about the Translation Helps MCP Server
-- Understand its capabilities and use cases
-- Quick start guide for integration
+- `/getting-started` → `/v2/connect`
+- `/mcp-tools` → `/v2/tools`
+- `/api-explorer`, `/api-explorer-v2` → `/v2/try`
+- `/chat`, `/chat/sdk-integration`, `/docs`, `/docs/*` → `/v2/docs`
+- `/`, `/about`, `/changelog`, `/performance`, `/rag-manifesto`, `/whitepaper` → `/v2/`
 
-### 2. **Test Interface** (`/test`)
+These stay on v1 and never redirect: `/api/*`, `/mcp`, `/_app/*`, the files in `static/`, and any method other than `GET`/`HEAD`. `/v2` and `/v2/*` are proxied to the v2 Worker.
 
-- **Individual Tests**: Configure parameters and test specific endpoints
-- **Bulk Tests**: Run comprehensive test suites with timing analysis
-- **Beautiful Results**: See API responses rendered with custom components
-- **Debug Output**: Copy-paste friendly logs for troubleshooting
-
-### 3. **AI Chat** (`/chat`)
-
-- Ask natural language questions about the Bible
-- See how the MCP server processes queries
-- View API calls in real-time
-- Experience the power of AI-powered Bible study
-
-### 4. **API Reference** (`/api`)
-
-- Complete documentation for all endpoints
-- Interactive examples you can test
-- Parameter explanations and response formats
-- Integration guides for different use cases
+v1 pages must not be prerendered: Cloudflare Pages serves prerendered pages as static assets, which never reach the hook.
 
 ## 🎨 Design System
 

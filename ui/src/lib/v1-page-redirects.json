@@ -1,0 +1,15 @@
+[
+	["/getting-started", "/v2/connect"],
+	["/mcp-tools", "/v2/tools"],
+	["/api-explorer", "/v2/try"],
+	["/api-explorer-v2", "/v2/try"],
+	["/chat", "/v2/docs"],
+	["/chat/sdk-integration", "/v2/docs"],
+	["/docs/*", "/v2/docs"],
+	["/", "/v2/"],
+	["/about", "/v2/"],
+	["/changelog", "/v2/"],
+	["/performance", "/v2/"],
+	["/rag-manifesto", "/v2/"],
+	["/whitepaper", "/v2/"]
+]
