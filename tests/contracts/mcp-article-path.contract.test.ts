@@ -56,7 +56,7 @@ vi.mock("@translation-helps/door43", async (importOriginal) => {
   };
 });
 
-import { fillArticleZips } from "../fixtures/articleZips.js";
+import { EN_TW_ZIP, fillArticleZips } from "../fixtures/articleZips.js";
 import { clearArticleCatalogCacheForTests } from "../../src/api/routes/articleCatalog.js";
 import { handleWordsPath } from "../../src/api/routes/words.js";
 import { handleAcademyPath } from "../../src/api/routes/academy.js";
@@ -213,7 +213,7 @@ describe("get_word_article tools/call without a session", () => {
     });
   });
 
-  it("resolves a multi-word term and a possessive, without a session", async () => {
+  it("resolves a multi-word term to the file name, without a session", async () => {
     const phrase = await callTool("get_word_article", {
       path: "son of god",
       language: "en",
@@ -225,7 +225,12 @@ describe("get_word_article tools/call without a session", () => {
       title: "Son of God, the Son",
       resolvedFrom: "category",
     });
+  });
 
+  it("resolves son's on this fixture, where only one title contains the word son", async () => {
+    // The zip has "Son of God, the Son" and "sons of God". The second title
+    // does not contain the word "son", so the possessive resolves. Published
+    // English TW has several titles with that word; the next test covers that.
     const possessive = await callTool("get_word_article", {
       path: "son's",
       language: "en",
@@ -239,6 +244,42 @@ describe("get_word_article tools/call without a session", () => {
       note: "Partial title match.",
       requestedPath: "son's",
     });
+  });
+
+  it("returns candidates for son's when several titles contain the word son", async () => {
+    const files = catalog.zips.get(EN_TW_ZIP);
+    files?.set("en_tw/bible/kt/sonofman.md", "# Son of Man, son of man\n");
+    files?.set(
+      "en_tw/bible/names/jamessonofalphaeus.md",
+      "# James, son of Alphaeus\n",
+    );
+    files?.set("en_tw/bible/other/offspring.md", "# the son, sons\n");
+    clearArticleCatalogCacheForTests();
+
+    const { session, body } = await callTool("get_word_article", {
+      path: "son's",
+      language: "en",
+    });
+    const content = body.result?.structuredContent;
+    const candidates = content?.candidates as Array<{
+      path: string;
+      title: string;
+    }>;
+    expect(session).toBeNull();
+    expect(body.result?.isError).toBe(false);
+    expect(content).toMatchObject({
+      available: false,
+      code: "RESOURCE_NOT_AVAILABLE",
+      requestedPath: "son's",
+    });
+    expect(content?.path).toBeUndefined();
+    expect(candidates[0]).toEqual({
+      path: "bible/kt/sonofgod",
+      title: "Son of God, the Son",
+    });
+    expect(candidates.map((item) => item.path)).not.toContain(
+      "bible/kt/sonsofgod",
+    );
   });
 
   it("accepts resourceType as an alias of types", async () => {

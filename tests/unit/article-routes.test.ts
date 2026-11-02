@@ -225,6 +225,18 @@ describe("word and academy routes", () => {
       });
     }
 
+    const flagged = await read(
+      await handleWordsPath({
+        url: routeUrl({ language: "en", prepared: "1" }),
+        env: {} as never,
+        pathParam: "son's",
+      }),
+    );
+    expect(flagged.status).toBe(400);
+    expect(flagged.body).toMatchObject({
+      error: { code: "INVALID_PARAMS" },
+    });
+
     const slashed = await read(
       await handleWordsPath({
         url: routeUrl({ language: "en" }),
@@ -312,6 +324,18 @@ describe("word and academy routes", () => {
     );
     expect(exact.body.path).toBe("translate/figs-metaphor");
     expect(exact.body.resolvedFrom).toBeUndefined();
+
+    const flagged = await read(
+      await handleAcademyPath({
+        url: routeUrl({ language: "en", prepared: "1" }),
+        env: {} as never,
+        pathParam: "ta/man/translate/figs-metaphor",
+      }),
+    );
+    expect(flagged.status).toBe(400);
+    expect(flagged.body).toMatchObject({
+      error: { code: "INVALID_PARAMS" },
+    });
   });
 
   it("ranks an exact title first", async () => {

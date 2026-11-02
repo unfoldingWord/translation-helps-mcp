@@ -128,7 +128,10 @@ describe("resolveTwArticle", () => {
       path: "bible/kt/covenant",
     });
     expect(
-      resolveTwArticle("rc://*/tw/dict/bible/kt/covenant", TW),
+      resolveTwArticle(
+        prepareArticlePath("rc://*/tw/dict/bible/kt/covenant"),
+        TW,
+      ),
     ).toMatchObject({ status: "exact", path: "bible/kt/covenant" });
   });
 
@@ -208,45 +211,79 @@ describe("resolveTwArticle", () => {
       ...TW,
       { path: "bible/kt/arkofthecovenant", title: "Ark of the Covenant" },
     ];
-    expect(resolveTwArticle("son of god", TW)).toEqual({
+    expect(resolveTwArticle(prepareArticlePath("son of god"), TW)).toEqual({
       status: "resolved",
       path: "bible/kt/sonofgod",
       title: "Son of God",
       resolvedFrom: "category",
     });
-    expect(resolveTwArticle("ark of the covenant", withArk)).toMatchObject({
+    expect(
+      resolveTwArticle(prepareArticlePath("ark of the covenant"), withArk),
+    ).toMatchObject({
       path: "bible/kt/arkofthecovenant",
       resolvedFrom: "category",
     });
   });
 
   it("drops a trailing possessive and resolves Son of God, not sons of God", () => {
+    // One title contains the word "son". "sons of God" does not, so this resolves.
     const family = [
       { path: "bible/kt/sonofgod", title: "Son of God, the Son" },
       { path: "bible/kt/sonsofgod", title: "sons of God" },
     ];
-    expect(resolveTwArticle("son's", family)).toEqual({
+    expect(resolveTwArticle(prepareArticlePath("son's"), family)).toEqual({
       status: "resolved",
       path: "bible/kt/sonofgod",
       title: "Son of God, the Son",
       resolvedFrom: "partial",
       note: "Partial title match.",
     });
-    expect(resolveTwArticle("son\u2019s", family)).toMatchObject({
+    expect(
+      resolveTwArticle(prepareArticlePath("son\u2019s"), family),
+    ).toMatchObject({
       path: "bible/kt/sonofgod",
       resolvedFrom: "partial",
     });
-    expect(resolveTwArticle("son'", family)).toMatchObject({
+    expect(resolveTwArticle(prepareArticlePath("son'"), family)).toMatchObject({
       path: "bible/kt/sonofgod",
       resolvedFrom: "partial",
     });
+  });
+
+  it("returns candidates for son's when several titles contain the word, sonofgod first", () => {
+    // Modelled on published English TW. "son's" becomes "son". That word is
+    // in several titles, and "sons of God" is not one of them. A file or an
+    // alternate name that is exactly "son" would resolve; these titles do not.
+    const published = [
+      { path: "bible/kt/sonofgod", title: "Son of God, the Son" },
+      { path: "bible/kt/sonsofgod", title: "sons of God" },
+      { path: "bible/kt/sonofman", title: "Son of Man, son of man" },
+      {
+        path: "bible/names/jamessonofalphaeus",
+        title: "James, son of Alphaeus",
+      },
+      { path: "bible/other/offspring", title: "the son, sons" },
+    ];
+    const result = resolveTwArticle(prepareArticlePath("son's"), published);
+    expect(result.status).toBe("ambiguous");
+    if (result.status !== "ambiguous") return;
+    expect(result.candidates[0]).toEqual({
+      path: "bible/kt/sonofgod",
+      title: "Son of God, the Son",
+    });
+    expect(result.candidates.map((item) => item.path)).not.toContain(
+      "bible/kt/sonsofgod",
+    );
+    expect(result.candidates.length).toBeLessThanOrEqual(5);
   });
 
   it("resolves the one title where the term is whole words", () => {
     const withHand = [
       { path: "bible/other/godsrightand", title: "God's Right Hand" },
     ];
-    expect(resolveTwArticle("right hand", withHand)).toEqual({
+    expect(
+      resolveTwArticle(prepareArticlePath("right hand"), withHand),
+    ).toEqual({
       status: "resolved",
       path: "bible/other/godsrightand",
       title: "God's Right Hand",
@@ -278,11 +315,33 @@ describe("resolveTwArticle", () => {
     expect(result.candidates).toEqual([
       { path: "bible/kt/covenant", title: "Covenant" },
     ]);
-    expect(resolveTwArticle("right hand", TW)).toEqual({ status: "miss" });
+    expect(resolveTwArticle(prepareArticlePath("right hand"), TW)).toEqual({
+      status: "miss",
+    });
   });
 
   it("refuses a path that skips the safety check", () => {
     for (const raw of ["../kt/hades", "bible/../kt/hades", "/bible/kt/hades"]) {
+      expect(() => resolveTwArticle(raw, TW), raw).toThrow(
+        /Invalid article path/,
+      );
+      try {
+        resolveTwArticle(raw, TW);
+      } catch (error) {
+        expect((error as { code?: string }).code).toBe(
+          ErrorCode.INVALID_PARAMS,
+        );
+      }
+    }
+  });
+
+  it("refuses a path that has not been prepared", () => {
+    for (const raw of [
+      "rc://*/tw/dict/bible/kt/covenant",
+      "tw/dict/bible/kt/covenant",
+      "son's",
+      "son of god",
+    ]) {
       expect(() => resolveTwArticle(raw, TW), raw).toThrow(
         /Invalid article path/,
       );
@@ -305,10 +364,16 @@ describe("resolveTaArticle", () => {
       title: "Metaphor",
     });
     expect(
-      resolveTaArticle("ta/man/translate/figs-metaphor/01.md", TA),
+      resolveTaArticle(
+        prepareArticlePath("ta/man/translate/figs-metaphor/01.md"),
+        TA,
+      ),
     ).toMatchObject({ status: "exact", path: "translate/figs-metaphor" });
     expect(
-      resolveTaArticle("rc://*/ta/man/translate/figs-metaphor", TA),
+      resolveTaArticle(
+        prepareArticlePath("rc://*/ta/man/translate/figs-metaphor"),
+        TA,
+      ),
     ).toMatchObject({ status: "exact", path: "translate/figs-metaphor" });
   });
 
@@ -348,6 +413,17 @@ describe("resolveTaArticle", () => {
 
   it("misses an unknown concept", () => {
     expect(resolveTaArticle("not-a-concept", TA)).toEqual({ status: "miss" });
+  });
+
+  it("refuses a path that has not been prepared", () => {
+    for (const raw of [
+      "rc://*/ta/man/translate/figs-metaphor",
+      "ta/man/translate/figs-metaphor/01.md",
+    ]) {
+      expect(() => resolveTaArticle(raw, TA), raw).toThrow(
+        /Invalid article path/,
+      );
+    }
   });
 
   it("refuses a path that skips the safety check", () => {

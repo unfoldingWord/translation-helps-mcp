@@ -11,6 +11,7 @@ import {
 } from "@translation-helps/door43";
 import { TranslationHelpsError } from "../../core/errors.js";
 import {
+  assertPreparedArticlePath,
   prepareArticlePath,
   resolveTaArticle,
 } from "../../core/articleResolve.js";
@@ -101,7 +102,11 @@ export async function handleAcademyPath(ctx: RouteContext): Promise<Response> {
 
   let prepared: string;
   try {
-    prepared = prepareArticlePath(pathParam);
+    // MCP prepares once and sets prepared=1. REST input is prepared here.
+    prepared =
+      url.searchParams.get("prepared") === "1"
+        ? assertPreparedArticlePath(pathParam)
+        : prepareArticlePath(pathParam);
   } catch (error) {
     if (error instanceof TranslationHelpsError) {
       return apiError("INVALID_PARAMS", error.message, 400);

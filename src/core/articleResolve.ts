@@ -2,11 +2,13 @@
  * Resolve a near-miss Translation Words or Translation Academy path.
  *
  * The exact catalog path is tried first. Resolution runs only when it is
- * absent. Both resolvers run `prepareArticlePath` themselves, so a caller
- * that skips the route still cannot pass an unsafe path into the catalog.
+ * absent. `prepareArticlePath` runs once where raw input enters (the REST
+ * route, or the MCP handler). The resolvers refuse a path that has not
+ * been through it, so a caller cannot skip that edge.
  */
 
 import { assertSafeArticlePath } from "./articlePath.js";
+import { ErrorCode, TranslationHelpsError } from "./errors.js";
 
 export const RESOLVED_FROM = [
   "category",
@@ -107,10 +109,40 @@ function collapseBareTerm(path: string): string {
 /**
  * Strip known prefixes, fold a bare term, then the same safety check.
  * Throws TranslationHelpsError (INVALID_PARAMS) for anything unsafe.
+ * Idempotent: a path it returns is unchanged by a second call.
  */
 export function prepareArticlePath(raw: string): string {
   const stripped = percentDecoded(stripKnownArticlePrefix(raw).trim());
   return assertSafeArticlePath(collapseBareTerm(stripped));
+}
+
+function unpreparedArticlePath(path: string): TranslationHelpsError {
+  return new TranslationHelpsError({
+    code: ErrorCode.INVALID_PARAMS,
+    message: "Invalid article path: path must be prepared before resolution",
+    context: { path },
+  });
+}
+
+/**
+ * Accept only a path `prepareArticlePath` already returned. Does not rewrite
+ * prefixes, spaces, or possessives. Unsafe paths still fail the allowlist.
+ */
+export function assertPreparedArticlePath(path: string): string {
+  if (typeof path !== "string" || path !== path.trim()) {
+    throw unpreparedArticlePath(String(path));
+  }
+  const safe = assertSafeArticlePath(path);
+  if (safe !== path || stripKnownArticlePrefix(path) !== path) {
+    throw unpreparedArticlePath(path);
+  }
+  if (
+    !path.includes("/") &&
+    (stripTrailingPossessive(path) !== path || BARE_TERM_GAP.test(path))
+  ) {
+    throw unpreparedArticlePath(path);
+  }
+  return path;
 }
 
 function matchKey(value: string): string {
@@ -281,13 +313,13 @@ function partialTitleMatch(
 
 /**
  * Resolve a Translation Words path against one language's catalog.
- * Runs the safety check itself. `raw` may still carry a known prefix.
+ * `path` must already be the return value of `prepareArticlePath`.
  */
 export function resolveTwArticle(
-  raw: string,
+  path: string,
   articles: CatalogArticle[],
 ): ArticleMatch {
-  const cleaned = cleanTw(prepareArticlePath(raw));
+  const cleaned = cleanTw(assertPreparedArticlePath(path));
   const exact = exactHit(cleaned, articles);
   if (exact) return exact;
 
@@ -318,13 +350,13 @@ export function resolveTwArticle(
 
 /**
  * Resolve a Translation Academy path against one language's catalog.
- * Runs the safety check itself. `raw` may still carry a known prefix.
+ * `path` must already be the return value of `prepareArticlePath`.
  */
 export function resolveTaArticle(
-  raw: string,
+  path: string,
   articles: CatalogArticle[],
 ): ArticleMatch {
-  const cleaned = cleanTa(prepareArticlePath(raw));
+  const cleaned = cleanTa(assertPreparedArticlePath(path));
   const exact = exactHit(cleaned, articles);
   if (exact) return exact;
 

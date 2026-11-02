@@ -78,7 +78,7 @@ export const getAcademyArticleTool: ToolModule<typeof inputSchema> = {
     const encodedPath = prepared.split("/").map(encodeURIComponent).join("/");
     const data = await client.get<ArticlePayload>(
       `/api/v1/academy/${encodedPath}`,
-      { language: params.language, requestedPath },
+      { language: params.language, requestedPath, prepared: "1" },
     );
     const presented = presentArticle(data, "ta", prepared);
     const slug =

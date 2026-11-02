@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { Env } from "../../src/mcp/agent.js";
 import { getPassageIndexTool } from "../../src/mcp/tools/getPassageIndex.js";
 import { getNoteTool } from "../../src/mcp/tools/getNote.js";
-import { resolveTaArticle } from "../../src/core/articleResolve.js";
+import {
+  prepareArticlePath,
+  resolveTaArticle,
+} from "../../src/core/articleResolve.js";
 
 function api(routes: Record<string, unknown>): Env {
   return {
@@ -102,8 +105,9 @@ describe("passage index feeds get_note and get_academy_article", () => {
       { path: "translate/figs-complexmetaphor", title: "Complex Metaphor" },
     ];
     expect(resolveTaArticle(row.taArticle.path, catalog).status).toBe("exact");
-    expect(resolveTaArticle(row.supportReference, catalog).status).toBe(
-      "exact",
-    );
+    expect(
+      resolveTaArticle(prepareArticlePath(row.supportReference), catalog)
+        .status,
+    ).toBe("exact");
   });
 });
