@@ -1,20 +1,26 @@
 /**
  * Argument normalization for /v3/mcp, before Zod sees the tool schema.
  *
- * v2's normalizeToolArgs stays as it is: get_passage there is Bible-only, so
- * Class O does not run for that name. v3 tools share those names and accept
- * Bible and OBS, so this function is the one the v3 server applies.
+ * v2's tool sets (REFERENCE_TOOLS, OBS_REFERENCE_TOOLS, PATH_TOOLS) do not
+ * include the th_ names. get_passage there is Bible-only, so Class O does
+ * not run for that name or for th_get_passage. This function recognizes the
+ * prefixed v3 names and calls normalizeToolArgs with an unprefixed name:
+ * list_languages for Class D, and readReference, which uses get_obs_story
+ * and get_passage.
  */
 
 import { normalizeToolArgs } from "../normalizeToolArgs.js";
 import { readReference } from "./readReference.js";
 
+const PASSAGE = "th_get_passage";
+const QUESTIONS = "th_get_questions";
+
 export function normalizeV3ToolArgs(
   toolName: string,
   rawArgs: unknown,
 ): Record<string, unknown> {
-  if (toolName !== "get_passage" && toolName !== "get_questions") {
-    return normalizeToolArgs(toolName, rawArgs);
+  if (toolName !== PASSAGE && toolName !== QUESTIONS) {
+    return normalizeToolArgs(unprefixed(toolName), rawArgs);
   }
 
   // Class D (language_code / lang → language) without Class C or Class O.
@@ -22,7 +28,7 @@ export function normalizeV3ToolArgs(
   const language =
     typeof base.language === "string" ? base.language : undefined;
   const read = readReference(rawArgs, language);
-  const kind = toolName === "get_questions" ? questionKind(rawArgs) : undefined;
+  const kind = toolName === QUESTIONS ? questionKind(rawArgs) : undefined;
 
   if (!read.ok) {
     return {
@@ -37,6 +43,11 @@ export function normalizeV3ToolArgs(
     ...(language !== undefined ? { language } : {}),
     ...(kind !== undefined ? { kind } : {}),
   };
+}
+
+/** `th_list_resources` → `list_resources`. Other names pass through. */
+function unprefixed(toolName: string): string {
+  return toolName.startsWith("th_") ? toolName.slice(3) : toolName;
 }
 
 function questionKind(rawArgs: unknown): unknown {

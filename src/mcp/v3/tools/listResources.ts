@@ -1,5 +1,5 @@
 /**
- * v3 list_resources — languages, or what one language has.
+ * v3 th_list_resources — languages, or what one language has.
  *
  * No language: GET /api/v1/languages, the v2 list_languages handler
  * (filter, limit, offset).
@@ -102,7 +102,7 @@ const outputSchema = {
 };
 
 export const listResourcesV3Tool: ToolModule<typeof inputSchema> = {
-  name: "list_resources",
+  name: "th_list_resources",
   description: LIST_RESOURCES_DESCRIPTION,
   inputSchema,
   outputSchema,

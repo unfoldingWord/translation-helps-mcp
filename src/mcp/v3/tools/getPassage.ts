@@ -1,5 +1,5 @@
 /**
- * v3 get_passage — scripture text or an OBS story, one reference.
+ * v3 th_get_passage — scripture text or an OBS story, one reference.
  *
  * Bible calls GET /api/v1/scripture (the v2 get_passage route).
  * OBS calls GET /api/v1/obs (the v2 get_obs_story route).
@@ -18,6 +18,7 @@ import {
   withNotAvailableOutput,
   type ToolModule,
 } from "../../tools/shared.js";
+import { V3_LIST_RESOURCES_HINT } from "../instructions.js";
 import { readReference, type ReferenceRead } from "../readReference.js";
 
 const inputSchema = z.object({
@@ -31,15 +32,16 @@ const inputSchema = z.object({
 });
 
 const BOOK_ALONE =
-  'A book alone is not a passage. Give a chapter, for example "JON 1". get_passage_index takes a whole book (coming in T-052).';
+  'A book alone is not a passage. Give a chapter, for example "JON 1". th_get_passage_index takes a whole book (coming in T-052).';
 
 /**
  * Proposal description, plus the book-only rule. The model otherwise calls
- * this with "Jonah" and only learns from the error.
+ * this with "Jonah" and only learns from the error. The next tool is named
+ * with the v3 prefix.
  */
 export const GET_PASSAGE_DESCRIPTION =
   "Text of a Bible passage or an OBS frame. Bible returns literal, simplified and original versions. Examples: JHN 3:16, OBS 3:5. " +
-  'A whole book is not a passage: give a chapter (for example "JON 1"). get_passage_index takes a whole book.';
+  'A whole book is not a passage: give a chapter (for example "JON 1"). th_get_passage_index takes a whole book.';
 
 const outputSchema = withNotAvailableOutput({
   kind: z.enum(["bible", "obs"]).optional(),
@@ -78,7 +80,7 @@ const outputSchema = withNotAvailableOutput({
 });
 
 export const getPassageV3Tool: ToolModule<typeof inputSchema> = {
-  name: "get_passage",
+  name: "th_get_passage",
   description: GET_PASSAGE_DESCRIPTION,
   inputSchema,
   outputSchema,
@@ -114,6 +116,7 @@ export const getPassageV3Tool: ToolModule<typeof inputSchema> = {
         return notAvailable(
           `Open Bible Stories for language "${language}"`,
           String(data.message ?? ""),
+          V3_LIST_RESOURCES_HINT,
         );
       }
       return okCached(

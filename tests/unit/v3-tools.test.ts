@@ -100,10 +100,13 @@ function passagePayload(url: URL): unknown {
 }
 
 describe("normalizeV3ToolArgs", () => {
-  it("turns OBS parts into one reference without changing v2 get_passage", () => {
+  it("turns OBS parts into OBS 3:5 on th_get_passage without changing v2", () => {
     const raw = { story: 3, frame: 5, language: "en" };
+    // Prefixed names stay out of v2's tool sets. v3 calls the unprefixed
+    // normalizer itself, so Class O still does not run for v2 get_passage.
     expect(normalizeToolArgs("get_passage", raw).reference).toBeUndefined();
-    expect(normalizeV3ToolArgs("get_passage", raw)).toEqual({
+    expect(normalizeToolArgs("th_get_passage", raw).reference).toBeUndefined();
+    expect(normalizeV3ToolArgs("th_get_passage", raw)).toEqual({
       reference: "OBS 3:5",
       language: "en",
     });
@@ -111,7 +114,7 @@ describe("normalizeV3ToolArgs", () => {
 
   it("turns book, chapter and verse into a Bible reference", () => {
     expect(
-      normalizeV3ToolArgs("get_passage", {
+      normalizeV3ToolArgs("th_get_passage", {
         book: "JHN",
         chapter: 3,
         verse: 16,
@@ -119,9 +122,9 @@ describe("normalizeV3ToolArgs", () => {
     ).toEqual({ reference: "JHN 3:16" });
   });
 
-  it("keeps get_questions kind beside the normalized reference", () => {
+  it("keeps th_get_questions kind beside the normalized reference", () => {
     expect(
-      normalizeV3ToolArgs("get_questions", {
+      normalizeV3ToolArgs("th_get_questions", {
         story: 1,
         frame: 3,
         kind: "study",
@@ -130,9 +133,9 @@ describe("normalizeV3ToolArgs", () => {
     ).toEqual({ reference: "OBS 1:3", language: "en", kind: "study" });
   });
 
-  it("maps language_code on list_resources the way v2 does", () => {
+  it("maps language_code on th_list_resources the way v2 does", () => {
     expect(
-      normalizeV3ToolArgs("list_resources", {
+      normalizeV3ToolArgs("th_list_resources", {
         language_code: "es-419",
         book: "TIT",
       }),
@@ -140,14 +143,14 @@ describe("normalizeV3ToolArgs", () => {
   });
 
   it("stores an actionable reader error in the reference string", () => {
-    const out = normalizeV3ToolArgs("get_passage", { frame: 5 });
+    const out = normalizeV3ToolArgs("th_get_passage", { frame: 5 });
     expect(String(out.reference).startsWith("\u0000")).toBe(true);
     expect(String(out.reference)).toMatch(/JHN 3:16/);
     expect(String(out.reference)).toMatch(/OBS 3:5/);
   });
 
   it("repeats that stored error once when the handler reads the object", () => {
-    const stored = normalizeV3ToolArgs("get_passage", { frame: 5 });
+    const stored = normalizeV3ToolArgs("th_get_passage", { frame: 5 });
     const again = readReference(stored);
     expect(again.ok).toBe(false);
     if (again.ok) return;
@@ -157,7 +160,11 @@ describe("normalizeV3ToolArgs", () => {
   });
 });
 
-describe("v3 get_passage", () => {
+describe("v3 th_get_passage", () => {
+  it("is registered under the prefixed name", () => {
+    expect(getPassageV3Tool.name).toBe("th_get_passage");
+  });
+
   it("loads scripture versions for a Bible reference", async () => {
     const { env, calls } = apiEnv(passagePayload);
     const result = await getPassageV3Tool.handler(
@@ -203,12 +210,16 @@ describe("v3 get_passage", () => {
         env,
         "req",
       ),
-    ).rejects.toThrow(/get_passage_index/);
+    ).rejects.toThrow(/th_get_passage_index/);
     expect(calls).toEqual([]);
   });
 });
 
-describe("v3 get_questions", () => {
+describe("v3 th_get_questions", () => {
+  it("is registered under the prefixed name", () => {
+    expect(getQuestionsV3Tool.name).toBe("th_get_questions");
+  });
+
   it("loads Bible translation questions by default", async () => {
     const { env, calls } = apiEnv(passagePayload);
     const result = await getQuestionsV3Tool.handler(
@@ -240,6 +251,11 @@ describe("v3 get_questions", () => {
       code: "RESOURCE_NOT_AVAILABLE",
     });
     expect(JSON.stringify(result.structuredContent)).toMatch(/study/i);
+    expect(result.structuredContent).toMatchObject({
+      hints: [
+        "Run th_list_resources to see what is available for this language.",
+      ],
+    });
   });
 
   it("loads OBS translation questions from OBS-TQ", async () => {
@@ -271,7 +287,11 @@ describe("v3 get_questions", () => {
   });
 });
 
-describe("v3 list_resources", () => {
+describe("v3 th_list_resources", () => {
+  it("is registered under the prefixed name", () => {
+    expect(listResourcesV3Tool.name).toBe("th_list_resources");
+  });
+
   it("lists languages when language is omitted, including filter", async () => {
     const { env, calls } = apiEnv(passagePayload);
     const result = await listResourcesV3Tool.handler(

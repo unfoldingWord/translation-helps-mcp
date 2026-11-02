@@ -1,6 +1,6 @@
 /**
  * /v3/mcp server. Same transport wrapping as v2, with the v3 argument
- * normalizer so get_passage and get_questions accept Bible and OBS.
+ * normalizer so th_get_passage and th_get_questions accept Bible and OBS.
  */
 
 import { NormalizingMcpServer } from "../normalizingMcpServer.js";

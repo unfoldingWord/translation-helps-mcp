@@ -200,7 +200,11 @@ export function ok(data: unknown, humanText?: string): ToolResult {
  * language/book (e.g. no TQ data for Mark, unpublished Psalms scripture).
  * Keep throwing for truly unexpected errors (zip fetch failures, parse errors).
  */
-export function notAvailable(description: string, extra?: string): ToolResult {
+export function notAvailable(
+  description: string,
+  extra?: string,
+  hint = "Run list_resources to see what is available for this language.",
+): ToolResult {
   const message =
     `No ${description} available for this reference or language.` +
     (extra ? ` ${extra}` : "");
@@ -208,7 +212,7 @@ export function notAvailable(description: string, extra?: string): ToolResult {
     available: false,
     code: "RESOURCE_NOT_AVAILABLE",
     message,
-    hints: ["Run list_resources to see what is available for this language."],
+    hints: [hint],
   };
   return {
     content: [{ type: "text", text: JSON.stringify(data) }],

@@ -5,8 +5,8 @@
  * it would let whichever version listed tools first answer for the other.
  * No prompts. Recipes are a later task.
  *
- * Analytics records the tool as `v3:<name>` so a v3 call is not counted as
- * the v2 tool of the same name. The MCP tool name itself stays `get_passage`.
+ * Analytics records the tool as `v3:<name>`, for example `v3:th_get_passage`,
+ * so a v3 call is not counted under the bare MCP name or a v2 name.
  */
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -28,7 +28,10 @@ import { SERVER_NAME, VERSION } from "../../core/version.js";
 import { ApiClientError } from "../apiClient.js";
 import { strictToolSchema } from "../jsonSchema.js";
 import type { Env } from "../agent.js";
-import { V3_SERVER_INSTRUCTIONS } from "./instructions.js";
+import {
+  V3_LIST_RESOURCES_HINT,
+  V3_SERVER_INSTRUCTIONS,
+} from "./instructions.js";
 import { V3NormalizingMcpServer } from "./server.js";
 import { getPassageV3Tool } from "./tools/getPassage.js";
 import { getQuestionsV3Tool } from "./tools/getQuestions.js";
@@ -82,7 +85,7 @@ function mcpNotAvailable(message: string): {
     available: false,
     code: "RESOURCE_NOT_AVAILABLE",
     message,
-    hints: ["Run list_resources to see what is available for this language."],
+    hints: [V3_LIST_RESOURCES_HINT],
   };
   return {
     content: [{ type: "text", text: JSON.stringify(payload) }],

@@ -60,7 +60,11 @@ const V2_TOOL_NAMES = [
 const V2_SCHEMA_SHA256 =
   "2fb3cc029fa5c35cda2a9360d955e2bdff51112b6f14ff7998346569c94f1dd8";
 
-const V3_TOOL_NAMES = ["get_passage", "get_questions", "list_resources"];
+const V3_TOOL_NAMES = [
+  "th_get_passage",
+  "th_get_questions",
+  "th_list_resources",
+];
 
 interface DoNamespace {
   names: string[];
@@ -311,9 +315,9 @@ describe("/v3/mcp worker fetch", () => {
     });
     const instructions = body.result?.instructions ?? "";
     expect(instructions).not.toMatch(/You are Ezer/);
-    expect(instructions).toContain("get_passage");
-    expect(instructions).toContain("get_questions");
-    expect(instructions).toContain("list_resources");
+    expect(instructions).toContain("th_get_passage");
+    expect(instructions).toContain("th_get_questions");
+    expect(instructions).toContain("th_list_resources");
     expect(instructions).toMatch(/JHN 3:16/);
     expect(instructions).toMatch(/3:5/);
     expect(namespace.names).toEqual([]);
@@ -329,7 +333,7 @@ describe("/v3/mcp worker fetch", () => {
       await postMcp(
         "/v3/mcp",
         rpc("tools/call", {
-          name: "get_passage",
+          name: "th_get_passage",
           arguments: { reference: "JHN 3:16", language: "en" },
         }),
         env,
@@ -348,7 +352,7 @@ describe("/v3/mcp worker fetch", () => {
         rpc(
           "tools/call",
           {
-            name: "get_passage",
+            name: "th_get_passage",
             arguments: { reference: "OBS 3:5", language: "en" },
           },
           2,
@@ -369,7 +373,7 @@ describe("/v3/mcp worker fetch", () => {
         rpc(
           "tools/call",
           {
-            name: "get_passage",
+            name: "th_get_passage",
             arguments: { story: 3, frame: 5 },
           },
           3,
@@ -395,10 +399,14 @@ describe("/v3/mcp worker fetch", () => {
       ),
     ).toBe(false);
     expect(
-      analytics.points.some((point) => point.blobs?.[0] === "v3:get_passage"),
+      analytics.points.some(
+        (point) => point.blobs?.[0] === "v3:th_get_passage",
+      ),
     ).toBe(true);
     expect(
-      analytics.points.some((point) => point.indexes?.[0] === "v3:get_passage"),
+      analytics.points.some(
+        (point) => point.indexes?.[0] === "v3:th_get_passage",
+      ),
     ).toBe(true);
     expect(
       analytics.points.every((point) => point.blobs?.[0] !== "get_passage"),
@@ -413,7 +421,7 @@ describe("/v3/mcp worker fetch", () => {
       await postMcp(
         "/v3/mcp",
         rpc("tools/call", {
-          name: "get_passage",
+          name: "th_get_passage",
           arguments: { reference: "Jonah" },
         }),
         baseEnv(namespace, { points: [] }, calls),
@@ -422,7 +430,7 @@ describe("/v3/mcp worker fetch", () => {
     expect(body.result?.isError).toBe(true);
     const text =
       body.result?.content?.map((part) => part.text).join("\n") ?? "";
-    expect(text).toMatch(/get_passage_index/);
+    expect(text).toMatch(/th_get_passage_index/);
     expect(text).toMatch(/JON 1/);
     expect(calls).toEqual([]);
     expect(namespace.names).toEqual([]);
@@ -437,7 +445,7 @@ describe("/v3/mcp worker fetch", () => {
       await postMcp(
         "/v3/mcp",
         rpc("tools/call", {
-          name: "get_questions",
+          name: "th_get_questions",
           arguments: { reference: "OBS 1:3", language: "en", kind: "study" },
         }),
         env,
@@ -460,7 +468,7 @@ describe("/v3/mcp worker fetch", () => {
         rpc(
           "tools/call",
           {
-            name: "get_questions",
+            name: "th_get_questions",
             arguments: { reference: "JHN 3:16", kind: "study" },
           },
           2,
@@ -484,7 +492,7 @@ describe("/v3/mcp worker fetch", () => {
     const body = await readJson(
       await postMcp(
         "/v3/mcp",
-        rpc("tools/call", { name: "list_resources", arguments: {} }),
+        rpc("tools/call", { name: "th_list_resources", arguments: {} }),
         baseEnv(namespace, { points: [] }, calls),
       ),
     );

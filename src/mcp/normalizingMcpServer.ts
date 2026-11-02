@@ -29,8 +29,9 @@ const wrappedHandlers = new WeakSet<OnMessage>();
  * (see normalizeToolArgs). Any other message is returned unchanged.
  * Never throws: on an unexpected shape the original message is passed through.
  *
- * `normalize` defaults to the v2 normalizer. /v3 passes its own so a shared
- * tool name (`get_passage`) can accept OBS parts without changing v2.
+ * `normalize` defaults to the v2 normalizer. /v3 passes its own: its tools
+ * are named th_get_passage and th_get_questions, and that normalizer calls
+ * the unprefixed classifiers so OBS parts work without changing v2.
  */
 export function rewriteToolsCallMessage<T extends JSONRPCMessage>(
   message: T,

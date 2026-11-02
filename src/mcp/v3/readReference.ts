@@ -4,7 +4,8 @@
  * It does not parse book names or story:frame itself. Bible strings go through
  * `parseReference` / `parseReferenceForTool`. OBS strings go through
  * `parseObsReference`. Decomposed OBS arguments go through the same Class O
- * assembly as the v2 OBS tools (`normalizeToolArgs` for `get_obs_story`).
+ * assembly as the v2 OBS tools (`normalizeToolArgs` for `get_obs_story`,
+ * the unprefixed name, not `th_get_passage`).
  * Decomposed Bible arguments use that Class C assembly, plus the intro and
  * cross-chapter shapes Class C does not build.
  */

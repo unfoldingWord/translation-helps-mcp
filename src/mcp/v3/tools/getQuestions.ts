@@ -1,5 +1,5 @@
 /**
- * v3 get_questions — translation or study questions for Bible and OBS.
+ * v3 th_get_questions — translation or study questions for Bible and OBS.
  *
  * Bible translation: GET /api/v1/questions (v2 get_questions).
  * Bible study: not available (no study-question resource today).
@@ -18,6 +18,7 @@ import {
   ok,
   withNotAvailableOutput,
 } from "../../tools/shared.js";
+import { V3_LIST_RESOURCES_HINT } from "../instructions.js";
 import { readReference, type ReferenceRead } from "../readReference.js";
 
 const inputSchema = z.object({
@@ -54,7 +55,7 @@ const outputSchema = withNotAvailableOutput({
 });
 
 export const getQuestionsV3Tool = {
-  name: "get_questions",
+  name: "th_get_questions",
   description: GET_QUESTIONS_DESCRIPTION,
   inputSchema,
   outputSchema,
@@ -75,7 +76,7 @@ export const getQuestionsV3Tool = {
 
     if (value.kind === "book") {
       throw invalid(
-        'get_questions needs a chapter or an OBS story, for example "JHN 3" or "OBS 3". A book alone is not a passage.',
+        'th_get_questions needs a chapter or an OBS story, for example "JHN 3" or "OBS 3". A book alone is not a passage.',
       );
     }
     if (value.kind === "bible" && isIntro(value)) {
@@ -87,6 +88,8 @@ export const getQuestionsV3Tool = {
     if (value.kind === "bible" && questionKind === "study") {
       return notAvailable(
         'Bible study questions (kind "study"; the Bible has translation questions only)',
+        undefined,
+        V3_LIST_RESOURCES_HINT,
       );
     }
 
@@ -109,6 +112,7 @@ export const getQuestionsV3Tool = {
           ? `OBS ${questionKind} questions for language "${language}"`
           : `translation questions for language "${language}"`,
         String(data.message ?? ""),
+        V3_LIST_RESOURCES_HINT,
       );
     }
 
