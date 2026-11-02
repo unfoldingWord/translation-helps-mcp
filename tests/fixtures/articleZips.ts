@@ -22,7 +22,8 @@ export function fillArticleZips(zips: Map<string, Map<string, string>>): void {
     new Map([
       ["en_tw/bible/kt/hades.md", HADES],
       ["en_tw/bible/kt/covenant.md", "# Covenant\n"],
-      ["en_tw/bible/kt/sonofgod.md", "# Son of God\n"],
+      ["en_tw/bible/kt/sonofgod.md", "# Son of God, the Son\n"],
+      ["en_tw/bible/kt/sonsofgod.md", "# sons of God\n"],
       ["en_tw/bible/kt/promise.md", "# Promise\n"],
       ["en_tw/bible/names/paul.md", "# Paul\n"],
       ["en_tw/bible/other/paul.md", "# Paul (other)\n"],

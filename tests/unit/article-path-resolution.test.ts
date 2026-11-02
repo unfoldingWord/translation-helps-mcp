@@ -62,8 +62,10 @@ describe("prepareArticlePath", () => {
       "arkofthecovenant",
     );
     expect(prepareArticlePath("right hand")).toBe("righthand");
-    expect(prepareArticlePath("son's")).toBe("sons");
-    expect(prepareArticlePath("son\u2019s")).toBe("sons");
+    expect(prepareArticlePath("son's")).toBe("son");
+    expect(prepareArticlePath("son\u2019s")).toBe("son");
+    expect(prepareArticlePath("son'")).toBe("son");
+    expect(prepareArticlePath("sons'")).toBe("sons");
     expect(prepareArticlePath("son%20of%20god")).toBe("sonofgod");
     expect(prepareArticlePath("tw/son of god")).toBe("sonofgod");
     expect(prepareArticlePath("rc://*/tw/dict/ark of the covenant")).toBe(
@@ -218,24 +220,80 @@ describe("resolveTwArticle", () => {
     });
   });
 
-  it("accepts apostrophes and does not invent an article", () => {
-    expect(resolveTwArticle("son's", TW)).toEqual({ status: "miss" });
-    expect(resolveTwArticle("son\u2019s", TW)).toEqual({ status: "miss" });
+  it("drops a trailing possessive and resolves Son of God, not sons of God", () => {
+    const family = [
+      { path: "bible/kt/sonofgod", title: "Son of God, the Son" },
+      { path: "bible/kt/sonsofgod", title: "sons of God" },
+    ];
+    expect(resolveTwArticle("son's", family)).toEqual({
+      status: "resolved",
+      path: "bible/kt/sonofgod",
+      title: "Son of God, the Son",
+      resolvedFrom: "partial",
+      note: "Partial title match.",
+    });
+    expect(resolveTwArticle("son\u2019s", family)).toMatchObject({
+      path: "bible/kt/sonofgod",
+      resolvedFrom: "partial",
+    });
+    expect(resolveTwArticle("son'", family)).toMatchObject({
+      path: "bible/kt/sonofgod",
+      resolvedFrom: "partial",
+    });
   });
 
-  it("offers candidates when a title contains the term but is not that article", () => {
+  it("resolves the one title where the term is whole words", () => {
     const withHand = [
-      ...TW,
       { path: "bible/other/godsrightand", title: "God's Right Hand" },
     ];
-    const result = resolveTwArticle("right hand", withHand);
+    expect(resolveTwArticle("right hand", withHand)).toEqual({
+      status: "resolved",
+      path: "bible/other/godsrightand",
+      title: "God's Right Hand",
+      resolvedFrom: "partial",
+      note: "Partial title match.",
+    });
+  });
+
+  it("returns candidates when whole words match two titles", () => {
+    const family = [
+      { path: "bible/kt/sonofgod", title: "Son of God, the Son" },
+      { path: "bible/kt/sonsofgod", title: "sons of God" },
+    ];
+    const result = resolveTwArticle("god", family);
     expect(result.status).toBe("ambiguous");
     if (result.status !== "ambiguous") return;
-    expect(result.resolvedFrom).toBe("title");
     expect(result.candidates).toEqual([
-      { path: "bible/other/godsrightand", title: "God's Right Hand" },
+      { path: "bible/kt/sonofgod", title: "Son of God, the Son" },
+      { path: "bible/kt/sonsofgod", title: "sons of God" },
+    ]);
+  });
+
+  it("returns candidates when the term sits inside a word", () => {
+    const result = resolveTwArticle("cove", [
+      { path: "bible/kt/covenant", title: "Covenant" },
+    ]);
+    expect(result.status).toBe("ambiguous");
+    if (result.status !== "ambiguous") return;
+    expect(result.candidates).toEqual([
+      { path: "bible/kt/covenant", title: "Covenant" },
     ]);
     expect(resolveTwArticle("right hand", TW)).toEqual({ status: "miss" });
+  });
+
+  it("refuses a path that skips the safety check", () => {
+    for (const raw of ["../kt/hades", "bible/../kt/hades", "/bible/kt/hades"]) {
+      expect(() => resolveTwArticle(raw, TW), raw).toThrow(
+        /Invalid article path/,
+      );
+      try {
+        resolveTwArticle(raw, TW);
+      } catch (error) {
+        expect((error as { code?: string }).code).toBe(
+          ErrorCode.INVALID_PARAMS,
+        );
+      }
+    }
   });
 });
 
@@ -290,5 +348,20 @@ describe("resolveTaArticle", () => {
 
   it("misses an unknown concept", () => {
     expect(resolveTaArticle("not-a-concept", TA)).toEqual({ status: "miss" });
+  });
+
+  it("refuses a path that skips the safety check", () => {
+    for (const raw of ["../figs-metaphor", "translate/../secret"]) {
+      expect(() => resolveTaArticle(raw, TA), raw).toThrow(
+        /Invalid article path/,
+      );
+      try {
+        resolveTaArticle(raw, TA);
+      } catch (error) {
+        expect((error as { code?: string }).code).toBe(
+          ErrorCode.INVALID_PARAMS,
+        );
+      }
+    }
   });
 });

@@ -15,6 +15,7 @@ export interface ArticlePayload {
   article?: string;
   requestedPath?: string;
   resolvedFrom?: ResolvedFrom;
+  note?: string;
   related?: Array<{ path: string; title: string }>;
   available?: boolean;
   code?: string;
@@ -56,6 +57,7 @@ export function presentArticle(
     article: presented.article,
     requestedPath: data.requestedPath ?? fallbackPath,
     ...(data.resolvedFrom ? { resolvedFrom: data.resolvedFrom } : {}),
+    ...(data.note ? { note: data.note } : {}),
     related: presented.related,
   };
 }

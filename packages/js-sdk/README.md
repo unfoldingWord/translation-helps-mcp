@@ -132,6 +132,8 @@ All methods return `MCPToolResult` (`content`, optional `structuredContent`, opt
 | `getAcademyArticle(opts)` | `path` (req), `language?`                        | Full TA article. Exact path is best; `metaphor` and `figs-metaphor` also resolve.        |
 | `getWordArticle(opts)`    | `path` (req), `language?`                        | Full TW article. Exact path is best; `covenant`, `sheol`, and `son of god` also resolve. |
 
+`getWordArticle` and `getAcademyArticle` put the article in `structuredContent` (`WordArticleContent` / `AcademyArticleContent`): `path`, `title`, `article`, `requestedPath`, `resolvedFrom` (`category`, `title`, `plural`, `manual`, or `partial`), `related` (`{ path, title }[]`), `candidates` when several articles match, and `note` on a partial title match.
+
 #### Step 4 — Check
 
 | Method               | Options                        | Description                            |

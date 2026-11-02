@@ -211,6 +211,43 @@ export interface GetWordArticleOptions {
   language?: string;
 }
 
+/** How a near-miss path was resolved. Absent when the path was already exact. */
+export type ArticleResolvedFrom =
+  | "category"
+  | "title"
+  | "plural"
+  | "manual"
+  | "partial";
+
+export interface ArticleLink {
+  path: string;
+  title: string;
+}
+
+/**
+ * `structuredContent` of `get_word_article` / `get_academy_article`.
+ * `candidates` is set when several articles match and none was chosen.
+ * `note` is set on a partial title match (`resolvedFrom: "partial"`).
+ */
+export interface ArticleToolContent {
+  language?: string;
+  path?: string;
+  title?: string;
+  article?: string;
+  requestedPath?: string;
+  resolvedFrom?: ArticleResolvedFrom;
+  related?: ArticleLink[];
+  candidates?: ArticleLink[];
+  note?: string;
+  available?: false;
+  code?: "RESOURCE_NOT_AVAILABLE";
+  message?: string;
+  hints?: string[];
+}
+
+export type WordArticleContent = ArticleToolContent;
+export type AcademyArticleContent = ArticleToolContent;
+
 export interface GetQuestionsOptions {
   /**
    * Bible passage reference: "JHN 3:16", "MAT 5:3-12"

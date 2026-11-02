@@ -2,13 +2,24 @@
  * Resolve a near-miss Translation Words or Translation Academy path.
  *
  * The exact catalog path is tried first. Resolution runs only when it is
- * absent. Callers must run `prepareArticlePath` (prefix strip, then
- * `assertSafeArticlePath`) before using the path to touch a zip.
+ * absent. Both resolvers run `prepareArticlePath` themselves, so a caller
+ * that skips the route still cannot pass an unsafe path into the catalog.
  */
 
 import { assertSafeArticlePath } from "./articlePath.js";
 
-export type ResolvedFrom = "category" | "title" | "plural" | "manual";
+export const RESOLVED_FROM = [
+  "category",
+  "title",
+  "plural",
+  "manual",
+  "partial",
+] as const;
+
+export type ResolvedFrom = (typeof RESOLVED_FROM)[number];
+
+/** Shown when a single whole-word title match is not an exact title. */
+export const PARTIAL_TITLE_NOTE = "Partial title match.";
 
 export interface CatalogArticle {
   path: string;
@@ -27,6 +38,7 @@ export type ArticleMatch =
       path: string;
       title: string;
       resolvedFrom: ResolvedFrom;
+      note?: string;
     }
   | {
       status: "ambiguous";
@@ -68,14 +80,28 @@ function percentDecoded(path: string): string {
   }
 }
 
+/** Trailing 's / ’s, or a possessive apostrophe with nothing after it. */
+const TRAILING_POSSESSIVE = /(?:['’‘ʼ]s|['’‘ʼ])$/iu;
+
+/**
+ * `son's` and `son'` become `son` before spaces and apostrophes are removed,
+ * so the key is not `sons`. Only a bare term (no slash) is rewritten.
+ */
+function stripTrailingPossessive(path: string): string {
+  return path.replace(TRAILING_POSSESSIVE, "");
+}
+
 /**
  * A bare term (no slash left after the known prefixes) may contain spaces
- * or apostrophes. Fold those into the comparison key before the allowlist.
- * A path that still has a slash keeps the strict check.
+ * or apostrophes. Drop a trailing possessive, then fold the rest into the
+ * comparison key before the allowlist. A path that still has a slash keeps
+ * the strict check.
  */
 function collapseBareTerm(path: string): string {
-  if (path.includes("/") || !BARE_TERM_GAP.test(path)) return path;
-  return path.toLowerCase().replace(TERM_NOISE, "");
+  if (path.includes("/")) return path;
+  const stripped = stripTrailingPossessive(path);
+  if (stripped === path && !BARE_TERM_GAP.test(path)) return path;
+  return stripped.toLowerCase().replace(TERM_NOISE, "");
 }
 
 /**
@@ -177,16 +203,91 @@ function pluralVariants(key: string): string[] {
   return [...new Set(out)].filter((variant) => variant && variant !== key);
 }
 
+function titleWordKeys(title: string): string[] {
+  return title
+    .split(/[^\p{L}\p{N}]+/u)
+    .map((word) => matchKey(word))
+    .filter((word) => word.length > 0);
+}
+
+/** The term is one word, or several title words joined, not a piece of a word. */
+function appearsAsWholeWords(title: string, term: string): boolean {
+  if (term.length < 3) return false;
+  const words = titleWordKeys(title);
+  for (let start = 0; start < words.length; start++) {
+    let joined = "";
+    for (let end = start; end < words.length; end++) {
+      joined += words[end] ?? "";
+      if (joined === term) return true;
+      if (joined.length >= term.length) break;
+    }
+  }
+  return false;
+}
+
+function candidatesOf(articles: CatalogArticle[]): ArticleCandidate[] {
+  return uniqueByPath(articles)
+    .sort((a, b) => a.path.localeCompare(b.path))
+    .slice(0, MAX_CANDIDATES)
+    .map(asCandidate);
+}
+
+/**
+ * One whole-word title match is a partial resolve. Two or more, or a match
+ * that only sits inside a word, stay candidates.
+ */
+function partialTitleMatch(
+  term: string,
+  articles: CatalogArticle[],
+): ArticleMatch | null {
+  if (term.length >= 3) {
+    const whole = articles.filter((article) =>
+      appearsAsWholeWords(article.title, term),
+    );
+    if (whole.length === 1) {
+      const one = whole[0]!;
+      return {
+        status: "resolved",
+        path: one.path,
+        title: one.title,
+        resolvedFrom: "partial",
+        note: PARTIAL_TITLE_NOTE,
+      };
+    }
+    if (whole.length > 1) {
+      return {
+        status: "ambiguous",
+        resolvedFrom: "title",
+        candidates: candidatesOf(whole),
+      };
+    }
+  }
+
+  if (term.length >= 4) {
+    const inside = articles.filter((article) =>
+      matchKey(article.title).includes(term),
+    );
+    if (inside.length > 0) {
+      return {
+        status: "ambiguous",
+        resolvedFrom: "title",
+        candidates: candidatesOf(inside),
+      };
+    }
+  }
+
+  return null;
+}
+
 /**
  * Resolve a Translation Words path against one language's catalog.
- * `raw` may still carry a known prefix; callers that read a zip must have
- * already passed the safety check on the stripped path.
+ * Runs the safety check itself. `raw` may still carry a known prefix.
  */
 export function resolveTwArticle(
   raw: string,
   articles: CatalogArticle[],
 ): ArticleMatch {
-  const cleaned = cleanTw(raw);
+  const cleaned = cleanTw(prepareArticlePath(raw));
   const exact = exactHit(cleaned, articles);
   if (exact) return exact;
 
@@ -212,34 +313,18 @@ export function resolveTwArticle(
   const pluralHit = decide(byPlural, "plural");
   if (pluralHit) return pluralHit;
 
-  if (term.length >= 4) {
-    const contained = articles.filter((article) =>
-      matchKey(article.title).includes(term),
-    );
-    const containedHit = contained.length
-      ? {
-          status: "ambiguous" as const,
-          resolvedFrom: "title" as const,
-          candidates: uniqueByPath(contained)
-            .sort((a, b) => a.path.localeCompare(b.path))
-            .slice(0, MAX_CANDIDATES)
-            .map(asCandidate),
-        }
-      : null;
-    if (containedHit) return containedHit;
-  }
-
-  return { status: "miss" };
+  return partialTitleMatch(term, articles) ?? { status: "miss" };
 }
 
 /**
  * Resolve a Translation Academy path against one language's catalog.
+ * Runs the safety check itself. `raw` may still carry a known prefix.
  */
 export function resolveTaArticle(
   raw: string,
   articles: CatalogArticle[],
 ): ArticleMatch {
-  const cleaned = cleanTa(raw);
+  const cleaned = cleanTa(prepareArticlePath(raw));
   const exact = exactHit(cleaned, articles);
   if (exact) return exact;
 

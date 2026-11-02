@@ -197,6 +197,50 @@ describe("get_word_article tools/call without a session", () => {
     expect(unsafe.body.result?.isError).toBe(true);
   });
 
+  it("returns candidates for an ambiguous name, without a session", async () => {
+    const { session, body } = await callTool("get_word_article", {
+      path: "paul",
+      language: "en",
+    });
+    expect(session).toBeNull();
+    expect(body.result?.isError).toBe(false);
+    expect(body.result?.structuredContent).toMatchObject({
+      available: false,
+      candidates: [
+        { path: "bible/names/paul", title: "Paul" },
+        { path: "bible/other/paul", title: "Paul (other)" },
+      ],
+    });
+  });
+
+  it("resolves a multi-word term and a possessive, without a session", async () => {
+    const phrase = await callTool("get_word_article", {
+      path: "son of god",
+      language: "en",
+    });
+    expect(phrase.session).toBeNull();
+    expect(phrase.body.result?.isError).not.toBe(true);
+    expect(phrase.body.result?.structuredContent).toMatchObject({
+      path: "bible/kt/sonofgod",
+      title: "Son of God, the Son",
+      resolvedFrom: "category",
+    });
+
+    const possessive = await callTool("get_word_article", {
+      path: "son's",
+      language: "en",
+    });
+    expect(possessive.session).toBeNull();
+    expect(possessive.body.result?.isError).toBe(false);
+    expect(possessive.body.result?.structuredContent).toMatchObject({
+      path: "bible/kt/sonofgod",
+      title: "Son of God, the Son",
+      resolvedFrom: "partial",
+      note: "Partial title match.",
+      requestedPath: "son's",
+    });
+  });
+
   it("accepts resourceType as an alias of types", async () => {
     const { body } = await callTool("search_articles", {
       query: "metaphor",

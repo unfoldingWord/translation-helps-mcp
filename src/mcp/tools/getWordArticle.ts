@@ -22,7 +22,10 @@ import {
 } from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
-import { prepareArticlePath } from "../../core/articleResolve.js";
+import {
+  prepareArticlePath,
+  RESOLVED_FROM,
+} from "../../core/articleResolve.js";
 import { presentArticle, type ArticlePayload } from "./articlePresent.js";
 
 const articleCandidate = z.object({
@@ -48,7 +51,8 @@ const outputSchema = withNotAvailableOutput({
   title: z.string().optional(),
   article: z.string().optional(),
   requestedPath: z.string().optional(),
-  resolvedFrom: z.enum(["category", "title", "plural", "manual"]).optional(),
+  resolvedFrom: z.enum(RESOLVED_FROM).optional(),
+  note: z.string().optional(),
   related: z.array(articleCandidate).optional(),
   candidates: z.array(articleCandidate).optional(),
 });

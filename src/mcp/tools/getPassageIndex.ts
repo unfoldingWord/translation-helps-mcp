@@ -14,8 +14,6 @@
  *
  * Handoff: pass `taArticle.path` to `get_academy_article`, `twArticle.path` to `get_word_article`,
  *          `id` to `get_note` for the full note body.
- *
- * After this → drill with get_note / get_academy_article / get_word_article → get_questions (check).
  */
 
 import { z } from "zod";

@@ -67,7 +67,10 @@ export function jsonArticleMatch(options: {
     path: match.path,
     requestedPath,
     ...(match.status === "resolved"
-      ? { resolvedFrom: match.resolvedFrom }
+      ? {
+          resolvedFrom: match.resolvedFrom,
+          ...(match.note ? { note: match.note } : {}),
+        }
       : {}),
     title,
     article,

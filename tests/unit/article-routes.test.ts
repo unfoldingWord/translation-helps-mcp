@@ -177,7 +177,7 @@ describe("word and academy routes", () => {
     expect(son.body).toMatchObject({
       path: "bible/kt/sonofgod",
       resolvedFrom: "category",
-      title: "Son of God",
+      title: "Son of God, the Son",
     });
 
     const ark = await read(
@@ -201,11 +201,12 @@ describe("word and academy routes", () => {
       }),
     );
     expect(hand.status).toBe(200);
-    expect(hand.body.available).toBe(false);
-    expect(hand.body.code).toBe("RESOURCE_NOT_AVAILABLE");
-    expect(hand.body.candidates).toEqual([
-      { path: "bible/other/godsrightand", title: "God's Right Hand" },
-    ]);
+    expect(hand.body).toMatchObject({
+      path: "bible/other/godsrightand",
+      title: "God's Right Hand",
+      resolvedFrom: "partial",
+      note: "Partial title match.",
+    });
 
     for (const pathParam of ["son's", "son\u2019s"]) {
       const apostrophe = await read(
@@ -215,7 +216,13 @@ describe("word and academy routes", () => {
           pathParam,
         }),
       );
-      expect(apostrophe.status, pathParam).toBe(404);
+      expect(apostrophe.status, pathParam).toBe(200);
+      expect(apostrophe.body, pathParam).toMatchObject({
+        path: "bible/kt/sonofgod",
+        title: "Son of God, the Son",
+        resolvedFrom: "partial",
+        note: "Partial title match.",
+      });
     }
 
     const slashed = await read(

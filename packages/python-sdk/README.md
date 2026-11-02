@@ -157,6 +157,8 @@ Use `get_structured_content(result)` or `TranslationHelpsClient.parse_result(res
 | `get_academy_article(opts)` | `path`      | `language`                 | Full TA article. Exact path is best; `metaphor` and `figs-metaphor` also resolve.        |
 | `get_word_article(opts)`    | `path`      | `language`                 | Full TW article. Exact path is best; `covenant`, `sheol`, and `son of god` also resolve. |
 
+`get_word_article` and `get_academy_article` put the article in `structuredContent` (`WordArticleContent` / `AcademyArticleContent`): `path`, `title`, `article`, `requestedPath`, `resolvedFrom` (`category`, `title`, `plural`, `manual`, or `partial`), `related` (`{path, title}` list), `candidates` when several articles match, and `note` on a partial title match.
+
 #### Step 4 — Check
 
 | Method                | Required    | Optional   | Description                            |

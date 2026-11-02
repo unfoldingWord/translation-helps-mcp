@@ -93,6 +93,41 @@ class GetWordArticleOptions(TypedDict, total=False):
     language: Optional[str]        # BCP-47 code (default "en")
 
 
+class ArticleLink(TypedDict):
+    """One catalog path and its title."""
+    path: str
+    title: str
+
+
+class ArticleToolContent(TypedDict, total=False):
+    """structuredContent of get_word_article and get_academy_article.
+
+    ``candidates`` is set when several articles match and none was chosen.
+    ``note`` is set on a partial title match (``resolvedFrom`` ``"partial"``).
+    """
+    language: str
+    path: str
+    title: str
+    article: str
+    requestedPath: str
+    resolvedFrom: Literal["category", "title", "plural", "manual", "partial"]
+    related: List[ArticleLink]
+    candidates: List[ArticleLink]
+    note: str
+    available: Literal[False]
+    code: Literal["RESOURCE_NOT_AVAILABLE"]
+    message: str
+    hints: List[str]
+
+
+class WordArticleContent(ArticleToolContent):
+    """structuredContent of get_word_article."""
+
+
+class AcademyArticleContent(ArticleToolContent):
+    """structuredContent of get_academy_article."""
+
+
 class GetQuestionsOptions(TypedDict, total=False):
     reference: str                 # Required — e.g. "JHN 3:16"
     language: Optional[str]        # BCP-47 code (default "en")
