@@ -84,13 +84,48 @@ class GetNoteOptions(TypedDict, total=False):
 
 
 class GetAcademyArticleOptions(TypedDict, total=False):
-    path: str                      # Required — e.g. "translate/figs-metaphor"
+    path: str                      # Required — exact "translate/figs-metaphor", or "metaphor"
     language: Optional[str]        # BCP-47 code (default "en")
 
 
 class GetWordArticleOptions(TypedDict, total=False):
-    path: str                      # Required — e.g. "bible/kt/grace"
+    path: str                      # Required — exact "bible/kt/covenant", or "covenant" / "sheol" / "son of god"
     language: Optional[str]        # BCP-47 code (default "en")
+
+
+class ArticleLink(TypedDict):
+    """One catalog path and its title."""
+    path: str
+    title: str
+
+
+class ArticleToolContent(TypedDict, total=False):
+    """structuredContent of get_word_article and get_academy_article.
+
+    ``candidates`` is set when several articles match and none was chosen.
+    ``note`` is set on a partial title match (``resolvedFrom`` ``"partial"``).
+    """
+    language: str
+    path: str
+    title: str
+    article: str
+    requestedPath: str
+    resolvedFrom: Literal["category", "title", "plural", "manual", "partial"]
+    related: List[ArticleLink]
+    candidates: List[ArticleLink]
+    note: str
+    available: Literal[False]
+    code: Literal["RESOURCE_NOT_AVAILABLE"]
+    message: str
+    hints: List[str]
+
+
+class WordArticleContent(ArticleToolContent):
+    """structuredContent of get_word_article."""
+
+
+class AcademyArticleContent(ArticleToolContent):
+    """structuredContent of get_academy_article."""
 
 
 class GetQuestionsOptions(TypedDict, total=False):
@@ -102,6 +137,8 @@ class SearchArticlesOptions(TypedDict, total=False):
     query: str                     # Required — concept or phrase to search
     language: Optional[str]
     types: Optional[str]           # "ta" | "tw" | "ta,tw" (MCP `types` param)
+    resourceType: Optional[str]    # alias of types
+    type: Optional[str]            # alias of types
     limit: Optional[int]           # 1–30 (default 10; MCP `limit` param)
 
 

@@ -9,8 +9,14 @@ import {
   parseTwArticlePathsFromZipEntries,
   buildTwArticle,
 } from "@translation-helps/door43";
-import { buildTwPathCandidates } from "@translation-helps/door43";
-import { sanitizeArticlePath } from "../../core/articlePath.js";
+import { TranslationHelpsError } from "../../core/errors.js";
+import {
+  assertPreparedArticlePath,
+  prepareArticlePath,
+  resolveTwArticle,
+} from "../../core/articleResolve.js";
+import { loadTwCatalog } from "./articleCatalog.js";
+import { jsonArticleMatch } from "./articleResponse.js";
 
 export async function handleWords(ctx: RouteContext): Promise<Response> {
   const { url, env, execCtx } = ctx;
@@ -101,46 +107,52 @@ export async function handleWordsPath(ctx: RouteContext): Promise<Response> {
     return apiError("BAD_REQUEST", "Missing required param: language", 400);
   if (!pathParam) return apiError("BAD_REQUEST", "Missing word path", 400);
 
-  const pathCheck = sanitizeArticlePath(pathParam);
-  if (!pathCheck.ok) {
-    return apiError("INVALID_PARAMS", pathCheck.error.message, 400);
+  let prepared: string;
+  try {
+    // MCP prepares once and sets prepared=1. REST input is prepared here.
+    prepared =
+      url.searchParams.get("prepared") === "1"
+        ? assertPreparedArticlePath(pathParam)
+        : prepareArticlePath(pathParam);
+  } catch (error) {
+    if (error instanceof TranslationHelpsError) {
+      return apiError("INVALID_PARAMS", error.message, 400);
+    }
+    throw error;
   }
-  const safePath = pathCheck.path;
 
-  const resolved = await resolveResourceZip(
-    requestedLanguage,
-    "Translation Words",
-    env.TRANSLATION_HELPS_CACHE,
-  );
-  if (!resolved)
+  const requestedPath = (
+    url.searchParams.get("requestedPath") ?? pathParam
+  ).slice(0, 512);
+
+  const catalog = await loadTwCatalog(requestedLanguage, env, execCtx);
+  if (!catalog)
     return apiError(
       "NOT_FOUND",
       `Translation Words not found for "${requestedLanguage}"`,
       404,
     );
 
-  const { language, zipUrl } = resolved;
+  const match = resolveTwArticle(prepared, catalog.articles);
   const fetcher = makeFetcher(env, execCtx);
-  const zip = await fetcher.getOrDownloadZip(zipUrl);
-  const candidates = buildTwPathCandidates(safePath);
-
+  const zip = await fetcher.getOrDownloadZip(catalog.zipUrl);
   let article: string | null = null;
-  let resolvedPath = "";
-  for (const c of candidates) {
-    article = await fetcher.extractFileFromZip(zip, c);
-    if (article) {
-      resolvedPath = c;
-      break;
-    }
+  if (match.status === "exact" || match.status === "resolved") {
+    article =
+      (await fetcher.extractFileFromZip(zip, `${match.path}.md`)) ??
+      (await fetcher.extractFileFromZip(zip, match.path));
   }
+  const titles = new Map(
+    catalog.articles.map((item) => [item.path, item.title]),
+  );
 
-  if (!article) {
-    return apiError(
-      "NOT_FOUND",
-      `Translation Word not found at path: "${safePath}"`,
-      404,
-    );
-  }
-
-  return json({ language, requestedLanguage, path: resolvedPath, article });
+  return jsonArticleMatch({
+    kind: "tw",
+    language: catalog.language,
+    requestedLanguage,
+    requestedPath,
+    match,
+    article,
+    titleOf: (path) => titles.get(path),
+  });
 }

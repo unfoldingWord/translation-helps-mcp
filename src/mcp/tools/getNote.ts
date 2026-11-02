@@ -5,9 +5,9 @@
  * Returns the note text, which explains a translation issue, alternative rendering,
  * cultural context, or grammar point.
  *
- * BEFORE: call `get_passage_index` to get note `id` values.
- * AFTER:  call `get_academy_article(taArticle.path)` for the linked TA article,
- *         or `get_questions` to verify a translation draft.
+ * For a direct question about the notes on a verse, call this with the reference.
+ * When studying a passage step by step, pass `id` from `get_passage_index`.
+ * Pass `taArticle.path` to `get_academy_article`.
  */
 
 import { z } from "zod";
@@ -21,6 +21,13 @@ import {
 } from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
+import {
+  bookNameToUsfm,
+  parseReference,
+  rcToTaPath,
+  resolveTitleFromPath,
+} from "@translation-helps/door43";
+import { rewriteNoteVerseLinks } from "../../core/noteText.js";
 
 const inputSchema = z.object({
   reference: referenceParam,
@@ -58,18 +65,13 @@ const outputSchema = withNotAvailableOutput({
 export const getNoteTool: ToolModule<typeof inputSchema> = {
   name: "get_note",
   description:
-    "STEP 3 (study/drill): Fetch the full body of one or more translation notes for a verse. " +
-    "Each note object contains: `id`, `quote` (the ORIGINAL-LANGUAGE words the note covers), " +
-    "`note` (the full explanation), `supportReference` (rc:// path to a Translation Academy article), " +
-    "`occurrence`, and `verse`. " +
-    "Pass `id` (from `get_passage_index`) for a specific note. " +
-    "Pass `phrase` to find notes that cover a given strategic-language phrase — " +
-    "the system matches against `quote` and note body so you can connect a user question like " +
-    "'what does X mean?' to the exact authoritative note. " +
-    "Omit both `id` and `phrase` to retrieve all verse notes. " +
-    "BEFORE: call `get_passage_index`. " +
-    "AFTER: call `get_academy_article(supportReference)` for the linked translation principle. " +
-    "Empty `notes: []` when none match — not an error.",
+    "Fetch the full body of translation notes for a verse. For a direct question about the notes, call this with the reference. " +
+    "Each note has book (USFM code), note, supportReference (an rc:// Translation Academy link), and taArticle.{path,title}. " +
+    "Pass taArticle.path to get_academy_article. The rc:// form is also accepted; taArticle.path is the path to reuse. " +
+    "Verse links in the note are references such as Genesis 1:29. rc://*/tn/help/... is a note reference, not an article path. " +
+    "When studying a passage step by step, pass id from get_passage_index. " +
+    "Pass phrase to match a strategic-language phrase against quote and the note body. " +
+    "Empty notes: [] when none match — not an error.",
   inputSchema,
   outputSchema,
   annotations: { readOnlyHint: true, title: "Get Note" },
@@ -80,10 +82,14 @@ export const getNoteTool: ToolModule<typeof inputSchema> = {
 
     const data = await client.get<{
       notes: Array<Record<string, unknown>>;
+      book?: string;
       meta?: { cache?: string };
     }>("/api/v1/notes", { reference, language });
 
     let notes = data.notes ?? [];
+    const referenceBook = bookNameToUsfm(
+      parseReference(reference).book || String(data.book ?? ""),
+    );
 
     // Keep only verse-level notes (exclude intro)
     notes = notes.filter(
@@ -105,6 +111,8 @@ export const getNoteTool: ToolModule<typeof inputSchema> = {
       if (matched.length > 0) notes = matched;
     }
 
+    notes = notes.map((row) => shapeNote(row, referenceBook));
+
     const cache = data.meta?.cache;
     return ok(
       {
@@ -119,3 +127,28 @@ export const getNoteTool: ToolModule<typeof inputSchema> = {
     );
   },
 };
+
+function shapeNote(
+  row: Record<string, unknown>,
+  referenceBook: string,
+): Record<string, unknown> {
+  const rawBook = String(row["book"] ?? "").trim();
+  const book = rawBook ? bookNameToUsfm(rawBook) : referenceBook;
+  const supportReference = String(row["supportReference"] ?? "");
+  const path = supportReference ? rcToTaPath(supportReference) : null;
+  const title = String(
+    row["supportReferenceTitle"] ??
+      (supportReference ? resolveTitleFromPath(supportReference) : "") ??
+      "",
+  );
+  const note = row["note"];
+  return {
+    ...row,
+    book,
+    note:
+      typeof note === "string"
+        ? rewriteNoteVerseLinks(note, book || referenceBook)
+        : note,
+    taArticle: path ? { path, title } : null,
+  };
+}

@@ -193,8 +193,8 @@ export interface GetNoteOptions {
 
 export interface GetAcademyArticleOptions {
   /**
-   * Translation Academy article path from a note's taArticle.path
-   * field, e.g. "translate/figs-metaphor".
+   * Exact path is best (`translate/figs-metaphor`, from `taArticle.path`).
+   * A slug or title (`figs-metaphor`, `metaphor`) is resolved.
    */
   path: string;
   /** BCP-47 language code (default: "en") */
@@ -203,13 +203,50 @@ export interface GetAcademyArticleOptions {
 
 export interface GetWordArticleOptions {
   /**
-   * Translation Words article path from a word-link's twArticle.path
-   * field, e.g. "bible/kt/grace".
+   * Exact path is best (`bible/kt/covenant`, from `twArticle.path`).
+   * A bare term or close path (`covenant`, `sheol`, `son of god`, `bible/other/hades`) is resolved.
    */
   path: string;
   /** BCP-47 language code (default: "en") */
   language?: string;
 }
+
+/** How a near-miss path was resolved. Absent when the path was already exact. */
+export type ArticleResolvedFrom =
+  | "category"
+  | "title"
+  | "plural"
+  | "manual"
+  | "partial";
+
+export interface ArticleLink {
+  path: string;
+  title: string;
+}
+
+/**
+ * `structuredContent` of `get_word_article` / `get_academy_article`.
+ * `candidates` is set when several articles match and none was chosen.
+ * `note` is set on a partial title match (`resolvedFrom: "partial"`).
+ */
+export interface ArticleToolContent {
+  language?: string;
+  path?: string;
+  title?: string;
+  article?: string;
+  requestedPath?: string;
+  resolvedFrom?: ArticleResolvedFrom;
+  related?: ArticleLink[];
+  candidates?: ArticleLink[];
+  note?: string;
+  available?: false;
+  code?: "RESOURCE_NOT_AVAILABLE";
+  message?: string;
+  hints?: string[];
+}
+
+export type WordArticleContent = ArticleToolContent;
+export type AcademyArticleContent = ArticleToolContent;
 
 export interface GetQuestionsOptions {
   /**
@@ -227,9 +264,13 @@ export interface SearchArticlesOptions {
   language?: string;
   /**
    * Comma-separated resource types: "ta", "tw", or "ta,tw" (default all).
-   * Matches the MCP `types` parameter.
+   * Matches the MCP `types` parameter. `resourceType` and `type` are aliases.
    */
   types?: string;
+  /** Alias of `types`. */
+  resourceType?: string;
+  /** Alias of `types`. */
+  type?: string;
   /** Max results (default 10, max 30). Matches the MCP `limit` parameter. */
   limit?: number;
 }

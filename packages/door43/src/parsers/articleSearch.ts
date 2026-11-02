@@ -9,6 +9,40 @@
 import type { ArticleSearchResult } from "../contracts/index.js";
 
 /**
+ * How closely a title or slug matches a query.
+ * 4 exact title or comma-separated alternate name,
+ * 3 title (or alternate name) starts with the query,
+ * 2 title, alternate name, or slug contains it,
+ * 0 none of those.
+ */
+export function articleMatchTier(
+  query: string,
+  path: string,
+  title: string,
+): 0 | 2 | 3 | 4 {
+  const q = query.trim().toLowerCase();
+  if (!q) return 0;
+  const titleNorm = title.trim().toLowerCase();
+  const alts = title
+    .split(",")
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean);
+  const names = [titleNorm, ...alts];
+  if (names.some((name) => name === q)) return 4;
+  if (names.some((name) => name.startsWith(q))) return 3;
+  const slug = path.toLowerCase();
+  if (names.some((name) => name.includes(q)) || slug.includes(q)) return 2;
+  return 0;
+}
+
+const TIER_SCORE: Record<number, number> = {
+  4: 1,
+  3: 0.75,
+  2: 0.5,
+  1: 0.25,
+};
+
+/**
  * Score a query against a single article's searchable text fields.
  * Returns a number in [0, 1] where 1 = perfect term coverage.
  *
@@ -70,13 +104,18 @@ export function rankArticles(
   minScore = 0,
 ): ArticleSearchResult[] {
   return candidates
-    .map((c) => ({
-      path: c.path,
-      title: c.title,
-      resourceType: c.resourceType,
-      score: scoreArticle(query, c.path, c.title, c.category),
-    }))
+    .map((c) => {
+      const tier =
+        articleMatchTier(query, c.path, c.title) ||
+        (scoreArticle(query, c.path, c.title, c.category) > 0 ? 1 : 0);
+      return {
+        path: c.path,
+        title: c.title,
+        resourceType: c.resourceType,
+        score: TIER_SCORE[tier] ?? 0,
+      };
+    })
     .filter((r) => r.score > minScore)
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
     .slice(0, topK);
 }

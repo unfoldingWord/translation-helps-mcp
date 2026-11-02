@@ -379,5 +379,28 @@ export function normalizeToolArgs(
     assembleObsReference(args);
   }
 
+  // search_articles: resourceType / type are aliases of types. A model that
+  // copies the result field name would otherwise search every catalog.
+  if (toolName === "search_articles") {
+    const typesMissing =
+      args.types === undefined || args.types === null || args.types === "";
+    if (typesMissing) {
+      for (const k of Object.keys(args)) {
+        const nk = normKey(k);
+        if (nk !== "resourcetype" && nk !== "type") continue;
+        const value = args[k];
+        if (value === undefined || value === null || value === "") continue;
+        args.types = Array.isArray(value)
+          ? value.map((item) => String(item)).join(",")
+          : String(value);
+        break;
+      }
+    }
+    for (const k of Object.keys(args)) {
+      const nk = normKey(k);
+      if (nk === "resourcetype" || nk === "type") delete args[k];
+    }
+  }
+
   return args;
 }

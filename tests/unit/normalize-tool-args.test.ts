@@ -388,3 +388,33 @@ describe("Class O: OBS story and frame assembly", () => {
     expect(normalizeToolArgs("get_obs_notes", input)).toEqual(input);
   });
 });
+
+describe("search_articles type aliases", () => {
+  it("maps resourceType onto types and drops the alias", () => {
+    const result = normalizeToolArgs("search_articles", {
+      query: "metaphor",
+      resourceType: "ta",
+    });
+    expect(result.types).toBe("ta");
+    expect(result.resourceType).toBeUndefined();
+  });
+
+  it("maps type onto types", () => {
+    const result = normalizeToolArgs("search_articles", {
+      query: "covenant",
+      type: ["tw", "ta"],
+    });
+    expect(result.types).toBe("tw,ta");
+    expect(result.type).toBeUndefined();
+  });
+
+  it("keeps an explicit types value", () => {
+    const result = normalizeToolArgs("search_articles", {
+      query: "grace",
+      types: "tw",
+      resourceType: "ta",
+    });
+    expect(result.types).toBe("tw");
+    expect(result.resourceType).toBeUndefined();
+  });
+});

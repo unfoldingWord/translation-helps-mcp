@@ -14,8 +14,6 @@
  *
  * Handoff: pass `taArticle.path` to `get_academy_article`, `twArticle.path` to `get_word_article`,
  *          `id` to `get_note` for the full note body.
- *
- * After this → drill with get_note / get_academy_article / get_word_article → get_questions (check).
  */
 
 import { z } from "zod";
@@ -30,8 +28,12 @@ import {
 } from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
-import { resolveTitleFromPath } from "@translation-helps/door43";
+import { resolveTitleFromPath, rcToTwPath } from "@translation-helps/door43";
 import { formatQuoteDisplay } from "@translation-helps/door43";
+import {
+  passageRowReference,
+  twCategoryFromPath,
+} from "../../core/passageReference.js";
 import type {
   NoteIndexEntry,
   WordIndexEntry,
@@ -103,6 +105,7 @@ const outputSchema = withNotAvailableOutput({
       z.object({
         path: z.string(),
         title: z.string(),
+        category: z.string(),
         count: z.number(),
       }),
     )
@@ -113,14 +116,14 @@ const outputSchema = withNotAvailableOutput({
 export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
   name: "get_passage_index",
   description:
-    "STEP 2 (survey): Get a compact index of translation notes and key terms flagged for a passage — NO article bodies, just ids/paths and what each item is about. " +
-    "Each note row includes `quote.aligned` (the strategic-language wording for the original quote) and `taArticle.{path,title}` naming the translation issue. " +
-    "Each word row includes `quote.aligned` and `twArticle.{path,title}` naming the key term. " +
-    "`issues[]` and `keyTerms[]` give deduplicated rollups with counts for at-a-glance understanding. " +
-    "BEFORE this: call `get_passage_context`. " +
-    "AFTER this: drill with `get_note(id)`, `get_academy_article(taArticle.path)`, or `get_word_article(twArticle.path)`. " +
-    "Use `search_articles` for concepts not linked to this passage. " +
-    "Empty arrays mean no resources are available for the passage — not an error (isError remains false).",
+    "Survey a passage: a compact index of translation notes and key terms, with no article bodies. " +
+    "Each note row has quote.aligned and taArticle.{path,title}. Each word row has quote.aligned and twArticle.{path,category,title}. " +
+    "keyTerms[].category is the path's own category (kt, names, or other). " +
+    "issues[] and keyTerms[] are the deduplicated rollups. " +
+    "When studying a passage step by step, call this after get_passage_context, then drill with get_note(id), get_academy_article(taArticle.path), or get_word_article(twArticle.path). " +
+    "A direct question about a term, a concept, the notes, or the questions does not need this index first. " +
+    "Use search_articles for a concept that is not linked to this passage. " +
+    "Empty arrays mean nothing is available for the passage — not an error (isError remains false).",
   inputSchema,
   outputSchema,
   annotations: { readOnlyHint: true, title: "Get Passage Index" },
@@ -134,12 +137,14 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
           status: "fulfilled" as const,
           value: {
             notes: [] as Array<Record<string, unknown>>,
+            book: "",
             meta: undefined as { cache?: string } | undefined,
           },
         })
       : client
           .get<{
             notes: Array<Record<string, unknown>>;
+            book?: string;
             meta?: { cache?: string };
           }>("/api/v1/notes", { reference, language })
           .then((value) => ({ status: "fulfilled" as const, value }))
@@ -150,17 +155,21 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
       client
         .get<{
           wordLinks: Array<Record<string, unknown>>;
+          book?: string;
           meta?: { cache?: string };
         }>("/api/v1/word-links", { reference, language })
         .then((value) => ({ status: "fulfilled" as const, value }))
         .catch((reason) => ({ status: "rejected" as const, reason })),
     ]);
 
-    const rawNotes: Array<Record<string, unknown>> =
-      notesRes.status === "fulfilled" ? notesRes.value.notes : [];
-
-    const rawWords: Array<Record<string, unknown>> =
-      wordLinksRes.status === "fulfilled" ? wordLinksRes.value.wordLinks : [];
+    const notesPayload =
+      notesRes.status === "fulfilled" ? notesRes.value : undefined;
+    const wordPayload =
+      wordLinksRes.status === "fulfilled" ? wordLinksRes.value : undefined;
+    const rawNotes = notesPayload?.notes ?? [];
+    const rawWords = wordPayload?.wordLinks ?? [];
+    const notesBook = String(notesPayload?.book ?? "");
+    const wordsBook = String(wordPayload?.book ?? notesBook);
 
     const cacheSources = [
       notesRes.status === "fulfilled" ? notesRes.value.meta?.cache : undefined,
@@ -193,7 +202,12 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
 
         const rawQuote = String(n["quote"] ?? "");
         return {
-          reference: `${n["book"]} ${n["chapter"]}:${n["verse"]}`,
+          reference: passageRowReference(
+            reference,
+            notesBook || String(n["book"] ?? ""),
+            n["chapter"],
+            n["verse"],
+          ),
           id: String(n["id"] ?? ""),
           quote: {
             original: gq?.original ?? formatQuoteDisplay(rawQuote),
@@ -207,22 +221,32 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
 
     // --- Shape word links ---
     const words: WordIndexEntry[] = rawWords.map((w) => {
-      const twLink = String(w["wordPath"] ?? w["twLink"] ?? "");
-      const title = String(w["twTitle"] ?? resolveTitleFromPath(twLink) ?? "");
+      const rawPath = String(w["wordPath"] ?? w["twLink"] ?? "").trim();
+      const path = rawPath.startsWith("rc://")
+        ? (rcToTwPath(rawPath) ?? "")
+        : rawPath.replace(/\.md$/i, "");
+      const title = String(
+        w["twTitle"] ?? resolveTitleFromPath(path || rawPath) ?? "",
+      );
       const gq = w["gatewayQuote"] as
         | { original?: string; aligned?: string }
         | undefined;
-      const category = String(w["category"] ?? "other");
+      const category = path ? twCategoryFromPath(path) : "other";
 
       const rawOrigWords = String(w["origWords"] ?? "");
       return {
-        reference: `${w["book"]} ${w["chapter"]}:${w["verse"]}`,
+        reference: passageRowReference(
+          reference,
+          wordsBook || String(w["book"] ?? ""),
+          w["chapter"],
+          w["verse"],
+        ),
         quote: {
           original: gq?.original ?? formatQuoteDisplay(rawOrigWords),
           aligned: gq?.aligned ?? "",
         },
         occurrence: String(w["occurrence"] ?? "1"),
-        twArticle: twLink ? { path: twLink, category, title } : null,
+        twArticle: path ? { path, category, title } : null,
       } satisfies WordIndexEntry;
     });
 
@@ -233,15 +257,7 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
         title: string;
       }[],
     );
-    const keyTerms = buildRollup(
-      words
-        .map((w) =>
-          w.twArticle
-            ? { path: w.twArticle.path, title: w.twArticle.title }
-            : null,
-        )
-        .filter(Boolean) as { path: string; title: string }[],
-    );
+    const keyTerms = buildKeyTerms(words);
 
     const index: PassageIndex = {
       reference,
@@ -269,6 +285,41 @@ function slugFromRc(rc: string): string {
   // e.g. "rc://*/ta/man/translate/figs-metaphor" → "translate/figs-metaphor"
   const m = rc.match(/rc:\/\/\*\/(?:ta|tw)\/(?:man\/)?(.+)/);
   return m ? m[1] : rc;
+}
+
+/** Deduplicate key terms and keep each path's own category. */
+function buildKeyTerms(words: WordIndexEntry[]): Array<{
+  path: string;
+  title: string;
+  category: string;
+  count: number;
+}> {
+  const map = new Map<
+    string,
+    { title: string; category: string; count: number }
+  >();
+  for (const word of words) {
+    const article = word.twArticle;
+    if (!article?.path) continue;
+    const existing = map.get(article.path);
+    if (existing) {
+      existing.count++;
+    } else {
+      map.set(article.path, {
+        title: article.title,
+        category: article.category,
+        count: 1,
+      });
+    }
+  }
+  return Array.from(map.entries())
+    .map(([path, { title, category, count }]) => ({
+      path,
+      title,
+      category,
+      count,
+    }))
+    .sort((a, b) => b.count - a.count || a.path.localeCompare(b.path));
 }
 
 /** Deduplicate { path, title } items, count occurrences, sort by count desc. */

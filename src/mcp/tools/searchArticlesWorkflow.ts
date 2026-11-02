@@ -44,7 +44,7 @@ const inputSchema = z.object({
     .string()
     .optional()
     .describe(
-      'Comma-separated resource types to include: "ta", "tw", or "ta,tw" (default all).',
+      'Comma-separated resource types: "ta", "tw", or "ta,tw" (default all). resourceType and type are aliases.',
     ),
 });
 

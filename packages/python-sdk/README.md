@@ -70,12 +70,12 @@ by_phrase = client.get_note({
 })
 
 ta_article = client.get_academy_article({
-    "path": "translate/figs-metaphor",   # from notes[i]["taArticle"]["path"]
+    "path": "translate/figs-metaphor",   # exact path, or "metaphor" / "figs-metaphor"
     "language": "en",
 })
 
 tw_article = client.get_word_article({
-    "path": "bible/kt/grace",            # from words[i]["twArticle"]["path"]
+    "path": "bible/kt/covenant",         # exact path, or "covenant" / "sheol" / "son of god"
     "language": "en",
 })
 
@@ -151,11 +151,13 @@ Use `get_structured_content(result)` or `TranslationHelpsClient.parse_result(res
 
 #### Step 3 — Drill
 
-| Method                      | Required    | Optional                   | Description                                                       |
-| --------------------------- | ----------- | -------------------------- | ----------------------------------------------------------------- |
-| `get_note(opts)`            | `reference` | `id`, `phrase`, `language` | Full note body. Omit `id`/`phrase` to get all notes for the ref.  |
-| `get_academy_article(opts)` | `path`      | `language`                 | Full TA article markdown. Use `path` from index `taArticle.path`. |
-| `get_word_article(opts)`    | `path`      | `language`                 | Full TW article markdown. Use `path` from index `twArticle.path`. |
+| Method                      | Required    | Optional                   | Description                                                                              |
+| --------------------------- | ----------- | -------------------------- | ---------------------------------------------------------------------------------------- |
+| `get_note(opts)`            | `reference` | `id`, `phrase`, `language` | Full note body. Omit `id`/`phrase` to get all notes for the ref.                         |
+| `get_academy_article(opts)` | `path`      | `language`                 | Full TA article. Exact path is best; `metaphor` and `figs-metaphor` also resolve.        |
+| `get_word_article(opts)`    | `path`      | `language`                 | Full TW article. Exact path is best; `covenant`, `sheol`, and `son of god` also resolve. |
+
+`get_word_article` and `get_academy_article` put the article in `structuredContent` (`WordArticleContent` / `AcademyArticleContent`): `path`, `title`, `article`, `requestedPath`, `resolvedFrom` (`category`, `title`, `plural`, `manual`, or `partial`), `related` (`{path, title}` list), `candidates` when several articles match, and `note` on a partial title match.
 
 #### Step 4 — Check
 
@@ -165,9 +167,9 @@ Use `get_structured_content(result)` or `TranslationHelpsClient.parse_result(res
 
 #### Lateral Discovery
 
-| Method                  | Required | Optional                     | Description                                                                      |
-| ----------------------- | -------- | ---------------------------- | -------------------------------------------------------------------------------- |
-| `search_articles(opts)` | `query`  | `language`, `types`, `limit` | Lexical search over TA + TW. `types`: `"ta"` / `"tw"` / `"ta,tw"`. `limit` 1–30. |
+| Method                  | Required | Optional                                             | Description                                                                                                                        |
+| ----------------------- | -------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `search_articles(opts)` | `query`  | `language`, `types`, `resourceType`, `type`, `limit` | Lexical search over TA + TW. `types`: `"ta"` / `"tw"` / `"ta,tw"`. `resourceType` and `type` are aliases of `types`. `limit` 1–30. |
 
 #### Open Bible Stories (OBS)
 

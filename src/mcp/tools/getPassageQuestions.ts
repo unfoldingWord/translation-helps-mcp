@@ -5,9 +5,8 @@
  * to verify that a proposed translation draft correctly communicates the meaning
  * of the original text to a native speaker.
  *
- * BEFORE: steps 1-3 (context → index → study), then produce a translation draft.
- * AFTER:  revise the draft based on which questions a native speaker would answer
- *         differently from the expected response.
+ * For a direct question about the questions for a verse, call this with the reference.
+ * When studying a passage step by step, use it after a translation draft.
  */
 
 import { z } from "zod";
@@ -39,12 +38,10 @@ const outputSchema = withNotAvailableOutput({
 export const getPassageQuestionsTool: ToolModule<typeof inputSchema> = {
   name: "get_questions",
   description:
-    "STEP 4 (check): Fetch Translation Questions for a passage. " +
-    "Questions are yes/no or short-answer comprehension checks that verify a translation communicates the intended meaning. " +
-    "Use after producing a translation draft to identify meaning gaps. " +
-    "Returns `questions[]` with `{ reference, question, response }` — `response` is the expected correct answer. " +
-    "BEFORE: complete steps 1-3 (context → index → study) and draft a translation. " +
-    "Empty `questions: []` means no questions are available for this language/passage — not an error.",
+    "Fetch Translation Questions for a verse. For a direct question about the questions for a passage, call this with the reference. " +
+    "When studying a passage step by step, use it after a translation draft to check that the meaning came through. " +
+    "Returns questions[] with { reference, question, response }. response is the expected answer. " +
+    "Empty questions: [] means none are available — not an error.",
   inputSchema,
   outputSchema,
   annotations: { readOnlyHint: true, title: "Get Passage Questions" },

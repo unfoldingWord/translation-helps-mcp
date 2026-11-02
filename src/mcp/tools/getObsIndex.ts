@@ -94,7 +94,7 @@ export const getObsIndexTool: ToolModule<typeof inputSchema> = {
     "notes[] has reference, id, quote, occurrence, and taArticle.{path,title}. " +
     "words[] has each key-term row with twArticle.{path,category,title}; keyTerms[] rolls those up by path with a count and the frames. " +
     "A failed fetch sets notesError or wordLinksError; that is not a missing resource. available:false only when neither resource exists. " +
-    "AFTER this: `get_word_article(twArticle.path)`, `get_obs_notes` for full notes.",
+    "Pass twArticle.path to get_word_article. Full notes are get_obs_notes.",
   inputSchema,
   outputSchema,
   annotations: { readOnlyHint: true, title: "Get OBS Index" },

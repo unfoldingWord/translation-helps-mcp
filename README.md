@@ -52,24 +52,24 @@ designed for a progressive, conversation-style retrieval flow and accept flexibl
 argument forms (see [Argument Normalization](#argument-normalization) below).
 All tools call the REST Data API via `ApiClient`.
 
-| Tool                      | Description                                                   |
-| ------------------------- | ------------------------------------------------------------- |
-| `list_languages`          | All available language codes (with optional substring filter) |
-| `list_resources`          | Availability summary of resource types for a language         |
-| `get_passage`             | Bible text in all available versions for a reference          |
-| `get_passage_context`     | Notes, Translation Words, and questions for a passage         |
-| `get_passage_index`       | Chapter-level index of available notes for quick navigation   |
-| `get_note`                | Single exegetical note by reference + quote                   |
-| `get_academy_article`     | Translation Academy article by path (e.g. `figs-metaphor`)    |
-| `get_word_article`        | Translation Words dictionary entry by path                    |
-| `get_questions`           | Comprehension/discussion questions for a passage              |
-| `search_articles`         | Lexical search over TA + TW catalogs                          |
-| `get_obs_story`           | Open Bible Stories story text by number                       |
-| `get_obs_notes`           | Translation notes for an OBS story                            |
-| `get_obs_index`           | Compact index of OBS notes and key terms (no article bodies)  |
-| `get_obs_questions`       | Translation questions for an OBS story                        |
-| `get_obs_study_notes`     | Study notes for an OBS story (reader/discussion)              |
-| `get_obs_study_questions` | Study questions for an OBS story (frame ranges)               |
+| Tool                      | Description                                                                                        |
+| ------------------------- | -------------------------------------------------------------------------------------------------- |
+| `list_languages`          | All available language codes (with optional substring filter)                                      |
+| `list_resources`          | Availability summary of resource types for a language                                              |
+| `get_passage`             | Bible text in all available versions for a reference                                               |
+| `get_passage_context`     | Notes, Translation Words, and questions for a passage                                              |
+| `get_passage_index`       | Chapter-level index of available notes for quick navigation                                        |
+| `get_note`                | Single exegetical note by reference + quote                                                        |
+| `get_academy_article`     | Translation Academy article. Exact path is best; `metaphor` and `figs-metaphor` also resolve.      |
+| `get_word_article`        | Translation Words article. Exact path is best; `covenant`, `sheol`, and `son of god` also resolve. |
+| `get_questions`           | Comprehension/discussion questions for a passage                                                   |
+| `search_articles`         | Lexical search over TA + TW catalogs                                                               |
+| `get_obs_story`           | Open Bible Stories story text by number                                                            |
+| `get_obs_notes`           | Translation notes for an OBS story                                                                 |
+| `get_obs_index`           | Compact index of OBS notes and key terms (no article bodies)                                       |
+| `get_obs_questions`       | Translation questions for an OBS story                                                             |
+| `get_obs_study_notes`     | Study notes for an OBS story (reader/discussion)                                                   |
+| `get_obs_study_questions` | Study questions for an OBS story (frame ranges)                                                    |
 
 ## Argument Normalization
 
@@ -78,7 +78,8 @@ produce the exact parameter names defined in tool schemas:
 
 - **Decomposed references**: `{book, chapter, verse}` → `reference` (`"JHN 3:16"`)
 - **OBS story and frame**: `{story, frame}` → `reference` (`"3:5"`) on the OBS tools
-- **Path synonyms**: `word_id`, `article_id`, `term_id` → `path`
+- **Path synonyms**: `word_id`, `article_id`, `term_id` → `path`. `get_word_article` and `get_academy_article` then resolve a bare term or a close path (`covenant`, `sheol`, `son of god`, `metaphor`) to the catalog path.
+- **Search aliases**: on `search_articles`, `resourceType` and `type` are aliases of `types`
 - **Language aliases**: `language_code`, `lang` → `language`
 - **Null coercion**: `null` or array-typed `arguments` objects are treated as `{}`
 

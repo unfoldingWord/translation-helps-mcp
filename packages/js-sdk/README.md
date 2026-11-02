@@ -67,12 +67,12 @@ const byPhrase = await client.getNote({
 });
 
 const taArticle = await client.getAcademyArticle({
-  path: "translate/figs-metaphor", // from index notes[].taArticle.path
+  path: "translate/figs-metaphor", // exact path, or "metaphor" / "figs-metaphor"
   language: "en",
 });
 
 const twArticle = await client.getWordArticle({
-  path: "bible/kt/grace", // from index words[].twArticle.path
+  path: "bible/kt/covenant", // exact path, or "covenant" / "sheol" / "son of god"
   language: "en",
 });
 
@@ -126,11 +126,13 @@ All methods return `MCPToolResult` (`content`, optional `structuredContent`, opt
 
 #### Step 3 — Drill
 
-| Method                    | Options                                          | Description                                                            |
-| ------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------- |
-| `getNote(opts)`           | `reference` (req), `id?`, `phrase?`, `language?` | Full note body. Omit `id`/`phrase` to get all notes for the reference. |
-| `getAcademyArticle(opts)` | `path` (req), `language?`                        | Full TA article markdown. Use `path` from index `taArticle.path`.      |
-| `getWordArticle(opts)`    | `path` (req), `language?`                        | Full TW article markdown. Use `path` from index `twArticle.path`.      |
+| Method                    | Options                                          | Description                                                                              |
+| ------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `getNote(opts)`           | `reference` (req), `id?`, `phrase?`, `language?` | Full note body. Omit `id`/`phrase` to get all notes for the reference.                   |
+| `getAcademyArticle(opts)` | `path` (req), `language?`                        | Full TA article. Exact path is best; `metaphor` and `figs-metaphor` also resolve.        |
+| `getWordArticle(opts)`    | `path` (req), `language?`                        | Full TW article. Exact path is best; `covenant`, `sheol`, and `son of god` also resolve. |
+
+`getWordArticle` and `getAcademyArticle` put the article in `structuredContent` (`WordArticleContent` / `AcademyArticleContent`): `path`, `title`, `article`, `requestedPath`, `resolvedFrom` (`category`, `title`, `plural`, `manual`, or `partial`), `related` (`{ path, title }[]`), `candidates` when several articles match, and `note` on a partial title match.
 
 #### Step 4 — Check
 
@@ -140,9 +142,9 @@ All methods return `MCPToolResult` (`content`, optional `structuredContent`, opt
 
 #### Lateral Discovery
 
-| Method                 | Options                                        | Description                                                                   |
-| ---------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------- |
-| `searchArticles(opts)` | `query` (req), `language?`, `types?`, `limit?` | Lexical search over TA + TW catalogs. `types` is `"ta"` / `"tw"` / `"ta,tw"`. |
+| Method                 | Options                                                                  | Description                                                                                                                     |
+| ---------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `searchArticles(opts)` | `query` (req), `language?`, `types?`, `resourceType?`, `type?`, `limit?` | Lexical search over TA + TW catalogs. `types` is `"ta"` / `"tw"` / `"ta,tw"`. `resourceType` and `type` are aliases of `types`. |
 
 #### Open Bible Stories (OBS)
 

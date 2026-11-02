@@ -5,12 +5,12 @@
  * TW articles define biblical key terms (God, covenant, grace, righteousness…)
  * with information about meaning, usage, and translation suggestions.
  *
- * The `path` comes from:
+ * The `path` comes from a term, a close guess, or:
  *   - `get_passage_index` words[].twArticle.path
  *   - `search_articles` results[].path (when resourceType === "tw")
  *
- * BEFORE: call `get_passage_index` (or `search_articles`).
- * AFTER:  call `get_questions` to verify a draft.
+ * When studying a passage step by step, take the path from the index.
+ * A direct question about a term calls this tool with the term.
  */
 
 import { z } from "zod";
@@ -22,15 +22,23 @@ import {
 } from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
-import { assertSafeArticlePath } from "../../core/articlePath.js";
+import {
+  prepareArticlePath,
+  RESOLVED_FROM,
+} from "../../core/articleResolve.js";
+import { presentArticle, type ArticlePayload } from "./articlePresent.js";
+
+const articleCandidate = z.object({
+  path: z.string(),
+  title: z.string(),
+});
 
 const inputSchema = z.object({
   path: z
     .string()
     .min(1)
     .describe(
-      "The TW article path from `get_passage_index` words[].twArticle.path or `search_articles`. " +
-        'Examples: "bible/kt/god", "bible/kt/covenant", "bible/other/king", "bible/names/paul".',
+      "Exact path is best (bible/kt/covenant). covenant, sheol, son of god, and bible/other/hades also work.",
     ),
   language: languageParam,
 });
@@ -42,36 +50,41 @@ const outputSchema = withNotAvailableOutput({
   language: z.string().optional(),
   title: z.string().optional(),
   article: z.string().optional(),
+  requestedPath: z.string().optional(),
+  resolvedFrom: z.enum(RESOLVED_FROM).optional(),
+  note: z.string().optional(),
+  related: z.array(articleCandidate).optional(),
+  candidates: z.array(articleCandidate).optional(),
 });
 
 export const getWordArticleTool: ToolModule<typeof inputSchema> = {
   name: "get_word_article",
   description:
-    "STEP 3 (study/drill): Fetch the full text of a Translation Words article (key term dictionary entry) by path. " +
-    "TW articles define what a biblical term means, how it is used, and how to translate it. " +
-    "Get the `path` from `get_passage_index` words[].twArticle.path or from `search_articles`. " +
-    "Always pass `language` as the user's resource language (e.g. hi for Hindi) — " +
-    "do not default to en when they asked for another language; many GLs have their own TW on Door43. " +
-    "BEFORE: call `get_passage_index` (survey step). " +
-    "AFTER: call `get_questions` to verify a draft. " +
-    "Missing article/path: soft-fail with RESOURCE_NOT_AVAILABLE (isError:false).",
+    "Fetch a Translation Words article: what a biblical term means and how to translate it. " +
+    "For a direct question about a term, pass the term. An exact path is best; covenant, sheol, son of god, and bible/other/hades also work and are resolved " +
+    "(the answer includes path, requestedPath, and resolvedFrom). " +
+    "Pass language as the user's language, not en, when they asked for another one. " +
+    "When studying a passage step by step, take path from get_passage_index words[].twArticle.path or from search_articles. " +
+    "Links in the article are paths this tool accepts (bible/kt/promise). rc://*/tn/help/... links are note references, not article paths. related[] lists the article links. " +
+    "Several matches return candidates — call again with one path. Missing article: soft-fail RESOURCE_NOT_AVAILABLE (isError:false).",
   inputSchema,
   outputSchema,
   annotations: { readOnlyHint: true, title: "Get Word Article" },
 
   async handler(params: GetWordArticleParams, env: Env, _requestId: string) {
     const client = new ApiClient(env);
-    const path = assertSafeArticlePath(params.path);
-    const { language } = params;
-
-    const encodedPath = path.split("/").map(encodeURIComponent).join("/");
-    const data = await client.get<{
-      path: string;
-      language: string;
-      article: string;
-    }>(`/api/v1/words/${encodedPath}`, { language });
-
-    const slug = path.split("/").pop() ?? path;
-    return ok(data, `Word article: ${slug}`);
+    const requestedPath = params.path;
+    const prepared = prepareArticlePath(requestedPath);
+    const encodedPath = prepared.split("/").map(encodeURIComponent).join("/");
+    const data = await client.get<ArticlePayload>(
+      `/api/v1/words/${encodedPath}`,
+      { language: params.language, requestedPath, prepared: "1" },
+    );
+    const presented = presentArticle(data, "tw", prepared);
+    const slug =
+      String(presented.path ?? prepared)
+        .split("/")
+        .pop() ?? prepared;
+    return ok(presented, `Word article: ${slug}`);
   },
 };
