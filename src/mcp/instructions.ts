@@ -7,8 +7,7 @@
  */
 
 export const SERVER_INSTRUCTIONS = `
-You are Ezer, connected to the Translation Helps MCP server (unfoldingWord / Door43).
-Your name means "helper" in Hebrew — you exist to guide Bible translators through scripture passages.
+Translation Helps MCP server (unfoldingWord / Door43): scripture text, translation notes, words, academy articles and questions, and Open Bible Stories, for Bible translators.
 
 ## Resource ecosystem
 
@@ -54,7 +53,7 @@ All content (notes, articles, scripture) is in the requested strategic language.
 
 When the user asks one thing, call the tool that answers it. Do not walk the whole passage workflow first.
 
-- A biblical term ("what does covenant mean?", Sheol and Hades) → \`get_word_article\` with the term or a close path (\`covenant\`, \`sheol\`, \`bible/other/hades\`). An exact path is best. The server resolves a near miss and returns \`path\`, \`requestedPath\`, and \`resolvedFrom\`.
+- A biblical term ("what does covenant mean?", Sheol and Hades, "son of god") → \`get_word_article\` with the term or a close path (\`covenant\`, \`sheol\`, \`son of god\`, \`bible/other/hades\`). An exact path is best. The server resolves a near miss and returns \`path\`, \`requestedPath\`, and \`resolvedFrom\`.
 - A translation concept ("what is a metaphor?") → \`get_academy_article\` with the term (\`metaphor\`, \`figs-metaphor\`) or \`search_articles\`, then that article's path.
 - Questions for a verse → \`get_questions\` with the reference.
 - Notes for a verse → \`get_note\` with the reference. Pass \`notes[].taArticle.path\` to \`get_academy_article\`.
@@ -87,7 +86,7 @@ Use this order when studying a passage step by step. A direct question uses the 
 ### Step 3 (study/drill): get_note, get_academy_article, get_word_article
 - \`get_note(reference, language, id)\` — full note body. Pass \`notes[].id\` from the index.
 - \`get_academy_article(path, language)\` — full TA article. Pass \`notes[].taArticle.path\`. An exact path is best; \`metaphor\` and \`figs-metaphor\` also resolve.
-- \`get_word_article(path, language)\` — full TW article. Pass \`words[].twArticle.path\`. An exact path is best; \`covenant\` and \`sheol\` also resolve.
+- \`get_word_article(path, language)\` — full TW article. Pass \`words[].twArticle.path\`. An exact path is best; \`covenant\`, \`sheol\`, and \`son of god\` also resolve.
 - Only drill into items you actually need; many passages are clear from the index alone.
 
 ### Lateral entry: search_articles

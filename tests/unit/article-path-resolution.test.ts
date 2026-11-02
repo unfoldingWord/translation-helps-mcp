@@ -56,6 +56,40 @@ describe("prepareArticlePath", () => {
     );
   });
 
+  it("collapses a bare term with spaces or apostrophes before the safety check", () => {
+    expect(prepareArticlePath("son of god")).toBe("sonofgod");
+    expect(prepareArticlePath("  Ark of the Covenant  ")).toBe(
+      "arkofthecovenant",
+    );
+    expect(prepareArticlePath("right hand")).toBe("righthand");
+    expect(prepareArticlePath("son's")).toBe("sons");
+    expect(prepareArticlePath("son\u2019s")).toBe("sons");
+    expect(prepareArticlePath("son%20of%20god")).toBe("sonofgod");
+    expect(prepareArticlePath("tw/son of god")).toBe("sonofgod");
+    expect(prepareArticlePath("rc://*/tw/dict/ark of the covenant")).toBe(
+      "arkofthecovenant",
+    );
+  });
+
+  it("keeps the strict check when a slash remains after the known prefix", () => {
+    for (const raw of [
+      "bible/kt/son of god",
+      "bible/kt/son's",
+      "tw/bible/kt/son of god",
+    ]) {
+      expect(() => prepareArticlePath(raw), raw).toThrow(
+        /Invalid article path/,
+      );
+      try {
+        prepareArticlePath(raw);
+      } catch (error) {
+        expect((error as { code?: string }).code).toBe(
+          ErrorCode.INVALID_PARAMS,
+        );
+      }
+    }
+  });
+
   it("rejects traversal, absolute paths, and control characters after the prefix strip", () => {
     for (const raw of [
       "../kt/hades",
@@ -165,6 +199,43 @@ describe("resolveTwArticle", () => {
 
   it("misses a term that matches nothing", () => {
     expect(resolveTwArticle("not-a-term", TW)).toEqual({ status: "miss" });
+  });
+
+  it("resolves a bare term that has spaces to the file name", () => {
+    const withArk = [
+      ...TW,
+      { path: "bible/kt/arkofthecovenant", title: "Ark of the Covenant" },
+    ];
+    expect(resolveTwArticle("son of god", TW)).toEqual({
+      status: "resolved",
+      path: "bible/kt/sonofgod",
+      title: "Son of God",
+      resolvedFrom: "category",
+    });
+    expect(resolveTwArticle("ark of the covenant", withArk)).toMatchObject({
+      path: "bible/kt/arkofthecovenant",
+      resolvedFrom: "category",
+    });
+  });
+
+  it("accepts apostrophes and does not invent an article", () => {
+    expect(resolveTwArticle("son's", TW)).toEqual({ status: "miss" });
+    expect(resolveTwArticle("son\u2019s", TW)).toEqual({ status: "miss" });
+  });
+
+  it("offers candidates when a title contains the term but is not that article", () => {
+    const withHand = [
+      ...TW,
+      { path: "bible/other/godsrightand", title: "God's Right Hand" },
+    ];
+    const result = resolveTwArticle("right hand", withHand);
+    expect(result.status).toBe("ambiguous");
+    if (result.status !== "ambiguous") return;
+    expect(result.resolvedFrom).toBe("title");
+    expect(result.candidates).toEqual([
+      { path: "bible/other/godsrightand", title: "God's Right Hand" },
+    ]);
+    expect(resolveTwArticle("right hand", TW)).toEqual({ status: "miss" });
   });
 });
 

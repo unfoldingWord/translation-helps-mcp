@@ -75,7 +75,7 @@ ta_article = client.get_academy_article({
 })
 
 tw_article = client.get_word_article({
-    "path": "bible/kt/covenant",         # exact path, or "covenant" / "sheol"
+    "path": "bible/kt/covenant",         # exact path, or "covenant" / "sheol" / "son of god"
     "language": "en",
 })
 
@@ -151,11 +151,11 @@ Use `get_structured_content(result)` or `TranslationHelpsClient.parse_result(res
 
 #### Step 3 — Drill
 
-| Method                      | Required    | Optional                   | Description                                                                       |
-| --------------------------- | ----------- | -------------------------- | --------------------------------------------------------------------------------- |
-| `get_note(opts)`            | `reference` | `id`, `phrase`, `language` | Full note body. Omit `id`/`phrase` to get all notes for the ref.                  |
-| `get_academy_article(opts)` | `path`      | `language`                 | Full TA article. Exact path is best; `metaphor` and `figs-metaphor` also resolve. |
-| `get_word_article(opts)`    | `path`      | `language`                 | Full TW article. Exact path is best; `covenant` and `sheol` also resolve.         |
+| Method                      | Required    | Optional                   | Description                                                                              |
+| --------------------------- | ----------- | -------------------------- | ---------------------------------------------------------------------------------------- |
+| `get_note(opts)`            | `reference` | `id`, `phrase`, `language` | Full note body. Omit `id`/`phrase` to get all notes for the ref.                         |
+| `get_academy_article(opts)` | `path`      | `language`                 | Full TA article. Exact path is best; `metaphor` and `figs-metaphor` also resolve.        |
+| `get_word_article(opts)`    | `path`      | `language`                 | Full TW article. Exact path is best; `covenant`, `sheol`, and `son of god` also resolve. |
 
 #### Step 4 — Check
 

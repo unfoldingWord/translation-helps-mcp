@@ -35,7 +35,7 @@ const inputSchema = z.object({
     .string()
     .min(1)
     .describe(
-      "Exact path is best (bible/kt/covenant). covenant, sheol, son-of-god, and bible/other/hades also work.",
+      "Exact path is best (bible/kt/covenant). covenant, sheol, son of god, and bible/other/hades also work.",
     ),
   language: languageParam,
 });
@@ -57,7 +57,7 @@ export const getWordArticleTool: ToolModule<typeof inputSchema> = {
   name: "get_word_article",
   description:
     "Fetch a Translation Words article: what a biblical term means and how to translate it. " +
-    "For a direct question about a term, pass the term. An exact path is best; covenant, sheol, and bible/other/hades also work and are resolved " +
+    "For a direct question about a term, pass the term. An exact path is best; covenant, sheol, son of god, and bible/other/hades also work and are resolved " +
     "(the answer includes path, requestedPath, and resolvedFrom). " +
     "Pass language as the user's language, not en, when they asked for another one. " +
     "When studying a passage step by step, take path from get_passage_index words[].twArticle.path or from search_articles. " +

@@ -89,7 +89,7 @@ class GetAcademyArticleOptions(TypedDict, total=False):
 
 
 class GetWordArticleOptions(TypedDict, total=False):
-    path: str                      # Required — exact "bible/kt/covenant", or "covenant" / "sheol"
+    path: str                      # Required — exact "bible/kt/covenant", or "covenant" / "sheol" / "son of god"
     language: Optional[str]        # BCP-47 code (default "en")
 
 

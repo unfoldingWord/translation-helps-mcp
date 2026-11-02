@@ -397,7 +397,10 @@ describe("stateless MCP worker fetch", () => {
       name: SERVER_NAME,
       version: "2.5.0",
     });
-    expect(body.result?.instructions).toContain("You are Ezer");
+    expect(body.result?.instructions).toContain(
+      "Translation Helps MCP server (unfoldingWord / Door43)",
+    );
+    expect(body.result?.instructions).not.toContain("Ezer");
     expect(namespace.names).toEqual([]);
   });
 

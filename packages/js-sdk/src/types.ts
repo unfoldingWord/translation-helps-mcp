@@ -204,7 +204,7 @@ export interface GetAcademyArticleOptions {
 export interface GetWordArticleOptions {
   /**
    * Exact path is best (`bible/kt/covenant`, from `twArticle.path`).
-   * A bare term or close path (`covenant`, `sheol`, `bible/other/hades`) is resolved.
+   * A bare term or close path (`covenant`, `sheol`, `son of god`, `bible/other/hades`) is resolved.
    */
   path: string;
   /** BCP-47 language code (default: "en") */

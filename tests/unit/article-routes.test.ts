@@ -161,6 +161,76 @@ describe("word and academy routes", () => {
     ]);
   });
 
+  it("resolves a bare term with spaces and does not reject apostrophes", async () => {
+    const files = catalog.zips.get("https://example.test/en-tw.zip");
+    files?.set("en_tw/bible/kt/arkofthecovenant.md", "# Ark of the Covenant\n");
+    files?.set("en_tw/bible/other/godsrightand.md", "# God's Right Hand\n");
+
+    const son = await read(
+      await handleWordsPath({
+        url: routeUrl({ language: "en" }),
+        env: {} as never,
+        pathParam: "son of god",
+      }),
+    );
+    expect(son.status).toBe(200);
+    expect(son.body).toMatchObject({
+      path: "bible/kt/sonofgod",
+      resolvedFrom: "category",
+      title: "Son of God",
+    });
+
+    const ark = await read(
+      await handleWordsPath({
+        url: routeUrl({ language: "en" }),
+        env: {} as never,
+        pathParam: "ark of the covenant",
+      }),
+    );
+    expect(ark.status).toBe(200);
+    expect(ark.body).toMatchObject({
+      path: "bible/kt/arkofthecovenant",
+      resolvedFrom: "category",
+    });
+
+    const hand = await read(
+      await handleWordsPath({
+        url: routeUrl({ language: "en" }),
+        env: {} as never,
+        pathParam: "right hand",
+      }),
+    );
+    expect(hand.status).toBe(200);
+    expect(hand.body.available).toBe(false);
+    expect(hand.body.code).toBe("RESOURCE_NOT_AVAILABLE");
+    expect(hand.body.candidates).toEqual([
+      { path: "bible/other/godsrightand", title: "God's Right Hand" },
+    ]);
+
+    for (const pathParam of ["son's", "son\u2019s"]) {
+      const apostrophe = await read(
+        await handleWordsPath({
+          url: routeUrl({ language: "en" }),
+          env: {} as never,
+          pathParam,
+        }),
+      );
+      expect(apostrophe.status, pathParam).toBe(404);
+    }
+
+    const slashed = await read(
+      await handleWordsPath({
+        url: routeUrl({ language: "en" }),
+        env: {} as never,
+        pathParam: "bible/kt/son of god",
+      }),
+    );
+    expect(slashed.status).toBe(400);
+    expect(slashed.body).toMatchObject({
+      error: { code: "INVALID_PARAMS" },
+    });
+  });
+
   it("rejects an unsafe path and 404s a miss", async () => {
     const unsafe = await read(
       await handleWordsPath({

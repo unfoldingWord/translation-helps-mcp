@@ -273,7 +273,7 @@ export class TranslationHelpsClient {
 
   /**
    * Step 3 (drill): Fetch the full Markdown content of a Translation Words article.
-   * An exact path is best. A term or close path such as "covenant" or "sheol" is resolved.
+   * An exact path is best. A term or close path such as "covenant", "sheol", or "son of god" is resolved.
    *
    * @example
    * const result = await client.getWordArticle({

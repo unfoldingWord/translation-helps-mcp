@@ -72,7 +72,7 @@ const taArticle = await client.getAcademyArticle({
 });
 
 const twArticle = await client.getWordArticle({
-  path: "bible/kt/covenant", // exact path, or "covenant" / "sheol"
+  path: "bible/kt/covenant", // exact path, or "covenant" / "sheol" / "son of god"
   language: "en",
 });
 
@@ -126,11 +126,11 @@ All methods return `MCPToolResult` (`content`, optional `structuredContent`, opt
 
 #### Step 3 — Drill
 
-| Method                    | Options                                          | Description                                                                       |
-| ------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------- |
-| `getNote(opts)`           | `reference` (req), `id?`, `phrase?`, `language?` | Full note body. Omit `id`/`phrase` to get all notes for the reference.            |
-| `getAcademyArticle(opts)` | `path` (req), `language?`                        | Full TA article. Exact path is best; `metaphor` and `figs-metaphor` also resolve. |
-| `getWordArticle(opts)`    | `path` (req), `language?`                        | Full TW article. Exact path is best; `covenant` and `sheol` also resolve.         |
+| Method                    | Options                                          | Description                                                                              |
+| ------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `getNote(opts)`           | `reference` (req), `id?`, `phrase?`, `language?` | Full note body. Omit `id`/`phrase` to get all notes for the reference.                   |
+| `getAcademyArticle(opts)` | `path` (req), `language?`                        | Full TA article. Exact path is best; `metaphor` and `figs-metaphor` also resolve.        |
+| `getWordArticle(opts)`    | `path` (req), `language?`                        | Full TW article. Exact path is best; `covenant`, `sheol`, and `son of god` also resolve. |
 
 #### Step 4 — Check
 

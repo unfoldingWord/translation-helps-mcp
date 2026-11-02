@@ -291,7 +291,7 @@ class TranslationHelpsClient:
         """
         Step 3 (drill): Fetch the full Markdown content of a Translation Words article.
 
-        An exact path is best. A term or close path such as ``covenant`` or ``sheol`` is resolved.
+        An exact path is best. A term or close path such as ``covenant``, ``sheol``, or ``son of god`` is resolved.
 
         Args:
             options: Dict with ``path`` (required), ``language``.
@@ -584,7 +584,7 @@ class AsyncTranslationHelpsClient:
     async def get_word_article(self, options: Dict[str, Any]) -> Dict[str, Any]:
         """
         Step 3 (drill): Full TW article markdown.
-        Required: path. Exact path is best; covenant and sheol also resolve. Optional: language.
+        Required: path. Exact path is best; covenant, sheol, and son of god also resolve. Optional: language.
         """
         return await self.call_tool("get_word_article", options)
 

@@ -41,6 +41,10 @@ const FOLDER_PREFIXES = ["tw/dict/", "ta/man/", "tw/", "ta/", "dict/"] as const;
 
 const MAX_CANDIDATES = 5;
 
+/** Spaces, hyphens, and straight or curly apostrophes. Comparison only. */
+const TERM_NOISE = /[\s'’‘ʼ\u2010\u2011\u2012\u2013\u2014\u2015-]/g;
+const BARE_TERM_GAP = /[\s'’‘ʼ]/;
+
 /**
  * Remove only the known rc://, tw/, and ta/ prefixes. No other rewriting.
  */
@@ -55,16 +59,36 @@ export function stripKnownArticlePrefix(raw: string): string {
   return path;
 }
 
+function percentDecoded(path: string): string {
+  if (!/%[0-9A-Fa-f]{2}/.test(path)) return path;
+  try {
+    return decodeURIComponent(path).trim();
+  } catch {
+    return path;
+  }
+}
+
 /**
- * Strip known prefixes, then the same safety check as a literal path.
+ * A bare term (no slash left after the known prefixes) may contain spaces
+ * or apostrophes. Fold those into the comparison key before the allowlist.
+ * A path that still has a slash keeps the strict check.
+ */
+function collapseBareTerm(path: string): string {
+  if (path.includes("/") || !BARE_TERM_GAP.test(path)) return path;
+  return path.toLowerCase().replace(TERM_NOISE, "");
+}
+
+/**
+ * Strip known prefixes, fold a bare term, then the same safety check.
  * Throws TranslationHelpsError (INVALID_PARAMS) for anything unsafe.
  */
 export function prepareArticlePath(raw: string): string {
-  return assertSafeArticlePath(stripKnownArticlePrefix(raw));
+  const stripped = percentDecoded(stripKnownArticlePrefix(raw).trim());
+  return assertSafeArticlePath(collapseBareTerm(stripped));
 }
 
 function matchKey(value: string): string {
-  return value.toLowerCase().replace(/[\s'’-]/g, "");
+  return value.toLowerCase().replace(TERM_NOISE, "");
 }
 
 function cleanTw(raw: string): string {
@@ -187,6 +211,23 @@ export function resolveTwArticle(
   );
   const pluralHit = decide(byPlural, "plural");
   if (pluralHit) return pluralHit;
+
+  if (term.length >= 4) {
+    const contained = articles.filter((article) =>
+      matchKey(article.title).includes(term),
+    );
+    const containedHit = contained.length
+      ? {
+          status: "ambiguous" as const,
+          resolvedFrom: "title" as const,
+          candidates: uniqueByPath(contained)
+            .sort((a, b) => a.path.localeCompare(b.path))
+            .slice(0, MAX_CANDIDATES)
+            .map(asCandidate),
+        }
+      : null;
+    if (containedHit) return containedHit;
+  }
 
   return { status: "miss" };
 }

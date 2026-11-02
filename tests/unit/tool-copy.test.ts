@@ -43,8 +43,12 @@ describe("tool copy", () => {
     );
   });
 
-  it("keeps the persona and adds direct questions", () => {
-    expect(SERVER_INSTRUCTIONS).toMatch(/You are Ezer/);
+  it("describes the server and adds direct questions", () => {
+    expect(SERVER_INSTRUCTIONS).toMatch(
+      /Translation Helps MCP server \(unfoldingWord \/ Door43\)/,
+    );
+    expect(SERVER_INSTRUCTIONS).not.toMatch(/Ezer/);
+    expect(SERVER_INSTRUCTIONS).not.toMatch(/Your name means/);
     expect(SERVER_INSTRUCTIONS).toMatch(/## Direct questions/);
     expect(SERVER_INSTRUCTIONS).toMatch(/get_obs_index/);
     expect(SERVER_INSTRUCTIONS).toMatch(/story:frame/);
