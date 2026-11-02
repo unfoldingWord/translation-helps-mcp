@@ -14,7 +14,7 @@ export const V3_SERVER_INSTRUCTIONS = `Translation Helps serves unfoldingWord an
 Language: pass the BCP-47 code the user asked for, such as "es" or "es-419". Use "en" only when they did not name a language. Call th_list_resources with no language to see the codes.
 
 References have two forms.
-Bible: a book with a chapter or verse, such as "JHN 3:16", "John 3", "GEN 1" or "JON 1". A book alone, such as "Jonah", is not a passage. Introductions use "JHN front:intro" or "JHN 1:intro".
+Bible: a book with a chapter or verse, such as "JHN 3:16", "John 3", "GEN 1" or "JON 1". A book alone, such as "Jonah", is not a passage. Introductions are notes: use th_get_notes with reference 'JHN 1:intro' (coming in T-052). Optional Bible format is "text" (default) or "usfm".
 Open Bible Stories: "OBS 3:5", "OBS 3", "OBS 3:1-3", a bare "3:5" or "3", or "OBS front" for the front matter.
 
 Tools on this server:

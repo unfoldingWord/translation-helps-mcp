@@ -29,12 +29,14 @@ export function normalizeV3ToolArgs(
     typeof base.language === "string" ? base.language : undefined;
   const read = readReference(rawArgs, language);
   const kind = toolName === QUESTIONS ? questionKind(rawArgs) : undefined;
+  const format = toolName === PASSAGE ? passageFormat(rawArgs) : undefined;
 
   if (!read.ok) {
     return {
       reference: `\u0000${read.message}`,
       ...(language !== undefined ? { language } : {}),
       ...(kind !== undefined ? { kind } : {}),
+      ...(format !== undefined ? { format } : {}),
     };
   }
 
@@ -42,12 +44,21 @@ export function normalizeV3ToolArgs(
     reference: read.value.reference,
     ...(language !== undefined ? { language } : {}),
     ...(kind !== undefined ? { kind } : {}),
+    ...(format !== undefined ? { format } : {}),
   };
 }
 
 /** `th_list_resources` → `list_resources`. Other names pass through. */
 function unprefixed(toolName: string): string {
   return toolName.startsWith("th_") ? toolName.slice(3) : toolName;
+}
+
+function passageFormat(rawArgs: unknown): unknown {
+  if (!rawArgs || typeof rawArgs !== "object" || Array.isArray(rawArgs)) {
+    return undefined;
+  }
+  if (!("format" in rawArgs)) return undefined;
+  return rawArgs.format;
 }
 
 function questionKind(rawArgs: unknown): unknown {

@@ -59,9 +59,9 @@ export interface Env extends DispatchEnv {
   API?: Fetcher;
   API_BASE_URL?: string;
   TOOL_SECRET?: string;
-  /** Optional Bearer/X-Api-Key for /mcp. Unset = anonymous public access. */
+  /** Optional Bearer/X-Api-Key for /mcp, /v2/mcp and /v3/mcp. Unset = anonymous public access. */
   MCP_API_KEY?: string;
-  /** Max requests/min per IP for /mcp and /api/tool. Default 90; 0 = off. */
+  /** Max requests/min per IP for /mcp, /v2/mcp and /api/tool. /v3/mcp uses the same value in its own scope. Default 90; 0 = off. */
   RATE_LIMIT_RPM?: string;
   /** Max part requests/min per IP for /v2/packs/parts/, counted apart. Default 600; 0 = off. */
   PARTS_RATE_LIMIT_RPM?: string;
@@ -157,7 +157,9 @@ export default {
         MCP_CORS,
       );
       if (authDenied) return authDenied;
-      const limited = enforceRateLimit(request, env.RATE_LIMIT_RPM, MCP_CORS);
+      const limited = enforceRateLimit(request, env.RATE_LIMIT_RPM, MCP_CORS, {
+        scope: "v3",
+      });
       if (limited) return limited;
 
       // v3 has no Durable Object. A session id is a client error, not a route

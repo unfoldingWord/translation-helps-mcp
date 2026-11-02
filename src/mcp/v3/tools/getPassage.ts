@@ -29,18 +29,31 @@ const inputSchema = z.object({
       'A Bible passage ("JHN 3:16", "John 3:16-18", "GEN 1") or an OBS reference ("OBS 3:5", "OBS 3:1-3", "OBS 3", "3:5"). A book alone is not a passage.',
     ),
   language: languageParam,
+  format: z
+    .enum(["text", "usfm"])
+    .optional()
+    .describe(
+      '"text" = plain prose (default), "usfm" = raw USFM markup. Ignored for OBS. Omitted means "text".',
+    ),
 });
 
 const BOOK_ALONE =
   'A book alone is not a passage. Give a chapter, for example "JON 1". th_get_passage_index takes a whole book (coming in T-052).';
 
 /**
- * Proposal description, plus the book-only rule. The model otherwise calls
- * this with "Jonah" and only learns from the error. The next tool is named
- * with the v3 prefix.
+ * Introductions are notes (th_get_notes, T-052), not passage text.
+ * The quoted sentence is the contract the tool test checks.
+ */
+const INTRO_NOTES =
+  "introductions are notes: use th_get_notes with reference 'JHN 1:intro' (coming in T-052).";
+
+/**
+ * Proposal description, plus the book-only rule and Bible `format`.
+ * `format` is on the schema; the sentence says OBS ignores it.
  */
 export const GET_PASSAGE_DESCRIPTION =
   "Text of a Bible passage or an OBS frame. Bible returns literal, simplified and original versions. Examples: JHN 3:16, OBS 3:5. " +
+  'Bible `format`: "text" (default) or "usfm"; ignored for OBS. ' +
   'A whole book is not a passage: give a chapter (for example "JON 1"). th_get_passage_index takes a whole book.';
 
 const outputSchema = withNotAvailableOutput({
@@ -98,15 +111,11 @@ export const getPassageV3Tool: ToolModule<typeof inputSchema> = {
       throw invalid(BOOK_ALONE);
     }
     if (value.kind === "bible" && isIntro(value)) {
-      throw invalid(
-        `That reference is an introduction, not passage text. Give a chapter or verse, for example "JHN 3" or "JHN 3:16".` +
-          (value.book
-            ? ""
-            : ` A bare intro needs its book, for example "JHN front:intro".`),
-      );
+      throw invalid(INTRO_NOTES);
     }
 
     const client = new ApiClient(env);
+    const format = params.format ?? "text";
     if (value.kind === "obs") {
       const data = await client.get<Record<string, unknown>>("/api/v1/obs", {
         reference: value.reference,
@@ -153,7 +162,11 @@ export const getPassageV3Tool: ToolModule<typeof inputSchema> = {
       }>;
       versionsNote?: string;
       meta?: { cache?: string; timings?: Record<string, number> };
-    }>("/api/v1/scripture", { reference: value.reference, language });
+    }>("/api/v1/scripture", {
+      reference: value.reference,
+      language,
+      format,
+    });
 
     const versions = data.versions ?? [];
     const effectiveLanguage = data.language ?? language;

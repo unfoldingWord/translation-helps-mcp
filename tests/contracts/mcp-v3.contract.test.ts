@@ -52,13 +52,12 @@ const V2_TOOL_NAMES = [
 ] as const;
 
 /**
- * SHA-256 of the v2 tools/list schemas (name, inputSchema, outputSchema).
- * Filled from the first green listing of the untouched v2 modules. A change
- * to a v2 tool schema fails this even when the Durable Object and the HTTP
- * path are updated together.
+ * SHA-256 of the v2 tools/list schemas (name, inputSchema, outputSchema)
+ * as T-050 left them on v2 (2.5.0). A change to a v2 tool schema fails this
+ * even when the Durable Object and the HTTP path are updated together.
  */
 const V2_SCHEMA_SHA256 =
-  "2fb3cc029fa5c35cda2a9360d955e2bdff51112b6f14ff7998346569c94f1dd8";
+  "e76613e64a4d05e351eb86fc57a32fbf302c37b1918fa46c17bc37fcc0c24314";
 
 const V3_TOOL_NAMES = [
   "th_get_passage",
@@ -292,6 +291,13 @@ describe("/v3/mcp worker fetch", () => {
     expect(getPassageV3Tool.description).toBe(GET_PASSAGE_DESCRIPTION);
     expect(getQuestionsV3Tool.description).toBe(GET_QUESTIONS_DESCRIPTION);
     expect(listResourcesV3Tool.description).toBe(LIST_RESOURCES_DESCRIPTION);
+    const passage = tools.find((tool) => tool.name === "th_get_passage");
+    const passageSchema = passage?.inputSchema as {
+      properties?: { format?: { enum?: string[] } };
+      required?: string[];
+    };
+    expect(passageSchema.properties?.format?.enum).toEqual(["text", "usfm"]);
+    expect(passageSchema.required ?? []).not.toContain("format");
     expect(namespace.names).toEqual([]);
   });
 
@@ -576,31 +582,137 @@ describe("/v3/mcp worker fetch", () => {
     expect(namespace.names).toEqual([]);
   });
 
-  it("rate-limits /v3/mcp on the same IP bucket as /v2/mcp", async () => {
+  it("rate-limits /v3/mcp in its own scope, apart from /v2/mcp", async () => {
     const namespace = durableObjectNamespace();
     const env = baseEnv(namespace, { points: [] }, [], { RATE_LIMIT_RPM: "1" });
     const headers = { "CF-Connecting-IP": "203.0.113.51" };
     const first = await postMcp("/v3/mcp", rpc("tools/list", {}), env, headers);
+    const v2Untouched = await postMcp(
+      "/v2/mcp",
+      rpc("tools/call", { name: "list_languages", arguments: {} }, 2),
+      env,
+      headers,
+    );
     const second = await postMcp(
       "/v3/mcp",
-      rpc("tools/list", {}, 2),
+      rpc("tools/list", {}, 3),
       env,
       headers,
     );
     expect(first.status).toBe(200);
+    expect(v2Untouched.status).toBe(200);
     expect(second.status).toBe(429);
 
-    const shared = { "CF-Connecting-IP": "203.0.113.52" };
+    const v2Only = { "CF-Connecting-IP": "203.0.113.52" };
     const v2 = await postMcp(
       "/v2/mcp",
-      rpc("tools/call", { name: "list_languages", arguments: {} }),
+      rpc("tools/call", { name: "list_languages", arguments: {} }, 4),
       env,
-      shared,
+      v2Only,
     );
-    const v3 = await postMcp("/v3/mcp", rpc("tools/list", {}, 3), env, shared);
+    const v3 = await postMcp("/v3/mcp", rpc("tools/list", {}, 5), env, v2Only);
+    const v2Again = await postMcp(
+      "/v2/mcp",
+      rpc("tools/call", { name: "list_languages", arguments: {} }, 6),
+      env,
+      v2Only,
+    );
     expect(v2.status).toBe(200);
-    expect(v3.status).toBe(429);
+    expect(v3.status).toBe(200);
+    expect(v2Again.status).toBe(429);
     expect(namespace.names).toEqual([]);
+  });
+
+  it("passes Bible format through and ignores it for OBS", async () => {
+    const namespace = durableObjectNamespace();
+    const calls: URL[] = [];
+    const env = baseEnv(namespace, { points: [] }, calls);
+    const usfm = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc("tools/call", {
+          name: "th_get_passage",
+          arguments: {
+            reference: "JHN 3:16",
+            language: "en",
+            format: "usfm",
+          },
+        }),
+        env,
+      ),
+    );
+    expect(usfm.result?.isError).not.toBe(true);
+    const scripture = calls.find((url) => url.pathname.endsWith("/scripture"));
+    expect(scripture?.searchParams.get("format")).toBe("usfm");
+
+    const obs = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc(
+          "tools/call",
+          {
+            name: "th_get_passage",
+            arguments: {
+              reference: "OBS 3:5",
+              language: "en",
+              format: "usfm",
+            },
+          },
+          2,
+        ),
+        env,
+      ),
+    );
+    expect(obs.result?.isError).not.toBe(true);
+    const obsCall = calls.find((url) => url.pathname.endsWith("/obs"));
+    expect(obsCall?.searchParams.has("format")).toBe(false);
+  });
+
+  it("rejects a Bible introduction and names th_get_notes", async () => {
+    const namespace = durableObjectNamespace();
+    const calls: URL[] = [];
+    const body = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc("tools/call", {
+          name: "th_get_passage",
+          arguments: { reference: "JHN 1:intro", language: "en" },
+        }),
+        baseEnv(namespace, { points: [] }, calls),
+      ),
+    );
+    expect(body.result?.isError).toBe(true);
+    const text =
+      body.result?.content?.map((part) => part.text).join("\n") ?? "";
+    expect(text).toContain(
+      "introductions are notes: use th_get_notes with reference 'JHN 1:intro'",
+    );
+    expect(calls).toEqual([]);
+  });
+
+  it("lists resources for es-419 through the worker", async () => {
+    const namespace = durableObjectNamespace();
+    const calls: URL[] = [];
+    const body = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc("tools/call", {
+          name: "th_list_resources",
+          arguments: { language: "es-419" },
+        }),
+        baseEnv(namespace, { points: [] }, calls),
+      ),
+    );
+    expect(body.result?.isError).not.toBe(true);
+    expect(body.result?.structuredContent).toMatchObject({
+      language: "es-419",
+      resources: [expect.objectContaining({ abbreviation: "ult" })],
+    });
+    const resources = calls.find((url) => url.pathname.endsWith("/resources"));
+    expect(resources?.searchParams.get("language")).toBe("es-419");
+    expect(calls.some((url) => url.pathname.endsWith("/languages"))).toBe(
+      false,
+    );
   });
 
   it("keeps /v2/mcp and /mcp/v3 on the sixteen v2 tools", async () => {

@@ -122,6 +122,16 @@ describe("normalizeV3ToolArgs", () => {
     ).toEqual({ reference: "JHN 3:16" });
   });
 
+  it("keeps a Bible format when it rebuilds the reference", () => {
+    expect(
+      normalizeV3ToolArgs("th_get_passage", {
+        reference: "JHN 3:16",
+        language: "en",
+        format: "usfm",
+      }),
+    ).toEqual({ reference: "JHN 3:16", language: "en", format: "usfm" });
+  });
+
   it("keeps th_get_questions kind beside the normalized reference", () => {
     expect(
       normalizeV3ToolArgs("th_get_questions", {
@@ -213,6 +223,61 @@ describe("v3 th_get_passage", () => {
     ).rejects.toThrow(/th_get_passage_index/);
     expect(calls).toEqual([]);
   });
+
+  it("passes format through to scripture and defaults to text", async () => {
+    const { env, calls } = apiEnv(passagePayload);
+    await getPassageV3Tool.handler(
+      { reference: "JHN 3:16", language: "en", format: "usfm" },
+      env,
+      "req-usfm",
+    );
+    const usfm = calls.find((url) => url.pathname.endsWith("/scripture"));
+    expect(usfm?.searchParams.get("format")).toBe("usfm");
+
+    await getPassageV3Tool.handler(
+      { reference: "GEN 1", language: "en" },
+      env,
+      "req-text",
+    );
+    const text = calls.filter((url) => url.pathname.endsWith("/scripture"));
+    expect(text.at(-1)?.searchParams.get("format")).toBe("text");
+  });
+
+  it("ignores format for an OBS reference", async () => {
+    const { env, calls } = apiEnv(passagePayload);
+    await getPassageV3Tool.handler(
+      { reference: "OBS 3:5", language: "en", format: "usfm" },
+      env,
+      "req-obs-format",
+    );
+    const obs = calls.find((url) => url.pathname.endsWith("/obs"));
+    expect(obs?.searchParams.get("reference")).toBe("OBS 3:5");
+    expect(obs?.searchParams.has("format")).toBe(false);
+    expect(calls.some((url) => url.pathname.endsWith("/scripture"))).toBe(
+      false,
+    );
+  });
+
+  it("rejects an introduction and points at th_get_notes", async () => {
+    const { env, calls } = apiEnv(passagePayload);
+    const message =
+      "introductions are notes: use th_get_notes with reference 'JHN 1:intro'";
+    await expect(
+      getPassageV3Tool.handler(
+        { reference: "JHN 1:intro", language: "en" },
+        env,
+        "req-intro",
+      ),
+    ).rejects.toThrow(message);
+    await expect(
+      getPassageV3Tool.handler(
+        { reference: "JHN front:intro", language: "en" },
+        env,
+        "req-front",
+      ),
+    ).rejects.toThrow(message);
+    expect(calls).toEqual([]);
+  });
 });
 
 describe("v3 th_get_questions", () => {
@@ -266,6 +331,18 @@ describe("v3 th_get_questions", () => {
       "req",
     );
     expect(calls.map((url) => url.pathname)).toContain("/api/v1/obs-questions");
+  });
+
+  it("refuses a book alone with a clear error and does not call the API", async () => {
+    const { env, calls } = apiEnv(passagePayload);
+    await expect(
+      getQuestionsV3Tool.handler(
+        { reference: "Jonah", language: "en" },
+        env,
+        "req-book",
+      ),
+    ).rejects.toThrow(/book alone/);
+    expect(calls).toEqual([]);
   });
 
   it("loads OBS study questions from OBS-SQ", async () => {
