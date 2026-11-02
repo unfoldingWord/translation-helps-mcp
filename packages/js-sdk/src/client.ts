@@ -254,7 +254,7 @@ export class TranslationHelpsClient {
 
   /**
    * Step 3 (drill): Fetch the full Markdown content of a Translation Academy article.
-   * Use the path from a note's taArticle.path field.
+   * An exact path is best. A slug or title such as "figs-metaphor" or "metaphor" is resolved.
    *
    * @example
    * const result = await client.getAcademyArticle({
@@ -273,7 +273,7 @@ export class TranslationHelpsClient {
 
   /**
    * Step 3 (drill): Fetch the full Markdown content of a Translation Words article.
-   * Use the path from a word-link's twArticle.path field.
+   * An exact path is best. A term or close path such as "covenant" or "sheol" is resolved.
    *
    * @example
    * const result = await client.getWordArticle({

@@ -66,7 +66,7 @@ const outputSchema = withNotAvailableOutput({
 export const listLanguagesTool: ToolModule<typeof inputSchema> = {
   name: "list_languages",
   description:
-    "List language codes available in the Door43 catalog for unfoldingWord resources. " +
+    "List language codes available for Door43 resources. " +
     "Use this to discover valid BCP-47 codes before calling get_passage, list_resources, or other tools. " +
     "Returns `{ code, name, englishName }` entries: `name` is the language's own name, often in its own script, and `englishName` its English name. " +
     'Use the `filter` parameter to narrow results by code or by either name (e.g. filter "es" for Spanish variants, "Bengali" for bn). ' +

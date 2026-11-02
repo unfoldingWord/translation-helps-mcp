@@ -274,7 +274,7 @@ class TranslationHelpsClient:
         """
         Step 3 (drill): Fetch the full Markdown content of a Translation Academy article.
 
-        Use the path from a note's taArticle.path field.
+        An exact path is best. A slug or title such as ``figs-metaphor`` or ``metaphor`` is resolved.
 
         Args:
             options: Dict with ``path`` (required), ``language``.
@@ -291,7 +291,7 @@ class TranslationHelpsClient:
         """
         Step 3 (drill): Fetch the full Markdown content of a Translation Words article.
 
-        Use the path from a word-link's twArticle.path field.
+        An exact path is best. A term or close path such as ``covenant`` or ``sheol`` is resolved.
 
         Args:
             options: Dict with ``path`` (required), ``language``.
@@ -328,7 +328,7 @@ class TranslationHelpsClient:
 
         Args:
             options: Dict with ``query`` (required), ``language``,
-                     ``types`` (``"ta"`` | ``"tw"`` | ``"ta,tw"``), ``limit`` (1–30).
+                     ``types`` (``"ta"`` | ``"tw"`` | ``"ta,tw"``; ``resourceType`` and ``type`` are aliases), ``limit`` (1–30).
 
         Returns:
             MCP result with ranked article paths and titles.
@@ -577,14 +577,14 @@ class AsyncTranslationHelpsClient:
     async def get_academy_article(self, options: Dict[str, Any]) -> Dict[str, Any]:
         """
         Step 3 (drill): Full TA article markdown.
-        Required: path (from taArticle.path). Optional: language.
+        Required: path. Exact path is best; metaphor and figs-metaphor also resolve. Optional: language.
         """
         return await self.call_tool("get_academy_article", options)
 
     async def get_word_article(self, options: Dict[str, Any]) -> Dict[str, Any]:
         """
         Step 3 (drill): Full TW article markdown.
-        Required: path (from twArticle.path). Optional: language.
+        Required: path. Exact path is best; covenant and sheol also resolve. Optional: language.
         """
         return await self.call_tool("get_word_article", options)
 
@@ -598,7 +598,7 @@ class AsyncTranslationHelpsClient:
     async def search_articles(self, options: Dict[str, Any]) -> Dict[str, Any]:
         """
         Lateral discovery: concept → article path.
-        Required: query. Optional: language, types, limit.
+        Required: query. Optional: language, types (resourceType and type are aliases), limit.
         """
         return await self.call_tool("search_articles", options)
 

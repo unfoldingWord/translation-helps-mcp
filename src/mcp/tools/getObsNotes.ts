@@ -38,7 +38,7 @@ export const getObsNotesTool: ToolModule<typeof inputSchema> = {
     "OBS-TN notes explain difficult words, cultural context, and translation strategies " +
     "for each frame of the 50 OBS stories — analogous to TN for Bible passages. " +
     'Use reference "1:1" for frame-specific notes, or "1" for all notes in a story. ' +
-    "Pairs with get_obs_story to provide the story text context. " +
+    "Pairs with get_obs_story for the story text. Call get_obs_index for that frame's key terms. " +
     "Missing OBS-TN for the language: soft-fail with RESOURCE_NOT_AVAILABLE (isError:false).",
   inputSchema,
   outputSchema,

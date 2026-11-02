@@ -193,8 +193,8 @@ export interface GetNoteOptions {
 
 export interface GetAcademyArticleOptions {
   /**
-   * Translation Academy article path from a note's taArticle.path
-   * field, e.g. "translate/figs-metaphor".
+   * Exact path is best (`translate/figs-metaphor`, from `taArticle.path`).
+   * A slug or title (`figs-metaphor`, `metaphor`) is resolved.
    */
   path: string;
   /** BCP-47 language code (default: "en") */
@@ -203,8 +203,8 @@ export interface GetAcademyArticleOptions {
 
 export interface GetWordArticleOptions {
   /**
-   * Translation Words article path from a word-link's twArticle.path
-   * field, e.g. "bible/kt/grace".
+   * Exact path is best (`bible/kt/covenant`, from `twArticle.path`).
+   * A bare term or close path (`covenant`, `sheol`, `bible/other/hades`) is resolved.
    */
   path: string;
   /** BCP-47 language code (default: "en") */
@@ -227,9 +227,13 @@ export interface SearchArticlesOptions {
   language?: string;
   /**
    * Comma-separated resource types: "ta", "tw", or "ta,tw" (default all).
-   * Matches the MCP `types` parameter.
+   * Matches the MCP `types` parameter. `resourceType` and `type` are aliases.
    */
   types?: string;
+  /** Alias of `types`. */
+  resourceType?: string;
+  /** Alias of `types`. */
+  type?: string;
   /** Max results (default 10, max 30). Matches the MCP `limit` parameter. */
   limit?: number;
 }

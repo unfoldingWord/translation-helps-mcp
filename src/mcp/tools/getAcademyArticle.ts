@@ -5,12 +5,12 @@
  * TA articles explain translation principles (e.g., metaphor, abstract nouns,
  * implicit information) and checking procedures.
  *
- * The `path` comes from:
- *   - `get_passage_index` notes[].taArticle.path
+ * The `path` comes from a term, a close guess, or:
+ *   - `get_note` / `get_passage_index` notes[].taArticle.path
  *   - `search_articles` results[].path (when resourceType === "ta")
  *
- * BEFORE: call `get_passage_index` (or `search_articles`).
- * AFTER:  call `get_questions` to verify a draft, or `get_word_article` for key terms.
+ * When studying a passage step by step, take the path from the index or the note.
+ * A direct question about a translation concept calls this tool with the term.
  */
 
 import { z } from "zod";
@@ -22,15 +22,20 @@ import {
 } from "./shared.js";
 import { ApiClient } from "../apiClient.js";
 import type { Env } from "../agent.js";
-import { assertSafeArticlePath } from "../../core/articlePath.js";
+import { prepareArticlePath } from "../../core/articleResolve.js";
+import { presentArticle, type ArticlePayload } from "./articlePresent.js";
+
+const articleCandidate = z.object({
+  path: z.string(),
+  title: z.string(),
+});
 
 const inputSchema = z.object({
   path: z
     .string()
     .min(1)
     .describe(
-      "The TA article path from `get_passage_index` notes[].taArticle.path or `search_articles`. " +
-        'Examples: "translate/figs-metaphor", "translate/translate-unknown", "checking/accuracy-check".',
+      "Exact path is best (translate/figs-metaphor). figs-metaphor, metaphor, and rc://*/ta/man/translate/figs-metaphor also work.",
     ),
   language: languageParam,
 });
@@ -42,37 +47,40 @@ const outputSchema = withNotAvailableOutput({
   language: z.string().optional(),
   title: z.string().optional(),
   article: z.string().optional(),
+  requestedPath: z.string().optional(),
+  resolvedFrom: z.enum(["category", "title", "plural", "manual"]).optional(),
+  related: z.array(articleCandidate).optional(),
+  candidates: z.array(articleCandidate).optional(),
 });
 
 export const getAcademyArticleTool: ToolModule<typeof inputSchema> = {
   name: "get_academy_article",
   description:
-    "STEP 3 (study/drill): Fetch the full text of a Translation Academy article by path. " +
-    "TA articles explain HOW to translate: figurative language, implicit information, cultural concepts, grammar, checking procedures. " +
-    "Get the `path` from `get_passage_index` notes[].taArticle.path or from `search_articles`. " +
-    "Always pass `language` as the user's resource language (e.g. hi for Hindi) — " +
-    "do not default to en when they asked for another language; many GLs have their own TA on Door43. " +
-    "BEFORE: call `get_passage_index` (survey step). " +
-    "AFTER: call `get_questions` to verify a draft. " +
-    "Missing article/path: soft-fail with RESOURCE_NOT_AVAILABLE (isError:false).",
+    "Fetch a Translation Academy article: how to translate a figure, a grammar point, or a checking step. " +
+    "For a direct question about a translation concept, pass the term or call search_articles. An exact path is best; figs-metaphor and metaphor also work and are resolved " +
+    "(the answer includes path, requestedPath, and resolvedFrom). " +
+    "Pass language as the user's language, not en, when they asked for another one. " +
+    "When studying a passage step by step, take path from get_note or get_passage_index notes[].taArticle.path. " +
+    "Links in the article are paths this tool accepts (translate/figs-simile). rc://*/tn/help/... links are note references, not article paths. related[] lists the article links. " +
+    "Several matches return candidates — call again with one path. Missing article: soft-fail RESOURCE_NOT_AVAILABLE (isError:false).",
   inputSchema,
   outputSchema,
   annotations: { readOnlyHint: true, title: "Get Academy Article" },
 
   async handler(params: GetAcademyArticleParams, env: Env, _requestId: string) {
     const client = new ApiClient(env);
-    const path = assertSafeArticlePath(params.path);
-    const { language } = params;
-
-    const encodedPath = path.split("/").map(encodeURIComponent).join("/");
-    const data = await client.get<{
-      path: string;
-      language: string;
-      article: string;
-    }>(`/api/v1/academy/${encodedPath}`, { language });
-
-    // Derive a display title from the path (e.g. "translate/figs-metaphor" → "figs-metaphor")
-    const slug = path.split("/").pop() ?? path;
-    return ok(data, `Academy article: ${slug}`);
+    const requestedPath = params.path;
+    const prepared = prepareArticlePath(requestedPath);
+    const encodedPath = prepared.split("/").map(encodeURIComponent).join("/");
+    const data = await client.get<ArticlePayload>(
+      `/api/v1/academy/${encodedPath}`,
+      { language: params.language, requestedPath },
+    );
+    const presented = presentArticle(data, "ta", prepared);
+    const slug =
+      String(presented.path ?? prepared)
+        .split("/")
+        .pop() ?? prepared;
+    return ok(presented, `Academy article: ${slug}`);
   },
 };

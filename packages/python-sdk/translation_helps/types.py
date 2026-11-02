@@ -84,12 +84,12 @@ class GetNoteOptions(TypedDict, total=False):
 
 
 class GetAcademyArticleOptions(TypedDict, total=False):
-    path: str                      # Required — e.g. "translate/figs-metaphor"
+    path: str                      # Required — exact "translate/figs-metaphor", or "metaphor"
     language: Optional[str]        # BCP-47 code (default "en")
 
 
 class GetWordArticleOptions(TypedDict, total=False):
-    path: str                      # Required — e.g. "bible/kt/grace"
+    path: str                      # Required — exact "bible/kt/covenant", or "covenant" / "sheol"
     language: Optional[str]        # BCP-47 code (default "en")
 
 
@@ -102,6 +102,8 @@ class SearchArticlesOptions(TypedDict, total=False):
     query: str                     # Required — concept or phrase to search
     language: Optional[str]
     types: Optional[str]           # "ta" | "tw" | "ta,tw" (MCP `types` param)
+    resourceType: Optional[str]    # alias of types
+    type: Optional[str]            # alias of types
     limit: Optional[int]           # 1–30 (default 10; MCP `limit` param)
 
 

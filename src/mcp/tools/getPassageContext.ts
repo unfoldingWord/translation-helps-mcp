@@ -63,9 +63,8 @@ export const getPassageContextTool: ToolModule<typeof inputSchema> = {
     'Returns `context[]` with book-level and chapter-level intro notes (each tagged `scope:"book"` or `scope:"chapter"` — cultural background, overview, themes) ' +
     "and `availability` listing which resource types exist for this language (filtered to the reference book when catalog ingredients allow). " +
     'Also accepts a BARE BOOK reference (e.g. "TIT" or "Titus") — then returns only the book overview (front:intro), ideal when the user names a whole book. ' +
-    "BEFORE this: call `get_passage` first (Step 1a) to read the text and warm the server cache. " +
     "This does NOT return the verse text — use `get_passage` for that. " +
-    "Call this once per passage, then call `get_passage_index` (Step 2) to survey translation issues and key terms in the specific verses. " +
+    "When studying a passage step by step, call `get_passage` for the text, then this once for the background, then `get_passage_index` to survey the verses. " +
     "Empty `context` / `availability` arrays mean nothing is available — not an error. Partial upstream failures may set `notesError` / `availabilityError` while still returning isError:false.",
   inputSchema,
   outputSchema,
