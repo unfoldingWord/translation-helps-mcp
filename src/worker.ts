@@ -7,15 +7,20 @@
  * Routing (BASE_PATH = /v2):
  *   /v2/mcp[/]*  → MCP. No Mcp-Session-Id: stateless JSON-RPC (no Durable Object).
  *                  With Mcp-Session-Id: TranslationHelpsMCP McpAgent, unchanged.
+ *   /v3/mcp[/]*  → v3 MCP. POST only, no session, no Durable Object.
+ *                  A real Mcp-Session-Id, or GET/DELETE, is 405.
  *   /v2/api/tool → direct tool runner (for /api/mcp-proxy and the chat product in chat/)
  *   /v2/packs/*  → language packs for tc-study, streamed from R2
  *   /v2/*        → SvelteKit website (Workers Assets)
- *   /mcp[/]*     → alias of /v2/mcp (workers.dev convenience)
+ *   /mcp[/]*     → alias of /v2/mcp (workers.dev convenience). /mcp/v3 stays here.
  *   /            → redirect → /v2/
  */
 
 import { TranslationHelpsMCP, type Env as ToolEnv } from "./mcp/agent.js";
-import { handleStatelessMcpRequest } from "./mcp/stateless.js";
+import {
+  handleStatelessMcpRequest,
+  handleV3StatelessMcpRequest,
+} from "./mcp/stateless.js";
 import { logger } from "./core/logger.js";
 import { normalizeToolArgs } from "./mcp/normalizeToolArgs.js";
 import { TOOL_REGISTRY } from "./mcp/toolRegistry.js";
@@ -137,6 +142,40 @@ export default {
       url.pathname === "/mcp" || url.pathname.startsWith("/mcp/");
     const isMcpV2 =
       url.pathname === `${base}/mcp` || url.pathname.startsWith(`${base}/mcp/`);
+    const isMcpV3 =
+      url.pathname === "/v3/mcp" || url.pathname.startsWith("/v3/mcp/");
+
+    // Checked before the /mcp alias on purpose: /v3/mcp is not under /mcp,
+    // and /mcp/v3 must keep answering as v2.
+    if (isMcpV3) {
+      if (request.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: MCP_CORS });
+      }
+      const authDenied = enforceOptionalMcpApiKey(
+        request,
+        env.MCP_API_KEY,
+        MCP_CORS,
+      );
+      if (authDenied) return authDenied;
+      const limited = enforceRateLimit(request, env.RATE_LIMIT_RPM, MCP_CORS);
+      if (limited) return limited;
+
+      // v3 has no Durable Object. A session id is a client error, not a route
+      // into the v2 agent. Blank or whitespace is not a session id.
+      if (mcpSessionId(request) || request.method !== "POST") {
+        return mcpMethodNotAllowed();
+      }
+
+      const statelessEnv: ToolEnv = {
+        ...env,
+        waitUntil: (promise: Promise<unknown>) => {
+          ctx.waitUntil(promise);
+        },
+      };
+      return withMcpCors(
+        await handleV3StatelessMcpRequest(request, statelessEnv),
+      );
+    }
 
     if (isMcpRoot || isMcpV2) {
       if (request.method === "OPTIONS") {
