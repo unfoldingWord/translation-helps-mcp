@@ -782,7 +782,22 @@ describe("normalizeV3ToolArgs for index and notes", () => {
     });
   });
 
-  it("keeps rollupOffset on the index", () => {
+  it("accepts keyTermsOffset and still accepts rollupOffset", () => {
+    expect(
+      normalizeV3ToolArgs("th_get_passage_index", {
+        reference: "PSA",
+        language: "en",
+        limit: 50,
+        offset: 0,
+        keyTermsOffset: 100,
+      }),
+    ).toEqual({
+      reference: "PSA",
+      language: "en",
+      limit: 50,
+      offset: 0,
+      keyTermsOffset: 100,
+    });
     expect(
       normalizeV3ToolArgs("th_get_passage_index", {
         reference: "PSA",
@@ -796,8 +811,15 @@ describe("normalizeV3ToolArgs for index and notes", () => {
       language: "en",
       limit: 50,
       offset: 0,
+      keyTermsOffset: 100,
+    });
+    const both = normalizeV3ToolArgs("th_get_passage_index", {
+      reference: "PSA",
+      keyTermsOffset: 200,
       rollupOffset: 100,
     });
+    expect(both.keyTermsOffset).toBe(200);
+    expect(both).not.toHaveProperty("rollupOffset");
   });
 });
 
@@ -806,8 +828,12 @@ describe("v3 th_get_passage_index", () => {
     expect(getPassageIndexV3Tool.name).toBe("th_get_passage_index");
   });
 
-  it("sends rollup paths to th_get_article and does not put next on them", () => {
-    expect(GET_PASSAGE_INDEX_DESCRIPTION).toMatch(/th_get_article/);
+  it("sends issue and key-term paths to th_get_article and does not put next on them", () => {
+    expect(GET_PASSAGE_INDEX_DESCRIPTION).toMatch(
+      /An issue or key term has no next: call th_get_article with its path/,
+    );
+    expect(GET_PASSAGE_INDEX_DESCRIPTION).toMatch(/keyTermsOffset/);
+    expect(GET_PASSAGE_INDEX_DESCRIPTION).not.toMatch(/rollup/i);
     expect(V3_SERVER_INSTRUCTIONS).toMatch(/th_get_article/);
     expect(getPassageIndexV3Tool.description).toBe(
       GET_PASSAGE_INDEX_DESCRIPTION,
@@ -946,7 +972,8 @@ describe("v3 th_get_passage_index", () => {
     });
     expect(data.next_offset).toEqual({ notes: 1, words: 1 });
     expect(data).not.toHaveProperty("keyTermsTotal");
-    expect(data.rollupOffset).toBe(0);
+    expect(data.keyTermsOffset).toBe(0);
+    expect(data).not.toHaveProperty("rollupOffset");
     expect(data.limit).toBe(1);
     expect(data.offset).toBe(0);
     const issues = data.issues as Array<{ path: string; count: number }>;
@@ -1287,12 +1314,13 @@ describe("v3 th_get_passage_index", () => {
     expect(keyTerms[99]?.path).toBe("bible/other/t099");
     expect(data.total).toMatchObject({ keyTerms: 101 });
     expect(data.next_offset).toMatchObject({ keyTerms: 100 });
-    expect(data.rollupOffset).toBe(0);
+    expect(data.keyTermsOffset).toBe(0);
     expect(data.has_more).toMatchObject({ keyTerms: true });
     expect(data).not.toHaveProperty("keyTermsTotal");
+    expect(data).not.toHaveProperty("rollupOffset");
 
     const second = await getPassageIndexV3Tool.handler(
-      { reference: "Psalms", language: "en", rollupOffset: 100 },
+      { reference: "Psalms", language: "en", keyTermsOffset: 100 },
       env,
       "req-rest",
     );
@@ -1306,7 +1334,8 @@ describe("v3 th_get_passage_index", () => {
           | undefined
       )?.keyTerms,
     ).toBeUndefined();
-    expect(second.structuredContent?.rollupOffset).toBe(100);
+    expect(second.structuredContent?.keyTermsOffset).toBe(100);
+    expect(second.structuredContent).not.toHaveProperty("rollupOffset");
     expect(second.structuredContent).not.toHaveProperty("keyTermsTotal");
     expect(second.structuredContent?.has_more).toMatchObject({
       keyTerms: false,

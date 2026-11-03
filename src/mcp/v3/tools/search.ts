@@ -36,7 +36,7 @@ const inputSchema = z.object({
 });
 
 export const SEARCH_DESCRIPTION =
-  'Finds Translation Words and Translation Academy articles by concept or title when you have no passage and no exact term, e.g. "abstract nouns", "metaphor", "kingdom of God". Results are ranked: exact titles and alternate names first, then titles that start with or contain the query. Each result has a path, and next for th_get_article. type limits the search to tw (key terms) or ta (translation principles). It searches article titles, not notes or Bible text. An empty list means nothing matched.';
+  'Finds Translation Words and Translation Academy articles by concept or title when you have no passage and no exact term, e.g. "abstract nouns", "metaphor", "kingdom of God". When the user names a term (covenant, metaphor), call th_get_article with that term directly; use th_search for a concept or a description. Results are ranked: exact titles and alternate names first, then titles that start with or contain the query. Each result has a path, and next for th_get_article. type limits the search to tw (key terms) or ta (translation principles). It searches article titles, not notes or Bible text. An empty list means nothing matched.';
 
 const outputSchema = withNotAvailableOutput({
   query: z.string().optional(),

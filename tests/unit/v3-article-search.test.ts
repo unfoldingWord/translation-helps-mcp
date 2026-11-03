@@ -10,7 +10,10 @@ import { VERSION } from "../../src/core/version.js";
 import { V3_SERVER_INSTRUCTIONS } from "../../src/mcp/v3/instructions.js";
 import { normalizeV3ToolArgs } from "../../src/mcp/v3/normalizeArgs.js";
 import { getArticleV3Tool } from "../../src/mcp/v3/tools/getArticle.js";
-import { searchV3Tool } from "../../src/mcp/v3/tools/search.js";
+import {
+  SEARCH_DESCRIPTION,
+  searchV3Tool,
+} from "../../src/mcp/v3/tools/search.js";
 import { toJsonSchema, strictToolSchema } from "../../src/mcp/jsonSchema.js";
 import { getPassageV3Tool } from "../../src/mcp/v3/tools/getPassage.js";
 
@@ -124,6 +127,15 @@ function paths(calls: URL[]): string[] {
 }
 
 describe("v3 th_get_article", () => {
+  it("says a summary keeps the title", () => {
+    const published = toJsonSchema(
+      strictToolSchema(getArticleV3Tool.inputSchema.shape),
+    ) as { properties?: { detail?: { description?: string } } };
+    const detail = published.properties?.detail?.description ?? "";
+    expect(detail).toMatch(/title/i);
+    expect(detail).toMatch(/summary/i);
+  });
+
   it("loads a Translation Words path from the words route only", async () => {
     const { env, calls } = apiEnv((url) => {
       if (url.pathname.startsWith("/api/v1/words/")) {
@@ -631,6 +643,16 @@ describe("v3 th_get_article", () => {
 });
 
 describe("v3 th_search", () => {
+  it("sends a named term to th_get_article and keeps search for a concept", () => {
+    expect(SEARCH_DESCRIPTION).toMatch(
+      /When the user names a term \(covenant, metaphor\), call th_get_article with that term directly/,
+    );
+    expect(SEARCH_DESCRIPTION).toMatch(
+      /use th_search for a concept or a description/,
+    );
+    expect(searchV3Tool.description).toBe(SEARCH_DESCRIPTION);
+  });
+
   it("ranks an exact title ahead of a title that only contains the query", async () => {
     const { env, calls } = apiEnv((url) => {
       const types = (url.searchParams.get("types") ?? "ta,tw")

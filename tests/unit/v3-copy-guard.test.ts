@@ -14,7 +14,16 @@ import { getQuestionsV3Tool } from "../../src/mcp/v3/tools/getQuestions.js";
 import { listResourcesV3Tool } from "../../src/mcp/v3/tools/listResources.js";
 import { searchV3Tool } from "../../src/mcp/v3/tools/search.js";
 
-const FORBIDDEN = [/comes later/i, /alias/i, /OBS-SN/i, /OBS-SQ/i, /rollup/i];
+/** Words that must not appear in text a model reads. */
+const BANNED_WORDS = [/comes later/i, /OBS-SN/i, /OBS-SQ/i, /rollup/i];
+
+/**
+ * Parameter names that used to be advertised as aliases. Match those names,
+ * not the English word "alias".
+ */
+const ADVERTISED_NAMES = [/resourceType/, /\btypes\b/, /rollupOffset/];
+
+const FORBIDDEN = [...BANNED_WORDS, ...ADVERTISED_NAMES];
 
 const TOOLS = [
   getPassageV3Tool,
@@ -57,7 +66,17 @@ function publishedText(): string[] {
 }
 
 describe("v3 copy guard", () => {
-  it("keeps future promises, aliases and internal names out of the text a model reads", () => {
+  it("does not ban the English word alias", () => {
+    const sample = "valid aliases in the catalog";
+    for (const pattern of FORBIDDEN) {
+      expect(sample).not.toMatch(pattern);
+    }
+    expect("resourceType").toMatch(ADVERTISED_NAMES[0]!);
+    expect("the types parameter").toMatch(ADVERTISED_NAMES[1]!);
+    expect("rollupOffset").toMatch(ADVERTISED_NAMES[2]!);
+  });
+
+  it("keeps future promises, advertised names and internal names out of the text a model reads", () => {
     const texts = publishedText();
     for (const text of texts) {
       for (const pattern of FORBIDDEN) {

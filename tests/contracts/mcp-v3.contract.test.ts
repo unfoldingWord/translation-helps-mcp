@@ -480,7 +480,18 @@ describe("/v3/mcp worker fetch", () => {
     expect(list.outputSchema?.properties).toHaveProperty("next_offset");
     const index = tools.find(
       (tool) => tool.name === "th_get_passage_index",
-    ) as { outputSchema?: { properties?: Record<string, unknown> } };
+    ) as {
+      description?: string;
+      inputSchema?: { properties?: Record<string, unknown> };
+      outputSchema?: { properties?: Record<string, unknown> };
+    };
+    expect(index.inputSchema?.properties).toHaveProperty("keyTermsOffset");
+    expect(index.inputSchema?.properties).not.toHaveProperty("rollupOffset");
+    expect(index.outputSchema?.properties).toHaveProperty("keyTermsOffset");
+    expect(index.outputSchema?.properties).not.toHaveProperty("rollupOffset");
+    expect(index.description).toMatch(
+      /An issue or key term has no next: call th_get_article with its path/,
+    );
     expect(index.outputSchema?.properties).toHaveProperty("next_offset");
     expect(index.outputSchema?.properties).not.toHaveProperty("keyTermsTotal");
     expect(namespace.names).toEqual([]);
@@ -1105,6 +1116,51 @@ describe("/v3/mcp worker fetch", () => {
     expect(JSON.stringify(none.result?.structuredContent)).toMatch(
       /zzzz nothing/,
     );
+  });
+
+  it("accepts keyTermsOffset and the old rollupOffset name", async () => {
+    const namespace = durableObjectNamespace();
+    const calls: URL[] = [];
+    const env = baseEnv(namespace, { points: [] }, calls);
+    const named = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc("tools/call", {
+          name: "th_get_passage_index",
+          arguments: {
+            reference: "JON",
+            language: "en",
+            keyTermsOffset: 100,
+          },
+        }),
+        env,
+      ),
+    );
+    expect(named.result?.isError).not.toBe(true);
+    expect(named.result?.structuredContent?.keyTermsOffset).toBe(100);
+    expect(named.result?.structuredContent).not.toHaveProperty("rollupOffset");
+
+    const legacy = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc(
+          "tools/call",
+          {
+            name: "th_get_passage_index",
+            arguments: {
+              reference: "JON",
+              language: "en",
+              rollupOffset: 100,
+            },
+          },
+          2,
+        ),
+        env,
+      ),
+    );
+    expect(legacy.result?.isError).not.toBe(true);
+    expect(legacy.result?.structuredContent?.keyTermsOffset).toBe(100);
+    expect(legacy.result?.structuredContent).not.toHaveProperty("rollupOffset");
   });
 
   it("returns the Hades article for sheol without a session", async () => {

@@ -63,13 +63,13 @@ const inputSchema = z.object({
     .describe(
       "How many notes and words to skip. Default 0. The same offset applies to both lists.",
     ),
-  rollupOffset: z
+  keyTermsOffset: z
     .number()
     .int()
     .min(0)
     .optional()
     .describe(
-      "How many key terms to skip after sorting by count. Default 0. Each page has 100. When more remain, next_offset.keyTerms is the next value for this parameter.",
+      "How many key terms to skip after sorting by count. Default 0. Each page has 100. When more remain, next_offset.keyTerms is the next value for keyTermsOffset.",
     ),
 });
 
@@ -86,7 +86,7 @@ export const GET_PASSAGE_INDEX_DESCRIPTION = `Lists what the translation helps s
 - keyTerms, how often each key term occurs;
 - introductions, the book or chapter introductions that apply.
 
-Use it to see what a passage needs, or to count things in a book: reference "JON" answers how many metaphor notes Jonah has. Every note and introduction has next: call that tool with those arguments to get its body. A word has next when it links a Translation Words article. An issue or key-term path goes to th_get_article. Notes and words are paged (limit, offset). Each of notes, words and keyTerms reports total, has_more and next_offset. Issues are complete. keyTerms are the 100 most frequent; the key-term offset parameter skips that many.`;
+Use it to see what a passage needs, or to count things in a book: reference "JON" answers how many metaphor notes Jonah has. Every note and introduction has next: call that tool with those arguments to get its body. A word has next when it links a Translation Words article. An issue or key term has no next: call th_get_article with its path. Notes and words are paged (limit, offset). Each of notes, words and keyTerms reports total, has_more and next_offset. Issues are complete. keyTerms are the 100 most frequent; keyTermsOffset skips that many.`;
 
 const outputSchema = withNotAvailableOutput({
   kind: z.enum(["bible", "obs"]).optional(),
@@ -99,7 +99,7 @@ const outputSchema = withNotAvailableOutput({
   introductions: z.array(z.record(z.string(), z.unknown())).optional(),
   limit: z.number().optional(),
   offset: z.number().optional(),
-  rollupOffset: z.number().optional(),
+  keyTermsOffset: z.number().optional(),
   total: z
     .object({
       notes: z.number(),
@@ -164,7 +164,7 @@ export const getPassageIndexV3Tool = {
     const wholeBook = value.kind === "book";
     const limit = pageLimit(params.limit, wholeBook);
     const offset = pageOffset(params.offset);
-    const rollupOffset = pageOffset(params.rollupOffset);
+    const keyTermsOffset = pageOffset(params.keyTermsOffset);
     const client = new ApiClient(env);
     const apiReference = value.reference;
     const notesPath =
@@ -257,7 +257,7 @@ export const getPassageIndexV3Tool = {
       }),
       true,
     );
-    const keyTermsPage = page(keyTerms, KEY_TERMS_PAGE, rollupOffset);
+    const keyTermsPage = page(keyTerms, KEY_TERMS_PAGE, keyTermsOffset);
 
     const notesPage = page(notes, limit, offset);
     const wordsPage = page(words, limit, offset);
@@ -288,7 +288,7 @@ export const getPassageIndexV3Tool = {
         }),
         limit,
         offset,
-        rollupOffset,
+        keyTermsOffset,
         total: {
           notes: notesPage.total,
           words: wordsPage.total,

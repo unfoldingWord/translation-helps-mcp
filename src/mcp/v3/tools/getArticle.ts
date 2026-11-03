@@ -47,7 +47,7 @@ const inputSchema = z.object({
     .enum(["full", "summary"])
     .default("full")
     .describe(
-      '"full" (default) is the whole article. "summary" keeps the definition and translation suggestions, or the academy question and its first section.',
+      '"full" (default) is the whole article. "summary" keeps the title with the definition and translation suggestions, or the title with the academy question and its first section.',
     ),
 });
 

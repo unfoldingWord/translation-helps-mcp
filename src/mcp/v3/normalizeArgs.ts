@@ -26,7 +26,7 @@ const REFERENCE_TOOLS = new Set([PASSAGE, QUESTIONS, INDEX, NOTES]);
 const EXTRA_FIELDS: Record<string, readonly string[]> = {
   [PASSAGE]: ["format"],
   [QUESTIONS]: ["kind"],
-  [INDEX]: ["limit", "offset", "rollupOffset"],
+  [INDEX]: ["limit", "offset", "keyTermsOffset", "rollupOffset"],
   [NOTES]: ["ids", "id", "phrase", "kind"],
 };
 
@@ -115,6 +115,22 @@ function finish(
   args: Record<string, unknown>,
 ): Record<string, unknown> {
   if (toolName === NOTES) return foldNoteId(args);
+  if (toolName === INDEX) return foldKeyTermsOffset(args);
+  return args;
+}
+
+/**
+ * `rollupOffset` is not on the published schema. It is the previous name
+ * of `keyTermsOffset`. An explicit keyTermsOffset wins.
+ */
+function foldKeyTermsOffset(
+  args: Record<string, unknown>,
+): Record<string, unknown> {
+  const legacy = args.rollupOffset;
+  delete args.rollupOffset;
+  if (args.keyTermsOffset === undefined && legacy !== undefined) {
+    args.keyTermsOffset = legacy;
+  }
   return args;
 }
 
