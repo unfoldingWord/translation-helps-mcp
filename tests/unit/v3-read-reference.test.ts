@@ -176,6 +176,16 @@ describe("readReference", () => {
     expect(result.message).toMatch(/OBS 3:5/);
   });
 
+  it("does not list introductions as passage forms", () => {
+    const result = readReference("not-a-book");
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toMatch(/JHN 3:16/);
+    expect(result.message).toMatch(/OBS 3:5/);
+    expect(result.message).not.toMatch(/front:intro/);
+    expect(result.message).not.toMatch(/\d:intro/);
+  });
+
   it("names the clash when Bible and OBS parts are both present", () => {
     const result = readReference({
       book: "JHN",

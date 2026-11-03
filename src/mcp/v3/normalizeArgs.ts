@@ -14,12 +14,24 @@ import { readReference } from "./readReference.js";
 
 const PASSAGE = "th_get_passage";
 const QUESTIONS = "th_get_questions";
+const INDEX = "th_get_passage_index";
+const NOTES = "th_get_notes";
+
+const REFERENCE_TOOLS = new Set([PASSAGE, QUESTIONS, INDEX, NOTES]);
+
+/** Fields the reader does not own, copied through after it rebuilds the args. */
+const EXTRA_FIELDS: Record<string, readonly string[]> = {
+  [PASSAGE]: ["format"],
+  [QUESTIONS]: ["kind"],
+  [INDEX]: ["limit", "offset", "rollupOffset"],
+  [NOTES]: ["ids", "id", "phrase", "kind"],
+};
 
 export function normalizeV3ToolArgs(
   toolName: string,
   rawArgs: unknown,
 ): Record<string, unknown> {
-  if (toolName !== PASSAGE && toolName !== QUESTIONS) {
+  if (!REFERENCE_TOOLS.has(toolName)) {
     return normalizeToolArgs(unprefixed(toolName), rawArgs);
   }
 
@@ -28,23 +40,20 @@ export function normalizeV3ToolArgs(
   const language =
     typeof base.language === "string" ? base.language : undefined;
   const read = readReference(rawArgs, language);
-  const kind = toolName === QUESTIONS ? questionKind(rawArgs) : undefined;
-  const format = toolName === PASSAGE ? passageFormat(rawArgs) : undefined;
+  const extras = pickExtras(rawArgs, EXTRA_FIELDS[toolName] ?? []);
 
   if (!read.ok) {
     return {
       reference: `\u0000${read.message}`,
       ...(language !== undefined ? { language } : {}),
-      ...(kind !== undefined ? { kind } : {}),
-      ...(format !== undefined ? { format } : {}),
+      ...extras,
     };
   }
 
   return {
     reference: read.value.reference,
     ...(language !== undefined ? { language } : {}),
-    ...(kind !== undefined ? { kind } : {}),
-    ...(format !== undefined ? { format } : {}),
+    ...extras,
   };
 }
 
@@ -53,18 +62,17 @@ function unprefixed(toolName: string): string {
   return toolName.startsWith("th_") ? toolName.slice(3) : toolName;
 }
 
-function passageFormat(rawArgs: unknown): unknown {
+function pickExtras(
+  rawArgs: unknown,
+  keys: readonly string[],
+): Record<string, unknown> {
   if (!rawArgs || typeof rawArgs !== "object" || Array.isArray(rawArgs)) {
-    return undefined;
+    return {};
   }
-  if (!("format" in rawArgs)) return undefined;
-  return rawArgs.format;
-}
-
-function questionKind(rawArgs: unknown): unknown {
-  if (!rawArgs || typeof rawArgs !== "object" || Array.isArray(rawArgs)) {
-    return undefined;
+  const obj = rawArgs as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const key of keys) {
+    if (key in obj && obj[key] !== undefined) out[key] = obj[key];
   }
-  if (!("kind" in rawArgs)) return undefined;
-  return rawArgs.kind;
+  return out;
 }

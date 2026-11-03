@@ -18,7 +18,10 @@ import {
   ok,
   withNotAvailableOutput,
 } from "../../tools/shared.js";
-import { V3_LIST_RESOURCES_HINT } from "../instructions.js";
+import {
+  introductionNotesMessage,
+  V3_LIST_RESOURCES_HINT,
+} from "../instructions.js";
 import { readReference, type ReferenceRead } from "../readReference.js";
 
 const inputSchema = z.object({
@@ -80,9 +83,7 @@ export const getQuestionsV3Tool = {
       );
     }
     if (value.kind === "bible" && isIntro(value)) {
-      throw invalid(
-        'That reference is an introduction, not a passage. Give a chapter or verse, for example "JHN 3" or "JHN 3:16".',
-      );
+      throw invalid(introductionNotesMessage(value.reference));
     }
 
     if (value.kind === "bible" && questionKind === "study") {

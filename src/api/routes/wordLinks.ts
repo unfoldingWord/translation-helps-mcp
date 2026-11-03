@@ -3,11 +3,15 @@
  *
  * Returns all TWL rows for the reference.
  * Enriched with twTitle (from articleTitles) after port-title-resolver step.
+ *
+ * A book alone is 400. `fields=index`, only when the worker left it on an
+ * internal request, returns compact rows and skips gateway alignment, on
+ * the same route and the same rate limit.
  */
 import type { RouteContext } from "../worker.js";
 import { json, apiError } from "../worker.js";
 import {
-  requireReferenceAndLanguage,
+  resolveNotesQuery,
   makeFetcher,
   resolveLanguageVariant,
   zipUrlFromEntry,
@@ -37,9 +41,9 @@ import { packViewsOf, wordLinksFromViews } from "./packViews.js";
 export async function handleWordLinks(ctx: RouteContext): Promise<Response> {
   const { url, env, execCtx } = ctx;
 
-  let ref: ReturnType<typeof requireReferenceAndLanguage>;
+  let ref: ReturnType<typeof resolveNotesQuery>;
   try {
-    ref = requireReferenceAndLanguage(url);
+    ref = resolveNotesQuery(url);
   } catch (e) {
     return apiError("BAD_REQUEST", (e as Error).message, 400);
   }
@@ -52,12 +56,15 @@ export async function handleWordLinks(ctx: RouteContext): Promise<Response> {
     verseStart,
     verseEnd,
     endChapter,
+    wholeBook,
+    indexMode,
   } = ref;
 
   // The language packs' views first: the links with their words already found, in a few KB.
   // Views are one chapter file, so a cross-chapter range stays on the TSV path.
+  // Index mode skips alignment, so it does not reuse a view that already aligned.
   const views = packViewsOf(env);
-  if (views && !endChapter) {
+  if (views && !endChapter && !wholeBook && !indexMode) {
     const fromPack = await wordLinksFromViews(views, {
       language: requestedLanguage,
       book,
@@ -85,6 +92,8 @@ export async function handleWordLinks(ctx: RouteContext): Promise<Response> {
     book,
     chapter,
     cacheVerse(chapter, verseStart, verseEnd, endChapter),
+    // A cached full book must not answer fields=index: that payload is aligned.
+    ...(indexMode ? ["index"] : []),
   );
 
   const cached = await getCachedJson<Record<string, unknown>>(
@@ -109,7 +118,16 @@ export async function handleWordLinks(ctx: RouteContext): Promise<Response> {
     );
     if (entries.length === 0) {
       return {
-        payload: { reference, language, book, chapter, wordLinks: [] },
+        payload: {
+          reference,
+          language,
+          book,
+          chapter,
+          wordLinks: [],
+          available: false,
+          code: "RESOURCE_NOT_AVAILABLE",
+          message: `No TSV Translation Words Links resource available for language "${language}".`,
+        },
         cache: "network" as const,
       };
     }
@@ -146,6 +164,36 @@ export async function handleWordLinks(ctx: RouteContext): Promise<Response> {
       verseEnd,
       endChapter,
     );
+
+    if (indexMode) {
+      const twMap = await getArticleTitleMap("tw", language, env);
+      const payload = {
+        reference,
+        language,
+        book,
+        chapter,
+        verse: verseStart ?? null,
+        wordLinks: rows.map((row) => ({
+          book: row.book,
+          chapter: row.chapter,
+          verse: row.verse,
+          twId: row.twId,
+          supportReference: row.supportReference,
+          origWords: row.origWords
+            ? formatQuoteDisplay(row.origWords)
+            : row.origWords,
+          occurrence: row.occurrence,
+          twLink: row.twLink,
+          wordPath: row.wordPath,
+          twTitle: row.wordPath
+            ? (resolveTitleFromToc(twMap, row.wordPath, "tw") ??
+              resolveTitleFromPath(row.wordPath))
+            : null,
+        })),
+      };
+      putCachedJson(env.TRANSLATION_HELPS_CACHE, cacheKey, payload, execCtx);
+      return { payload, cache: zipSource };
+    }
 
     const alignmentRows = rows.map((r) => ({
       chapter: r.chapter,

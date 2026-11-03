@@ -22,6 +22,14 @@ import {
   LIST_RESOURCES_DESCRIPTION,
   listResourcesV3Tool,
 } from "../../src/mcp/v3/tools/listResources.js";
+import {
+  GET_PASSAGE_INDEX_DESCRIPTION,
+  getPassageIndexV3Tool,
+} from "../../src/mcp/v3/tools/getPassageIndex.js";
+import {
+  GET_NOTES_DESCRIPTION,
+  getNotesV3Tool,
+} from "../../src/mcp/v3/tools/getNotes.js";
 
 const MCP_HEADERS = {
   "Content-Type": "application/json",
@@ -63,6 +71,8 @@ const V3_TOOL_NAMES = [
   "th_get_passage",
   "th_get_questions",
   "th_list_resources",
+  "th_get_passage_index",
+  "th_get_notes",
 ];
 
 interface DoNamespace {
@@ -168,6 +178,83 @@ function apiFetcher(calls: URL[]): Fetcher {
           frames: [{ index: 5, imageUrl: null, text: "frame text" }],
         });
       }
+      if (path.endsWith("/obs-notes")) {
+        return Response.json({
+          reference: url.searchParams.get("reference"),
+          notes: [
+            {
+              reference: "1:3",
+              id: "obs-n",
+              quote: "created",
+              note: "God made the world.",
+              supportReference: "rc://*/ta/man/translate/figs-metaphor",
+              supportReferenceTitle: "Metaphor",
+            },
+          ],
+        });
+      }
+      if (path.endsWith("/obs-word-links")) {
+        return Response.json({
+          reference: url.searchParams.get("reference"),
+          words: [
+            {
+              reference: "1:3",
+              origWords: "God",
+              twArticle: {
+                path: "bible/kt/god",
+                category: "kt",
+                title: "God",
+              },
+            },
+          ],
+        });
+      }
+      if (path.endsWith("/word-links")) {
+        return Response.json({
+          book: "JON",
+          wordLinks: [
+            {
+              chapter: "1",
+              verse: "1",
+              origWords: "יהוה",
+              wordPath: "bible/kt/yahweh",
+              twTitle: "Yahweh",
+            },
+          ],
+        });
+      }
+      if (path.endsWith("/notes")) {
+        return Response.json({
+          book: "JON",
+          notes: [
+            {
+              chapter: "front",
+              verse: "intro",
+              id: "book",
+              note: "# Introduction to Jonah\n\nOverview.",
+              quote: "",
+              supportReference: "",
+            },
+            {
+              chapter: "1",
+              verse: "1",
+              id: "a",
+              quote: "word",
+              note: "The word of the Lord.",
+              supportReference: "rc://*/ta/man/translate/figs-metaphor",
+              supportReferenceTitle: "Metaphor",
+            },
+            {
+              chapter: "1",
+              verse: "2",
+              id: "b",
+              quote: "city",
+              note: "Nineveh.",
+              supportReference: "",
+            },
+          ],
+        });
+      }
       return Response.json(
         { error: { code: "NOT_FOUND", message: path } },
         { status: 404 },
@@ -270,7 +357,7 @@ describe("/v3/mcp worker fetch", () => {
     resetRateLimitStoreForTests();
   });
 
-  it("lists exactly the three v3 tools, in registration order", async () => {
+  it("lists exactly the five v3 tools, in registration order", async () => {
     const namespace = durableObjectNamespace();
     const analytics: AnalyticsSpy = { points: [] };
     const response = await postMcp(
@@ -287,10 +374,16 @@ describe("/v3/mcp worker fetch", () => {
       getPassageV3Tool.description,
       getQuestionsV3Tool.description,
       listResourcesV3Tool.description,
+      getPassageIndexV3Tool.description,
+      getNotesV3Tool.description,
     ]);
     expect(getPassageV3Tool.description).toBe(GET_PASSAGE_DESCRIPTION);
     expect(getQuestionsV3Tool.description).toBe(GET_QUESTIONS_DESCRIPTION);
     expect(listResourcesV3Tool.description).toBe(LIST_RESOURCES_DESCRIPTION);
+    expect(getPassageIndexV3Tool.description).toBe(
+      GET_PASSAGE_INDEX_DESCRIPTION,
+    );
+    expect(getNotesV3Tool.description).toBe(GET_NOTES_DESCRIPTION);
     const passage = tools.find((tool) => tool.name === "th_get_passage");
     const passageSchema = passage?.inputSchema as {
       properties?: { format?: { enum?: string[] } };
@@ -301,7 +394,7 @@ describe("/v3/mcp worker fetch", () => {
     expect(namespace.names).toEqual([]);
   });
 
-  it("answers initialize as 2.6.0 with no session and no persona", async () => {
+  it("answers initialize as 2.7.0 with no session and no persona", async () => {
     const namespace = durableObjectNamespace();
     const response = await postMcp(
       "/v3/mcp",
@@ -317,13 +410,15 @@ describe("/v3/mcp worker fetch", () => {
     const body = await readJson(response);
     expect(body.result?.serverInfo).toEqual({
       name: SERVER_NAME,
-      version: "2.6.0",
+      version: "2.7.0",
     });
     const instructions = body.result?.instructions ?? "";
     expect(instructions).not.toMatch(/You are Ezer/);
     expect(instructions).toContain("th_get_passage");
     expect(instructions).toContain("th_get_questions");
     expect(instructions).toContain("th_list_resources");
+    expect(instructions).toContain("th_get_passage_index");
+    expect(instructions).toContain("th_get_notes");
     expect(instructions).toMatch(/JHN 3:16/);
     expect(instructions).toMatch(/3:5/);
     expect(namespace.names).toEqual([]);
@@ -751,5 +846,121 @@ describe("/v3/mcp worker fetch", () => {
         (point) => point.blobs?.[0] === "v3:list_languages",
       ),
     ).toBe(false);
+  });
+
+  it("indexes a whole book and an OBS frame without a session", async () => {
+    const namespace = durableObjectNamespace();
+    const calls: URL[] = [];
+    const env = baseEnv(namespace, { points: [] }, calls);
+    const book = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc("tools/call", {
+          name: "th_get_passage_index",
+          arguments: { reference: "JON", language: "en" },
+        }),
+        env,
+      ),
+    );
+    expect(book.result?.isError).not.toBe(true);
+    expect(book.result?.structuredContent).toMatchObject({
+      kind: "bible",
+      reference: "JON",
+    });
+    const noteCalls = calls.filter((url) => url.pathname.endsWith("/notes"));
+    expect(noteCalls).toHaveLength(1);
+    expect(noteCalls[0]?.searchParams.get("reference")).toBe("JON");
+    expect(noteCalls[0]?.searchParams.get("fields")).toBe("index");
+    expect(
+      calls
+        .find((url) => url.pathname.endsWith("/word-links"))
+        ?.searchParams.get("fields"),
+    ).toBe("index");
+    const introductions = book.result?.structuredContent?.introductions as
+      | Array<{ reference?: string }>
+      | undefined;
+    expect(introductions?.map((row) => row.reference)).toContain(
+      "JON front:intro",
+    );
+    const indexed = book.result?.structuredContent?.notes as
+      | Array<{ id?: string; next?: { args?: { ids?: string[] } } }>
+      | undefined;
+    const ids = (indexed ?? []).map((note) => note.id).filter(Boolean);
+    expect(ids).toEqual(["a", "b"]);
+    const asked = ["b", "a"];
+
+    const frame = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc(
+          "tools/call",
+          {
+            name: "th_get_passage_index",
+            arguments: { story: 1, frame: 3, language: "en" },
+          },
+          2,
+        ),
+        env,
+      ),
+    );
+    expect(frame.result?.isError).not.toBe(true);
+    expect(frame.result?.structuredContent).toMatchObject({
+      kind: "obs",
+      reference: "OBS 1:3",
+    });
+    expect(
+      calls
+        .find((url) => url.pathname.endsWith("/obs-notes"))
+        ?.searchParams.get("reference"),
+    ).toBe("OBS 1:3");
+
+    const notes = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc(
+          "tools/call",
+          {
+            name: "th_get_notes",
+            arguments: {
+              reference: "JON 1",
+              language: "en",
+              ids: asked,
+            },
+          },
+          3,
+        ),
+        env,
+      ),
+    );
+    expect(notes.result?.isError).not.toBe(true);
+    expect(
+      (notes.result?.structuredContent?.notes as Array<{ id?: string }>)?.map(
+        (note) => note.id,
+      ),
+    ).toEqual(asked);
+
+    const none = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc(
+          "tools/call",
+          {
+            name: "th_get_notes",
+            arguments: {
+              reference: "JON 1",
+              language: "en",
+              phrase: "zzzz nothing",
+            },
+          },
+          4,
+        ),
+        env,
+      ),
+    );
+    expect(none.result?.isError).not.toBe(true);
+    expect(none.result?.structuredContent?.notes).toEqual([]);
+    expect(JSON.stringify(none.result?.structuredContent)).toMatch(
+      /zzzz nothing/,
+    );
   });
 });

@@ -122,4 +122,13 @@ describe("parseTranslationNotesTsv — context note inclusion", () => {
       expect(refs).not.toContain("4:1");
     });
   });
+
+  it("keeps every chapter when the chapter is * (one book TSV)", () => {
+    const rows = parseTranslationNotesTsv(FIXTURE_NEW, "*");
+    const refs = rows.map((r) => `${r.chapter}:${r.verse}`);
+    expect(refs).toEqual(
+      expect.arrayContaining(["front:intro", "3:intro", "3:16", "3:17", "4:1"]),
+    );
+    expect(refs).toHaveLength(5);
+  });
 });

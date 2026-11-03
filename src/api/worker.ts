@@ -42,6 +42,7 @@ import {
   handleObsStudyQuestions,
 } from "./routes/obs.js";
 import { API_MANIFEST } from "./manifest.js";
+import { gateCompactIndex } from "../core/internalIndex.js";
 import { enforceRateLimit } from "../core/rateLimit.js";
 
 // ---------------------------------------------------------------------------
@@ -152,7 +153,10 @@ export default {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
 
-    const url = new URL(request.url);
+    // Public traffic loses the compact-index header and query. The service
+    // binding and loopback keep them. See gateCompactIndex.
+    const routed = gateCompactIndex(request);
+    const url = new URL(routed.url);
     const path = url.pathname;
 
     // Health check (GET only) — never edge-cache, never rate-limit
@@ -165,7 +169,7 @@ export default {
     }
 
     // Soft per-IP limit on hot API paths (MCP corpus is public read-only)
-    const limited = enforceRateLimit(request, env.RATE_LIMIT_RPM, CORS_HEADERS);
+    const limited = enforceRateLimit(routed, env.RATE_LIMIT_RPM, CORS_HEADERS);
     if (limited) return limited;
 
     // Strip /api/v1 prefix
@@ -178,14 +182,14 @@ export default {
 
     // Endpoint documentation manifest (docs site + third parties)
     if (routePath === "/_manifest") {
-      if (request.method !== "GET") {
+      if (routed.method !== "GET") {
         return apiError("METHOD_NOT_ALLOWED", "Only GET is supported", 405);
       }
       return json(API_MANIFEST);
     }
 
     if (routePath === "/prefetch") {
-      if (request.method !== "GET" && request.method !== "POST") {
+      if (routed.method !== "GET" && routed.method !== "POST") {
         return apiError(
           "METHOD_NOT_ALLOWED",
           "Only GET or POST is supported",
@@ -195,7 +199,7 @@ export default {
       return handlePrefetch({ url, env, execCtx });
     }
 
-    if (request.method !== "GET") {
+    if (routed.method !== "GET") {
       return apiError("METHOD_NOT_ALLOWED", "Only GET is supported", 405);
     }
 
@@ -272,7 +276,7 @@ export default {
     };
 
     if (isEdgeCacheablePath(routePath)) {
-      return withEdgeCache(request, execCtx, dispatch);
+      return withEdgeCache(routed, execCtx, dispatch);
     }
     return dispatch();
   },

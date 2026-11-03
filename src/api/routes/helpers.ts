@@ -11,6 +11,9 @@ import {
   resolveCatalogLanguage,
   pickPreferredCatalogEntry,
   parseReferenceForTool,
+  parseReference,
+  bookNameToUsfm,
+  isCanonicalUsfmBook,
 } from "@translation-helps/door43";
 import type { CatalogEntry, CatalogKVCache } from "@translation-helps/door43";
 
@@ -100,6 +103,57 @@ export function requireReferenceAndLanguage(url: URL): {
   if (!parsed) throw new Error(`Invalid reference: "${reference}"`);
 
   return { reference, language, ...parsed };
+}
+
+/**
+ * Notes and word-link queries. A chapter reference is unchanged. A book alone
+ * (`JON`, `Jonah`) is invalid for the public route: it stays a 400, as before
+ * a whole-book read existed. `fields=index` is the exception, and the API
+ * worker only leaves that query on an internal request. It is one read of
+ * that book's TSV (`chapter` `"*"`, `wholeBook` true) and the handler returns
+ * compact rows, not bodies.
+ */
+export function resolveNotesQuery(url: URL): {
+  reference: string;
+  language: string;
+  book: string;
+  chapter: string;
+  endChapter?: string;
+  verseStart?: string;
+  verseEnd?: string;
+  wholeBook: boolean;
+  /** Compact rows for th_get_passage_index. No note bodies, no alignment. */
+  indexMode: boolean;
+} {
+  const reference = url.searchParams.get("reference");
+  const language = url.searchParams.get("language");
+  if (!reference) throw new Error("Missing required param: reference");
+  if (!language) throw new Error("Missing required param: language");
+  const indexMode = url.searchParams.get("fields") === "index";
+
+  const parsed = parseReferenceForTool(reference);
+  if (parsed) {
+    return { reference, language, ...parsed, wholeBook: false, indexMode };
+  }
+
+  if (indexMode) {
+    const bookOnly = parseReference(reference);
+    if (bookOnly.isValid && bookOnly.book && bookOnly.chapter === undefined) {
+      const book = bookNameToUsfm(bookOnly.book);
+      if (isCanonicalUsfmBook(book)) {
+        return {
+          reference,
+          language,
+          book,
+          chapter: "*",
+          wholeBook: true,
+          indexMode: true,
+        };
+      }
+    }
+  }
+
+  throw new Error(`Invalid reference: "${reference}"`);
 }
 
 /**

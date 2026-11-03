@@ -376,7 +376,7 @@ describe("stateless MCP worker fetch", () => {
   });
 
   it("answers initialize with the server version and no session header", async () => {
-    expect(VERSION).toBe("2.6.0");
+    expect(VERSION).toBe("2.7.0");
     const namespace = durableObjectNamespace();
     const analytics: AnalyticsSpy = { points: [] };
     const { ctx } = executionContext();
@@ -395,7 +395,7 @@ describe("stateless MCP worker fetch", () => {
     const body = await readJson(response);
     expect(body.result?.serverInfo).toEqual({
       name: SERVER_NAME,
-      version: "2.6.0",
+      version: "2.7.0",
     });
     expect(body.result?.instructions).toContain(
       "Translation Helps MCP server (unfoldingWord / Door43)",
@@ -680,7 +680,7 @@ describe("stateless MCP worker fetch", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("mcp-session-id")).toBeNull();
     const body = await readJson(response);
-    expect(body.result?.serverInfo?.version).toBe("2.6.0");
+    expect(body.result?.serverInfo?.version).toBe("2.7.0");
     expect(namespace.names).toEqual([]);
   });
 

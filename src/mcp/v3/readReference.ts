@@ -22,7 +22,7 @@ import {
 import { normKey, normalizeToolArgs } from "../normalizeToolArgs.js";
 
 const ACCEPTED_FORMS =
-  'Accepted forms: a Bible reference such as "JHN 3:16", "John 3:16-18", "GEN 1", "JHN front:intro" or "JHN 1:intro"; a book alone such as "JON" or "Jonah"; an OBS reference such as "OBS 3:5", "OBS 3:1-3", "OBS 3" or "3:5". Decomposed {book, chapter, verse} and {story, frame, endFrame} (or story_number / frame_number) are accepted too.';
+  'Accepted forms: a Bible reference such as "JHN 3:16", "John 3:16-18" or "GEN 1"; a book alone such as "JON" or "Jonah"; an OBS reference such as "OBS 3:5", "OBS 3:1-3", "OBS 3" or "3:5". Decomposed {book, chapter, verse} and {story, frame, endFrame} (or story_number / frame_number) are accepted too.';
 
 /** Same story keys as Class O in normalizeToolArgs. */
 const OBS_STORY_KEYS = new Set([
