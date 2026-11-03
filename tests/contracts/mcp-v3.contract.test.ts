@@ -434,6 +434,17 @@ describe("/v3/mcp worker fetch", () => {
     expect(getNotesV3Tool.description).toBe(GET_NOTES_DESCRIPTION);
     expect(getArticleV3Tool.description).toBe(GET_ARTICLE_DESCRIPTION);
     expect(searchV3Tool.description).toBe(SEARCH_DESCRIPTION);
+    const search = tools.find((tool) => tool.name === "th_search") as {
+      inputSchema?: {
+        properties?: { query?: { description?: string } };
+      };
+    };
+    const query = search.inputSchema?.properties?.query?.description ?? "";
+    expect(query.endsWith("Each result has next for th_get_article.")).toBe(
+      true,
+    );
+    expect(query).not.toMatch(/Pass the matching path/);
+    expect(query).toMatch(/figures of speech about the body/);
     const passage = tools.find((tool) => tool.name === "th_get_passage");
     const passageSchema = passage?.inputSchema as {
       properties?: { format?: { enum?: string[] } };
@@ -527,6 +538,9 @@ describe("/v3/mcp worker fetch", () => {
     expect(instructions).toMatch(/available:\s*false/);
     expect(instructions).toMatch(/isError/);
     expect(instructions).not.toMatch(/comes later/i);
+    expect(instructions).toMatch(
+      /an article with otherCandidates is the answer/,
+    );
     expect(instructions).toMatch(/JHN 3:16/);
     expect(instructions).toMatch(/3:5/);
     expect(namespace.names).toEqual([]);

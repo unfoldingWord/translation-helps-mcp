@@ -34,6 +34,7 @@ th_list_resources — what a language has, or the language list when language is
 Reading an answer:
 - next is the call that fetches the body: the tool and the arguments, to use as given;
 - candidates means more than one match: pick one or ask;
+- an article with otherCandidates is the answer; those are similar titles from the other catalog, to offer only if the reader wants more;
 - available: false means the resource does not exist for that language or book: say so;
 - isError means the call failed: you may try again.
 

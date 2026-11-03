@@ -650,7 +650,26 @@ describe("v3 th_search", () => {
     expect(SEARCH_DESCRIPTION).toMatch(
       /use th_search for a concept or a description/,
     );
+    expect(SEARCH_DESCRIPTION).toMatch(/figures of speech about the body/);
+    expect(SEARCH_DESCRIPTION).not.toMatch(/"metaphor"/);
+    expect(SEARCH_DESCRIPTION).not.toMatch(/"covenant"/);
     expect(searchV3Tool.description).toBe(SEARCH_DESCRIPTION);
+  });
+
+  it("describes query as a concept or a title, and points each result at next", () => {
+    const published = toJsonSchema(
+      strictToolSchema(searchV3Tool.inputSchema.shape),
+    ) as {
+      properties?: { query?: { description?: string } };
+    };
+    const query = published.properties?.query?.description ?? "";
+    expect(query).toMatch(/figures of speech about the body/);
+    expect(query.endsWith("Each result has next for th_get_article.")).toBe(
+      true,
+    );
+    expect(query).not.toMatch(/Pass the matching path/);
+    expect(query).not.toMatch(/metaphor/);
+    expect(query).not.toMatch(/covenant/);
   });
 
   it("ranks an exact title ahead of a title that only contains the query", async () => {
@@ -771,6 +790,9 @@ describe("v3 instructions", () => {
     expect(V3_SERVER_INSTRUCTIONS).toMatch(/JHN 3:16/);
     expect(V3_SERVER_INSTRUCTIONS).toMatch(/OBS 3:5/);
     expect(V3_SERVER_INSTRUCTIONS).toMatch(/candidates/);
+    expect(V3_SERVER_INSTRUCTIONS).toMatch(
+      /an article with otherCandidates is the answer; those are similar titles from the other catalog, to offer only if the reader wants more/,
+    );
     expect(V3_SERVER_INSTRUCTIONS).toMatch(/available:\s*false/);
     expect(V3_SERVER_INSTRUCTIONS).toMatch(/memory/i);
     expect(V3_SERVER_INSTRUCTIONS).not.toMatch(/You are /);
