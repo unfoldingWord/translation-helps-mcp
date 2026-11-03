@@ -26,6 +26,9 @@ import { SERVER_NAME, VERSION } from "../core/version.js";
 import { SERVER_INSTRUCTIONS } from "./instructions.js";
 import { NormalizingMcpServer } from "./normalizingMcpServer.js";
 import { registerTranslationHelpsServer } from "./registerServer.js";
+import { V3_SERVER_INSTRUCTIONS } from "./v3/instructions.js";
+import { registerV3Server } from "./v3/registerServer.js";
+import { V3NormalizingMcpServer } from "./v3/server.js";
 import type { Env } from "./agent.js";
 
 const JSON_AND_EVENT_STREAM = "application/json, text/event-stream";
@@ -62,7 +65,30 @@ export function handleStatelessMcpRequest(
   request: Request,
   env: Env,
 ): Promise<Response> {
-  const mcp = openStatelessServer(env);
+  return serveStateless(openStatelessServer(env), request);
+}
+
+/** /v3/mcp. Stateless only: initialize does not mint a session id. */
+export function openV3StatelessServer(env: Env): V3NormalizingMcpServer {
+  const server = new V3NormalizingMcpServer(
+    { name: SERVER_NAME, version: VERSION },
+    { instructions: V3_SERVER_INSTRUCTIONS },
+  );
+  registerV3Server(server, () => env);
+  return server;
+}
+
+export function handleV3StatelessMcpRequest(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  return serveStateless(openV3StatelessServer(env), request);
+}
+
+function serveStateless(
+  mcp: NormalizingMcpServer,
+  request: Request,
+): Promise<Response> {
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,

@@ -28,9 +28,17 @@ const wrappedHandlers = new WeakSet<OnMessage>();
  * Return a copy of a `tools/call` request with its arguments normalized
  * (see normalizeToolArgs). Any other message is returned unchanged.
  * Never throws: on an unexpected shape the original message is passed through.
+ *
+ * `normalize` defaults to the v2 normalizer. /v3 passes its own: its tools
+ * are named th_get_passage and th_get_questions, and that normalizer calls
+ * the unprefixed classifiers so OBS parts work without changing v2.
  */
 export function rewriteToolsCallMessage<T extends JSONRPCMessage>(
   message: T,
+  normalize: (
+    toolName: string,
+    rawArgs: unknown,
+  ) => Record<string, unknown> = normalizeToolArgs,
 ): T {
   if (!isJSONRPCRequest(message) || message.method !== "tools/call") {
     return message;
@@ -50,7 +58,7 @@ export function rewriteToolsCallMessage<T extends JSONRPCMessage>(
       ...message,
       params: {
         ...params,
-        arguments: normalizeToolArgs(params.name, params.arguments),
+        arguments: normalize(params.name, params.arguments),
       },
     };
   } catch (err) {
@@ -64,14 +72,30 @@ export function rewriteToolsCallMessage<T extends JSONRPCMessage>(
 }
 
 export class NormalizingMcpServer extends McpServer {
+  /**
+   * Arguments for one tools/call, before Zod. Subclasses replace this.
+   * connect() runs after the subclass is constructed, so the override is the
+   * one that wraps the transport.
+   */
+  protected normalizeArgs(
+    toolName: string,
+    rawArgs: unknown,
+  ): Record<string, unknown> {
+    return normalizeToolArgs(toolName, rawArgs);
+  }
+
   override async connect(transport: Transport): Promise<void> {
     await super.connect(transport);
 
     const original = transport.onmessage;
     if (!original || wrappedHandlers.has(original)) return;
 
+    const normalize = (
+      toolName: string,
+      rawArgs: unknown,
+    ): Record<string, unknown> => this.normalizeArgs(toolName, rawArgs);
     const wrapped: OnMessage = (message, extra) => {
-      original(rewriteToolsCallMessage(message), extra);
+      original(rewriteToolsCallMessage(message, normalize), extra);
     };
     wrappedHandlers.add(wrapped);
     transport.onmessage = wrapped;
