@@ -1,9 +1,12 @@
 /**
  * v3 th_get_article — one tool for Translation Words and Translation Academy.
  *
- * The path decides the catalog. A bare term tries Words first, then Academy.
- * Resolution stays on the words and academy routes (T-050): this tool does
- * not keep a second copy of it. detail "summary" shortens the body.
+ * The path decides the catalog. A bare term tries both catalogs.
+ * One resolved article is returned even when the other catalog is only
+ * ambiguous; those titles go in otherCandidates. Two resolved articles
+ * stay as candidates. Resolution stays on the words and academy routes
+ * (T-050): this tool does not keep a second copy of it. detail "summary"
+ * shortens the body.
  */
 
 import { z } from "zod";
@@ -59,6 +62,13 @@ const nextSchema = z.object({
   }),
 });
 
+const candidateSchema = z.object({
+  path: z.string(),
+  title: z.string(),
+  type: z.enum(["tw", "ta"]),
+  next: nextSchema,
+});
+
 const outputSchema = withNotAvailableOutput({
   path: z.string().optional(),
   type: z.enum(["tw", "ta"]).optional(),
@@ -77,16 +87,8 @@ const outputSchema = withNotAvailableOutput({
       }),
     )
     .optional(),
-  candidates: z
-    .array(
-      z.object({
-        path: z.string(),
-        title: z.string(),
-        type: z.enum(["tw", "ta"]),
-        next: nextSchema,
-      }),
-    )
-    .optional(),
+  candidates: z.array(candidateSchema).optional(),
+  otherCandidates: z.array(candidateSchema).optional(),
 });
 
 type ArticleType = "tw" | "ta";
@@ -258,6 +260,18 @@ async function fetchSide(
   }
 }
 
+function candidatesOf(
+  side: Extract<Side, { status: "ambiguous" }>,
+  requestLanguage: string,
+): Candidate[] {
+  return side.candidates.map((item) => ({
+    path: item.path,
+    title: item.title,
+    type: side.type,
+    next: nextArticle(item.path, requestLanguage),
+  }));
+}
+
 function choose(
   sides: Side[],
   requestedPath: string,
@@ -271,7 +285,9 @@ function choose(
     (side): side is Extract<Side, { status: "ambiguous" }> =>
       side.status === "ambiguous",
   );
-  if (hits.length === 1 && ambiguous.length === 0) {
+  // One real article wins. Titles from the other catalog stay visible,
+  // but they are not a second hit and the tool does not ask the caller to pick.
+  if (hits.length === 1) {
     const hit = hits[0]!;
     const body = presentHit(
       hit.data,
@@ -280,6 +296,12 @@ function choose(
       detail,
       requestLanguage,
     );
+    const otherCandidates = ambiguous.flatMap((side) =>
+      candidatesOf(side, requestLanguage),
+    );
+    if (otherCandidates.length > 0) {
+      body.otherCandidates = otherCandidates;
+    }
     const title = String(body.title ?? requestedPath);
     return ok(
       body,
@@ -292,14 +314,7 @@ function choose(
     if (side.status === "hit") {
       candidates.push(candidateFromHit(side.data, side.type, requestLanguage));
     } else if (side.status === "ambiguous") {
-      for (const item of side.candidates) {
-        candidates.push({
-          path: item.path,
-          title: item.title,
-          type: side.type,
-          next: nextArticle(item.path, requestLanguage),
-        });
-      }
+      candidates.push(...candidatesOf(side, requestLanguage));
     }
   }
   if (candidates.length === 0) {

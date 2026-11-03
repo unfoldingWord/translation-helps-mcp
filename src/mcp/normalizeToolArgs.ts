@@ -16,8 +16,15 @@
 // Tool classification
 // ---------------------------------------------------------------------------
 
-/** Tools whose Zod schemas require a `path` parameter. */
-const PATH_TOOLS = new Set(["get_academy_article", "get_word_article"]);
+/**
+ * Tools whose Zod schemas require a `path` parameter.
+ * `get_article` is the unprefixed name of v3 `th_get_article`.
+ */
+const PATH_TOOLS = new Set([
+  "get_academy_article",
+  "get_word_article",
+  "get_article",
+]);
 
 /** Tools whose Zod schemas require a `reference` parameter. */
 const REFERENCE_TOOLS = new Set([

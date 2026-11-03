@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { rankArticles } from "@translation-helps/door43";
 import type { Env } from "../../src/mcp/agent.js";
+import { ErrorCode } from "../../src/core/errors.js";
 import { VERSION } from "../../src/core/version.js";
 import { V3_SERVER_INSTRUCTIONS } from "../../src/mcp/v3/instructions.js";
 import { normalizeV3ToolArgs } from "../../src/mcp/v3/normalizeArgs.js";
@@ -299,6 +300,7 @@ describe("v3 th_get_article", () => {
     const data = result.structuredContent ?? {};
     expect(data.available).toBe(false);
     expect(data.article).toBeUndefined();
+    expect(data.otherCandidates).toBeUndefined();
     expect(data.candidates).toEqual([
       {
         path: "bible/other/call",
@@ -313,6 +315,101 @@ describe("v3 th_get_article", () => {
         next: {
           tool: "th_get_article",
           args: { path: "translate/figs-call" },
+        },
+      },
+    ]);
+  });
+
+  it("returns the resolved article when the other catalog is only ambiguous", async () => {
+    const { env } = apiEnv((url) => {
+      if (url.pathname.startsWith("/api/v1/words/")) {
+        return hit("tw", "bible/kt/covenant", "Covenant", COVENANT);
+      }
+      if (url.pathname.startsWith("/api/v1/academy/")) {
+        return {
+          available: false,
+          candidates: [
+            { path: "translate/figs-covenant", title: "Covenant language" },
+            { path: "checking/covenant", title: "Covenant check" },
+          ],
+        };
+      }
+      return notFound();
+    });
+    const result = await getArticleV3Tool.handler(
+      { path: "covenant", language: "en" },
+      env,
+      "req",
+    );
+    expect(result.structuredContent?.available).toBeUndefined();
+    expect(result.structuredContent?.article).toContain("solemn agreement");
+    expect(result.structuredContent).toMatchObject({
+      path: "bible/kt/covenant",
+      type: "tw",
+      title: "Covenant",
+    });
+    expect(result.structuredContent?.candidates).toBeUndefined();
+    expect(result.structuredContent?.otherCandidates).toEqual([
+      {
+        path: "translate/figs-covenant",
+        title: "Covenant language",
+        type: "ta",
+        next: {
+          tool: "th_get_article",
+          args: { path: "translate/figs-covenant" },
+        },
+      },
+      {
+        path: "checking/covenant",
+        title: "Covenant check",
+        type: "ta",
+        next: { tool: "th_get_article", args: { path: "checking/covenant" } },
+      },
+    ]);
+  });
+
+  it("returns the academy article when only Words is ambiguous", async () => {
+    const { env } = apiEnv((url) => {
+      if (url.pathname.startsWith("/api/v1/academy/")) {
+        return hit("ta", "translate/figs-metaphor", "Metaphor", METAPHOR);
+      }
+      if (url.pathname.startsWith("/api/v1/words/")) {
+        return {
+          available: false,
+          candidates: [
+            { path: "bible/kt/metaphor", title: "Metaphor" },
+            { path: "bible/other/metaphor", title: "Metaphor (other)" },
+          ],
+        };
+      }
+      return notFound();
+    });
+    const result = await getArticleV3Tool.handler(
+      { path: "metaphor", language: "en" },
+      env,
+      "req",
+    );
+    expect(result.structuredContent).toMatchObject({
+      path: "translate/figs-metaphor",
+      type: "ta",
+      title: "Metaphor",
+    });
+    expect(result.structuredContent?.article).toContain("one thing as another");
+    expect(result.structuredContent?.candidates).toBeUndefined();
+    expect(result.structuredContent?.otherCandidates).toEqual([
+      {
+        path: "bible/kt/metaphor",
+        title: "Metaphor",
+        type: "tw",
+        next: { tool: "th_get_article", args: { path: "bible/kt/metaphor" } },
+      },
+      {
+        path: "bible/other/metaphor",
+        title: "Metaphor (other)",
+        type: "tw",
+        next: {
+          tool: "th_get_article",
+          args: { path: "bible/other/metaphor" },
         },
       },
     ]);
@@ -438,6 +535,77 @@ describe("v3 th_get_article", () => {
     expect(article.startsWith("A")).toBe(true);
     expect(article).not.toContain("ENDMARKER");
     expect(String(result.structuredContent?.note)).toMatch(/cut/i);
+  });
+
+  it("cuts an academy summary when the article has no sections and no subtitle", async () => {
+    const body = `${"B".repeat(1600)}ENDMARKER`;
+    const { env } = apiEnv((url) => {
+      if (url.pathname.startsWith("/api/v1/academy/")) {
+        return hit("ta", "translate/figs-plain", "Plain", body);
+      }
+      return notFound();
+    });
+    const result = await getArticleV3Tool.handler(
+      { path: "translate/figs-plain", language: "en", detail: "summary" },
+      env,
+      "req",
+    );
+    const article = String(result.structuredContent?.article ?? "");
+    expect(article).toHaveLength(1500);
+    expect(article.startsWith("B")).toBe(true);
+    expect(article).not.toContain("ENDMARKER");
+    expect(String(result.structuredContent?.note)).toMatch(/cut/i);
+  });
+
+  it("rejects traversal and absolute paths before calling the API", async () => {
+    const { env, calls } = apiEnv(() => {
+      throw new Error("the API must not be called");
+    });
+    for (const path of ["../secret", "/etc/passwd", "rc://*/tw/dict/../x"]) {
+      await expect(
+        getArticleV3Tool.handler({ path, language: "en" }, env, "req"),
+        path,
+      ).rejects.toThrow(/Invalid article path/);
+      try {
+        await getArticleV3Tool.handler({ path, language: "en" }, env, "req");
+      } catch (error) {
+        expect((error as { code?: string }).code).toBe(
+          ErrorCode.INVALID_PARAMS,
+        );
+      }
+    }
+    expect(calls).toEqual([]);
+  });
+
+  it("accepts term, word, and article_id as path", () => {
+    const cases: Array<{
+      raw: Record<string, string>;
+      path: string;
+      drop: string;
+    }> = [
+      {
+        raw: { term: "covenant", language: "en" },
+        path: "covenant",
+        drop: "term",
+      },
+      {
+        raw: { word: "covenant", language: "en" },
+        path: "covenant",
+        drop: "word",
+      },
+      {
+        raw: { article_id: "translate/figs-metaphor", language: "en" },
+        path: "translate/figs-metaphor",
+        drop: "article_id",
+      },
+    ];
+    for (const item of cases) {
+      const normalized = normalizeV3ToolArgs("th_get_article", item.raw);
+      expect(normalized[item.drop]).toBeUndefined();
+      const parsed = getArticleV3Tool.inputSchema.safeParse(normalized);
+      expect(parsed.success).toBe(true);
+      if (parsed.success) expect(parsed.data.path).toBe(item.path);
+    }
   });
 
   it("carries the requested language on next", async () => {
