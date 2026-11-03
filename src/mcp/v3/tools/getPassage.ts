@@ -11,7 +11,6 @@ import { ApiClient } from "../../apiClient.js";
 import type { Env } from "../../agent.js";
 import {
   mapApiCacheStatus,
-  metaOutputSchema,
   okCached,
   notAvailable,
   withNotAvailableOutput,
@@ -29,7 +28,7 @@ const inputSchema = z.object({
     .string()
     .min(1)
     .describe(
-      "A Bible passage or an OBS reference. A book alone is not a passage.",
+      'Bible: book and chapter or verses, e.g. "JHN 3:16", "John 3:16-18", "GEN 1"; book names may be in the request\'s language ("Juan 3:16" with language "es"). Open Bible Stories: "OBS 3:5", "OBS 3:1-3" or "OBS 3". A book alone is not accepted here.',
     ),
   language: v3LanguageParam,
   format: z
@@ -44,13 +43,19 @@ const BOOK_ALONE =
   'A book alone is not a passage. Give a chapter, for example "JON 1". th_get_passage_index takes a whole book.';
 
 /**
- * Proposal description, plus the book-only rule and Bible `format`.
- * `format` is on the schema; the sentence says OBS ignores it.
+ * What the tool returns, when to use the index or notes instead, and
+ * `format`. A book alone is rejected by the handler; the reference
+ * parameter says so, so this text does not repeat it.
  */
 export const GET_PASSAGE_DESCRIPTION =
-  "Text of a Bible passage (literal, simplified and original versions) or an OBS frame. " +
-  'Bible format is "text" (default) or "usfm"; ignored for OBS. ' +
-  'A book alone is not a passage: give a chapter (for example "JON 1"). th_get_passage_index takes a whole book.';
+  'Returns the text of a Bible passage or an Open Bible Stories frame. For the Bible it returns every version the language has, each labelled by role: literal (e.g. ULT), simplified (e.g. UST) and original (Hebrew or Greek, always included). When a version lacks the book, another stands in and versionsNote says which, so tell the reader. For Open Bible Stories it returns each frame\'s text and image URL. Use it to read or quote the text; for the notes, key terms and translation issues of the same passage use th_get_passage_index, and for an introduction use th_get_notes. format "usfm" returns raw USFM for the Bible and is ignored for Open Bible Stories; the default is plain text.';
+
+/** Cache name only. Durations stay in the logs. */
+const v3MetaOutputSchema = z
+  .object({
+    cache: z.string().optional(),
+  })
+  .optional();
 
 const outputSchema = withNotAvailableOutput({
   kind: z.enum(["bible", "obs"]).optional(),
@@ -70,7 +75,7 @@ const outputSchema = withNotAvailableOutput({
     )
     .optional(),
   versionsNote: z.string().optional(),
-  meta: metaOutputSchema,
+  meta: v3MetaOutputSchema,
   story: z.union([z.number(), z.null()]).optional(),
   frame: z.number().optional(),
   title: z.string().optional(),
@@ -181,14 +186,7 @@ export const getPassageV3Tool: ToolModule<typeof inputSchema> = {
         verse: data.verse ?? null,
         versions,
         ...(data.versionsNote ? { versionsNote: data.versionsNote } : {}),
-        ...(cache || data.meta?.timings
-          ? {
-              meta: {
-                ...(cache ? { cache } : {}),
-                ...(data.meta?.timings ? { timings: data.meta.timings } : {}),
-              },
-            }
-          : {}),
+        ...(cache ? { meta: { cache } } : {}),
       },
       mapApiCacheStatus(cache),
       `${versions.length} scripture version(s) for ${value.reference}${cache ? ` [${cache}]` : ""}` +

@@ -43,7 +43,9 @@ const inputSchema = z.object({
   reference: z
     .string()
     .min(1)
-    .describe("A Bible passage, chapter or book, or an OBS reference."),
+    .describe(
+      'A Bible passage, chapter or book, or an Open Bible Stories reference, e.g. "JHN 3:16", "JON" or "OBS 3:5".',
+    ),
   language: v3LanguageParam,
   limit: z
     .number()
@@ -51,7 +53,7 @@ const inputSchema = z.object({
     .positive()
     .optional()
     .describe(
-      "How many notes and how many words to return. Default 200 for a passage or chapter, 50 for a whole book. issues and introductions are not paged. keyTerms uses rollupOffset.",
+      "How many notes and how many words to return. Default 200 for a passage or chapter, 50 for a whole book. Issues and introductions are not paged. Key terms have their own page of 100.",
     ),
   offset: z
     .number()
@@ -67,22 +69,24 @@ const inputSchema = z.object({
     .min(0)
     .optional()
     .describe(
-      "How many key terms to skip after sorting by count. Default 0. Each page has 100. keyTermsTotal is the full count.",
+      "How many key terms to skip after sorting by count. Default 0. Each page has 100. When more remain, next_offset.keyTerms is the next value for this parameter.",
     ),
 });
 
 /**
- * Proposal description, plus paging and where availability lives.
- * A whole book's first page has to fit a model's turn, so notes and words
- * default to 50 there and key terms to 100. issues stay complete: the TA
- * catalog is a bounded set. Rollups omit next: the path is the article to
- * fetch. Availability is th_list_resources.
+ * Notes and words share limit and offset. Key terms are a separate page of
+ * 100. Issues and introductions are complete. A word has next only when it
+ * has a Translation Words article. Issues and key terms omit next: their
+ * path is the article to fetch.
  */
-export const GET_PASSAGE_INDEX_DESCRIPTION =
-  "Notes, words, issues, key terms and introductions, without bodies. Each row has next, except issues and keyTerms: their path goes to th_get_article. " +
-  "Notes and words are paged (limit defaults to 200 for a passage or chapter, and to 50 for a whole book, with offset, total and has_more). " +
-  "issues stays complete, sorted by count. keyTerms is the first 100 by count; keyTermsTotal is the full count, and rollupOffset skips that many. " +
-  "Introductions stay complete. Which resources exist is th_list_resources.";
+export const GET_PASSAGE_INDEX_DESCRIPTION = `Lists what the translation helps say about a passage, a chapter, a whole book or an Open Bible Stories reference, without the bodies:
+- notes, each with its quote and the translation issue it treats;
+- words, each occurrence of a key term with its Translation Words article;
+- issues, how many notes treat each translation issue (e.g. figs-metaphor);
+- keyTerms, how often each key term occurs;
+- introductions, the book or chapter introductions that apply.
+
+Use it to see what a passage needs, or to count things in a book: reference "JON" answers how many metaphor notes Jonah has. Every note and introduction has next: call that tool with those arguments to get its body. A word has next when it links a Translation Words article. An issue or key-term path goes to th_get_article. Notes and words are paged (limit, offset). Each of notes, words and keyTerms reports total, has_more and next_offset. Issues are complete. keyTerms are the 100 most frequent; the key-term offset parameter skips that many.`;
 
 const outputSchema = withNotAvailableOutput({
   kind: z.enum(["bible", "obs"]).optional(),
@@ -96,13 +100,25 @@ const outputSchema = withNotAvailableOutput({
   limit: z.number().optional(),
   offset: z.number().optional(),
   rollupOffset: z.number().optional(),
-  total: z.object({ notes: z.number(), words: z.number() }).optional(),
-  keyTermsTotal: z.number().optional(),
+  total: z
+    .object({
+      notes: z.number(),
+      words: z.number(),
+      keyTerms: z.number(),
+    })
+    .optional(),
   has_more: z
     .object({
       notes: z.boolean(),
       words: z.boolean(),
       keyTerms: z.boolean(),
+    })
+    .optional(),
+  next_offset: z
+    .object({
+      notes: z.number().optional(),
+      words: z.number().optional(),
+      keyTerms: z.number().optional(),
     })
     .optional(),
   notesError: z.string().optional(),
@@ -273,13 +289,17 @@ export const getPassageIndexV3Tool = {
         limit,
         offset,
         rollupOffset,
-        total: { notes: notesPage.total, words: wordsPage.total },
-        keyTermsTotal: keyTermsPage.total,
+        total: {
+          notes: notesPage.total,
+          words: wordsPage.total,
+          keyTerms: keyTermsPage.total,
+        },
         has_more: {
           notes: notesPage.hasMore,
           words: wordsPage.hasMore,
           keyTerms: keyTermsPage.hasMore,
         },
+        ...nextOffsetFields(notesPage, wordsPage, keyTermsPage),
         ...(notesError ? { notesError } : {}),
         ...(wordLinksError ? { wordLinksError } : {}),
         ...(messages.length ? { message: messages.join(" ") } : {}),
@@ -578,19 +598,45 @@ function headingTitle(note: string, fallback: string): string {
   return fallback;
 }
 
-function page<T>(
-  rows: T[],
-  limit: number,
-  offset: number,
-): {
+interface Page<T> {
   rows: T[];
   total: number;
   hasMore: boolean;
-} {
+  nextOffset?: number;
+}
+
+function page<T>(rows: T[], limit: number, offset: number): Page<T> {
   const total = rows.length;
   const start = Math.min(offset, total);
   const sliced = rows.slice(start, start + limit);
-  return { rows: sliced, total, hasMore: start + sliced.length < total };
+  const hasMore = start + sliced.length < total;
+  return {
+    rows: sliced,
+    total,
+    hasMore,
+    ...(hasMore ? { nextOffset: start + sliced.length } : {}),
+  };
+}
+
+function nextOffsetFields(
+  notesPage: Page<unknown>,
+  wordsPage: Page<unknown>,
+  keyTermsPage: Page<unknown>,
+):
+  | { next_offset: { notes?: number; words?: number; keyTerms?: number } }
+  | Record<string, never> {
+  const next_offset = {
+    ...(notesPage.nextOffset !== undefined
+      ? { notes: notesPage.nextOffset }
+      : {}),
+    ...(wordsPage.nextOffset !== undefined
+      ? { words: wordsPage.nextOffset }
+      : {}),
+    ...(keyTermsPage.nextOffset !== undefined
+      ? { keyTerms: keyTermsPage.nextOffset }
+      : {}),
+  };
+  return Object.keys(next_offset).length > 0 ? { next_offset } : {};
 }
 
 const PASSAGE_PAGE = 200;

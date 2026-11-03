@@ -38,7 +38,9 @@ const inputSchema = z.object({
   reference: z
     .string()
     .min(1)
-    .describe("A passage, an introduction, a book, or an OBS reference."),
+    .describe(
+      'A passage ("JHN 3:16"), an introduction ("JHN 1:intro", "JHN front:intro"), a book ("Jonah"), or an Open Bible Stories reference ("OBS 3:5", "OBS 3").',
+    ),
   language: v3LanguageParam,
   ids: z
     .array(z.string())
@@ -46,10 +48,6 @@ const inputSchema = z.object({
     .describe(
       "Note ids from th_get_passage_index. One call returns every listed note.",
     ),
-  id: z
-    .string()
-    .optional()
-    .describe("One note id. Same as ids with a single value."),
   phrase: z
     .string()
     .optional()
@@ -60,18 +58,16 @@ const inputSchema = z.object({
     .enum(["translation", "study"])
     .default("translation")
     .describe(
-      '"translation" (default) or "study". Bible study notes are not available. OBS study notes are OBS-SN.',
+      '"translation" (default) or "study". "study" is Open Bible Stories study notes for discussion groups. The Bible has no study notes.',
     ),
 });
 
 /**
- * Proposal description, plus three behaviours the model would otherwise miss:
- * a book alone is the introduction, Bible study notes do not exist, and a
- * phrase with no match is an empty list.
+ * A book alone is that book's introduction. Bible study notes are not a
+ * resource. A phrase with no match is an empty list.
  */
 export const GET_NOTES_DESCRIPTION =
-  "Note bodies and introductions. kind is translation (default) or study. Filter by index ids or a phrase. " +
-  "A book alone returns its introduction. Bible study notes are not available. A phrase that matches nothing returns notes: [].";
+  'Returns translation notes in full. Each note has the original-language quote it explains, the matching words in the language\'s own text where available, the explanation, and the Translation Academy article for its translation issue. Pass ids from th_get_passage_index to get several notes in one call, or phrase to keep only notes whose quote or text contains it. With neither, every note in the reference comes back, which can be long for a whole chapter. reference may be a passage, an introduction ("JHN 1:intro", "JHN front:intro"), a book alone (its introduction) or an Open Bible Stories reference. kind "study" returns Open Bible Stories study notes, written for discussion groups; the Bible has no study notes. A phrase that matches nothing returns an empty list, not an error.';
 
 const outputSchema = withNotAvailableOutput({
   kind: z.enum(["bible", "obs"]).optional(),

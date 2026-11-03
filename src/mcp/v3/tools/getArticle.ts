@@ -33,7 +33,7 @@ const RC_TA = /^rc:\/\/[^/]+\/ta\//i;
 const TA_ROOT = /^(translate|checking|intro|process)\//i;
 
 const ARTICLE_MISS_HINT =
-  "No Translation Words or Translation Academy article was found. The term may be explained in translation notes. Notes search across books is coming; for a known verse, use th_get_passage_index or th_get_notes.";
+  "No Translation Words or Translation Academy article was found. The term may be explained in translation notes. For a known verse, use th_get_passage_index or th_get_notes.";
 
 const inputSchema = z.object({
   path: z
@@ -52,7 +52,7 @@ const inputSchema = z.object({
 });
 
 export const GET_ARTICLE_DESCRIPTION =
-  "A Translation Words or Translation Academy article. path may be a catalog path, an rc:// link, or a term. detail is full (default) or summary. Several matches return candidates.";
+  "Returns a Translation Words article (the meaning of a biblical key term and how to translate it, e.g. covenant, grace, Sheol) or a Translation Academy article (a translation principle or figure of speech, e.g. metaphor, metonymy). Pass a path from another tool (bible/kt/covenant, translate/figs-metaphor), an rc:// link from a note, or just the term. The server finds the article and returns the path it used; when it matched only part of a title it adds resolvedFrom and a note, so tell the reader. If several articles match, it returns candidates and no article: call again with one path, or use the verse's index to choose. If one catalog resolves the term and the other only has similar titles, the article is returned and those titles are otherCandidates. detail \"summary\" keeps the title with the definition and translation suggestions (Words) or the title with the question and description (Academy), for short answers. If those sections are missing, the opening of the article comes back with a note. related lists linked articles, each with its path, title and next. If the language has no article for the term, it says so; the term may be covered in a verse's notes instead.";
 
 const nextSchema = z.object({
   tool: z.literal("th_get_article"),

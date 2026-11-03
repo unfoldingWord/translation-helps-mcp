@@ -467,7 +467,7 @@ describe("v3 th_get_article", () => {
     expect(hints).toHaveLength(1);
     expect(hints[0]).toMatch(/th_get_passage_index/);
     expect(hints[0]).toMatch(/th_get_notes/);
-    expect(hints[0]).toMatch(/coming/i);
+    expect(hints[0]).not.toMatch(/coming/i);
     expect(result.structuredContent?.candidates ?? []).toEqual([]);
   });
 
@@ -738,7 +738,7 @@ describe("v3 instructions", () => {
     expect(VERSION).toBe("2.8.0");
   });
 
-  it("names every tool once and does not repeat that in the passage description", () => {
+  it("names every tool, and puts the language rule on the passage parameter", () => {
     expect(V3_SERVER_INSTRUCTIONS).toMatch(/th_get_passage/);
     expect(V3_SERVER_INSTRUCTIONS).toMatch(/th_get_passage_index/);
     expect(V3_SERVER_INSTRUCTIONS).toMatch(/th_get_notes/);
@@ -752,12 +752,23 @@ describe("v3 instructions", () => {
     expect(V3_SERVER_INSTRUCTIONS).toMatch(/available:\s*false/);
     expect(V3_SERVER_INSTRUCTIONS).toMatch(/memory/i);
     expect(V3_SERVER_INSTRUCTIONS).not.toMatch(/You are /);
+    expect(V3_SERVER_INSTRUCTIONS).not.toMatch(/comes later/i);
+    expect(V3_SERVER_INSTRUCTIONS).toMatch(/isError/);
+    expect(V3_SERVER_INSTRUCTIONS).toMatch(/next is the call/);
     expect(getPassageV3Tool.description).not.toMatch(/JHN 3:16/);
     const published = toJsonSchema(
       strictToolSchema(getPassageV3Tool.inputSchema.shape),
-    ) as { properties?: { language?: { description?: string } } };
+    ) as {
+      properties?: {
+        language?: { description?: string };
+        reference?: { description?: string };
+      };
+    };
     const language = published.properties?.language?.description ?? "";
-    expect(language.length).toBeGreaterThan(0);
-    expect(language).not.toMatch(/Do not omit/);
+    expect(language).toMatch(/do not fall back/i);
+    expect(language).toMatch(/th_list_resources/);
+    expect(published.properties?.reference?.description ?? "").toMatch(
+      /JHN 3:16/,
+    );
   });
 });

@@ -1,9 +1,8 @@
 /**
  * v3 th_search — find an article by concept when there is no passage.
  *
- * Ranking stays on GET /api/v1/search (T-050). This tool renames
- * resourceType to type and points next at th_get_article.
- * Notes search across books is not this tool.
+ * Ranking stays on GET /api/v1/search (T-050). This tool reports
+ * resourceType as type and points next at th_get_article.
  */
 
 import { z } from "zod";
@@ -25,7 +24,7 @@ const inputSchema = z.object({
     .enum(["tw", "ta"])
     .optional()
     .describe(
-      'Limit to "tw" or "ta". Omit it to search both. resourceType and types are aliases.',
+      'Limit the search to "tw" (key terms) or "ta" (translation principles). Omit it to search both.',
     ),
   limit: z
     .number()
@@ -37,7 +36,7 @@ const inputSchema = z.object({
 });
 
 export const SEARCH_DESCRIPTION =
-  "Find a Translation Words or Translation Academy article by concept when there is no passage. type is tw, ta, or omitted for both. Notes search across books comes later. An empty results list means nothing matched.";
+  'Finds Translation Words and Translation Academy articles by concept or title when you have no passage and no exact term, e.g. "abstract nouns", "metaphor", "kingdom of God". Results are ranked: exact titles and alternate names first, then titles that start with or contain the query. Each result has a path, and next for th_get_article. type limits the search to tw (key terms) or ta (translation principles). It searches article titles, not notes or Bible text. An empty list means nothing matched.';
 
 const outputSchema = withNotAvailableOutput({
   query: z.string().optional(),

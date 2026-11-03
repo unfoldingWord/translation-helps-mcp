@@ -257,6 +257,52 @@ function installCachedToolList(server: V3NormalizingMcpServer): void {
   );
 }
 
+/** requestId and timings stay in the logs. They are not part of the answer. */
+function stripInternal(data: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...data };
+  delete out.requestId;
+  const meta = out.meta;
+  if (meta && typeof meta === "object" && !Array.isArray(meta)) {
+    const next: Record<string, unknown> = {
+      ...(meta as Record<string, unknown>),
+    };
+    delete next.timings;
+    if (Object.keys(next).length === 0) delete out.meta;
+    else out.meta = next;
+  }
+  return out;
+}
+
+function forModel<T>(result: T): T {
+  if (!result || typeof result !== "object") return result;
+  const record = result as {
+    content?: Array<{ type: string; text: string }>;
+    structuredContent?: Record<string, unknown>;
+  };
+  if (!record.structuredContent) return result;
+  const data = stripInternal(record.structuredContent);
+  const content = record.content?.map((part) => {
+    if (part.type !== "text" || !part.text.trim().startsWith("{")) return part;
+    try {
+      const parsed = JSON.parse(part.text) as unknown;
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return part;
+      }
+      return {
+        ...part,
+        text: JSON.stringify(stripInternal(parsed as Record<string, unknown>)),
+      };
+    } catch {
+      return part;
+    }
+  });
+  return {
+    ...record,
+    structuredContent: data,
+    ...(content ? { content } : {}),
+  } as T;
+}
+
 export function registerV3Server(
   server: V3NormalizingMcpServer,
   resolveEnv: ResolveV3Env,
@@ -285,10 +331,11 @@ function registerV3Surface(
         inputSchema,
         ...(outputSchema ? { outputSchema } : {}),
         annotations: {
+          title: annotations.title,
           readOnlyHint: annotations.readOnlyHint,
-          ...(annotations.destructiveHint !== undefined
-            ? { destructiveHint: annotations.destructiveHint }
-            : {}),
+          destructiveHint: annotations.destructiveHint ?? false,
+          idempotentHint: true,
+          openWorldHint: false,
         },
       },
       async (rawParams: unknown) => {
@@ -314,7 +361,7 @@ function registerV3Surface(
             errorCode,
             language: params.language as string | undefined,
           });
-          return result as never;
+          return forModel(result) as never;
         } catch (err) {
           if (isTranslationHelpsError(err)) {
             errorCode = err.code;

@@ -201,6 +201,27 @@ describe("v3 th_get_passage", () => {
     });
   });
 
+  it("keeps the cache name and drops timings", async () => {
+    const { env } = apiEnv((url) => {
+      if (url.pathname.endsWith("/scripture")) {
+        return {
+          ...((passagePayload(url) ?? {}) as Record<string, unknown>),
+          meta: { cache: "kv", timings: { zipMs: 4 } },
+        };
+      }
+      return passagePayload(url);
+    });
+    const result = await getPassageV3Tool.handler(
+      { reference: "JHN 3:16", language: "en" },
+      env,
+      "req",
+    );
+    expect(result.structuredContent?.meta).toEqual({ cache: "kv" });
+    expect(JSON.stringify(result.structuredContent)).not.toMatch(
+      /timings|requestId/,
+    );
+  });
+
   it("loads OBS frames for an OBS reference", async () => {
     const { env, calls } = apiEnv(passagePayload);
     const result = await getPassageV3Tool.handler(
@@ -412,9 +433,35 @@ describe("v3 th_list_resources", () => {
     expect(calls.map((url) => url.pathname)).toContain("/api/v1/languages");
     expect(result.structuredContent).toMatchObject({
       languages: [expect.objectContaining({ code: "es-419" })],
+      total: 1,
+      has_more: false,
     });
+    expect(result.structuredContent).not.toHaveProperty("total_count");
+    expect(result.structuredContent).not.toHaveProperty("requestId");
+    expect(result.structuredContent).not.toHaveProperty("next_offset");
+    expect(JSON.stringify(result.content)).not.toMatch(/requestId|total_count/);
     const languages = result.structuredContent?.languages as unknown[];
     expect(languages).toHaveLength(1);
+  });
+
+  it("pages the language list with total, has_more and next_offset", async () => {
+    const { env } = apiEnv(passagePayload);
+    const result = await listResourcesV3Tool.handler(
+      { limit: 1, offset: 0 },
+      env,
+      "req-page",
+    );
+    expect(result.structuredContent).toMatchObject({
+      total: 2,
+      has_more: true,
+      next_offset: 1,
+      limit: 1,
+      offset: 0,
+    });
+    const codes = (
+      result.structuredContent?.languages as Array<{ code: string }>
+    ).map((language) => language.code);
+    expect(codes).toEqual(["en"]);
   });
 
   it("lists resources for a language and a book", async () => {
@@ -431,17 +478,32 @@ describe("v3 th_list_resources", () => {
       language: "es-419",
       resources: [expect.objectContaining({ abbreviation: "ult" })],
     });
+    expect(result.structuredContent).not.toHaveProperty("requestId");
+    expect(JSON.stringify(result.content)).not.toMatch(/requestId/);
   });
 
-  it("forwards a reference filter to the resources route", async () => {
+  it("turns a reference into the book before calling the resources route", async () => {
     const { env, calls } = apiEnv(passagePayload);
+    const args = normalizeV3ToolArgs("th_list_resources", {
+      language: "en",
+      reference: "JHN 3:16",
+    });
+    expect(args).toEqual({ language: "en", book: "JHN" });
     await listResourcesV3Tool.handler(
-      { language: "en", reference: "JHN 3:16" },
+      args as { language: string; book: string },
       env,
       "req-ref",
     );
     const resources = calls.find((url) => url.pathname.endsWith("/resources"));
-    expect(resources?.searchParams.get("reference")).toBe("JHN 3:16");
+    expect(resources?.searchParams.get("book")).toBe("JHN");
+    expect(resources?.searchParams.get("reference")).toBeNull();
+    expect(
+      normalizeV3ToolArgs("th_list_resources", {
+        language: "en",
+        book: "TIT",
+        reference: "JHN 3:16",
+      }),
+    ).toEqual({ language: "en", book: "TIT" });
   });
 });
 
@@ -705,7 +767,19 @@ describe("normalizeV3ToolArgs for index and notes", () => {
         book: "Jonah",
         id: "only",
       }),
-    ).toMatchObject({ reference: "JON", id: "only" });
+    ).toEqual({ reference: "JON", ids: ["only"] });
+    expect(
+      normalizeV3ToolArgs("th_get_notes", {
+        reference: "GEN 9:9",
+        ids: ["n1"],
+        id: "n2",
+        language: "en",
+      }),
+    ).toEqual({
+      reference: "GEN 9:9",
+      language: "en",
+      ids: ["n1", "n2"],
+    });
   });
 
   it("keeps rollupOffset on the index", () => {
@@ -864,13 +938,14 @@ describe("v3 th_get_passage_index", () => {
     const words = data.words as Array<Record<string, unknown>>;
     expect(notes).toHaveLength(1);
     expect(words).toHaveLength(1);
-    expect(data.total).toEqual({ notes: 2, words: 2 });
+    expect(data.total).toEqual({ notes: 2, words: 2, keyTerms: 2 });
     expect(data.has_more).toEqual({
       notes: true,
       words: true,
       keyTerms: false,
     });
-    expect(data.keyTermsTotal).toBe(2);
+    expect(data.next_offset).toEqual({ notes: 1, words: 1 });
+    expect(data).not.toHaveProperty("keyTermsTotal");
     expect(data.rollupOffset).toBe(0);
     expect(data.limit).toBe(1);
     expect(data.offset).toBe(0);
@@ -1210,9 +1285,11 @@ describe("v3 th_get_passage_index", () => {
       ),
     ).toBe(true);
     expect(keyTerms[99]?.path).toBe("bible/other/t099");
-    expect(data.keyTermsTotal).toBe(101);
+    expect(data.total).toMatchObject({ keyTerms: 101 });
+    expect(data.next_offset).toMatchObject({ keyTerms: 100 });
     expect(data.rollupOffset).toBe(0);
     expect(data.has_more).toMatchObject({ keyTerms: true });
+    expect(data).not.toHaveProperty("keyTermsTotal");
 
     const second = await getPassageIndexV3Tool.handler(
       { reference: "Psalms", language: "en", rollupOffset: 100 },
@@ -1221,8 +1298,16 @@ describe("v3 th_get_passage_index", () => {
     );
     const rest = second.structuredContent?.keyTerms as Array<{ path: string }>;
     expect(rest.map((row) => row.path)).toEqual(["bible/other/t100"]);
-    expect(second.structuredContent?.keyTermsTotal).toBe(101);
+    expect(second.structuredContent?.total).toMatchObject({ keyTerms: 101 });
+    expect(
+      (
+        second.structuredContent?.next_offset as
+          | { keyTerms?: number }
+          | undefined
+      )?.keyTerms,
+    ).toBeUndefined();
     expect(second.structuredContent?.rollupOffset).toBe(100);
+    expect(second.structuredContent).not.toHaveProperty("keyTermsTotal");
     expect(second.structuredContent?.has_more).toMatchObject({
       keyTerms: false,
     });
@@ -1411,7 +1496,13 @@ describe("v3 th_get_notes", () => {
     });
 
     const one = await getNotesV3Tool.handler(
-      { reference: "GEN 9:9", language: "en", id: "n2" },
+      getNotesV3Tool.inputSchema.parse(
+        normalizeV3ToolArgs("th_get_notes", {
+          reference: "GEN 9:9",
+          language: "en",
+          id: "n2",
+        }),
+      ),
       env,
       "req-id",
     );

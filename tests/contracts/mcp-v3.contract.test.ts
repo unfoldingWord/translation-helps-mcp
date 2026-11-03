@@ -441,6 +441,48 @@ describe("/v3/mcp worker fetch", () => {
     };
     expect(passageSchema.properties?.format?.enum).toEqual(["text", "usfm"]);
     expect(passageSchema.required ?? []).not.toContain("format");
+    for (const tool of tools) {
+      const listed = tool as {
+        title?: string;
+        annotations?: {
+          title?: string;
+          readOnlyHint?: boolean;
+          destructiveHint?: boolean;
+          idempotentHint?: boolean;
+          openWorldHint?: boolean;
+        };
+        inputSchema?: { properties?: Record<string, unknown> };
+        outputSchema?: { properties?: Record<string, unknown> };
+      };
+      expect(listed.title).toBeTruthy();
+      expect(listed.annotations).toMatchObject({
+        title: listed.title,
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      });
+    }
+    const notes = tools.find((tool) => tool.name === "th_get_notes") as {
+      inputSchema?: { properties?: Record<string, unknown> };
+    };
+    expect(notes.inputSchema?.properties).not.toHaveProperty("id");
+    expect(notes.inputSchema?.properties).toHaveProperty("ids");
+    const list = tools.find((tool) => tool.name === "th_list_resources") as {
+      inputSchema?: { properties?: Record<string, unknown> };
+      outputSchema?: { properties?: Record<string, unknown> };
+    };
+    expect(list.inputSchema?.properties).not.toHaveProperty("reference");
+    expect(list.inputSchema?.properties).toHaveProperty("book");
+    expect(list.outputSchema?.properties).not.toHaveProperty("requestId");
+    expect(list.outputSchema?.properties).not.toHaveProperty("total_count");
+    expect(list.outputSchema?.properties).toHaveProperty("total");
+    expect(list.outputSchema?.properties).toHaveProperty("next_offset");
+    const index = tools.find(
+      (tool) => tool.name === "th_get_passage_index",
+    ) as { outputSchema?: { properties?: Record<string, unknown> } };
+    expect(index.outputSchema?.properties).toHaveProperty("next_offset");
+    expect(index.outputSchema?.properties).not.toHaveProperty("keyTermsTotal");
     expect(namespace.names).toEqual([]);
   });
 
@@ -472,6 +514,8 @@ describe("/v3/mcp worker fetch", () => {
     expect(instructions).toContain("th_get_article");
     expect(instructions).toContain("th_search");
     expect(instructions).toMatch(/available:\s*false/);
+    expect(instructions).toMatch(/isError/);
+    expect(instructions).not.toMatch(/comes later/i);
     expect(instructions).toMatch(/JHN 3:16/);
     expect(instructions).toMatch(/3:5/);
     expect(namespace.names).toEqual([]);
@@ -656,11 +700,57 @@ describe("/v3/mcp worker fetch", () => {
         expect.objectContaining({ code: "en" }),
         expect.objectContaining({ code: "es-419" }),
       ],
+      total: 2,
+      has_more: false,
     });
+    expect(body.result?.structuredContent).not.toHaveProperty("requestId");
+    expect(body.result?.structuredContent).not.toHaveProperty("total_count");
+    expect(JSON.stringify(body.result?.content)).not.toMatch(/requestId/);
     expect(calls.map((url) => url.pathname)).toContain("/api/v1/languages");
     expect(calls.some((url) => url.pathname.endsWith("/resources"))).toBe(
       false,
     );
+  });
+
+  it("still accepts a note id and a resource reference that are not in the schema", async () => {
+    const namespace = durableObjectNamespace();
+    const calls: URL[] = [];
+    const env = baseEnv(namespace, { points: [] }, calls);
+    const notes = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc("tools/call", {
+          name: "th_get_notes",
+          arguments: { reference: "JHN 3:16", language: "en", id: "a" },
+        }),
+        env,
+      ),
+    );
+    expect(notes.result?.isError).not.toBe(true);
+    const rows = notes.result?.structuredContent?.notes as Array<{
+      id: string;
+    }>;
+    expect(rows.map((row) => row.id)).toEqual(["a"]);
+
+    const listed = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc(
+          "tools/call",
+          {
+            name: "th_list_resources",
+            arguments: { language: "en", reference: "JHN 3:16" },
+          },
+          2,
+        ),
+        env,
+      ),
+    );
+    expect(listed.result?.isError).not.toBe(true);
+    const resources = calls.find((url) => url.pathname.endsWith("/resources"));
+    expect(resources?.searchParams.get("book")).toBe("JHN");
+    expect(resources?.searchParams.get("reference")).toBeNull();
+    expect(listed.result?.structuredContent).not.toHaveProperty("requestId");
   });
 
   it("answers a session id with 405 and Allow: POST, and does not open a Durable Object", async () => {

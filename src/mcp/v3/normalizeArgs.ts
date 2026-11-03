@@ -9,6 +9,7 @@
  * and get_passage.
  */
 
+import { bookNameToUsfm, parseReference } from "@translation-helps/door43";
 import { normalizeToolArgs } from "../normalizeToolArgs.js";
 import { readReference } from "./readReference.js";
 
@@ -17,6 +18,7 @@ const QUESTIONS = "th_get_questions";
 const INDEX = "th_get_passage_index";
 const NOTES = "th_get_notes";
 const SEARCH = "th_search";
+const LIST = "th_list_resources";
 
 const REFERENCE_TOOLS = new Set([PASSAGE, QUESTIONS, INDEX, NOTES]);
 
@@ -37,7 +39,9 @@ export function normalizeV3ToolArgs(
   }
 
   if (!REFERENCE_TOOLS.has(toolName)) {
-    return normalizeToolArgs(unprefixed(toolName), rawArgs);
+    const args = normalizeToolArgs(unprefixed(toolName), rawArgs);
+    if (toolName === LIST) return foldResourceBook(args);
+    return args;
   }
 
   // Class D (language_code / lang → language) without Class C or Class O.
@@ -48,18 +52,70 @@ export function normalizeV3ToolArgs(
   const extras = pickExtras(rawArgs, EXTRA_FIELDS[toolName] ?? []);
 
   if (!read.ok) {
-    return {
+    return finish(toolName, {
       reference: `\u0000${read.message}`,
       ...(language !== undefined ? { language } : {}),
       ...extras,
-    };
+    });
   }
 
-  return {
+  return finish(toolName, {
     reference: read.value.reference,
     ...(language !== undefined ? { language } : {}),
     ...extras,
-  };
+  });
+}
+
+/**
+ * `id` is not on the published schema. One id becomes `ids` before Zod
+ * strips unknown keys, so a single note id still selects that note.
+ */
+function foldNoteId(args: Record<string, unknown>): Record<string, unknown> {
+  const raw = args.id;
+  delete args.id;
+  const single = typeof raw === "string" ? raw.trim() : "";
+  if (!single) return args;
+  const ids = Array.isArray(args.ids)
+    ? args.ids.filter(
+        (item): item is string => typeof item === "string" && item !== "",
+      )
+    : [];
+  if (!ids.includes(single)) ids.push(single);
+  args.ids = ids;
+  return args;
+}
+
+/**
+ * `reference` is not on the published schema. The resources route only
+ * uses the book, so a passage reference becomes that book code.
+ * An explicit book wins, which is what the route does when both are sent.
+ */
+function foldResourceBook(
+  args: Record<string, unknown>,
+): Record<string, unknown> {
+  const raw = args.reference;
+  delete args.reference;
+  const reference = typeof raw === "string" ? raw.trim() : "";
+  const book = typeof args.book === "string" ? args.book.trim() : "";
+  if (book) {
+    args.book = book;
+    return args;
+  }
+  if (!reference) return args;
+  const parsed = parseReference(reference);
+  args.book =
+    parsed.isValid && parsed.book
+      ? bookNameToUsfm(parsed.book)
+      : bookNameToUsfm(reference);
+  return args;
+}
+
+function finish(
+  toolName: string,
+  args: Record<string, unknown>,
+): Record<string, unknown> {
+  if (toolName === NOTES) return foldNoteId(args);
+  return args;
 }
 
 function aliasString(value: unknown): string | undefined {
