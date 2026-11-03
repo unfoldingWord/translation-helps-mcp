@@ -5,9 +5,10 @@
  * Enriched with supportReferenceTitle (from articleTitles) after
  * port-title-resolver step; gatewayQuote from port-alignment-quote step.
  *
- * A book alone is 400. `fields=index` is the compact whole-book read:
- * id, quote, support reference and an intro heading, with no note body
- * and no gateway alignment. It uses the same route, so the same rate limit.
+ * A book alone is 400. `fields=index` is the compact whole-book read the
+ * worker allows only for an internal caller: id, quote, support reference
+ * and an intro heading, with no note body and no gateway alignment. It uses
+ * the same route, so the same rate limit.
  */
 import type { RouteContext } from "../worker.js";
 import { json, apiError } from "../worker.js";

@@ -8,7 +8,11 @@ import { normalizeToolArgs } from "../../src/mcp/normalizeToolArgs.js";
 import { normalizeV3ToolArgs } from "../../src/mcp/v3/normalizeArgs.js";
 import { readReference } from "../../src/mcp/v3/readReference.js";
 import { getPassageV3Tool } from "../../src/mcp/v3/tools/getPassage.js";
-import { getPassageIndexV3Tool } from "../../src/mcp/v3/tools/getPassageIndex.js";
+import { V3_SERVER_INSTRUCTIONS } from "../../src/mcp/v3/instructions.js";
+import {
+  GET_PASSAGE_INDEX_DESCRIPTION,
+  getPassageIndexV3Tool,
+} from "../../src/mcp/v3/tools/getPassageIndex.js";
 import { getNotesV3Tool } from "../../src/mcp/v3/tools/getNotes.js";
 import { getQuestionsV3Tool } from "../../src/mcp/v3/tools/getQuestions.js";
 import { listResourcesV3Tool } from "../../src/mcp/v3/tools/listResources.js";
@@ -728,6 +732,14 @@ describe("v3 th_get_passage_index", () => {
     expect(getPassageIndexV3Tool.name).toBe("th_get_passage_index");
   });
 
+  it("sends rollup paths to th_get_article and does not put next on them", () => {
+    expect(GET_PASSAGE_INDEX_DESCRIPTION).toMatch(/th_get_article/);
+    expect(V3_SERVER_INSTRUCTIONS).toMatch(/th_get_article/);
+    expect(getPassageIndexV3Tool.description).toBe(
+      GET_PASSAGE_INDEX_DESCRIPTION,
+    );
+  });
+
   it("indexes a Bible verse without note bodies", async () => {
     const { env, calls } = apiEnv(indexPayload);
     const result = await getPassageIndexV3Tool.handler(
@@ -773,26 +785,19 @@ describe("v3 th_get_passage_index", () => {
     });
     expect(data.limit).toBe(200);
     expect(data.issues).toEqual([
-      expect.objectContaining({
+      {
         path: "translate/figs-metaphor",
         title: "Metaphor",
         count: 1,
-        next: {
-          tool: "th_get_article",
-          args: { path: "translate/figs-metaphor" },
-        },
-      }),
+      },
     ]);
     expect(data.keyTerms).toEqual([
-      expect.objectContaining({
+      {
         path: "bible/kt/covenant",
+        title: "Covenant",
         category: "kt",
         count: 1,
-        next: {
-          tool: "th_get_article",
-          args: { path: "bible/kt/covenant" },
-        },
-      }),
+      },
     ]);
     expect(data.introductions).toEqual([
       {
@@ -871,11 +876,17 @@ describe("v3 th_get_passage_index", () => {
     expect(data.offset).toBe(0);
     const issues = data.issues as Array<{ path: string; count: number }>;
     expect(issues).toEqual([
-      expect.objectContaining({
+      {
         path: "translate/figs-metaphor",
+        title: "Metaphor",
         count: 2,
-      }),
+      },
     ]);
+    expect(
+      (data.keyTerms as Array<Record<string, unknown>>).every(
+        (row) => !("next" in row),
+      ),
+    ).toBe(true);
     const introductions = data.introductions as Array<{ reference: string }>;
     expect(introductions.map((row) => row.reference)).toEqual([
       "JON front:intro",
@@ -1183,9 +1194,21 @@ describe("v3 th_get_passage_index", () => {
       }),
       expect.objectContaining({ path: "translate/figs-idiom", count: 1 }),
     ]);
-    const keyTerms = data.keyTerms as Array<{ path: string }>;
+    const keyTerms = data.keyTerms as Array<Record<string, unknown>>;
     expect(keyTerms).toHaveLength(100);
     expect(keyTerms[0]?.path).toBe("bible/other/t000");
+    expect(Object.keys(keyTerms[0] ?? {}).sort()).toEqual([
+      "category",
+      "count",
+      "path",
+      "title",
+    ]);
+    expect(keyTerms.every((row) => !("next" in row))).toBe(true);
+    expect(
+      (data.issues as Array<Record<string, unknown>>).every(
+        (row) => !("next" in row),
+      ),
+    ).toBe(true);
     expect(keyTerms[99]?.path).toBe("bible/other/t099");
     expect(data.keyTermsTotal).toBe(101);
     expect(data.rollupOffset).toBe(0);

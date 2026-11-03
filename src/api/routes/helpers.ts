@@ -108,9 +108,10 @@ export function requireReferenceAndLanguage(url: URL): {
 /**
  * Notes and word-link queries. A chapter reference is unchanged. A book alone
  * (`JON`, `Jonah`) is invalid for the public route: it stays a 400, as before
- * a whole-book read existed. `fields=index` is the exception. It is one read
- * of that book's TSV (`chapter` `"*"`, `wholeBook` true) and the handler
- * returns compact rows, not bodies.
+ * a whole-book read existed. `fields=index` is the exception, and the API
+ * worker only leaves that query on an internal request. It is one read of
+ * that book's TSV (`chapter` `"*"`, `wholeBook` true) and the handler returns
+ * compact rows, not bodies.
  */
 export function resolveNotesQuery(url: URL): {
   reference: string;

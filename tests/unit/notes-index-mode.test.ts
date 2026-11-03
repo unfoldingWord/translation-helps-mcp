@@ -1,7 +1,10 @@
 /**
  * Public notes and word-link routes.
- * A book alone stays 400. fields=index is the compact read the v3 index uses:
- * no note bodies, no quote alignment, and the same /api/v1 rate limit.
+ * A book alone stays 400. fields=index is the compact read the v3 index uses,
+ * and only the MCP worker can ask for it: the public edge strips that query.
+ * The handler tests below call the route directly, which is the path the
+ * worker leaves in place for an internal request. No note bodies, no quote
+ * alignment, and the same /api/v1 rate limit.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -87,6 +90,7 @@ import { handleNotes } from "../../src/api/routes/notes.js";
 import { handleWordLinks } from "../../src/api/routes/wordLinks.js";
 import { responseCacheKey } from "../../src/api/routes/responseCache.js";
 import worker, { type Env } from "../../src/api/worker.js";
+import { ApiClient } from "../../src/mcp/apiClient.js";
 import { resetRateLimitStoreForTests } from "../../src/core/rateLimit.js";
 
 function routeUrl(path: string, query: Record<string, string>): URL {
@@ -394,5 +398,153 @@ describe("fields=index rate limit", () => {
       exec,
     );
     expect(links.status).toBe(429);
+  });
+});
+
+describe("fields=index public edge", () => {
+  const spoofed = {
+    "CF-Connecting-IP": "203.0.113.77",
+    "X-TH-Internal": "index",
+  };
+
+  beforeEach(() => {
+    (globalThis as { caches?: { default?: Cache } }).caches = {};
+  });
+
+  async function call(url: string, headers?: Record<string, string>) {
+    return read(
+      await worker.fetch(
+        new Request(url, headers ? { headers } : undefined),
+        {} as Env,
+        ctx.execCtx,
+      ),
+    );
+  }
+
+  it("treats a public fields=index as the request from before this mode existed", async () => {
+    const book = await call(
+      "https://example.test/api/v1/notes?reference=JON&language=en&fields=index",
+      spoofed,
+    );
+    expect(book.status).toBe(400);
+    expect(JSON.stringify(book.body)).toMatch(/Invalid reference/);
+    expect(alignment.calls).toBe(0);
+
+    const passage = await call(
+      "https://example.test/api/v1/notes?reference=JON%201&language=en&fields=index",
+      spoofed,
+    );
+    expect(passage.status).toBe(200);
+    const notes = passage.body.notes as Array<Record<string, unknown>>;
+    const verse = notes.find((row) => row.id === "a");
+    expect(verse?.note).toBe("SECRET NOTE BODY");
+    expect(verse).toHaveProperty("gatewayQuote");
+    expect(alignment.calls).toBe(1);
+
+    const links = await call(
+      "https://example.test/api/v1/word-links?reference=JON&language=en&fields=index",
+      spoofed,
+    );
+    expect(links.status).toBe(400);
+
+    const chapterLinks = await call(
+      "https://example.test/api/v1/word-links?reference=JON%201&language=en&fields=index",
+      spoofed,
+    );
+    expect(chapterLinks.status).toBe(200);
+    const rows = chapterLinks.body.wordLinks as Array<Record<string, unknown>>;
+    expect(rows[0]).toHaveProperty("gatewayQuote");
+    expect(rows[0]?.origWords).toBe("covenant");
+  });
+
+  it("returns compact rows for the service binding when the header is set", async () => {
+    const notes = await call(
+      "http://internal/api/v1/notes?reference=JON&language=en&fields=index",
+      { "X-TH-Internal": "index" },
+    );
+    expect(notes.status).toBe(200);
+    expect(alignment.calls).toBe(0);
+    expect(JSON.stringify(notes.body)).not.toContain("SECRET");
+    const rows = notes.body.notes as Array<Record<string, unknown>>;
+    expect(rows.map((row) => row.id)).toEqual(["book", "a"]);
+    expect(rows.every((row) => !("note" in row))).toBe(true);
+
+    const links = await call(
+      "http://internal/api/v1/word-links?reference=Jonah&language=en&fields=index",
+      { "X-TH-Internal": "index" },
+    );
+    expect(links.status).toBe(200);
+    expect(alignment.calls).toBe(0);
+    const wordLinks = links.body.wordLinks as Array<Record<string, unknown>>;
+    expect(wordLinks[0]).toMatchObject({
+      origWords: "covenant",
+      wordPath: "bible/kt/covenant",
+    });
+    expect(wordLinks[0]).not.toHaveProperty("gatewayQuote");
+  });
+
+  it("refuses the compact read on the service-binding host without the header", async () => {
+    const denied = await call(
+      "http://internal/api/v1/notes?reference=JON&language=en&fields=index",
+    );
+    expect(denied.status).toBe(400);
+    expect(JSON.stringify(denied.body)).toMatch(/Invalid reference/);
+
+    const wrong = await call(
+      "http://internal/api/v1/notes?reference=JON&language=en&fields=index",
+      { "X-TH-Internal": "yes" },
+    );
+    expect(wrong.status).toBe(400);
+  });
+
+  it("accepts the header on loopback, which is wrangler dev's API_BASE_URL", async () => {
+    const notes = await call(
+      "http://127.0.0.1:8783/api/v1/notes?reference=JON&language=en&fields=index",
+      { "X-TH-Internal": "index" },
+    );
+    expect(notes.status).toBe(200);
+    expect(alignment.calls).toBe(0);
+    expect(JSON.stringify(notes.body)).not.toContain("SECRET");
+
+    const bare = await call(
+      "http://127.0.0.1:8783/api/v1/notes?reference=JON&language=en&fields=index",
+    );
+    expect(bare.status).toBe(400);
+  });
+
+  it("sends the internal header only when ApiClient asks for fields=index", async () => {
+    const seen: Array<{ url: string; header: string | null }> = [];
+    const client = new ApiClient({
+      API: {
+        connect() {
+          throw new Error("not used");
+        },
+        async fetch(input: RequestInfo | URL, init?: RequestInit) {
+          const url =
+            typeof input === "string"
+              ? input
+              : input instanceof URL
+                ? input.toString()
+                : input.url;
+          seen.push({
+            url,
+            header: new Headers(init?.headers).get("x-th-internal"),
+          });
+          return Response.json({ notes: [] });
+        },
+      },
+    });
+    await client.get("/api/v1/notes", {
+      reference: "JON",
+      language: "en",
+      fields: "index",
+    });
+    await client.get("/api/v1/notes", {
+      reference: "JON 1",
+      language: "en",
+    });
+    expect(seen[0]?.header).toBe("index");
+    expect(seen[0]?.url).toContain("fields=index");
+    expect(seen[1]?.header).toBeNull();
   });
 });

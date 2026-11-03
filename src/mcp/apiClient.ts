@@ -17,6 +17,10 @@
  */
 
 import type { ApiErrorResponse } from "@translation-helps/door43";
+import {
+  INTERNAL_INDEX_HEADER,
+  INTERNAL_INDEX_VALUE,
+} from "../core/internalIndex.js";
 
 // ---------------------------------------------------------------------------
 // Error type
@@ -147,10 +151,11 @@ export class ApiClient {
   }
 
   private fetchUrl(url: string): Promise<Response> {
+    const init = indexRequestInit(url);
     if (this.fetcher) {
-      return this.fetcher.fetch(url);
+      return this.fetcher.fetch(url, init);
     }
-    return fetch(url);
+    return fetch(url, init);
   }
 }
 
@@ -270,6 +275,17 @@ export interface LanguagesResponse {
  * Build a convenience API client with typed endpoints.
  * Pass the `env` from your tool handler.
  */
+function indexRequestInit(url: string): RequestInit | undefined {
+  try {
+    if (new URL(url).searchParams.get("fields") !== "index") return undefined;
+  } catch {
+    return undefined;
+  }
+  return {
+    headers: { [INTERNAL_INDEX_HEADER]: INTERNAL_INDEX_VALUE },
+  };
+}
+
 export function createApiClient(env: ApiEnv): ApiClient {
   return new ApiClient(env);
 }

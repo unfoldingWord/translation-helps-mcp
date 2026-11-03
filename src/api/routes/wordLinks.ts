@@ -4,8 +4,9 @@
  * Returns all TWL rows for the reference.
  * Enriched with twTitle (from articleTitles) after port-title-resolver step.
  *
- * A book alone is 400. `fields=index` returns compact rows and skips
- * gateway alignment, on the same route and the same rate limit.
+ * A book alone is 400. `fields=index`, only when the worker left it on an
+ * internal request, returns compact rows and skips gateway alignment, on
+ * the same route and the same rate limit.
  */
 import type { RouteContext } from "../worker.js";
 import { json, apiError } from "../worker.js";

@@ -3,7 +3,8 @@
  *
  * Bible calls GET /api/v1/notes and /api/v1/word-links. A whole book is one
  * call per TSV with `fields=index` (compact rows, no bodies, no alignment),
- * not a call per chapter. OBS calls GET /api/v1/obs-notes and
+ * not a call per chapter. ApiClient marks that call internal; the public
+ * edge strips it. OBS calls GET /api/v1/obs-notes and
  * /api/v1/obs-word-links.
  */
 
@@ -76,10 +77,12 @@ const inputSchema = z.object({
  * Proposal description, plus paging and where availability lives.
  * A whole book's first page has to fit a model's turn, so notes and words
  * default to 50 there and key terms to 100. issues stay complete: the TA
- * catalog is a bounded set. Availability is th_list_resources.
+ * catalog is a bounded set. Rollups omit next: the path is the article to
+ * fetch. Availability is th_list_resources.
  */
 export const GET_PASSAGE_INDEX_DESCRIPTION =
   "What a passage, chapter or whole book has, without bodies: notes, key terms, translation issues, introductions. Each row names the call that fetches it. " +
+  "issues and keyTerms do not: their path goes to th_get_article. " +
   "Notes and words are paged (limit defaults to 200 for a passage or chapter, and to 50 for a whole book, with offset, total and has_more). " +
   "issues stays complete, sorted by count. keyTerms is the first 100 by count; keyTermsTotal is the full count, and rollupOffset skips that many to read the rest. " +
   "Introductions stay complete. " +
@@ -234,14 +237,12 @@ export const getPassageIndexV3Tool = {
         const article = note.taArticle as Article | null | undefined;
         return article?.path ? [article] : [];
       }),
-      language,
     );
     const keyTerms = rollup(
       words.flatMap((word) => {
         const article = word.twArticle as Article | null | undefined;
         return article?.path ? [article] : [];
       }),
-      language,
       true,
     );
     const keyTermsPage = page(keyTerms, KEY_TERMS_PAGE, rollupOffset);
@@ -511,11 +512,7 @@ function twArticle(row: Row): Article | null {
   };
 }
 
-function rollup(
-  items: Article[],
-  language: string,
-  withCategory = false,
-): Row[] {
+function rollup(items: Article[], withCategory = false): Row[] {
   const map = new Map<string, Article & { count: number }>();
   for (const item of items) {
     const existing = map.get(item.path);
@@ -531,7 +528,6 @@ function rollup(
         ? { category: item.category ?? twCategoryFromPath(item.path) }
         : {}),
       count: item.count,
-      next: nextArticle(item.path, language),
     }));
 }
 
