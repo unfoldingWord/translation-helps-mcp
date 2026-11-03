@@ -16,6 +16,7 @@ const PASSAGE = "th_get_passage";
 const QUESTIONS = "th_get_questions";
 const INDEX = "th_get_passage_index";
 const NOTES = "th_get_notes";
+const SEARCH = "th_search";
 
 const REFERENCE_TOOLS = new Set([PASSAGE, QUESTIONS, INDEX, NOTES]);
 
@@ -31,6 +32,10 @@ export function normalizeV3ToolArgs(
   toolName: string,
   rawArgs: unknown,
 ): Record<string, unknown> {
+  if (toolName === SEARCH) {
+    return normalizeSearchType(normalizeToolArgs("list_languages", rawArgs));
+  }
+
   if (!REFERENCE_TOOLS.has(toolName)) {
     return normalizeToolArgs(unprefixed(toolName), rawArgs);
   }
@@ -55,6 +60,59 @@ export function normalizeV3ToolArgs(
     ...(language !== undefined ? { language } : {}),
     ...extras,
   };
+}
+
+function aliasString(value: unknown): string | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (Array.isArray(value)) {
+    const joined = value
+      .map((item) => String(item).trim())
+      .filter(Boolean)
+      .join(",");
+    return joined || undefined;
+  }
+  const text = String(value).trim();
+  return text || undefined;
+}
+
+/**
+ * `type` is the v3 field. `types` and `resourceType` are the v2 names.
+ * "ta,tw" means both, so the field is omitted and the search route defaults
+ * to every catalog.
+ */
+function normalizeSearchType(
+  args: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...args };
+  const raw =
+    aliasString(out.type) ??
+    aliasString(out.types) ??
+    aliasString(out.resourceType);
+  delete out.type;
+  delete out.types;
+  delete out.resourceType;
+  if (!raw) return out;
+
+  const parts = [
+    ...new Set(
+      raw
+        .split(",")
+        .map((part) => part.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ];
+  if (parts.length === 1 && (parts[0] === "tw" || parts[0] === "ta")) {
+    out.type = parts[0];
+    return out;
+  }
+  if (
+    parts.length > 0 &&
+    parts.every((part) => part === "tw" || part === "ta")
+  ) {
+    return out;
+  }
+  out.type = raw.toLowerCase();
+  return out;
 }
 
 /** `th_list_resources` → `list_resources`. Other names pass through. */

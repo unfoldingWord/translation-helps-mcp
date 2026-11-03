@@ -33,11 +33,13 @@ import {
   V3_SERVER_INSTRUCTIONS,
 } from "./instructions.js";
 import { V3NormalizingMcpServer } from "./server.js";
+import { getArticleV3Tool } from "./tools/getArticle.js";
 import { getNotesV3Tool } from "./tools/getNotes.js";
 import { getPassageV3Tool } from "./tools/getPassage.js";
 import { getPassageIndexV3Tool } from "./tools/getPassageIndex.js";
 import { getQuestionsV3Tool } from "./tools/getQuestions.js";
 import { listResourcesV3Tool } from "./tools/listResources.js";
+import { searchV3Tool } from "./tools/search.js";
 
 export type ResolveV3Env = () => Env;
 
@@ -65,6 +67,8 @@ const V3_TOOLS: V3Tool[] = [
   listResourcesV3Tool as V3Tool,
   getPassageIndexV3Tool as V3Tool,
   getNotesV3Tool as V3Tool,
+  getArticleV3Tool as V3Tool,
+  searchV3Tool as V3Tool,
 ];
 
 function mcpError(err: TranslationHelpsError): {

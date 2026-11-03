@@ -22,6 +22,8 @@ export interface ArticlePayload {
   message?: string;
   hints?: string[];
   candidates?: Array<{ path: string; title: string }>;
+  /** Translation Academy question, from sub-title.md when the zip has one. */
+  subtitle?: string;
 }
 
 export function presentArticle(

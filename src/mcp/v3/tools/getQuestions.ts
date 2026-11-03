@@ -12,12 +12,12 @@ import { ErrorCode, TranslationHelpsError } from "../../../core/errors.js";
 import { ApiClient } from "../../apiClient.js";
 import type { Env } from "../../agent.js";
 import {
-  languageParam,
   metaOutputSchema,
   notAvailable,
   ok,
   withNotAvailableOutput,
 } from "../../tools/shared.js";
+import { v3LanguageParam } from "../params.js";
 import {
   introductionNotesMessage,
   V3_LIST_RESOURCES_HINT,
@@ -25,13 +25,8 @@ import {
 import { readReference, type ReferenceRead } from "../readReference.js";
 
 const inputSchema = z.object({
-  reference: z
-    .string()
-    .min(1)
-    .describe(
-      'A Bible passage ("JHN 3:16", "GEN 1") or an OBS reference ("OBS 3:5", "OBS 1:3", "3:5").',
-    ),
-  language: languageParam,
+  reference: z.string().min(1).describe("A Bible passage or an OBS reference."),
+  language: v3LanguageParam,
   kind: z
     .enum(["translation", "study"])
     .default("translation")
@@ -45,7 +40,7 @@ const inputSchema = z.object({
  * call is a soft "not available", and the model should see that before it calls.
  */
 export const GET_QUESTIONS_DESCRIPTION =
-  "Comprehension questions for a passage. `kind`: translation (default) or study. " +
+  "Comprehension questions. kind is translation (default) or study. " +
   "Bible study questions are not available; OBS study questions are OBS-SQ.";
 
 const outputSchema = withNotAvailableOutput({

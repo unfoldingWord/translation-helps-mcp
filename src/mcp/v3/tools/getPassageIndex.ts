@@ -23,12 +23,12 @@ import {
 import { ApiClient, ApiClientError } from "../../apiClient.js";
 import type { Env } from "../../agent.js";
 import {
-  languageParam,
   mapApiCacheStatus,
   notAvailable,
   okCached,
   withNotAvailableOutput,
 } from "../../tools/shared.js";
+import { v3LanguageParam } from "../params.js";
 import {
   introductionNotesMessage,
   V3_LIST_RESOURCES_HINT,
@@ -43,10 +43,8 @@ const inputSchema = z.object({
   reference: z
     .string()
     .min(1)
-    .describe(
-      'A Bible passage, chapter or book ("GEN 9:9", "JON 1", "Jonah") or an OBS reference ("OBS 1:3", "OBS 1", "OBS 3:1-3").',
-    ),
-  language: languageParam,
+    .describe("A Bible passage, chapter or book, or an OBS reference."),
+  language: v3LanguageParam,
   limit: z
     .number()
     .int()
@@ -81,12 +79,10 @@ const inputSchema = z.object({
  * fetch. Availability is th_list_resources.
  */
 export const GET_PASSAGE_INDEX_DESCRIPTION =
-  "What a passage, chapter or whole book has, without bodies: notes, key terms, translation issues, introductions. Each row names the call that fetches it. " +
-  "issues and keyTerms do not: their path goes to th_get_article. " +
+  "Notes, words, issues, key terms and introductions, without bodies. Each row has next, except issues and keyTerms: their path goes to th_get_article. " +
   "Notes and words are paged (limit defaults to 200 for a passage or chapter, and to 50 for a whole book, with offset, total and has_more). " +
-  "issues stays complete, sorted by count. keyTerms is the first 100 by count; keyTermsTotal is the full count, and rollupOffset skips that many to read the rest. " +
-  "Introductions stay complete. " +
-  "Which resources exist is th_list_resources(language, book), not this tool.";
+  "issues stays complete, sorted by count. keyTerms is the first 100 by count; keyTermsTotal is the full count, and rollupOffset skips that many. " +
+  "Introductions stay complete. Which resources exist is th_list_resources.";
 
 const outputSchema = withNotAvailableOutput({
   kind: z.enum(["bible", "obs"]).optional(),

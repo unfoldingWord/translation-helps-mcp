@@ -22,11 +22,11 @@ import { passageRowReference } from "../../../core/passageReference.js";
 import { ApiClient } from "../../apiClient.js";
 import type { Env } from "../../agent.js";
 import {
-  languageParam,
   notAvailable,
   ok,
   withNotAvailableOutput,
 } from "../../tools/shared.js";
+import { v3LanguageParam } from "../params.js";
 import { V3_LIST_RESOURCES_HINT } from "../instructions.js";
 import {
   readReference,
@@ -38,10 +38,8 @@ const inputSchema = z.object({
   reference: z
     .string()
     .min(1)
-    .describe(
-      'A passage ("GEN 9:9", "JON 1"), an introduction ("JON front:intro", "JON 1:intro"), a book ("Jonah"), or an OBS reference ("OBS 1:3", "OBS 1").',
-    ),
-  language: languageParam,
+    .describe("A passage, an introduction, a book, or an OBS reference."),
+  language: v3LanguageParam,
   ids: z
     .array(z.string())
     .optional()
@@ -72,7 +70,7 @@ const inputSchema = z.object({
  * phrase with no match is an empty list.
  */
 export const GET_NOTES_DESCRIPTION =
-  "Note bodies for a passage, an introduction (JHN front:intro) or a book. `kind`: translation (default) or study. Filter by index ids or a phrase. " +
+  "Note bodies and introductions. kind is translation (default) or study. Filter by index ids or a phrase. " +
   "A book alone returns its introduction. Bible study notes are not available. A phrase that matches nothing returns notes: [].";
 
 const outputSchema = withNotAvailableOutput({

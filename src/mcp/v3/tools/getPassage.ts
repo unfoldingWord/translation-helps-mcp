@@ -10,7 +10,6 @@ import { ErrorCode, TranslationHelpsError } from "../../../core/errors.js";
 import { ApiClient } from "../../apiClient.js";
 import type { Env } from "../../agent.js";
 import {
-  languageParam,
   mapApiCacheStatus,
   metaOutputSchema,
   okCached,
@@ -18,6 +17,7 @@ import {
   withNotAvailableOutput,
   type ToolModule,
 } from "../../tools/shared.js";
+import { v3LanguageParam } from "../params.js";
 import {
   introductionNotesMessage,
   V3_LIST_RESOURCES_HINT,
@@ -29,9 +29,9 @@ const inputSchema = z.object({
     .string()
     .min(1)
     .describe(
-      'A Bible passage ("JHN 3:16", "John 3:16-18", "GEN 1") or an OBS reference ("OBS 3:5", "OBS 3:1-3", "OBS 3", "3:5"). A book alone is not a passage.',
+      "A Bible passage or an OBS reference. A book alone is not a passage.",
     ),
-  language: languageParam,
+  language: v3LanguageParam,
   format: z
     .enum(["text", "usfm"])
     .optional()
@@ -48,9 +48,9 @@ const BOOK_ALONE =
  * `format` is on the schema; the sentence says OBS ignores it.
  */
 export const GET_PASSAGE_DESCRIPTION =
-  "Text of a Bible passage or an OBS frame. Bible returns literal, simplified and original versions. Examples: JHN 3:16, OBS 3:5. " +
-  'Bible `format`: "text" (default) or "usfm"; ignored for OBS. ' +
-  'A whole book is not a passage: give a chapter (for example "JON 1"). th_get_passage_index takes a whole book.';
+  "Text of a Bible passage (literal, simplified and original versions) or an OBS frame. " +
+  'Bible format is "text" (default) or "usfm"; ignored for OBS. ' +
+  'A book alone is not a passage: give a chapter (for example "JON 1"). th_get_passage_index takes a whole book.';
 
 const outputSchema = withNotAvailableOutput({
   kind: z.enum(["bible", "obs"]).optional(),

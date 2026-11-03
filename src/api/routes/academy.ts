@@ -130,11 +130,18 @@ export async function handleAcademyPath(ctx: RouteContext): Promise<Response> {
   const fetcher = makeFetcher(env, execCtx);
   const zip = await fetcher.getOrDownloadZip(catalog.zipUrl);
   let article: string | null = null;
+  let subtitle: string | undefined;
   if (match.status === "exact" || match.status === "resolved") {
     article =
       (await fetcher.extractFileFromZip(zip, `${match.path}/01.md`)) ??
       (await fetcher.extractFileFromZip(zip, `${match.path}.md`)) ??
       (await fetcher.extractFileFromZip(zip, match.path));
+    const subtitleFile = await fetcher.extractFileFromZip(
+      zip,
+      `${match.path}/sub-title.md`,
+    );
+    const question = subtitleFile?.replace(/^#+\s*/, "").trim();
+    if (question) subtitle = question;
   }
   const titles = new Map(
     catalog.articles.map((item) => [item.path, item.title]),
@@ -148,5 +155,6 @@ export async function handleAcademyPath(ctx: RouteContext): Promise<Response> {
     match,
     article,
     titleOf: (path) => titles.get(path),
+    ...(subtitle ? { subtitle } : {}),
   });
 }

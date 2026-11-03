@@ -1,8 +1,7 @@
 /**
- * Placeholder instructions for /v3/mcp.
- * T-053 replaces this with the finished workflow text.
+ * Server instructions for /v3/mcp. Read once.
  * No assistant persona. The language rule and the two reference forms
- * are stated once, here, not repeated inside every tool.
+ * are stated here, not repeated inside every tool.
  */
 
 /** Told to the model when a v3 resource is missing. Names the v3 tool, not v2's. */
@@ -19,15 +18,21 @@ export function introductionNotesMessage(reference: string): string {
 
 export const V3_SERVER_INSTRUCTIONS = `Translation Helps serves unfoldingWord and Door43 resources used to translate the Bible.
 
-Language: pass the BCP-47 code the user asked for, such as "es" or "es-419". Use "en" only when they did not name a language. Call th_list_resources with no language to see the codes.
+Language: pass the BCP-47 code the user asked for, such as "es" or "es-419". Use "en" only when they did not name a language.
 
 References have two forms.
-Bible: a book with a chapter or verse, such as "JHN 3:16", "John 3", "GEN 1" or "JON 1". A book alone, such as "Jonah", is not a passage: th_get_passage_index takes a whole book, and th_get_notes returns its introduction. Introductions are notes: pass that reference to th_get_notes, for example "JHN 1:intro" or "JHN front:intro". Optional Bible format is "text" (default) or "usfm".
-Open Bible Stories: "OBS 3:5", "OBS 3", "OBS 3:1-3", a bare "3:5" or "3", or "OBS front" for the front matter.
+Bible: "JHN 3:16", "John 3", "GEN 1", or a whole book such as "Jonah". A book alone is not a passage. Introductions are "JHN 1:intro" or "JHN front:intro".
+Open Bible Stories: "OBS 3:5", "OBS 3", "OBS 3:1-3", a bare "3:5" or "3", or "OBS front".
 
-Tools on this server:
-th_get_passage — text of a Bible passage (literal, simplified and original versions) or an OBS frame.
-th_get_passage_index — what a passage, chapter or whole book has, without bodies. Each row names the call that fetches it. A rollup's path goes to th_get_article. A whole book pages notes and words (default 50) and key terms (100 at a time).
-th_get_notes — note bodies for a passage, an introduction or a book. kind is "translation" (the default) or "study".
-th_get_questions — comprehension questions. kind is "translation" (the default) or "study". The Bible has translation questions only. OBS study questions are OBS-SQ.
-th_list_resources — the languages, or what one language has.`;
+Which tool:
+th_get_passage — the text of a passage.
+th_get_passage_index — what a passage, chapter or book has, without bodies.
+th_get_notes — note bodies and introductions.
+th_get_questions — comprehension questions.
+th_get_article — a term or a translation concept. A term is enough.
+th_search — no passage: find an article by concept. Notes search across books comes later.
+th_list_resources — what a language has, or the language list when language is omitted.
+
+How to read an answer: follow next. candidates means more than one match, so pick one or ask. available: false means the resource does not exist, and that is not an error.
+
+When the data is not there, say so. Do not answer from memory.`;
