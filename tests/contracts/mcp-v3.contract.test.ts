@@ -30,6 +30,14 @@ import {
   GET_NOTES_DESCRIPTION,
   getNotesV3Tool,
 } from "../../src/mcp/v3/tools/getNotes.js";
+import {
+  GET_ARTICLE_DESCRIPTION,
+  getArticleV3Tool,
+} from "../../src/mcp/v3/tools/getArticle.js";
+import {
+  SEARCH_DESCRIPTION,
+  searchV3Tool,
+} from "../../src/mcp/v3/tools/search.js";
 
 const MCP_HEADERS = {
   "Content-Type": "application/json",
@@ -73,6 +81,8 @@ const V3_TOOL_NAMES = [
   "th_list_resources",
   "th_get_passage_index",
   "th_get_notes",
+  "th_get_article",
+  "th_search",
 ];
 
 interface DoNamespace {
@@ -223,6 +233,42 @@ function apiFetcher(calls: URL[]): Fetcher {
           ],
         });
       }
+      if (path.includes("/words/")) {
+        return Response.json({
+          language: "en",
+          path: "bible/kt/hades",
+          title: "Hades, Sheol",
+          article: "# Hades, Sheol\n\nThe place of the dead.\n",
+          requestedPath: url.searchParams.get("requestedPath"),
+          resolvedFrom: "title",
+          related: [],
+        });
+      }
+      if (path.endsWith("/search")) {
+        const types = url.searchParams.get("types");
+        const results = [];
+        if (!types || types.split(",").includes("ta")) {
+          results.push({
+            path: "translate/figs-metaphor",
+            title: "Metaphor",
+            resourceType: "ta",
+            score: 1,
+          });
+        }
+        if (!types || types.split(",").includes("tw")) {
+          results.push({
+            path: "bible/kt/covenant",
+            title: "Covenant",
+            resourceType: "tw",
+            score: 0.5,
+          });
+        }
+        return Response.json({
+          q: url.searchParams.get("q"),
+          language: url.searchParams.get("language") ?? "en",
+          results,
+        });
+      }
       if (path.endsWith("/notes")) {
         return Response.json({
           book: "JON",
@@ -357,7 +403,7 @@ describe("/v3/mcp worker fetch", () => {
     resetRateLimitStoreForTests();
   });
 
-  it("lists exactly the five v3 tools, in registration order", async () => {
+  it("lists exactly the seven v3 tools, in registration order", async () => {
     const namespace = durableObjectNamespace();
     const analytics: AnalyticsSpy = { points: [] };
     const response = await postMcp(
@@ -376,6 +422,8 @@ describe("/v3/mcp worker fetch", () => {
       listResourcesV3Tool.description,
       getPassageIndexV3Tool.description,
       getNotesV3Tool.description,
+      getArticleV3Tool.description,
+      searchV3Tool.description,
     ]);
     expect(getPassageV3Tool.description).toBe(GET_PASSAGE_DESCRIPTION);
     expect(getQuestionsV3Tool.description).toBe(GET_QUESTIONS_DESCRIPTION);
@@ -384,6 +432,19 @@ describe("/v3/mcp worker fetch", () => {
       GET_PASSAGE_INDEX_DESCRIPTION,
     );
     expect(getNotesV3Tool.description).toBe(GET_NOTES_DESCRIPTION);
+    expect(getArticleV3Tool.description).toBe(GET_ARTICLE_DESCRIPTION);
+    expect(searchV3Tool.description).toBe(SEARCH_DESCRIPTION);
+    const search = tools.find((tool) => tool.name === "th_search") as {
+      inputSchema?: {
+        properties?: { query?: { description?: string } };
+      };
+    };
+    const query = search.inputSchema?.properties?.query?.description ?? "";
+    expect(query.endsWith("Each result has next for th_get_article.")).toBe(
+      true,
+    );
+    expect(query).not.toMatch(/Pass the matching path/);
+    expect(query).toMatch(/figures of speech about the body/);
     const passage = tools.find((tool) => tool.name === "th_get_passage");
     const passageSchema = passage?.inputSchema as {
       properties?: { format?: { enum?: string[] } };
@@ -391,10 +452,63 @@ describe("/v3/mcp worker fetch", () => {
     };
     expect(passageSchema.properties?.format?.enum).toEqual(["text", "usfm"]);
     expect(passageSchema.required ?? []).not.toContain("format");
+    for (const tool of tools) {
+      const listed = tool as {
+        title?: string;
+        annotations?: {
+          title?: string;
+          readOnlyHint?: boolean;
+          destructiveHint?: boolean;
+          idempotentHint?: boolean;
+          openWorldHint?: boolean;
+        };
+        inputSchema?: { properties?: Record<string, unknown> };
+        outputSchema?: { properties?: Record<string, unknown> };
+      };
+      expect(listed.title).toBeTruthy();
+      expect(listed.annotations).toMatchObject({
+        title: listed.title,
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      });
+    }
+    const notes = tools.find((tool) => tool.name === "th_get_notes") as {
+      inputSchema?: { properties?: Record<string, unknown> };
+    };
+    expect(notes.inputSchema?.properties).not.toHaveProperty("id");
+    expect(notes.inputSchema?.properties).toHaveProperty("ids");
+    const list = tools.find((tool) => tool.name === "th_list_resources") as {
+      inputSchema?: { properties?: Record<string, unknown> };
+      outputSchema?: { properties?: Record<string, unknown> };
+    };
+    expect(list.inputSchema?.properties).not.toHaveProperty("reference");
+    expect(list.inputSchema?.properties).toHaveProperty("book");
+    expect(list.outputSchema?.properties).not.toHaveProperty("requestId");
+    expect(list.outputSchema?.properties).not.toHaveProperty("total_count");
+    expect(list.outputSchema?.properties).toHaveProperty("total");
+    expect(list.outputSchema?.properties).toHaveProperty("next_offset");
+    const index = tools.find(
+      (tool) => tool.name === "th_get_passage_index",
+    ) as {
+      description?: string;
+      inputSchema?: { properties?: Record<string, unknown> };
+      outputSchema?: { properties?: Record<string, unknown> };
+    };
+    expect(index.inputSchema?.properties).toHaveProperty("keyTermsOffset");
+    expect(index.inputSchema?.properties).not.toHaveProperty("rollupOffset");
+    expect(index.outputSchema?.properties).toHaveProperty("keyTermsOffset");
+    expect(index.outputSchema?.properties).not.toHaveProperty("rollupOffset");
+    expect(index.description).toMatch(
+      /An issue or key term has no next: call th_get_article with its path/,
+    );
+    expect(index.outputSchema?.properties).toHaveProperty("next_offset");
+    expect(index.outputSchema?.properties).not.toHaveProperty("keyTermsTotal");
     expect(namespace.names).toEqual([]);
   });
 
-  it("answers initialize as 2.7.0 with no session and no persona", async () => {
+  it("answers initialize as 2.8.0 with no session and no persona", async () => {
     const namespace = durableObjectNamespace();
     const response = await postMcp(
       "/v3/mcp",
@@ -410,7 +524,7 @@ describe("/v3/mcp worker fetch", () => {
     const body = await readJson(response);
     expect(body.result?.serverInfo).toEqual({
       name: SERVER_NAME,
-      version: "2.7.0",
+      version: "2.8.0",
     });
     const instructions = body.result?.instructions ?? "";
     expect(instructions).not.toMatch(/You are Ezer/);
@@ -419,6 +533,14 @@ describe("/v3/mcp worker fetch", () => {
     expect(instructions).toContain("th_list_resources");
     expect(instructions).toContain("th_get_passage_index");
     expect(instructions).toContain("th_get_notes");
+    expect(instructions).toContain("th_get_article");
+    expect(instructions).toContain("th_search");
+    expect(instructions).toMatch(/available:\s*false/);
+    expect(instructions).toMatch(/isError/);
+    expect(instructions).not.toMatch(/comes later/i);
+    expect(instructions).toMatch(
+      /an article with otherCandidates is the answer/,
+    );
     expect(instructions).toMatch(/JHN 3:16/);
     expect(instructions).toMatch(/3:5/);
     expect(namespace.names).toEqual([]);
@@ -603,11 +725,57 @@ describe("/v3/mcp worker fetch", () => {
         expect.objectContaining({ code: "en" }),
         expect.objectContaining({ code: "es-419" }),
       ],
+      total: 2,
+      has_more: false,
     });
+    expect(body.result?.structuredContent).not.toHaveProperty("requestId");
+    expect(body.result?.structuredContent).not.toHaveProperty("total_count");
+    expect(JSON.stringify(body.result?.content)).not.toMatch(/requestId/);
     expect(calls.map((url) => url.pathname)).toContain("/api/v1/languages");
     expect(calls.some((url) => url.pathname.endsWith("/resources"))).toBe(
       false,
     );
+  });
+
+  it("still accepts a note id and a resource reference that are not in the schema", async () => {
+    const namespace = durableObjectNamespace();
+    const calls: URL[] = [];
+    const env = baseEnv(namespace, { points: [] }, calls);
+    const notes = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc("tools/call", {
+          name: "th_get_notes",
+          arguments: { reference: "JHN 3:16", language: "en", id: "a" },
+        }),
+        env,
+      ),
+    );
+    expect(notes.result?.isError).not.toBe(true);
+    const rows = notes.result?.structuredContent?.notes as Array<{
+      id: string;
+    }>;
+    expect(rows.map((row) => row.id)).toEqual(["a"]);
+
+    const listed = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc(
+          "tools/call",
+          {
+            name: "th_list_resources",
+            arguments: { language: "en", reference: "JHN 3:16" },
+          },
+          2,
+        ),
+        env,
+      ),
+    );
+    expect(listed.result?.isError).not.toBe(true);
+    const resources = calls.find((url) => url.pathname.endsWith("/resources"));
+    expect(resources?.searchParams.get("book")).toBe("JHN");
+    expect(resources?.searchParams.get("reference")).toBeNull();
+    expect(listed.result?.structuredContent).not.toHaveProperty("requestId");
   });
 
   it("answers a session id with 405 and Allow: POST, and does not open a Durable Object", async () => {
@@ -962,5 +1130,130 @@ describe("/v3/mcp worker fetch", () => {
     expect(JSON.stringify(none.result?.structuredContent)).toMatch(
       /zzzz nothing/,
     );
+  });
+
+  it("accepts keyTermsOffset and the old rollupOffset name", async () => {
+    const namespace = durableObjectNamespace();
+    const calls: URL[] = [];
+    const env = baseEnv(namespace, { points: [] }, calls);
+    const named = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc("tools/call", {
+          name: "th_get_passage_index",
+          arguments: {
+            reference: "JON",
+            language: "en",
+            keyTermsOffset: 100,
+          },
+        }),
+        env,
+      ),
+    );
+    expect(named.result?.isError).not.toBe(true);
+    expect(named.result?.structuredContent?.keyTermsOffset).toBe(100);
+    expect(named.result?.structuredContent).not.toHaveProperty("rollupOffset");
+
+    const legacy = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc(
+          "tools/call",
+          {
+            name: "th_get_passage_index",
+            arguments: {
+              reference: "JON",
+              language: "en",
+              rollupOffset: 100,
+            },
+          },
+          2,
+        ),
+        env,
+      ),
+    );
+    expect(legacy.result?.isError).not.toBe(true);
+    expect(legacy.result?.structuredContent?.keyTermsOffset).toBe(100);
+    expect(legacy.result?.structuredContent).not.toHaveProperty("rollupOffset");
+  });
+
+  it("returns the Hades article for sheol without a session", async () => {
+    const namespace = durableObjectNamespace();
+    const calls: URL[] = [];
+    const body = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc("tools/call", {
+          name: "th_get_article",
+          arguments: { path: "sheol" },
+        }),
+        baseEnv(namespace, { points: [] }, calls),
+      ),
+    );
+    expect(body.result?.isError).not.toBe(true);
+    expect(body.result?.structuredContent).toMatchObject({
+      type: "tw",
+      path: "bible/kt/hades",
+      title: "Hades, Sheol",
+      resolvedFrom: "title",
+    });
+    const words = calls.find((url) => url.pathname.includes("/words/"));
+    expect(words?.pathname).toBe("/api/v1/words/sheol");
+    expect(words?.searchParams.get("prepared")).toBe("1");
+    expect(words?.searchParams.get("language")).toBe("en");
+    expect(namespace.names).toEqual([]);
+  });
+
+  it("searches Translation Academy when type is ta, and accepts resourceType", async () => {
+    const namespace = durableObjectNamespace();
+    const calls: URL[] = [];
+    const env = baseEnv(namespace, { points: [] }, calls);
+    const typed = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc("tools/call", {
+          name: "th_search",
+          arguments: { query: "metaphor", type: "ta" },
+        }),
+        env,
+      ),
+    );
+    expect(typed.result?.isError).not.toBe(true);
+    expect(typed.result?.structuredContent?.results).toEqual([
+      {
+        path: "translate/figs-metaphor",
+        type: "ta",
+        title: "Metaphor",
+        score: 1,
+        next: {
+          tool: "th_get_article",
+          args: { path: "translate/figs-metaphor" },
+        },
+      },
+    ]);
+    expect(
+      calls
+        .find((url) => url.pathname.endsWith("/search"))
+        ?.searchParams.get("types"),
+    ).toBe("ta");
+
+    const alias = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc(
+          "tools/call",
+          {
+            name: "th_search",
+            arguments: { query: "metaphor", resourceType: "ta" },
+          },
+          2,
+        ),
+        env,
+      ),
+    );
+    expect(alias.result?.isError).not.toBe(true);
+    const searchCalls = calls.filter((url) => url.pathname.endsWith("/search"));
+    expect(searchCalls[1]?.searchParams.get("types")).toBe("ta");
+    expect(namespace.names).toEqual([]);
   });
 });

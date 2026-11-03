@@ -3,8 +3,8 @@
  *
  * Bible translation: GET /api/v1/questions (v2 get_questions).
  * Bible study: not available (no study-question resource today).
- * OBS translation: GET /api/v1/obs-questions (OBS-TQ).
- * OBS study: GET /api/v1/obs-study-questions (OBS-SQ).
+ * OBS translation: GET /api/v1/obs-questions.
+ * OBS study: GET /api/v1/obs-study-questions.
  */
 
 import { z } from "zod";
@@ -12,12 +12,11 @@ import { ErrorCode, TranslationHelpsError } from "../../../core/errors.js";
 import { ApiClient } from "../../apiClient.js";
 import type { Env } from "../../agent.js";
 import {
-  languageParam,
-  metaOutputSchema,
   notAvailable,
   ok,
   withNotAvailableOutput,
 } from "../../tools/shared.js";
+import { v3LanguageParam } from "../params.js";
 import {
   introductionNotesMessage,
   V3_LIST_RESOURCES_HINT,
@@ -29,24 +28,29 @@ const inputSchema = z.object({
     .string()
     .min(1)
     .describe(
-      'A Bible passage ("JHN 3:16", "GEN 1") or an OBS reference ("OBS 3:5", "OBS 1:3", "3:5").',
+      'A Bible passage or an Open Bible Stories reference, e.g. "JHN 3:16", "John 3", "OBS 3:5" or "OBS 3".',
     ),
-  language: languageParam,
+  language: v3LanguageParam,
   kind: z
     .enum(["translation", "study"])
     .default("translation")
     .describe(
-      '"translation" (default) or "study". The Bible has translation questions only. OBS study questions are OBS-SQ.',
+      '"translation" (default) or "study". "study" is Open Bible Stories study questions for discussion groups, which often cover a range of frames. The Bible has translation questions only.',
     ),
 });
 
 /**
- * Proposal description, plus where study questions exist. A Bible `study`
- * call is a soft "not available", and the model should see that before it calls.
+ * Study questions exist for Open Bible Stories. A Bible `study` call is a
+ * soft "not available", and the description says so before the call.
  */
 export const GET_QUESTIONS_DESCRIPTION =
-  "Comprehension questions for a passage. `kind`: translation (default) or study. " +
-  "Bible study questions are not available; OBS study questions are OBS-SQ.";
+  'Returns comprehension questions for a Bible passage or an Open Bible Stories reference, each with its expected answer. They check whether a translation draft says what the source says: use them after drafting, or when the user asks for questions on a passage. kind "study" returns Open Bible Stories study questions, about meaning and application for discussion groups, which often cover a range of frames; the Bible has only translation questions. Not every language or book has questions: available false means none exist.';
+
+const v3MetaOutputSchema = z
+  .object({
+    cache: z.string().optional(),
+  })
+  .optional();
 
 const outputSchema = withNotAvailableOutput({
   kind: z.enum(["bible", "obs"]).optional(),
@@ -54,7 +58,7 @@ const outputSchema = withNotAvailableOutput({
   reference: z.string().optional(),
   language: z.string().optional(),
   questions: z.array(z.record(z.string(), z.unknown())).optional(),
-  meta: metaOutputSchema,
+  meta: v3MetaOutputSchema,
 });
 
 export const getQuestionsV3Tool = {
@@ -118,7 +122,7 @@ export const getQuestionsV3Tool = {
     }
 
     const questions = Array.isArray(data.questions) ? data.questions : [];
-    const meta = data.meta;
+    const meta = cacheOnly(data.meta);
     return ok(
       {
         kind: value.kind,
@@ -126,7 +130,7 @@ export const getQuestionsV3Tool = {
         reference: value.reference,
         language: stringField(data.language) ?? language,
         questions,
-        ...(meta && typeof meta === "object" ? { meta } : {}),
+        ...(meta ? { meta } : {}),
       },
       `${questions.length} ${questionKind} question(s) for ${value.reference} (${language})`,
     );
@@ -157,4 +161,10 @@ function invalid(message: string): TranslationHelpsError {
 
 function stringField(value: unknown): string | undefined {
   return typeof value === "string" && value ? value : undefined;
+}
+
+function cacheOnly(meta: unknown): { cache: string } | undefined {
+  if (!meta || typeof meta !== "object") return undefined;
+  const cache = (meta as { cache?: unknown }).cache;
+  return typeof cache === "string" && cache ? { cache } : undefined;
 }

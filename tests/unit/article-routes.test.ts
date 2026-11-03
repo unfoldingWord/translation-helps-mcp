@@ -57,7 +57,7 @@ vi.mock("@translation-helps/door43", async (importOriginal) => {
   };
 });
 
-import { fillArticleZips } from "../fixtures/articleZips.js";
+import { EN_TA_ZIP, fillArticleZips } from "../fixtures/articleZips.js";
 import { clearArticleCatalogCacheForTests } from "../../src/api/routes/articleCatalog.js";
 import { handleWordsPath } from "../../src/api/routes/words.js";
 import { handleAcademyPath } from "../../src/api/routes/academy.js";
@@ -324,6 +324,23 @@ describe("word and academy routes", () => {
     );
     expect(exact.body.path).toBe("translate/figs-metaphor");
     expect(exact.body.resolvedFrom).toBeUndefined();
+    expect(exact.body.subtitle).toBeUndefined();
+
+    catalog.zips
+      .get(EN_TA_ZIP)
+      ?.set(
+        "en_ta/translate/figs-metaphor/sub-title.md",
+        "What is a metaphor?\n",
+      );
+    clearArticleCatalogCacheForTests();
+    const withQuestion = await read(
+      await handleAcademyPath({
+        url: routeUrl({ language: "en" }),
+        env: {} as never,
+        pathParam: "translate/figs-metaphor",
+      }),
+    );
+    expect(withQuestion.body.subtitle).toBe("What is a metaphor?");
 
     const flagged = await read(
       await handleAcademyPath({

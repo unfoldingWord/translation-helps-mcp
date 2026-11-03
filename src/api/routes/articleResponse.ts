@@ -19,6 +19,7 @@ export function jsonArticleMatch(options: {
   match: ArticleMatch;
   article: string | null;
   titleOf: (path: string) => string | undefined;
+  subtitle?: string;
 }): Response {
   const {
     kind,
@@ -28,6 +29,7 @@ export function jsonArticleMatch(options: {
     match,
     article,
     titleOf,
+    subtitle,
   } = options;
   const tool = kind === "tw" ? "get_word_article" : "get_academy_article";
   const label = kind === "tw" ? "Translation Words" : "Translation Academy";
@@ -75,5 +77,6 @@ export function jsonArticleMatch(options: {
     title,
     article,
     related,
+    ...(subtitle ? { subtitle } : {}),
   });
 }
