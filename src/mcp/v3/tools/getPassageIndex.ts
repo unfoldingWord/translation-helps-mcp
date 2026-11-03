@@ -2,8 +2,9 @@
  * v3 th_get_passage_index — one index for Bible and OBS, without bodies.
  *
  * Bible calls GET /api/v1/notes and /api/v1/word-links. A whole book is one
- * call per TSV (the route reads the book file once), not a call per chapter.
- * OBS calls GET /api/v1/obs-notes and /api/v1/obs-word-links.
+ * call per TSV with `fields=index` (compact rows, no bodies, no alignment),
+ * not a call per chapter. OBS calls GET /api/v1/obs-notes and
+ * /api/v1/obs-word-links.
  */
 
 import { z } from "zod";
@@ -51,7 +52,7 @@ const inputSchema = z.object({
     .positive()
     .optional()
     .describe(
-      "How many notes and how many words to return. Default 200. issues, keyTerms and introductions are not paged.",
+      "How many notes and how many words to return. Default 200 for a passage or chapter, 50 for a whole book. issues and introductions are not paged. keyTerms uses rollupOffset.",
     ),
   offset: z
     .number()
@@ -61,16 +62,27 @@ const inputSchema = z.object({
     .describe(
       "How many notes and words to skip. Default 0. The same offset applies to both lists.",
     ),
+  rollupOffset: z
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .describe(
+      "How many key terms to skip after sorting by count. Default 0. Each page has 100. keyTermsTotal is the full count.",
+    ),
 });
 
 /**
  * Proposal description, plus paging and where availability lives.
- * Paging is required so a whole book stays one call and still says how to
- * continue. Availability is th_list_resources, so this tool does not repeat it.
+ * A whole book's first page has to fit a model's turn, so notes and words
+ * default to 50 there and key terms to 100. issues stay complete: the TA
+ * catalog is a bounded set. Availability is th_list_resources.
  */
 export const GET_PASSAGE_INDEX_DESCRIPTION =
   "What a passage, chapter or whole book has, without bodies: notes, key terms, translation issues, introductions. Each row names the call that fetches it. " +
-  "A whole book pages notes and words (limit defaults to 200, with offset, total and has_more); issues, key terms and introductions stay complete. " +
+  "Notes and words are paged (limit defaults to 200 for a passage or chapter, and to 50 for a whole book, with offset, total and has_more). " +
+  "issues stays complete, sorted by count. keyTerms is the first 100 by count; keyTermsTotal is the full count, and rollupOffset skips that many to read the rest. " +
+  "Introductions stay complete. " +
   "Which resources exist is th_list_resources(language, book), not this tool.";
 
 const outputSchema = withNotAvailableOutput({
@@ -84,8 +96,16 @@ const outputSchema = withNotAvailableOutput({
   introductions: z.array(z.record(z.string(), z.unknown())).optional(),
   limit: z.number().optional(),
   offset: z.number().optional(),
+  rollupOffset: z.number().optional(),
   total: z.object({ notes: z.number(), words: z.number() }).optional(),
-  has_more: z.object({ notes: z.boolean(), words: z.boolean() }).optional(),
+  keyTermsTotal: z.number().optional(),
+  has_more: z
+    .object({
+      notes: z.boolean(),
+      words: z.boolean(),
+      keyTerms: z.boolean(),
+    })
+    .optional(),
   notesError: z.string().optional(),
   wordLinksError: z.string().optional(),
   message: z.string().optional(),
@@ -126,23 +146,31 @@ export const getPassageIndexV3Tool = {
       throw invalid(introductionNotesMessage(value.reference));
     }
 
-    const limit = pageLimit(params.limit);
+    const wholeBook = value.kind === "book";
+    const limit = pageLimit(params.limit, wholeBook);
     const offset = pageOffset(params.offset);
+    const rollupOffset = pageOffset(params.rollupOffset);
     const client = new ApiClient(env);
     const apiReference = value.reference;
     const notesPath =
       value.kind === "obs" ? "/api/v1/obs-notes" : "/api/v1/notes";
     const wordsPath =
       value.kind === "obs" ? "/api/v1/obs-word-links" : "/api/v1/word-links";
+    const indexFields = wholeBook ? { fields: "index" } : {};
 
     const [notesSide, wordsSide] = await Promise.all([
-      fetchSide(client, notesPath, { reference: apiReference, language }),
-      fetchSide(client, wordsPath, { reference: apiReference, language }),
+      fetchSide(client, notesPath, {
+        reference: apiReference,
+        language,
+        ...indexFields,
+      }),
+      fetchSide(client, wordsPath, {
+        reference: apiReference,
+        language,
+        ...indexFields,
+      }),
     ]);
 
-    if (notesSide.kind === "failed" && wordsSide.kind === "failed") {
-      throw bothFailed(notesSide.reason, wordsSide.reason);
-    }
     if (notesSide.kind === "missing" && wordsSide.kind === "missing") {
       const detail = [notesSide, wordsSide]
         .map((side) => text(side.value.message))
@@ -216,6 +244,7 @@ export const getPassageIndexV3Tool = {
       language,
       true,
     );
+    const keyTermsPage = page(keyTerms, KEY_TERMS_PAGE, rollupOffset);
 
     const notesPage = page(notes, limit, offset);
     const wordsPage = page(words, limit, offset);
@@ -238,7 +267,7 @@ export const getPassageIndexV3Tool = {
         notes: notesPage.rows,
         words: wordsPage.rows,
         issues,
-        keyTerms,
+        keyTerms: keyTermsPage.rows,
         introductions: introductions.map((row) => {
           const { id, ...rest } = row;
           void id;
@@ -246,14 +275,20 @@ export const getPassageIndexV3Tool = {
         }),
         limit,
         offset,
+        rollupOffset,
         total: { notes: notesPage.total, words: wordsPage.total },
-        has_more: { notes: notesPage.hasMore, words: wordsPage.hasMore },
+        keyTermsTotal: keyTermsPage.total,
+        has_more: {
+          notes: notesPage.hasMore,
+          words: wordsPage.hasMore,
+          keyTerms: keyTermsPage.hasMore,
+        },
         ...(notesError ? { notesError } : {}),
         ...(wordLinksError ? { wordLinksError } : {}),
         ...(messages.length ? { message: messages.join(" ") } : {}),
       },
       mapApiCacheStatus(cache),
-      `${notesPage.total} note(s), ${wordsPage.total} word(s), ${issues.length} issue(s), ${keyTerms.length} key term(s) for ${value.reference}`,
+      `${notesPage.total} note(s), ${wordsPage.total} word(s), ${issues.length} issue(s), ${keyTermsPage.total} key term(s) for ${value.reference}`,
     );
   },
 };
@@ -339,7 +374,7 @@ function bibleIntroductions(
       id: text(front.id),
       scope: "book",
       reference,
-      title: headingTitle(text(front.note), "Introduction"),
+      title: introTitle(front, "Introduction"),
       next: nextNotes(reference, language),
     });
   }
@@ -352,7 +387,7 @@ function bibleIntroductions(
       id: text(row.id),
       scope: "chapter",
       reference,
-      title: headingTitle(text(row.note), `Chapter ${chapter}`),
+      title: introTitle(row, `Chapter ${chapter}`),
       next: nextNotes(reference, language),
     });
   }
@@ -372,7 +407,7 @@ function obsIntroductions(
       id: text(row.id),
       scope: "story",
       reference,
-      title: headingTitle(text(row.note), text(row.quote) || "Front matter"),
+      title: introTitle(row, text(row.quote) || "Front matter"),
       next: nextNotes(reference, language),
     });
   }
@@ -500,19 +535,30 @@ function rollup(
     }));
 }
 
+/**
+ * th_get_notes and th_get_article default language to "en". Omit it when this
+ * request is already that default, so a row does not repeat it. Any other
+ * language has to travel with the call or the next tool would read English.
+ */
 function nextNotes(reference: string, language: string, id?: string): NextCall {
   return {
     tool: "th_get_notes",
     args: {
       reference,
-      language,
+      ...(language === "en" ? {} : { language }),
       ...(id ? { ids: [id] } : {}),
     },
   };
 }
 
 function nextArticle(path: string, language: string): NextCall {
-  return { tool: "th_get_article", args: { path, language } };
+  return {
+    tool: "th_get_article",
+    args: {
+      path,
+      ...(language === "en" ? {} : { language }),
+    },
+  };
 }
 
 function displayQuote(row: Row, rawKey: string): string {
@@ -524,6 +570,12 @@ function displayQuote(row: Row, rawKey: string): string {
     if (original) return original;
   }
   return text(row[rawKey]);
+}
+
+function introTitle(row: Row, fallback: string): string {
+  const heading = text(row.heading);
+  if (heading) return heading;
+  return headingTitle(text(row.note), fallback);
 }
 
 function headingTitle(note: string, fallback: string): string {
@@ -549,10 +601,15 @@ function page<T>(
   return { rows: sliced, total, hasMore: start + sliced.length < total };
 }
 
-function pageLimit(value: number | undefined): number {
-  return typeof value === "number" && Number.isInteger(value) && value > 0
-    ? value
-    : 200;
+const PASSAGE_PAGE = 200;
+const BOOK_PAGE = 50;
+const KEY_TERMS_PAGE = 100;
+
+function pageLimit(value: number | undefined, wholeBook: boolean): number {
+  if (typeof value === "number" && Number.isInteger(value) && value > 0) {
+    return value;
+  }
+  return wholeBook ? BOOK_PAGE : PASSAGE_PAGE;
 }
 
 function pageOffset(value: number | undefined): number {
@@ -569,7 +626,7 @@ type Side =
 async function fetchSide(
   client: ApiClient,
   path: string,
-  params: { reference: string; language: string },
+  params: { reference: string; language: string; fields?: string },
 ): Promise<Side> {
   try {
     const value = await client.get<Row>(path, params);
@@ -611,12 +668,6 @@ function gapMessages(
     );
   }
   return messages;
-}
-
-function bothFailed(notesReason: unknown, wordsReason: unknown): Error {
-  return new Error(
-    `Translation notes failed (${failureText(notesReason)}). Word links failed (${failureText(wordsReason)}).`,
-  );
 }
 
 function failureText(reason: unknown): string {

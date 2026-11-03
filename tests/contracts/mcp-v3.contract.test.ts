@@ -870,6 +870,12 @@ describe("/v3/mcp worker fetch", () => {
     const noteCalls = calls.filter((url) => url.pathname.endsWith("/notes"));
     expect(noteCalls).toHaveLength(1);
     expect(noteCalls[0]?.searchParams.get("reference")).toBe("JON");
+    expect(noteCalls[0]?.searchParams.get("fields")).toBe("index");
+    expect(
+      calls
+        .find((url) => url.pathname.endsWith("/word-links"))
+        ?.searchParams.get("fields"),
+    ).toBe("index");
     const introductions = book.result?.structuredContent?.introductions as
       | Array<{ reference?: string }>
       | undefined;
@@ -881,6 +887,7 @@ describe("/v3/mcp worker fetch", () => {
       | undefined;
     const ids = (indexed ?? []).map((note) => note.id).filter(Boolean);
     expect(ids).toEqual(["a", "b"]);
+    const asked = ["b", "a"];
 
     const frame = await readJson(
       await postMcp(
@@ -917,7 +924,7 @@ describe("/v3/mcp worker fetch", () => {
             arguments: {
               reference: "JON 1",
               language: "en",
-              ids,
+              ids: asked,
             },
           },
           3,
@@ -930,7 +937,7 @@ describe("/v3/mcp worker fetch", () => {
       (notes.result?.structuredContent?.notes as Array<{ id?: string }>)?.map(
         (note) => note.id,
       ),
-    ).toEqual(["a", "b"]);
+    ).toEqual(asked);
 
     const none = await readJson(
       await postMcp(

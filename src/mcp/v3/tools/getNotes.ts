@@ -139,12 +139,16 @@ export const getNotesV3Tool = {
 
     let rows = asRows(data.notes).filter(plan.keep);
     const ids = wantedIds(params);
-    if (ids) rows = rows.filter((row) => ids.has(text(row.id)));
+    if (ids) {
+      const wanted = new Set(ids);
+      rows = rows.filter((row) => wanted.has(text(row.id)));
+    }
     const phrase = text(params.phrase);
     if (phrase) {
       const needle = phrase.toLowerCase();
       rows = rows.filter((row) => phraseHits(row, needle));
     }
+    if (ids) rows = inIdOrder(rows, ids);
 
     const notes = rows.map((row) =>
       shapeNote(row, value, params.reference ?? value.reference, language),
@@ -298,13 +302,28 @@ function alignedQuote(row: Row): string | undefined {
   return aligned || undefined;
 }
 
-function wantedIds(params: {
-  ids?: string[];
-  id?: string;
-}): Set<string> | null {
-  const ids = [...(params.ids ?? [])];
-  if (params.id) ids.push(params.id);
-  return ids.length ? new Set(ids) : null;
+/** Ids in the order the caller asked, with duplicates removed. */
+function wantedIds(params: { ids?: string[]; id?: string }): string[] | null {
+  const ids: string[] = [];
+  for (const id of params.ids ?? []) {
+    if (id && !ids.includes(id)) ids.push(id);
+  }
+  if (params.id && !ids.includes(params.id)) ids.push(params.id);
+  return ids.length ? ids : null;
+}
+
+function inIdOrder(rows: Row[], ids: string[]): Row[] {
+  const byId = new Map<string, Row>();
+  for (const row of rows) {
+    const id = text(row.id);
+    if (!byId.has(id)) byId.set(id, row);
+  }
+  const out: Row[] = [];
+  for (const id of ids) {
+    const row = byId.get(id);
+    if (row) out.push(row);
+  }
+  return out;
 }
 
 function isBibleIntroRow(row: Row): boolean {

@@ -3,6 +3,9 @@
  *
  * Returns all TWL rows for the reference.
  * Enriched with twTitle (from articleTitles) after port-title-resolver step.
+ *
+ * A book alone is 400. `fields=index` returns compact rows and skips
+ * gateway alignment, on the same route and the same rate limit.
  */
 import type { RouteContext } from "../worker.js";
 import { json, apiError } from "../worker.js";
@@ -53,12 +56,14 @@ export async function handleWordLinks(ctx: RouteContext): Promise<Response> {
     verseEnd,
     endChapter,
     wholeBook,
+    indexMode,
   } = ref;
 
   // The language packs' views first: the links with their words already found, in a few KB.
   // Views are one chapter file, so a cross-chapter range stays on the TSV path.
+  // Index mode skips alignment, so it does not reuse a view that already aligned.
   const views = packViewsOf(env);
-  if (views && !endChapter && !wholeBook) {
+  if (views && !endChapter && !wholeBook && !indexMode) {
     const fromPack = await wordLinksFromViews(views, {
       language: requestedLanguage,
       book,
@@ -86,6 +91,8 @@ export async function handleWordLinks(ctx: RouteContext): Promise<Response> {
     book,
     chapter,
     cacheVerse(chapter, verseStart, verseEnd, endChapter),
+    // A cached full book must not answer fields=index: that payload is aligned.
+    ...(indexMode ? ["index"] : []),
   );
 
   const cached = await getCachedJson<Record<string, unknown>>(
@@ -156,6 +163,36 @@ export async function handleWordLinks(ctx: RouteContext): Promise<Response> {
       verseEnd,
       endChapter,
     );
+
+    if (indexMode) {
+      const twMap = await getArticleTitleMap("tw", language, env);
+      const payload = {
+        reference,
+        language,
+        book,
+        chapter,
+        verse: verseStart ?? null,
+        wordLinks: rows.map((row) => ({
+          book: row.book,
+          chapter: row.chapter,
+          verse: row.verse,
+          twId: row.twId,
+          supportReference: row.supportReference,
+          origWords: row.origWords
+            ? formatQuoteDisplay(row.origWords)
+            : row.origWords,
+          occurrence: row.occurrence,
+          twLink: row.twLink,
+          wordPath: row.wordPath,
+          twTitle: row.wordPath
+            ? (resolveTitleFromToc(twMap, row.wordPath, "tw") ??
+              resolveTitleFromPath(row.wordPath))
+            : null,
+        })),
+      };
+      putCachedJson(env.TRANSLATION_HELPS_CACHE, cacheKey, payload, execCtx);
+      return { payload, cache: zipSource };
+    }
 
     const alignmentRows = rows.map((r) => ({
       chapter: r.chapter,

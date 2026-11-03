@@ -23,7 +23,7 @@ const REFERENCE_TOOLS = new Set([PASSAGE, QUESTIONS, INDEX, NOTES]);
 const EXTRA_FIELDS: Record<string, readonly string[]> = {
   [PASSAGE]: ["format"],
   [QUESTIONS]: ["kind"],
-  [INDEX]: ["limit", "offset"],
+  [INDEX]: ["limit", "offset", "rollupOffset"],
   [NOTES]: ["ids", "id", "phrase", "kind"],
 };
 

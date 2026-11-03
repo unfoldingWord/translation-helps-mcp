@@ -27,7 +27,7 @@ Open Bible Stories: "OBS 3:5", "OBS 3", "OBS 3:1-3", a bare "3:5" or "3", or "OB
 
 Tools on this server:
 th_get_passage — text of a Bible passage (literal, simplified and original versions) or an OBS frame.
-th_get_passage_index — what a passage, chapter or whole book has, without bodies. Each row names the call that fetches it.
+th_get_passage_index — what a passage, chapter or whole book has, without bodies. Each row names the call that fetches it. A whole book pages notes and words (default 50) and key terms (100 at a time).
 th_get_notes — note bodies for a passage, an introduction or a book. kind is "translation" (the default) or "study".
 th_get_questions — comprehension questions. kind is "translation" (the default) or "study". The Bible has translation questions only. OBS study questions are OBS-SQ.
 th_list_resources — the languages, or what one language has.`;

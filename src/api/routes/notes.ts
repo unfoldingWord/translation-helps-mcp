@@ -4,6 +4,10 @@
  * Returns all TN rows for the reference (verse-level or chapter/intro).
  * Enriched with supportReferenceTitle (from articleTitles) after
  * port-title-resolver step; gatewayQuote from port-alignment-quote step.
+ *
+ * A book alone is 400. `fields=index` is the compact whole-book read:
+ * id, quote, support reference and an intro heading, with no note body
+ * and no gateway alignment. It uses the same route, so the same rate limit.
  */
 import type { RouteContext } from "../worker.js";
 import { json, apiError } from "../worker.js";
@@ -54,12 +58,14 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
     verseEnd,
     endChapter,
     wholeBook,
+    indexMode,
   } = ref;
 
   // The language packs' views first: the notes with their words already found, in a few KB.
   // Views are one chapter file, so a cross-chapter range stays on the TSV path.
+  // Index mode must not return those bodies, so it stays on the compact TSV path.
   const views = packViewsOf(env);
-  if (views && !endChapter && !wholeBook) {
+  if (views && !endChapter && !wholeBook && !indexMode) {
     const fromPack = await notesFromViews(views, {
       language: requestedLanguage,
       book,
@@ -87,6 +93,8 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
     book,
     chapter,
     cacheVerse(chapter, verseStart, verseEnd, endChapter),
+    // A cached full book must not answer fields=index: that payload has bodies.
+    ...(indexMode ? ["index"] : []),
   );
 
   const cached = await getCachedJson<Record<string, unknown>>(
@@ -116,16 +124,13 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
     );
     if (entries.length === 0) {
       return {
-        payload: {
+        payload: unavailableNotes(
           reference,
           language,
           book,
           chapter,
-          notes: [],
-          available: false,
-          code: "RESOURCE_NOT_AVAILABLE",
-          message: `No TSV Translation Notes resource available for language "${language}".`,
-        },
+          `No TSV Translation Notes resource available for language "${language}".`,
+        ),
         cache: "network" as const,
       };
     }
@@ -133,7 +138,13 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
     const entry = pickPreferredCatalogEntry(entries);
     if (!entry) {
       return {
-        payload: { reference, language, book, chapter, notes: [] },
+        payload: unavailableNotes(
+          reference,
+          language,
+          book,
+          chapter,
+          `No TSV Translation Notes resource available for language "${language}".`,
+        ),
         cache: "network" as const,
       };
     }
@@ -151,7 +162,13 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
 
     if (!tsv) {
       return {
-        payload: { reference, language, book, chapter, notes: [] },
+        payload: unavailableNotes(
+          reference,
+          language,
+          book,
+          chapter,
+          `No TSV Translation Notes file for "${book}" in language "${language}".`,
+        ),
         cache: zipSource,
       };
     }
@@ -163,6 +180,20 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
       verseEnd,
       endChapter,
     );
+
+    if (indexMode) {
+      const taMap = await getArticleTitleMap("ta", language, env);
+      const payload = {
+        reference,
+        language,
+        book,
+        chapter,
+        verse: verseStart ?? null,
+        notes: rows.map((row) => indexNote(row, taMap)),
+      };
+      putCachedJson(env.TRANSLATION_HELPS_CACHE, cacheKey, payload, execCtx);
+      return { payload, cache: zipSource };
+    }
 
     // Batch compute aligned gateway quotes (best-effort; empty string on failure)
     const alignmentRows = rows.map((r) => ({
@@ -213,6 +244,68 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
     ...normalizeNotesPayload(body.payload),
     meta: { cache: body.cache },
   });
+}
+
+/**
+ * Same envelope whether the catalog has no entry or the zip has no file.
+ * Callers treat `available: false` as "not available", not as an empty chapter.
+ */
+function unavailableNotes(
+  reference: string,
+  language: string,
+  book: string,
+  chapter: string,
+  message: string,
+): Record<string, unknown> {
+  return {
+    reference,
+    language,
+    book,
+    chapter,
+    notes: [],
+    available: false,
+    code: "RESOURCE_NOT_AVAILABLE",
+    message,
+  };
+}
+
+/** Index row: what th_get_passage_index keeps. The note body stays out. */
+function indexNote(
+  row: {
+    book: string;
+    chapter: string;
+    verse: string;
+    id: string;
+    supportReference: string;
+    quote: string;
+    occurrence: string;
+    note: string;
+  },
+  taMap: Map<string, string>,
+): Record<string, unknown> {
+  const heading = row.verse === "intro" ? markdownHeading(row.note) : "";
+  return {
+    book: row.book,
+    chapter: row.chapter,
+    verse: row.verse,
+    id: row.id,
+    supportReference: row.supportReference,
+    supportReferenceTitle: row.supportReference
+      ? (resolveTitleFromToc(taMap, row.supportReference, "ta") ??
+        resolveTitleFromPath(row.supportReference))
+      : null,
+    quote: row.quote ? formatQuoteDisplay(row.quote) : row.quote,
+    occurrence: row.occurrence,
+    ...(heading ? { heading } : {}),
+  };
+}
+
+function markdownHeading(note: string): string {
+  for (const line of note.split("\n")) {
+    const match = /^#{1,6}\s+(.+?)\s*#*\s*$/.exec(line.trim());
+    if (match?.[1]) return match[1].trim();
+  }
+  return "";
 }
 
 /** Ensure note bodies have real newlines (older KV entries may still have `\n` escapes). */
