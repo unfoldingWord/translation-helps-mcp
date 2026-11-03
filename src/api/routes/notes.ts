@@ -8,7 +8,7 @@
 import type { RouteContext } from "../worker.js";
 import { json, apiError } from "../worker.js";
 import {
-  requireReferenceAndLanguage,
+  resolveNotesQuery,
   makeFetcher,
   resolveLanguageVariant,
   zipUrlFromEntry,
@@ -38,9 +38,9 @@ import { notesFromViews, packViewsOf } from "./packViews.js";
 export async function handleNotes(ctx: RouteContext): Promise<Response> {
   const { url, env, execCtx } = ctx;
 
-  let ref: ReturnType<typeof requireReferenceAndLanguage>;
+  let ref: ReturnType<typeof resolveNotesQuery>;
   try {
-    ref = requireReferenceAndLanguage(url);
+    ref = resolveNotesQuery(url);
   } catch (e) {
     return apiError("BAD_REQUEST", (e as Error).message, 400);
   }
@@ -53,12 +53,13 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
     verseStart,
     verseEnd,
     endChapter,
+    wholeBook,
   } = ref;
 
   // The language packs' views first: the notes with their words already found, in a few KB.
   // Views are one chapter file, so a cross-chapter range stays on the TSV path.
   const views = packViewsOf(env);
-  if (views && !endChapter) {
+  if (views && !endChapter && !wholeBook) {
     const fromPack = await notesFromViews(views, {
       language: requestedLanguage,
       book,
@@ -115,7 +116,16 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
     );
     if (entries.length === 0) {
       return {
-        payload: { reference, language, book, chapter, notes: [] },
+        payload: {
+          reference,
+          language,
+          book,
+          chapter,
+          notes: [],
+          available: false,
+          code: "RESOURCE_NOT_AVAILABLE",
+          message: `No TSV Translation Notes resource available for language "${language}".`,
+        },
         cache: "network" as const,
       };
     }

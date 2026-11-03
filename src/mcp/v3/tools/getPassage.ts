@@ -18,7 +18,10 @@ import {
   withNotAvailableOutput,
   type ToolModule,
 } from "../../tools/shared.js";
-import { V3_LIST_RESOURCES_HINT } from "../instructions.js";
+import {
+  introductionNotesMessage,
+  V3_LIST_RESOURCES_HINT,
+} from "../instructions.js";
 import { readReference, type ReferenceRead } from "../readReference.js";
 
 const inputSchema = z.object({
@@ -38,14 +41,7 @@ const inputSchema = z.object({
 });
 
 const BOOK_ALONE =
-  'A book alone is not a passage. Give a chapter, for example "JON 1". th_get_passage_index takes a whole book (coming in T-052).';
-
-/**
- * Introductions are notes (th_get_notes, T-052), not passage text.
- * The quoted sentence is the contract the tool test checks.
- */
-const INTRO_NOTES =
-  "introductions are notes: use th_get_notes with reference 'JHN 1:intro' (coming in T-052).";
+  'A book alone is not a passage. Give a chapter, for example "JON 1". th_get_passage_index takes a whole book.';
 
 /**
  * Proposal description, plus the book-only rule and Bible `format`.
@@ -111,7 +107,7 @@ export const getPassageV3Tool: ToolModule<typeof inputSchema> = {
       throw invalid(BOOK_ALONE);
     }
     if (value.kind === "bible" && isIntro(value)) {
-      throw invalid(INTRO_NOTES);
+      throw invalid(introductionNotesMessage(value.reference));
     }
 
     const client = new ApiClient(env);

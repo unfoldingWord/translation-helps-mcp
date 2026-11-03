@@ -8,6 +8,8 @@ import { normalizeToolArgs } from "../../src/mcp/normalizeToolArgs.js";
 import { normalizeV3ToolArgs } from "../../src/mcp/v3/normalizeArgs.js";
 import { readReference } from "../../src/mcp/v3/readReference.js";
 import { getPassageV3Tool } from "../../src/mcp/v3/tools/getPassage.js";
+import { getPassageIndexV3Tool } from "../../src/mcp/v3/tools/getPassageIndex.js";
+import { getNotesV3Tool } from "../../src/mcp/v3/tools/getNotes.js";
 import { getQuestionsV3Tool } from "../../src/mcp/v3/tools/getQuestions.js";
 import { listResourcesV3Tool } from "../../src/mcp/v3/tools/listResources.js";
 
@@ -30,7 +32,9 @@ function apiEnv(payload: (url: URL) => unknown): {
         if (url.pathname.endsWith("/prefetch")) {
           return new Response(null, { status: 202 });
         }
-        return Response.json(payload(url));
+        const data = await Promise.resolve(payload(url));
+        if (data instanceof Response) return data;
+        return Response.json(data);
       },
     },
   } as Env;
@@ -275,7 +279,9 @@ describe("v3 th_get_passage", () => {
         env,
         "req-front",
       ),
-    ).rejects.toThrow(message);
+    ).rejects.toThrow(
+      "introductions are notes: use th_get_notes with reference 'JHN front:intro'",
+    );
     expect(calls).toEqual([]);
   });
 });
@@ -331,6 +337,29 @@ describe("v3 th_get_questions", () => {
       "req",
     );
     expect(calls.map((url) => url.pathname)).toContain("/api/v1/obs-questions");
+  });
+
+  it("rejects an introduction with the same th_get_notes message as passage", async () => {
+    const { env, calls } = apiEnv(passagePayload);
+    await expect(
+      getQuestionsV3Tool.handler(
+        { reference: "JHN front:intro", language: "en" },
+        env,
+        "req-front",
+      ),
+    ).rejects.toThrow(
+      "introductions are notes: use th_get_notes with reference 'JHN front:intro'",
+    );
+    await expect(
+      getQuestionsV3Tool.handler(
+        { reference: "Jonah 1:intro", language: "en" },
+        env,
+        "req-chapter",
+      ),
+    ).rejects.toThrow(
+      "introductions are notes: use th_get_notes with reference 'JON 1:intro'",
+    );
+    expect(calls).toEqual([]);
   });
 
   it("refuses a book alone with a clear error and does not call the API", async () => {
@@ -409,5 +438,741 @@ describe("v3 th_list_resources", () => {
     );
     const resources = calls.find((url) => url.pathname.endsWith("/resources"));
     expect(resources?.searchParams.get("reference")).toBe("JHN 3:16");
+  });
+});
+
+const TA_METAPHOR = "rc://*/ta/man/translate/figs-metaphor";
+
+function indexPayload(url: URL): unknown {
+  const reference = url.searchParams.get("reference") ?? "";
+  if (url.pathname.endsWith("/notes")) {
+    if (reference === "JON") {
+      return {
+        book: "JON",
+        notes: [
+          {
+            chapter: "front",
+            verse: "intro",
+            id: "book",
+            note: "# Introduction to Jonah\n\nOverview.",
+            quote: "",
+            supportReference: "",
+          },
+          {
+            chapter: "1",
+            verse: "intro",
+            id: "ch1",
+            note: "# Jonah 1\n\nChapter.",
+            quote: "",
+            supportReference: "",
+          },
+          {
+            chapter: "1",
+            verse: "1",
+            id: "a",
+            quote: "word of",
+            supportReference: TA_METAPHOR,
+            supportReferenceTitle: "Metaphor",
+            gatewayQuote: { original: "word of", aligned: "word of the Lord" },
+          },
+          {
+            chapter: "2",
+            verse: "1",
+            id: "b",
+            quote: "fish",
+            supportReference: TA_METAPHOR,
+            supportReferenceTitle: "Metaphor",
+            gatewayQuote: { original: "fish", aligned: "" },
+          },
+        ],
+      };
+    }
+    if (reference === "JON 1") {
+      return {
+        book: "JON",
+        notes: [
+          {
+            chapter: "front",
+            verse: "intro",
+            id: "book",
+            note: "# Introduction to Jonah\n\nSee [there](../01/29.md).",
+            quote: "",
+            supportReference: "",
+          },
+          {
+            chapter: "1",
+            verse: "intro",
+            id: "ch1",
+            note: "# Jonah 1\n\nThe prophet.",
+            quote: "",
+            supportReference: TA_METAPHOR,
+            supportReferenceTitle: "Metaphor",
+          },
+          {
+            chapter: "2",
+            verse: "intro",
+            id: "ch2",
+            note: "# Jonah 2\n\nNot this chapter.",
+            quote: "",
+            supportReference: "",
+          },
+          {
+            chapter: "1",
+            verse: "3",
+            id: "verse",
+            quote: "Tarshish",
+            note: "He fled.",
+            supportReference: "",
+            gatewayQuote: { original: "Tarshish", aligned: "to Tarshish" },
+          },
+        ],
+      };
+    }
+    return {
+      book: "GEN",
+      notes: [
+        {
+          chapter: "front",
+          verse: "intro",
+          id: "book",
+          note: "# Introduction to Genesis\n\nBook.",
+          quote: "",
+          supportReference: "",
+        },
+        {
+          chapter: "9",
+          verse: "intro",
+          id: "ch",
+          note: "# Genesis 9\n\nChapter.",
+          quote: "",
+          supportReference: "",
+        },
+        {
+          chapter: "9",
+          verse: "9",
+          id: "n1",
+          quote: "covenant",
+          note: "This is my covenant.",
+          supportReference: TA_METAPHOR,
+          supportReferenceTitle: "Metaphor",
+          gatewayQuote: { original: "covenant", aligned: "my covenant" },
+        },
+        {
+          chapter: "9",
+          verse: "9",
+          id: "n2",
+          quote: "seed",
+          note: "Your offspring.",
+          supportReference: "",
+          gatewayQuote: { original: "seed", aligned: "offspring" },
+        },
+      ],
+    };
+  }
+  if (url.pathname.endsWith("/word-links")) {
+    if (reference === "JON") {
+      return {
+        book: "JON",
+        wordLinks: [
+          {
+            chapter: "1",
+            verse: "1",
+            origWords: "יהוה",
+            wordPath: "bible/kt/yahweh",
+            twTitle: "Yahweh",
+            gatewayQuote: { original: "יהוה", aligned: "Lord" },
+          },
+          {
+            chapter: "2",
+            verse: "1",
+            origWords: "דג",
+            wordPath: "bible/other/fish",
+            twTitle: "Fish",
+            gatewayQuote: { original: "דג", aligned: "" },
+          },
+        ],
+      };
+    }
+    return {
+      book: "GEN",
+      wordLinks: [
+        {
+          chapter: "9",
+          verse: "9",
+          origWords: "ברית",
+          wordPath: "bible/kt/covenant",
+          twTitle: "Covenant",
+          gatewayQuote: { original: "ברית", aligned: "covenant" },
+        },
+      ],
+    };
+  }
+  if (url.pathname.endsWith("/obs-notes")) {
+    return {
+      reference,
+      notes: [
+        {
+          reference: "1:3",
+          id: "obs-n",
+          quote: "created",
+          note: "God made it.",
+          supportReference: TA_METAPHOR,
+          supportReferenceTitle: "Metaphor",
+        },
+        {
+          reference: "1:0",
+          id: "title",
+          quote: "",
+          note: "# The Creation\n\nStory title.",
+          supportReference: "",
+        },
+      ],
+    };
+  }
+  if (url.pathname.endsWith("/obs-word-links")) {
+    return {
+      reference,
+      words: [
+        {
+          reference: "1:3",
+          origWords: "God",
+          twArticle: {
+            path: "bible/kt/god",
+            category: "kt",
+            title: "God",
+          },
+        },
+      ],
+    };
+  }
+  if (url.pathname.endsWith("/obs-study-notes")) {
+    return {
+      reference,
+      notes: [
+        {
+          reference: "1:3",
+          id: "sn",
+          quote: "",
+          note: "Study the creation.",
+          supportReference: "",
+        },
+      ],
+    };
+  }
+  return passagePayload(url);
+}
+
+function httpError(status: number, message: string): Response {
+  return new Response(
+    JSON.stringify({ error: { code: "UPSTREAM", message } }),
+    { status, headers: { "content-type": "application/json" } },
+  );
+}
+
+describe("normalizeV3ToolArgs for index and notes", () => {
+  it("turns a story and frame into OBS 1:3 for the index", () => {
+    expect(
+      normalizeV3ToolArgs("th_get_passage_index", {
+        story: 1,
+        frame: 3,
+        language: "en",
+      }),
+    ).toEqual({ reference: "OBS 1:3", language: "en" });
+  });
+
+  it("keeps ids, a single id, phrase and kind on th_get_notes", () => {
+    expect(
+      normalizeV3ToolArgs("th_get_notes", {
+        reference: "GEN 9:9",
+        language: "en",
+        ids: ["n1", "n2"],
+        phrase: "covenant",
+        kind: "translation",
+      }),
+    ).toEqual({
+      reference: "GEN 9:9",
+      language: "en",
+      ids: ["n1", "n2"],
+      phrase: "covenant",
+      kind: "translation",
+    });
+    expect(
+      normalizeV3ToolArgs("th_get_notes", {
+        book: "Jonah",
+        id: "only",
+      }),
+    ).toMatchObject({ reference: "JON", id: "only" });
+  });
+});
+
+describe("v3 th_get_passage_index", () => {
+  it("is registered under the prefixed name", () => {
+    expect(getPassageIndexV3Tool.name).toBe("th_get_passage_index");
+  });
+
+  it("indexes a Bible verse without note bodies", async () => {
+    const { env, calls } = apiEnv(indexPayload);
+    const result = await getPassageIndexV3Tool.handler(
+      { reference: "GEN 9:9", language: "en" },
+      env,
+      "req",
+    );
+    expect(calls.map((url) => url.pathname).sort()).toEqual([
+      "/api/v1/notes",
+      "/api/v1/word-links",
+    ]);
+    expect(result.isError).not.toBe(true);
+    const data = result.structuredContent ?? {};
+    expect(data).toMatchObject({
+      kind: "bible",
+      reference: "GEN 9:9",
+    });
+    const notes = data.notes as Array<Record<string, unknown>>;
+    expect(notes.map((note) => note.id)).toEqual(["n1", "n2"]);
+    expect(notes[0]).toMatchObject({
+      reference: "Genesis 9:9",
+      quote: "my covenant",
+      taArticle: { path: "translate/figs-metaphor", title: "Metaphor" },
+      next: {
+        tool: "th_get_notes",
+        args: { reference: "Genesis 9:9", language: "en", ids: ["n1"] },
+      },
+    });
+    expect(JSON.stringify(notes[0])).not.toMatch(/This is my covenant/);
+    const words = data.words as Array<Record<string, unknown>>;
+    expect(words[0]).toMatchObject({
+      reference: "Genesis 9:9",
+      quote: "covenant",
+      twArticle: {
+        path: "bible/kt/covenant",
+        category: "kt",
+        title: "Covenant",
+      },
+      next: {
+        tool: "th_get_article",
+        args: { path: "bible/kt/covenant", language: "en" },
+      },
+    });
+    expect(data.issues).toEqual([
+      expect.objectContaining({
+        path: "translate/figs-metaphor",
+        title: "Metaphor",
+        count: 1,
+        next: {
+          tool: "th_get_article",
+          args: { path: "translate/figs-metaphor", language: "en" },
+        },
+      }),
+    ]);
+    expect(data.keyTerms).toEqual([
+      expect.objectContaining({
+        path: "bible/kt/covenant",
+        category: "kt",
+        count: 1,
+        next: {
+          tool: "th_get_article",
+          args: { path: "bible/kt/covenant", language: "en" },
+        },
+      }),
+    ]);
+    expect(data.introductions).toEqual([
+      {
+        scope: "book",
+        reference: "GEN front:intro",
+        title: "Introduction to Genesis",
+        next: {
+          tool: "th_get_notes",
+          args: { reference: "GEN front:intro", language: "en" },
+        },
+      },
+      {
+        scope: "chapter",
+        reference: "GEN 9:intro",
+        title: "Genesis 9",
+        next: {
+          tool: "th_get_notes",
+          args: { reference: "GEN 9:intro", language: "en" },
+        },
+      },
+    ]);
+  });
+
+  it("indexes a chapter and keeps that chapter's introduction", async () => {
+    const { env, calls } = apiEnv(indexPayload);
+    const result = await getPassageIndexV3Tool.handler(
+      { reference: "JON 1", language: "en" },
+      env,
+      "req",
+    );
+    expect(
+      calls
+        .find((url) => url.pathname.endsWith("/notes"))
+        ?.searchParams.get("reference"),
+    ).toBe("JON 1");
+    const data = result.structuredContent ?? {};
+    expect(data.kind).toBe("bible");
+    const notes = data.notes as Array<{ id: string }>;
+    expect(notes.map((note) => note.id)).toEqual(["verse"]);
+    const introductions = data.introductions as Array<{ reference: string }>;
+    expect(introductions.map((row) => row.reference)).toEqual([
+      "JON front:intro",
+      "JON 1:intro",
+    ]);
+  });
+
+  it("indexes a whole book from one TSV call and pages the rows", async () => {
+    const { env, calls } = apiEnv(indexPayload);
+    const result = await getPassageIndexV3Tool.handler(
+      { reference: "Jonah", language: "en", limit: 1, offset: 0 },
+      env,
+      "req",
+    );
+    const notesCalls = calls.filter((url) => url.pathname.endsWith("/notes"));
+    expect(notesCalls).toHaveLength(1);
+    expect(notesCalls[0]?.searchParams.get("reference")).toBe("JON");
+    expect(
+      calls.filter((url) => url.pathname.endsWith("/word-links")),
+    ).toHaveLength(1);
+    const data = result.structuredContent ?? {};
+    expect(data.reference).toBe("JON");
+    expect(data.kind).toBe("bible");
+    const notes = data.notes as Array<{ id: string }>;
+    const words = data.words as Array<Record<string, unknown>>;
+    expect(notes).toHaveLength(1);
+    expect(words).toHaveLength(1);
+    expect(data.total).toEqual({ notes: 2, words: 2 });
+    expect(data.has_more).toEqual({ notes: true, words: true });
+    expect(data.limit).toBe(1);
+    expect(data.offset).toBe(0);
+    const issues = data.issues as Array<{ path: string; count: number }>;
+    expect(issues).toEqual([
+      expect.objectContaining({
+        path: "translate/figs-metaphor",
+        count: 2,
+      }),
+    ]);
+    const introductions = data.introductions as Array<{ reference: string }>;
+    expect(introductions.map((row) => row.reference)).toEqual([
+      "JON front:intro",
+    ]);
+  });
+
+  it("indexes an OBS frame and a story", async () => {
+    const { env, calls } = apiEnv(indexPayload);
+    const frame = await getPassageIndexV3Tool.handler(
+      { reference: "OBS 1:3", language: "en" },
+      env,
+      "req-frame",
+    );
+    expect(
+      calls
+        .find((url) => url.pathname.endsWith("/obs-notes"))
+        ?.searchParams.get("reference"),
+    ).toBe("OBS 1:3");
+    expect(calls.some((url) => url.pathname.endsWith("/notes"))).toBe(false);
+    const data = frame.structuredContent ?? {};
+    expect(data.kind).toBe("obs");
+    expect(data.reference).toBe("OBS 1:3");
+    const notes = data.notes as Array<Record<string, unknown>>;
+    expect(notes.map((note) => note.id)).toEqual(["obs-n"]);
+    expect(notes[0]).toMatchObject({
+      reference: "OBS 1:3",
+      quote: "created",
+      next: {
+        tool: "th_get_notes",
+        args: { reference: "OBS 1:3", language: "en", ids: ["obs-n"] },
+      },
+    });
+    const introductions = data.introductions as Array<Record<string, unknown>>;
+    expect(introductions).toEqual([
+      expect.objectContaining({
+        scope: "story",
+        reference: "OBS 1:0",
+        title: "The Creation",
+        next: {
+          tool: "th_get_notes",
+          args: { reference: "OBS 1:0", language: "en" },
+        },
+      }),
+    ]);
+    expect(
+      calls
+        .filter((url) => url.pathname.endsWith("/obs-notes"))
+        .map((url) => url.searchParams.get("reference")),
+    ).toEqual(["OBS 1:3"]);
+    const story = await getPassageIndexV3Tool.handler(
+      { reference: "OBS 1", language: "en" },
+      env,
+      "req-story",
+    );
+    expect(story.structuredContent?.kind).toBe("obs");
+    expect(story.structuredContent?.reference).toBe("OBS 1");
+  });
+
+  it("loads a story's front matter when the frame response leaves it out", async () => {
+    const { env, calls } = apiEnv((url) => {
+      if (url.pathname.endsWith("/obs-word-links")) return { words: [] };
+      if (url.pathname.endsWith("/obs-notes")) {
+        if (url.searchParams.get("reference") === "OBS 1") {
+          return {
+            notes: [
+              {
+                reference: "1:0",
+                id: "title",
+                quote: "The Creation",
+                note: "This title can also be translated as: “How God made the world.”",
+                supportReference: "",
+              },
+            ],
+          };
+        }
+        return {
+          notes: [
+            {
+              reference: "1:3",
+              id: "obs-n",
+              quote: "created",
+              note: "God made it.",
+              supportReference: "",
+            },
+          ],
+        };
+      }
+      return { notes: [] };
+    });
+    const result = await getPassageIndexV3Tool.handler(
+      { reference: "OBS 1:3", language: "en" },
+      env,
+      "req",
+    );
+    expect(
+      calls
+        .filter((url) => url.pathname.endsWith("/obs-notes"))
+        .map((url) => url.searchParams.get("reference")),
+    ).toEqual(["OBS 1:3", "OBS 1"]);
+    expect(
+      (result.structuredContent?.notes as Array<{ id?: string }>).map(
+        (note) => note.id,
+      ),
+    ).toEqual(["obs-n"]);
+    expect(result.structuredContent?.introductions).toEqual([
+      expect.objectContaining({
+        scope: "story",
+        reference: "OBS 1:0",
+        title: "The Creation",
+        next: {
+          tool: "th_get_notes",
+          args: { reference: "OBS 1:0", language: "en" },
+        },
+      }),
+    ]);
+  });
+
+  it("puts a failed side in wordLinksError and keeps the notes", async () => {
+    const { env } = apiEnv((url) => {
+      if (url.pathname.endsWith("/word-links")) return httpError(500, "boom");
+      return indexPayload(url);
+    });
+    const result = await getPassageIndexV3Tool.handler(
+      { reference: "GEN 9:9", language: "en" },
+      env,
+      "req",
+    );
+    expect(result.isError).not.toBe(true);
+    expect(result.structuredContent?.wordLinksError).toMatch(/boom/);
+    expect(result.structuredContent?.notesError).toBeUndefined();
+    const notes = result.structuredContent?.notes as unknown[];
+    expect(notes.length).toBeGreaterThan(0);
+    expect(result.structuredContent?.words).toEqual([]);
+  });
+
+  it("says the resource is not available when both sides are missing", async () => {
+    const { env } = apiEnv((url) => {
+      if (
+        url.pathname.endsWith("/notes") ||
+        url.pathname.endsWith("/word-links")
+      ) {
+        return {
+          available: false,
+          message: "No Translation Notes for this language.",
+        };
+      }
+      return indexPayload(url);
+    });
+    const result = await getPassageIndexV3Tool.handler(
+      { reference: "GEN 9:9", language: "zh" },
+      env,
+      "req",
+    );
+    expect(result.isError).not.toBe(true);
+    expect(result.structuredContent).toMatchObject({
+      available: false,
+      code: "RESOURCE_NOT_AVAILABLE",
+    });
+  });
+});
+
+describe("v3 th_get_notes", () => {
+  it("is registered under the prefixed name", () => {
+    expect(getNotesV3Tool.name).toBe("th_get_notes");
+  });
+
+  it("returns several notes by ids and accepts a single id", async () => {
+    const { env, calls } = apiEnv(indexPayload);
+    const many = await getNotesV3Tool.handler(
+      { reference: "GEN 9:9", language: "en", ids: ["n2", "n1"] },
+      env,
+      "req",
+    );
+    expect(
+      calls
+        .find((url) => url.pathname.endsWith("/notes"))
+        ?.searchParams.get("reference"),
+    ).toBe("GEN 9:9");
+    expect(many.isError).not.toBe(true);
+    const notes = many.structuredContent?.notes as Array<
+      Record<string, unknown>
+    >;
+    expect(notes.map((note) => note.id)).toEqual(["n1", "n2"]);
+    expect(notes[0]).toMatchObject({
+      reference: "Genesis 9:9",
+      quote: "covenant",
+      alignedQuote: "my covenant",
+      note: "This is my covenant.",
+      taArticle: { path: "translate/figs-metaphor", title: "Metaphor" },
+      next: {
+        tool: "th_get_article",
+        args: { path: "translate/figs-metaphor", language: "en" },
+      },
+    });
+    expect(notes[1]?.next).toBeUndefined();
+    expect(notes[1]?.taArticle).toBeUndefined();
+
+    const one = await getNotesV3Tool.handler(
+      { reference: "GEN 9:9", language: "en", id: "n2" },
+      env,
+      "req-id",
+    );
+    expect(
+      (one.structuredContent?.notes as Array<{ id: string }>).map(
+        (note) => note.id,
+      ),
+    ).toEqual(["n2"]);
+  });
+
+  it("filters by phrase in the quote, the aligned quote, or the body", async () => {
+    const { env } = apiEnv(indexPayload);
+    const quote = await getNotesV3Tool.handler(
+      { reference: "GEN 9:9", language: "en", phrase: "COVENANT" },
+      env,
+      "req-quote",
+    );
+    expect(
+      (quote.structuredContent?.notes as Array<{ id: string }>).map(
+        (note) => note.id,
+      ),
+    ).toEqual(["n1"]);
+
+    const aligned = await getNotesV3Tool.handler(
+      { reference: "GEN 9:9", language: "en", phrase: "offspring" },
+      env,
+      "req-aligned",
+    );
+    expect(
+      (aligned.structuredContent?.notes as Array<{ id: string }>).map(
+        (note) => note.id,
+      ),
+    ).toEqual(["n2"]);
+
+    const body = await getNotesV3Tool.handler(
+      { reference: "JON 1", language: "en", phrase: "fled" },
+      env,
+      "req-body",
+    );
+    expect(
+      (body.structuredContent?.notes as Array<{ id: string }>).map(
+        (note) => note.id,
+      ),
+    ).toEqual(["verse"]);
+  });
+
+  it("returns an empty list when the phrase matches nothing", async () => {
+    const { env } = apiEnv(indexPayload);
+    const result = await getNotesV3Tool.handler(
+      { reference: "GEN 9:9", language: "en", phrase: "zzzz nothing" },
+      env,
+      "req",
+    );
+    expect(result.isError).not.toBe(true);
+    expect(result.structuredContent?.notes).toEqual([]);
+    expect(JSON.stringify(result.structuredContent)).toMatch(/zzzz nothing/);
+    expect(JSON.stringify(result.structuredContent)).toMatch(/no notes/i);
+  });
+
+  it("uses OBS-TN or OBS-SN from kind, and Bible study is not available", async () => {
+    const { env, calls } = apiEnv(indexPayload);
+    const study = await getNotesV3Tool.handler(
+      { reference: "JHN 3:16", language: "en", kind: "study" },
+      env,
+      "req-study",
+    );
+    expect(calls).toEqual([]);
+    expect(study.isError).not.toBe(true);
+    expect(study.structuredContent).toMatchObject({
+      available: false,
+      code: "RESOURCE_NOT_AVAILABLE",
+    });
+
+    await getNotesV3Tool.handler(
+      { reference: "OBS 1:3", language: "en", kind: "translation" },
+      env,
+      "req-tn",
+    );
+    await getNotesV3Tool.handler(
+      { reference: "OBS 1:3", language: "en", kind: "study" },
+      env,
+      "req-sn",
+    );
+    expect(calls.map((url) => url.pathname)).toEqual([
+      "/api/v1/obs-notes",
+      "/api/v1/obs-study-notes",
+    ]);
+  });
+
+  it("returns an introduction and a book introduction, with verse links rewritten", async () => {
+    const { env, calls } = apiEnv(indexPayload);
+    const chapter = await getNotesV3Tool.handler(
+      { reference: "JON 1:intro", language: "en" },
+      env,
+      "req-intro",
+    );
+    expect(
+      calls
+        .find((url) => url.pathname.endsWith("/notes"))
+        ?.searchParams.get("reference"),
+    ).toBe("JON 1");
+    const introNotes = chapter.structuredContent?.notes as Array<
+      Record<string, unknown>
+    >;
+    expect(introNotes.map((note) => note.id)).toEqual(["ch1"]);
+    expect(introNotes[0]).toMatchObject({
+      reference: "JON 1:intro",
+      note: "# Jonah 1\n\nThe prophet.",
+    });
+
+    const book = await getNotesV3Tool.handler(
+      { reference: "Jonah", language: "en" },
+      env,
+      "req-book",
+    );
+    const bookCalls = calls.filter((url) => url.pathname.endsWith("/notes"));
+    expect(bookCalls.at(-1)?.searchParams.get("reference")).toBe("JON 1");
+    const bookNotes = book.structuredContent?.notes as Array<
+      Record<string, unknown>
+    >;
+    expect(bookNotes.map((note) => note.id)).toEqual(["book"]);
+    expect(bookNotes[0]?.reference).toBe("JON front:intro");
+    expect(bookNotes[0]?.note).toMatch(/Jonah 1:29/);
+    expect(String(bookNotes[0]?.note)).not.toMatch(/\.md/);
   });
 });

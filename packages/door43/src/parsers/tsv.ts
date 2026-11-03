@@ -222,6 +222,8 @@ function chapterInQuery(
   chapter: string,
   endChapter?: string,
 ): boolean {
+  // "*" is a whole-book read: the TSV is already one book, so keep every row.
+  if (chapter === "*") return true;
   const cross = Boolean(endChapter) && endChapter !== chapter;
   if (!cross) return rowChapter === chapter;
   const rowCh = Number.parseInt(rowChapter, 10);

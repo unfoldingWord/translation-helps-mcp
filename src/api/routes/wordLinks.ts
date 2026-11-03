@@ -7,7 +7,7 @@
 import type { RouteContext } from "../worker.js";
 import { json, apiError } from "../worker.js";
 import {
-  requireReferenceAndLanguage,
+  resolveNotesQuery,
   makeFetcher,
   resolveLanguageVariant,
   zipUrlFromEntry,
@@ -37,9 +37,9 @@ import { packViewsOf, wordLinksFromViews } from "./packViews.js";
 export async function handleWordLinks(ctx: RouteContext): Promise<Response> {
   const { url, env, execCtx } = ctx;
 
-  let ref: ReturnType<typeof requireReferenceAndLanguage>;
+  let ref: ReturnType<typeof resolveNotesQuery>;
   try {
-    ref = requireReferenceAndLanguage(url);
+    ref = resolveNotesQuery(url);
   } catch (e) {
     return apiError("BAD_REQUEST", (e as Error).message, 400);
   }
@@ -52,12 +52,13 @@ export async function handleWordLinks(ctx: RouteContext): Promise<Response> {
     verseStart,
     verseEnd,
     endChapter,
+    wholeBook,
   } = ref;
 
   // The language packs' views first: the links with their words already found, in a few KB.
   // Views are one chapter file, so a cross-chapter range stays on the TSV path.
   const views = packViewsOf(env);
-  if (views && !endChapter) {
+  if (views && !endChapter && !wholeBook) {
     const fromPack = await wordLinksFromViews(views, {
       language: requestedLanguage,
       book,
@@ -109,7 +110,16 @@ export async function handleWordLinks(ctx: RouteContext): Promise<Response> {
     );
     if (entries.length === 0) {
       return {
-        payload: { reference, language, book, chapter, wordLinks: [] },
+        payload: {
+          reference,
+          language,
+          book,
+          chapter,
+          wordLinks: [],
+          available: false,
+          code: "RESOURCE_NOT_AVAILABLE",
+          message: `No TSV Translation Words Links resource available for language "${language}".`,
+        },
         cache: "network" as const,
       };
     }

@@ -33,7 +33,9 @@ import {
   V3_SERVER_INSTRUCTIONS,
 } from "./instructions.js";
 import { V3NormalizingMcpServer } from "./server.js";
+import { getNotesV3Tool } from "./tools/getNotes.js";
 import { getPassageV3Tool } from "./tools/getPassage.js";
+import { getPassageIndexV3Tool } from "./tools/getPassageIndex.js";
 import { getQuestionsV3Tool } from "./tools/getQuestions.js";
 import { listResourcesV3Tool } from "./tools/listResources.js";
 
@@ -61,6 +63,8 @@ const V3_TOOLS: V3Tool[] = [
   getPassageV3Tool as V3Tool,
   getQuestionsV3Tool as V3Tool,
   listResourcesV3Tool as V3Tool,
+  getPassageIndexV3Tool as V3Tool,
+  getNotesV3Tool as V3Tool,
 ];
 
 function mcpError(err: TranslationHelpsError): {

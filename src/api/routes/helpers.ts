@@ -11,6 +11,9 @@ import {
   resolveCatalogLanguage,
   pickPreferredCatalogEntry,
   parseReferenceForTool,
+  parseReference,
+  bookNameToUsfm,
+  isCanonicalUsfmBook,
 } from "@translation-helps/door43";
 import type { CatalogEntry, CatalogKVCache } from "@translation-helps/door43";
 
@@ -100,6 +103,48 @@ export function requireReferenceAndLanguage(url: URL): {
   if (!parsed) throw new Error(`Invalid reference: "${reference}"`);
 
   return { reference, language, ...parsed };
+}
+
+/**
+ * Notes and word-link queries. A chapter reference is unchanged. A book alone
+ * (`JON`, `Jonah`) is one read of that book's TSV: `chapter` is `"*"` and
+ * `wholeBook` is true. Other routes keep rejecting a book alone.
+ */
+export function resolveNotesQuery(url: URL): {
+  reference: string;
+  language: string;
+  book: string;
+  chapter: string;
+  endChapter?: string;
+  verseStart?: string;
+  verseEnd?: string;
+  wholeBook: boolean;
+} {
+  const reference = url.searchParams.get("reference");
+  const language = url.searchParams.get("language");
+  if (!reference) throw new Error("Missing required param: reference");
+  if (!language) throw new Error("Missing required param: language");
+
+  const parsed = parseReferenceForTool(reference);
+  if (parsed) {
+    return { reference, language, ...parsed, wholeBook: false };
+  }
+
+  const bookOnly = parseReference(reference);
+  if (bookOnly.isValid && bookOnly.book && bookOnly.chapter === undefined) {
+    const book = bookNameToUsfm(bookOnly.book);
+    if (isCanonicalUsfmBook(book)) {
+      return {
+        reference,
+        language,
+        book,
+        chapter: "*",
+        wholeBook: true,
+      };
+    }
+  }
+
+  throw new Error(`Invalid reference: "${reference}"`);
 }
 
 /**
