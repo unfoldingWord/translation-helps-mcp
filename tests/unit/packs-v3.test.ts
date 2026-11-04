@@ -329,6 +329,59 @@ describe("methods", () => {
     expect((await bytes(cat)).length).toBe(0);
   });
 
+  it("HEAD with Range answers 206 with no body", async () => {
+    const { call } = setup();
+    const res = await call(`seg/${HEX}`, {
+      method: "HEAD",
+      headers: { Range: "bytes=10-19" },
+    });
+    expect(res.status).toBe(206);
+    expect(res.headers.get("Content-Length")).toBe("10");
+    expect(res.headers.get("Content-Range")).toBe("bytes 10-19/1000");
+    expect((await bytes(res)).length).toBe(0);
+  });
+
+  it("HEAD with bytes=-0 answers 416 with no body", async () => {
+    const { call } = setup();
+    const res = await call(`seg/${HEX}`, {
+      method: "HEAD",
+      headers: { Range: "bytes=-0" },
+    });
+    expect(res.status).toBe(416);
+    expect(res.headers.get("Content-Range")).toBe("bytes */1000");
+    expect((await bytes(res)).length).toBe(0);
+  });
+
+  it("HEAD of a catalog ignores Range", async () => {
+    const { call } = setup();
+    const res = await call("es-419/catalog", {
+      method: "HEAD",
+      headers: { Range: "bytes=10-19" },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Range")).toBeNull();
+    expect((await bytes(res)).length).toBe(0);
+  });
+
+  it("HEAD errors keep their headers and have no body", async () => {
+    const { call } = setup();
+    const missing = await call("fr/catalog", { method: "HEAD" });
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get("Content-Type")).toBe("application/json");
+    expect(missing.headers.get("Cache-Control")).toBe("no-store");
+    expectCors(missing);
+    expect((await bytes(missing)).length).toBe(0);
+    const bad = await call("seg", { method: "HEAD" });
+    expect(bad.status).toBe(400);
+    expect((await bytes(bad)).length).toBe(0);
+    const off = setup({ v3: "off" });
+    const res = await off.call("es-419/catalog", { method: "HEAD" });
+    expect(res.status).toBe(404);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expectCors(res);
+    expect((await bytes(res)).length).toBe(0);
+  });
+
   it("OPTIONS answers 204 with CORS", async () => {
     const { call } = setup();
     const res = await call(`seg/${HEX}`, { method: "OPTIONS" });
@@ -372,7 +425,7 @@ describe("errors", () => {
     });
   }
 
-  it("answers 404 for a missing catalog, never dispatching", async () => {
+  it("answers 404 for a missing catalog, and the handler has no dispatch path", async () => {
     const { call, builds } = setup();
     const res = await call("fr/catalog");
     expect(res.status).toBe(404);

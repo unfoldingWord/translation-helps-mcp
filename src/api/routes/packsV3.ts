@@ -130,9 +130,8 @@ async function serve(
   const tags = parseIfNoneMatch(request.headers.get("If-None-Match"));
   const isHead = request.method === "HEAD";
   const segment = target.route === "seg";
-  // A catalog is whole or nothing: its Range header is ignored.
-  const range =
-    segment && !isHead ? parseRange(request.headers.get("Range")) : null;
+  // A catalog is whole or nothing: its Range header is ignored. HEAD reads Range like the GET it stands for.
+  const range = segment ? parseRange(request.headers.get("Range")) : null;
 
   // R2 checks a single etag itself and then sends no body; a list or `*` is compared after the read.
   const single = tags.length === 1 && tags[0] !== "*" ? tags[0] : undefined;
@@ -203,6 +202,10 @@ async function serve(
   return { outcome: "hit", response: new Response(body, { status, headers }) };
 }
 
+/**
+ * Check order: OPTIONS, rate limit, method (405), PACKS_V3 off (404 v3-off), bad path (400), no bucket (503), then
+ * the object (404 when missing).
+ */
 async function respond(
   request: Request,
   env: PacksEnv & { PACKS_V3?: string },
@@ -257,13 +260,18 @@ export async function handlePacksV3Request(
   const started = Date.now();
   const target = parseV3Path(path);
   let outcome: Outcome = "error";
+  // HEAD gives the headers of the GET it stands for with no body, errors included.
+  const bodiless = (res: Response): Response =>
+    request.method === "HEAD" && res.body
+      ? new Response(null, { status: res.status, headers: res.headers })
+      : res;
   try {
     const served = await respond(request, env, target);
     outcome = served.outcome;
-    return served.response;
+    return bodiless(served.response);
   } catch (err) {
     console.error(`[packs-v3] ${request.method} ${path} failed:`, err);
-    return plain(500, "error", { error: "internal error" }).response;
+    return bodiless(plain(500, "error", { error: "internal error" }).response);
   } finally {
     const analytics = env.ANALYTICS;
     if (analytics) {
