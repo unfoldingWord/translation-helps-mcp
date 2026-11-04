@@ -32,6 +32,9 @@ import {
 // Error type
 // ---------------------------------------------------------------------------
 
+/** The timeout signal for a response whose headers already arrived. */
+const bodySignals = new WeakMap<Response, AbortSignal>();
+
 export class ApiClientError extends Error {
   constructor(
     public readonly code: string,
@@ -123,20 +126,21 @@ export class ApiClient {
       let retryable = response.status >= 500;
 
       try {
-        const body = (await response.json()) as ApiErrorResponse;
+        const body = await this.readJson<ApiErrorResponse>(response);
         if (body?.error) {
           code = body.error.code ?? code;
           message = body.error.message ?? message;
           retryable = body.error.retryable ?? retryable;
         }
-      } catch {
+      } catch (error) {
+        if (error instanceof ApiTimeoutError) throw error;
         // ignore JSON parse failure
       }
 
       throw new ApiClientError(code, message, response.status, retryable);
     }
 
-    return response.json() as Promise<T>;
+    return this.readJson<T>(response);
   }
 
   /**
@@ -159,24 +163,44 @@ export class ApiClient {
   private async fetchUrl(url: string, timed: boolean): Promise<Response> {
     const init: RequestInit = { ...(indexRequestInit(url) ?? {}) };
     const timeoutMs = v3ApiTimeoutMs();
+    let signal: AbortSignal | undefined;
     if (timeoutMs && timeoutMs > 0) {
-      init.signal = AbortSignal.timeout(timeoutMs);
+      signal = AbortSignal.timeout(timeoutMs);
+      init.signal = signal;
     }
     const started = Date.now();
     try {
       const response = this.fetcher
         ? await this.fetcher.fetch(url, init)
         : await fetch(url, init);
+      if (signal) bodySignals.set(response, signal);
       if (timed) {
         noteV3ApiResponse(
           response.headers.get("Server-Timing"),
-          Date.now() - started,
+          started,
+          Date.now(),
         );
       }
       return response;
     } catch (error) {
       if (timeoutMs && isTimeoutSignal(error)) {
-        if (timed) noteV3ApiResponse(null, Date.now() - started);
+        if (timed) noteV3ApiResponse(null, started, Date.now());
+        throw new ApiTimeoutError();
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Read a JSON body. An abort while the body is still arriving is the same
+   * 20s deadline as an abort of `fetch` itself.
+   */
+  private async readJson<T>(response: Response): Promise<T> {
+    try {
+      return (await response.json()) as T;
+    } catch (error) {
+      const signal = bodySignals.get(response);
+      if (signal?.aborted && isTimeoutSignal(error)) {
         throw new ApiTimeoutError();
       }
       throw error;

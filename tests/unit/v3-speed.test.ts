@@ -9,7 +9,9 @@ import { createApiClient } from "../../src/mcp/apiClient.js";
 import {
   V3_API_TIMEOUT_MS,
   ApiTimeoutError,
+  noteV3ApiResponse,
   v3ApiTimeoutMs,
+  v3ToolMetric,
   withV3ApiTiming,
 } from "../../src/mcp/v3/apiTiming.js";
 import { getPassageV3Tool } from "../../src/mcp/v3/tools/getPassage.js";
@@ -358,6 +360,168 @@ describe("v3 API timeout", () => {
     expect(metric?.blobs).toHaveLength(6);
     expect(metric?.doubles).toHaveLength(3);
   });
+
+  it("turns a body that never finishes into the same timeout", async () => {
+    const env = {
+      API: {
+        async fetch(_input: RequestInfo | URL, init?: RequestInit) {
+          const signal = init?.signal;
+          const body = new ReadableStream({
+            start(controller) {
+              const fail = () => {
+                const error = new Error("The operation was aborted");
+                error.name = "AbortError";
+                controller.error(error);
+              };
+              if (!signal) {
+                controller.error(new Error("missing timeout"));
+                return;
+              }
+              if (signal.aborted) fail();
+              else signal.addEventListener("abort", fail, { once: true });
+            },
+          });
+          return new Response(body, {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        },
+      },
+    };
+    await expect(
+      withV3ApiTiming(
+        () =>
+          createApiClient(
+            env as unknown as Parameters<typeof createApiClient>[0],
+          ).get("/api/v1/scripture", {
+            reference: "PHP 2:5",
+            language: "en",
+          }),
+        30,
+      ),
+    ).rejects.toBeInstanceOf(ApiTimeoutError);
+  });
+});
+
+describe("v3 parallel API waits", () => {
+  it("subtracts the overlap once when two calls run together", async () => {
+    await withV3ApiTiming(async () => {
+      noteV3ApiResponse('layer;desc="kv", total;dur=800', 1_000, 1_800);
+      noteV3ApiResponse('layer;desc="r2", total;dur=800', 1_000, 1_800);
+      const metric = v3ToolMetric(1_000, "none");
+      expect(metric.apiMs).toBe(1_600);
+      expect(metric.mcpMs).toBe(200);
+      expect(metric.layer).toBe("r2");
+    });
+  });
+});
+
+describe("v3 index when one side is slow", () => {
+  function hang(init?: RequestInit): Promise<Response> {
+    return new Promise((_resolve, reject) => {
+      const signal = init?.signal;
+      const fail = () => {
+        const error = new Error("The operation was aborted due to timeout");
+        error.name = "TimeoutError";
+        reject(error);
+      };
+      if (!signal) {
+        reject(new Error("missing timeout"));
+        return;
+      }
+      if (signal.aborted) fail();
+      else signal.addEventListener("abort", fail, { once: true });
+    });
+  }
+
+  function indexEnv(hangWords: boolean, hangNotes: boolean): ToolEnv {
+    return {
+      API: {
+        async fetch(input: RequestInfo | URL, init?: RequestInit) {
+          const raw =
+            typeof input === "string"
+              ? input
+              : input instanceof URL
+                ? input.toString()
+                : input.url;
+          const url = new URL(raw);
+          if (url.pathname.endsWith("/notes")) {
+            if (hangNotes) return hang(init);
+            return Response.json({
+              book: "PHP",
+              notes: [
+                {
+                  chapter: "2",
+                  verse: "1",
+                  id: "n0",
+                  quote: "word",
+                  supportReference: "rc://*/ta/man/translate/figs-metaphor",
+                  supportReferenceTitle: "Metaphor",
+                },
+              ],
+            });
+          }
+          if (url.pathname.endsWith("/word-links")) {
+            if (hangWords) return hang(init);
+            return Response.json({
+              book: "PHP",
+              wordLinks: [
+                {
+                  chapter: "2",
+                  verse: "1",
+                  origWords: "word",
+                  wordPath: "bible/kt/god",
+                  twTitle: "God",
+                },
+              ],
+            });
+          }
+          return Response.json(
+            { error: { code: "NOT_FOUND", message: url.pathname } },
+            { status: 404 },
+          );
+        },
+      },
+    } as ToolEnv;
+  }
+
+  it("keeps the notes when word links do not answer", async () => {
+    const result = await withV3ApiTiming(
+      () =>
+        getPassageIndexV3Tool.handler(
+          { reference: "PHP 2", language: "en" },
+          indexEnv(true, false),
+          "req",
+        ),
+      30,
+    );
+    const content = result.structuredContent as {
+      available?: boolean;
+      notes: unknown[];
+      words: unknown[];
+      message?: string;
+      wordLinksError?: string;
+    };
+    expect(content.available).not.toBe(false);
+    expect(content.notes.length).toBeGreaterThan(0);
+    expect(content.words).toEqual([]);
+    expect(content.message).toMatch(/source was slow/);
+    expect(content.wordLinksError).toMatch(/source was slow/);
+  });
+
+  it("keeps the soft answer when both sides are slow", async () => {
+    await expect(
+      withV3ApiTiming(
+        () =>
+          getPassageIndexV3Tool.handler(
+            { reference: "PHP 2", language: "en" },
+            indexEnv(true, true),
+            "req",
+          ),
+        30,
+      ),
+    ).rejects.toBeInstanceOf(ApiTimeoutError);
+  });
 });
 
 describe("v3 chapter index size", () => {
@@ -442,6 +606,7 @@ describe("v3 chapter index size", () => {
     expect(content.issues.every((issue) => issue.title.length > 0)).toBe(true);
     expect(content.keyTerms.every((term) => term.category === "kt")).toBe(true);
     expect(JSON.stringify(content)).not.toMatch(/Philippians/);
+    expect(JSON.stringify(content).length).toBeLessThanOrEqual(52_000);
 
     const previous = {
       ...content,

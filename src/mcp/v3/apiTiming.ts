@@ -35,7 +35,8 @@ export function isApiTimeout(error: unknown): boolean {
 interface ApiCall {
   layer?: AnswerLayer;
   apiMs: number;
-  waitedMs: number;
+  started: number;
+  ended: number;
 }
 
 interface Scope {
@@ -56,9 +57,11 @@ export function v3ApiTimeoutMs(): number | undefined {
   return storage.getStore()?.timeoutMs;
 }
 
+/** `started` and `ended` are milliseconds on the same clock as `Date.now()`. */
 export function noteV3ApiResponse(
   header: string | null,
-  waitedMs: number,
+  started: number,
+  ended: number,
 ): void {
   const current = storage.getStore();
   if (!current) return;
@@ -66,7 +69,8 @@ export function noteV3ApiResponse(
   current.calls.push({
     layer: parsed.layer,
     apiMs: parsed.apiMs,
-    waitedMs,
+    started,
+    ended,
   });
 }
 
@@ -77,14 +81,44 @@ export function v3ApiSummary(): {
 } {
   const calls = storage.getStore()?.calls ?? [];
   let apiMs = 0;
-  let waitedMs = 0;
   const layers: Array<string | undefined> = [];
   for (const call of calls) {
     apiMs += call.apiMs;
-    waitedMs += call.waitedMs;
     layers.push(call.layer);
   }
-  return { layer: slowestLayer(layers), apiMs, waitedMs };
+  return { layer: slowestLayer(layers), apiMs, waitedMs: unionWaitMs(calls) };
+}
+
+/** Overlapping waits count once. A gap between calls is not a wait. */
+function unionWaitMs(calls: ApiCall[]): number {
+  const intervals = calls
+    .map((call) => {
+      const start = call.started;
+      const end = call.ended < start ? start : call.ended;
+      return { start, end };
+    })
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+  let total = 0;
+  let open = false;
+  let start = 0;
+  let end = 0;
+  for (const interval of intervals) {
+    if (!open) {
+      start = interval.start;
+      end = interval.end;
+      open = true;
+      continue;
+    }
+    if (interval.start <= end) {
+      end = Math.max(end, interval.end);
+      continue;
+    }
+    total += end - start;
+    start = interval.start;
+    end = interval.end;
+  }
+  if (open) total += end - start;
+  return total;
 }
 
 /**
@@ -106,6 +140,8 @@ export function v3ToolMetric(
     cacheStatus: layer ? mapApiCacheStatus(layer) : cacheStatus,
     layer,
     apiMs: summary.apiMs,
+    // apiMs is a sum and can exceed latencyMs when calls overlap.
+    // mcpMs uses the union of those waits, so parallel calls are not subtracted twice.
     mcpMs: Math.max(0, latencyMs - summary.waitedMs),
   };
 }

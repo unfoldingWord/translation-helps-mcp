@@ -2,21 +2,23 @@
 
 Each `/v3` tool call writes one Analytics Engine point. The first five blobs and the first double are the same columns `/v2` already uses. A `/v3` point appends three fields and does not reorder the earlier ones.
 
-| Position | Field       | Meaning                                                                                                                          |
-| -------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| blob1    | tool        | `v3:` plus the tool name, for example `v3:th_get_passage`                                                                        |
-| blob2    | requestId   | Id for that call                                                                                                                 |
-| blob3    | cacheStatus | `hit`, `miss`, `stale`, or `none`. `views`, `memory` and `kv` count as `hit`. `r2` counts as `stale`. `network` counts as `miss` |
-| blob4    | errorCode   | `OK`, or `TIMEOUT` when the API did not answer within 20 seconds                                                                 |
-| blob5    | language    | BCP-47 code when the tool was given one                                                                                          |
-| blob6    | layer       | The slowest layer that answered: `views`, `memory`, `kv`, `r2`, or `network`                                                     |
-| double1  | latencyMs   | Time inside the MCP worker, including the wait on the API                                                                        |
-| double2  | apiMs       | Sum of the API `Server-Timing` `total` durations. A tool that calls the API twice adds both                                      |
-| double3  | mcpMs       | `latencyMs` minus the time the MCP worker spent waiting on those API calls                                                       |
+| Position | Field       | Meaning                                                                                                                                                             |
+| -------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| blob1    | tool        | `v3:` plus the tool name, for example `v3:th_get_passage`                                                                                                           |
+| blob2    | requestId   | Id for that call                                                                                                                                                    |
+| blob3    | cacheStatus | `hit`, `miss`, `stale`, or `none`. `edge`, `views`, `memory` and `kv` count as `hit`. `r2` counts as `stale`. `network` counts as `miss`                            |
+| blob4    | errorCode   | `OK`, or `TIMEOUT` when the API did not answer within 20 seconds                                                                                                    |
+| blob5    | language    | BCP-47 code when the tool was given one                                                                                                                             |
+| blob6    | layer       | The slowest layer that answered: `edge`, `views`, `memory`, `kv`, `r2`, or `network`. `edge` is the fastest                                                         |
+| double1  | latencyMs   | Time inside the MCP worker, including the wait on the API                                                                                                           |
+| double2  | apiMs       | Sum of the API `Server-Timing` `total` durations. A tool that calls the API twice adds both. Parallel calls are added too, so this sum can be larger than `double1` |
+| double3  | mcpMs       | `latencyMs` minus the time spent waiting on the API. Overlapping waits count once, as the union of each call's start and end                                        |
 
 `/v2` points stay five blobs and one double. The dataset is `translation_helps_metrics` on account `5a3ffd86280d3ed086be76d955829242`. Sampling is off, so `_sample_interval` is 1. The weighted quantiles stay right if sampling is turned on later.
 
-The REST routes `/v3` calls send `Server-Timing` on the JSON response: `layer;desc="kv", total;dur=12`, plus any durations that route already recorded (`catalogMs`, `zipMs`, and so on). The header does not include a path, a cache key, or the caller's text. When several layers answered, `layer` is the slowest of `network`, `r2`, `kv`, `memory`, `views`.
+The REST routes `/v3` calls send `Server-Timing` on the JSON response: `layer;desc="kv", total;dur=12`, plus any durations that route already recorded (`catalogMs`, `zipMs`, and so on). The header does not include a path, a cache key, or the caller's text. When several layers answered, `layer` is the slowest of `network`, `r2`, `kv`, `memory`, `views`, `edge`. An edge-cache hit replaces that header with `layer;desc="edge"` and the time of the hit itself.
+
+`double2` is a sum of those API totals. Two calls that run at the same time both count, so `double2` can be larger than `double1`, the tool's own clock time. `double3` subtracts the union of the waits, not the sum.
 
 ## p50 and p90 for the last 7 days
 

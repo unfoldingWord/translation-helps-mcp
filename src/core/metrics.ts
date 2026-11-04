@@ -18,7 +18,7 @@ export interface ToolCallMetric {
   errorCode: string;
   language?: string;
   /**
-   * /v3 only. The layer that answered (views, memory, kv, r2, network).
+   * /v3 only. The layer that answered (edge, views, memory, kv, r2, network).
    * Appended after the existing blobs so earlier queries keep their columns.
    */
   layer?: string;

@@ -10,6 +10,7 @@ import { dataLayers, withDataLayers } from "@translation-helps/door43";
 import { AsyncLocalStorage } from "node:async_hooks";
 
 export const ANSWER_LAYERS = [
+  "edge",
   "views",
   "memory",
   "kv",
@@ -21,11 +22,12 @@ export type AnswerLayer = (typeof ANSWER_LAYERS)[number];
 
 /** Higher means slower. The header reports the highest layer that answered. */
 const SLOWNESS: Record<AnswerLayer, number> = {
-  views: 0,
-  memory: 1,
-  kv: 2,
-  r2: 3,
-  network: 4,
+  edge: 0,
+  views: 1,
+  memory: 2,
+  kv: 3,
+  r2: 4,
+  network: 5,
 };
 
 const TIMING_NAME = /^[A-Za-z][A-Za-z0-9_]{0,40}$/;

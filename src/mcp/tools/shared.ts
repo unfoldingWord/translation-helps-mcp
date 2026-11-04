@@ -237,6 +237,7 @@ export function mapApiCacheStatus(
 ): "hit" | "miss" | "stale" | "none" {
   if (!cache) return "none";
   if (
+    cache === "edge" ||
     cache === "kv" ||
     cache === "memory" ||
     cache === "views" ||

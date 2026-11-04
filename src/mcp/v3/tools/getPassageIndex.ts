@@ -187,6 +187,15 @@ export const getPassageIndexV3Tool = {
       }),
     ]);
 
+    if (
+      notesSide.kind === "failed" &&
+      wordsSide.kind === "failed" &&
+      isApiTimeout(notesSide.reason) &&
+      isApiTimeout(wordsSide.reason)
+    ) {
+      throw notesSide.reason;
+    }
+
     if (notesSide.kind === "missing" && wordsSide.kind === "missing") {
       const detail = [notesSide, wordsSide]
         .map((side) => text(side.value.message))
@@ -708,7 +717,6 @@ async function fetchSide(
     if (value.available === false) return { kind: "missing", value };
     return { kind: "ok", value };
   } catch (reason) {
-    if (isApiTimeout(reason)) throw reason;
     if (reason instanceof ApiClientError && reason.status === 404) {
       return {
         kind: "missing",
