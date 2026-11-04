@@ -70,8 +70,13 @@ export async function resolveLanguageVariant(
   language: string,
   subject: string,
   kv: CatalogKVCache | null | undefined,
+  options?: { strict?: boolean },
 ): Promise<{ language: string; entries: CatalogEntry[] }> {
-  return resolveCatalogLanguage(language, { subject, kv });
+  return resolveCatalogLanguage(language, {
+    subject,
+    kv,
+    strict: options?.strict,
+  });
 }
 
 /**

@@ -73,10 +73,13 @@ export async function handleQuestions(ctx: RouteContext): Promise<Response> {
     );
     if (again) return { payload: again.value, cache: "kv" as const };
 
+    // strict: a Door43 network error or timeout throws here, before any
+    // "not available" payload is cached. An empty catalog is a real answer.
     const { language, entries } = await resolveLanguageVariant(
       requestedLanguage,
       "TSV Translation Questions",
       env.TRANSLATION_HELPS_CACHE,
+      { strict: true },
     );
     if (entries.length === 0) {
       const payload = unavailableQuestions(

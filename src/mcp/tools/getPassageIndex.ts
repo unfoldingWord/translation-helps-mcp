@@ -111,6 +111,12 @@ const outputSchema = withNotAvailableOutput({
       }),
     )
     .optional(),
+  notesAvailable: z
+    .boolean()
+    .optional()
+    .describe(
+      "False when this language has no translation notes for the book. Word links in this result are still real.",
+    ),
   meta: metaOutputSchema,
 });
 
@@ -125,7 +131,8 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
     "A direct question about a term, a concept, the notes, or the questions does not need this index first. " +
     "Use search_articles for a concept that is not linked to this passage. " +
     "Empty arrays mean this passage has none. " +
-    "available: false means this language has no notes for that book: say so and do not answer from memory.",
+    "notesAvailable: false means this language has no notes for that book; the word links in this result are still real, so say so and do not answer from memory. " +
+    "available: false means neither notes nor word links are available.",
   inputSchema,
   outputSchema,
   annotations: { readOnlyHint: true, title: "Get Passage Index" },
@@ -164,6 +171,9 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
         .get<{
           wordLinks: Array<Record<string, unknown>>;
           book?: string;
+          language?: string;
+          available?: boolean;
+          message?: string;
           meta?: { cache?: string };
         }>("/api/v1/word-links", { reference, language })
         .then((value) => ({ status: "fulfilled" as const, value }))
@@ -172,20 +182,25 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
 
     const notesPayload =
       notesRes.status === "fulfilled" ? notesRes.value : undefined;
-    if (!skipNotes && notesPayload?.available === false) {
-      const book = notesPayload.book ?? "";
-      const lang = notesPayload.language || language;
-      return notAvailable(
-        book
-          ? `translation notes for "${book}" in language "${lang}"`
-          : `translation notes for language "${lang}"`,
-        typeof notesPayload.message === "string"
-          ? notesPayload.message
-          : undefined,
-      );
-    }
     const wordPayload =
       wordLinksRes.status === "fulfilled" ? wordLinksRes.value : undefined;
+    const notesMissing = !skipNotes && notesPayload?.available === false;
+    const wordsMissing = wordPayload?.available === false;
+    if (notesMissing && wordsMissing) {
+      const book = notesPayload?.book ?? wordPayload?.book ?? "";
+      const lang = notesPayload?.language || wordPayload?.language || language;
+      const detail = [notesPayload?.message, wordPayload?.message]
+        .filter(
+          (part): part is string => typeof part === "string" && part.length > 0,
+        )
+        .join(" ");
+      return notAvailable(
+        book
+          ? `translation notes or word links for "${book}" in language "${lang}"`
+          : `translation notes or word links for language "${lang}"`,
+        detail || undefined,
+      );
+    }
     const rawNotes = notesPayload?.notes ?? [];
     const rawWords = wordPayload?.wordLinks ?? [];
     const notesBook = String(notesPayload?.book ?? "");
@@ -289,7 +304,16 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
     };
 
     return okCached(
-      { ...index, ...(cache ? { meta: { cache } } : {}) },
+      {
+        ...index,
+        ...(notesMissing
+          ? {
+              notesAvailable: false,
+              message: `Translation notes are not available for language "${language}".`,
+            }
+          : {}),
+        ...(cache ? { meta: { cache } } : {}),
+      },
       mapApiCacheStatus(cache),
       `${notes.length} note(s), ${words.length} word link(s), ${issues.length} issue type(s), ${keyTerms.length} key term(s)${cache ? ` [${cache}]` : ""}`,
     );

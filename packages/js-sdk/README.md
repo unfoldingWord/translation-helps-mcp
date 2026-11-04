@@ -122,7 +122,7 @@ All methods return `MCPToolResult` (`content`, optional `structuredContent`, opt
 
 | Method                  | Options                                      | Description                                                                                                       |
 | ----------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `getPassageIndex(opts)` | `reference` (req), `language?`, `skipNotes?` | Compact index: note IDs + quotes + TA/TW paths (no article bodies). Includes `issues[]` and `keyTerms[]` rollups. |
+| `getPassageIndex(opts)` | `reference` (req), `language?`, `skipNotes?` | Compact index: note IDs + quotes + TA/TW paths (no article bodies). Includes `issues[]` and `keyTerms[]` rollups. `notesAvailable: false` means the language has no notes for that book; the word links in the result are still real. |
 
 #### Step 3 — Drill
 

@@ -418,7 +418,7 @@ describe("v2 tools pass on not-available and source", () => {
     },
   };
 
-  it("get_note, get_questions and get_passage_index say the book is missing", async () => {
+  it("get_note and get_questions say the book is missing", async () => {
     const env = api({
       "/api/v1/notes": hiNotes,
       "/api/v1/questions": {
@@ -437,12 +437,7 @@ describe("v2 tools pass on not-available and source", () => {
       env,
       "t",
     );
-    const index = await getPassageIndexTool.handler(
-      { reference: "TIT 2:11", language: "hi" },
-      env,
-      "t",
-    );
-    for (const result of [note, questions, index]) {
+    for (const result of [note, questions]) {
       expect(result.isError).toBe(false);
       expect(result.structuredContent).toMatchObject({
         available: false,
@@ -453,6 +448,77 @@ describe("v2 tools pass on not-available and source", () => {
       const hints = result.structuredContent?.hints as string[];
       expect(hints[0]).toContain("list_resources");
     }
+  });
+
+  it("get_passage_index keeps word links when only the notes are missing", async () => {
+    const index = await getPassageIndexTool.handler(
+      { reference: "TIT 2:11", language: "hi" },
+      api({
+        "/api/v1/notes": hiNotes,
+        "/api/v1/word-links": {
+          book: "TIT",
+          language: "hi",
+          wordLinks: [
+            {
+              book: "TIT",
+              chapter: "2",
+              verse: "11",
+              origWords: "grace",
+              occurrence: "1",
+              wordPath: "bible/kt/grace",
+              twTitle: "Grace",
+            },
+          ],
+        },
+      }),
+      "t",
+    );
+    expect(index.isError).toBe(false);
+    expect(index.structuredContent?.available).not.toBe(false);
+    expect(index.structuredContent?.notesAvailable).toBe(false);
+    expect(index.structuredContent?.notes).toEqual([]);
+    expect(index.structuredContent?.message).toBe(
+      'Translation notes are not available for language "hi".',
+    );
+    expect(
+      (index.structuredContent?.words as unknown[]).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("get_passage_index is not available only when notes and word links are both missing", async () => {
+    const index = await getPassageIndexTool.handler(
+      { reference: "ROM 1:1", language: "fr" },
+      api({
+        "/api/v1/notes": {
+          available: false,
+          code: "RESOURCE_NOT_AVAILABLE",
+          book: "ROM",
+          language: "fr",
+          notes: [],
+          message:
+            'No TSV Translation Notes resource available for book "ROM" in language "fr".',
+        },
+        "/api/v1/word-links": {
+          available: false,
+          code: "RESOURCE_NOT_AVAILABLE",
+          book: "ROM",
+          language: "fr",
+          wordLinks: [],
+          message:
+            'No TSV Translation Words Links resource available for language "fr".',
+        },
+      }),
+      "t",
+    );
+    expect(index.isError).toBe(false);
+    expect(index.structuredContent).toMatchObject({
+      available: false,
+      code: "RESOURCE_NOT_AVAILABLE",
+    });
+    expect(index.structuredContent?.message).toContain("fr");
+    expect(index.structuredContent?.message).toContain("ROM");
+    const hints = index.structuredContent?.hints as string[];
+    expect(hints[0]).toContain("list_resources");
   });
 
   it("keeps a covered verse with no rows as an empty success and passes source", async () => {

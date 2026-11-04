@@ -1127,6 +1127,50 @@ describe("v3 th_get_passage_index", () => {
     expect(result.structuredContent?.words).toEqual([]);
   });
 
+  it("keeps word links when only the notes are missing", async () => {
+    const { env } = apiEnv((url) => {
+      if (url.pathname.endsWith("/notes")) {
+        return {
+          available: false,
+          book: "TIT",
+          language: "hi",
+          notes: [],
+          message: 'No TSV Translation Notes file for "TIT" in language "hi".',
+        };
+      }
+      if (url.pathname.endsWith("/word-links")) {
+        return {
+          book: "TIT",
+          wordLinks: [
+            {
+              chapter: "2",
+              verse: "11",
+              origWords: "grace",
+              wordPath: "bible/kt/grace",
+              twTitle: "Grace",
+            },
+          ],
+        };
+      }
+      return indexPayload(url);
+    });
+    const result = await getPassageIndexV3Tool.handler(
+      { reference: "TIT 2:11", language: "hi" },
+      env,
+      "req",
+    );
+    expect(result.isError).not.toBe(true);
+    expect(result.structuredContent?.available).not.toBe(false);
+    expect(result.structuredContent?.notesAvailable).toBe(false);
+    expect(result.structuredContent?.notes).toEqual([]);
+    expect(result.structuredContent?.message).toBe(
+      'Translation notes are not available for language "hi".',
+    );
+    expect(
+      (result.structuredContent?.words as unknown[]).length,
+    ).toBeGreaterThan(0);
+  });
+
   it("says the resource is not available when both sides are missing", async () => {
     const { env } = apiEnv((url) => {
       if (

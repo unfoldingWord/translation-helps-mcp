@@ -453,6 +453,11 @@ export interface CatalogSearchOptions {
    * For a check that compares what Door43 has now: a cached search may be an hour behind a release.
    */
   fresh?: boolean;
+  /**
+   * Re-throw a network error or a timeout instead of looking like an empty catalog.
+   * Callers that cache "not available" need this so an outage is not stored.
+   */
+  strict?: boolean;
 }
 
 /**
@@ -507,7 +512,13 @@ export async function catalogSearch(
   });
   const cacheKey = `catalog:search:${url}`;
   if (opts.fresh) {
-    const freshEntries = await fetchAndStoreCatalogSearch(url, cacheKey, null);
+    const freshEntries = await fetchAndStoreCatalogSearch(
+      url,
+      cacheKey,
+      null,
+      undefined,
+      opts.strict,
+    );
     traceLayer("network");
     return freshEntries;
   }
@@ -541,6 +552,7 @@ export async function catalogSearch(
     cacheKey,
     opts.kv,
     opts.ctx,
+    opts.strict,
   );
   traceLayer("network");
   return fetched;
@@ -551,14 +563,16 @@ async function fetchAndStoreCatalogSearch(
   cacheKey: string,
   kv: CatalogKVCache | null | undefined,
   ctx?: WaitUntilHost,
+  strict?: boolean,
 ): Promise<CatalogEntry[]> {
   let resp: CatalogSearchResponse;
   try {
     resp = await apiFetch<CatalogSearchResponse>(url);
   } catch (err) {
     // Re-throw server errors so callers can distinguish DCS outages from empty results.
-    // Only swallow client-side / network errors (non-HTTP failures).
-    if (err instanceof Error && err.message.startsWith("HTTP 5")) {
+    // Only swallow client-side / network errors (non-HTTP failures), unless the
+    // caller asked to see those failures too.
+    if (strict || (err instanceof Error && err.message.startsWith("HTTP 5"))) {
       throw err;
     }
     return [];
@@ -924,13 +938,18 @@ export async function findLanguageVariants(
  */
 export async function resolveCatalogLanguage(
   lang: string,
-  opts: { subject?: string; kv?: CatalogKVCache | null } = {},
+  opts: {
+    subject?: string;
+    kv?: CatalogKVCache | null;
+    /** Re-throw catalog network errors instead of treating them as no resources. */
+    strict?: boolean;
+  } = {},
 ): Promise<{ language: string; entries: CatalogEntry[] }> {
-  const { subject, kv } = opts;
+  const { subject, kv, strict } = opts;
   lang = normalizeCatalogLanguageCode(lang);
 
   // Fast path: exact match already in catalog
-  const exact = await catalogSearch({ lang, subject, kv });
+  const exact = await catalogSearch({ lang, subject, kv, strict });
   if (exact.length > 0) return { language: lang, entries: exact };
 
   // Skip variant discovery for codes that already have a region (e.g. es-419
@@ -943,7 +962,12 @@ export async function resolveCatalogLanguage(
   // L0: in-process memo
   const memo = VARIANT_RESOLVE_CACHE.get(memoKey);
   if (memo) {
-    const variantEntries = await catalogSearch({ lang: memo, subject, kv });
+    const variantEntries = await catalogSearch({
+      lang: memo,
+      subject,
+      kv,
+      strict,
+    });
     return { language: memo, entries: variantEntries };
   }
 
@@ -952,7 +976,12 @@ export async function resolveCatalogLanguage(
   const kvMemo = await kvGet(kv, kvKey);
   if (kvMemo) {
     VARIANT_RESOLVE_CACHE.set(memoKey, kvMemo);
-    const variantEntries = await catalogSearch({ lang: kvMemo, subject, kv });
+    const variantEntries = await catalogSearch({
+      lang: kvMemo,
+      subject,
+      kv,
+      strict,
+    });
     return { language: kvMemo, entries: variantEntries };
   }
 
@@ -962,19 +991,20 @@ export async function resolveCatalogLanguage(
     async () => {
       const variants = await findLanguageVariants(lang, kv);
       for (const v of variants) {
-        const vEntries = await catalogSearch({ lang: v, subject, kv });
+        const vEntries = await catalogSearch({ lang: v, subject, kv, strict });
         if (vEntries.length > 0) return v;
       }
       return lang; // no variant found — callers will receive empty entries
     },
     kv,
     kvKey,
+    strict,
   );
 
   const resolved = await inflight;
   const resolvedEntries =
     resolved !== lang
-      ? await catalogSearch({ lang: resolved, subject, kv })
+      ? await catalogSearch({ lang: resolved, subject, kv, strict })
       : [];
   return { language: resolved, entries: resolvedEntries };
 }
@@ -985,6 +1015,7 @@ function VARIANT_INFLIGHT(
   factory: () => Promise<string>,
   kv: CatalogKVCache | null | undefined,
   kvKey: string,
+  strict?: boolean,
 ): Promise<string> {
   const existing = VARIANT_RESOLVE_INFLIGHT.get(memoKey);
   if (existing) return existing;
@@ -997,8 +1028,9 @@ function VARIANT_INFLIGHT(
       void kvPut(kv, kvKey, resolved, VARIANT_CACHE_TTL_S);
       return resolved;
     })
-    .catch(() => {
+    .catch((err: unknown) => {
       VARIANT_RESOLVE_INFLIGHT.delete(memoKey);
+      if (strict) throw err;
       return memoKey.split(":")[0]; // return original base on error
     });
 

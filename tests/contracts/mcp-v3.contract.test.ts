@@ -71,11 +71,12 @@ const V2_TOOL_NAMES = [
  * SHA-256 of the v2 tools/list schemas (name, inputSchema, outputSchema).
  * Descriptions are not part of the digest. T-065 (2.10.0) changed it because
  * get_note, get_questions, get_word_article, and get_academy_article gained
- * an optional source object. A later schema change fails this even when the
- * Durable Object and the HTTP path are updated together.
+ * an optional source object. The correction adds optional notesAvailable on
+ * get_passage_index. A later schema change fails this even when the Durable
+ * Object and the HTTP path are updated together.
  */
 const V2_SCHEMA_SHA256 =
-  "cf54ca02d29c64ecc472529caad38608d71adf69ecba8f610a4fe0d980d9ff83";
+  "63de8eb3bd80c5dfae302336491a006663246cd256426112654536667c5d0863";
 
 const V3_TOOL_NAMES = [
   "th_get_passage",

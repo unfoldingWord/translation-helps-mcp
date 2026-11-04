@@ -129,6 +129,32 @@ function apiFetcher(): Fetcher {
       }
 
       if (path.endsWith("/word-links")) {
+        if (language === "fr") {
+          return Response.json({
+            book,
+            language,
+            wordLinks: [],
+            available: false,
+            code: "RESOURCE_NOT_AVAILABLE",
+            message: `No TSV Translation Words Links resource available for language "${language}".`,
+          });
+        }
+        if (language === "hi") {
+          return Response.json({
+            book,
+            language,
+            wordLinks: [
+              {
+                chapter: "2",
+                verse: "11",
+                origWords: "grace",
+                occurrence: "1",
+                wordPath: "bible/kt/grace",
+                twTitle: "Grace",
+              },
+            ],
+          });
+        }
         return Response.json({ book, language, wordLinks: [] });
       }
 
@@ -234,14 +260,39 @@ describe("not available and source over the worker", () => {
     ["es-419", "LUK 15:1", "LUK"],
     ["fr", "ROM 1:1", "ROM"],
   ])(
-    "v2 %s %s notes, questions and index are not available",
+    "v2 %s %s notes and questions are not available",
     async (language, reference, book) => {
-      for (const name of ["get_note", "get_questions", "get_passage_index"]) {
+      for (const name of ["get_note", "get_questions"]) {
         const result = await call("/v2/mcp", name, { reference, language });
         expectMissing(result, language, book, "list_resources");
       }
     },
   );
+
+  it("v2 Hindi Titus index keeps the word links and flags the missing notes", async () => {
+    const result = await call("/v2/mcp", "get_passage_index", {
+      reference: "TIT 2:11",
+      language: "hi",
+    });
+    expect(result.isError).not.toBe(true);
+    expect(result.structuredContent?.available).not.toBe(false);
+    expect(result.structuredContent?.notesAvailable).toBe(false);
+    expect(result.structuredContent?.notes).toEqual([]);
+    expect(result.structuredContent?.message).toBe(
+      'Translation notes are not available for language "hi".',
+    );
+    expect(
+      (result.structuredContent?.words as unknown[]).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("v2 French Romans index is not available when notes and word links are both missing", async () => {
+    const result = await call("/v2/mcp", "get_passage_index", {
+      reference: "ROM 1:1",
+      language: "fr",
+    });
+    expectMissing(result, "fr", "ROM", "list_resources");
+  });
 
   it("v2 keeps an English verse with no notes as an empty success", async () => {
     const note = await call("/v2/mcp", "get_note", {
@@ -345,6 +396,31 @@ describe("not available and source over the worker", () => {
       version: "v3",
       language: "ar",
     });
+  });
+
+  it("v3 Hindi Titus index keeps the word links and flags the missing notes", async () => {
+    const result = await call("/v3/mcp", "th_get_passage_index", {
+      reference: "TIT 2:11",
+      language: "hi",
+    });
+    expect(result.isError).not.toBe(true);
+    expect(result.structuredContent?.available).not.toBe(false);
+    expect(result.structuredContent?.notesAvailable).toBe(false);
+    expect(result.structuredContent?.notes).toEqual([]);
+    expect(result.structuredContent?.message).toBe(
+      'Translation notes are not available for language "hi".',
+    );
+    expect(
+      (result.structuredContent?.words as unknown[]).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("v3 French Romans index is not available when notes and word links are both missing", async () => {
+    const result = await call("/v3/mcp", "th_get_passage_index", {
+      reference: "ROM 1:1",
+      language: "fr",
+    });
+    expectMissing(result, "fr", "ROM", "th_list_resources");
   });
 
   it("v3 says Hindi Titus notes are not available", async () => {

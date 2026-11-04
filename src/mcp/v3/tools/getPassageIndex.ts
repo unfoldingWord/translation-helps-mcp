@@ -87,7 +87,7 @@ export const GET_PASSAGE_INDEX_DESCRIPTION = `Lists what the translation helps s
 - keyTerms, how often each key term occurs;
 - introductions, the book or chapter introductions that apply.
 
-Use it to see what a passage needs, or to count things in a book: reference "JON" answers how many metaphor notes Jonah has. Every note and introduction has next: call that tool with those arguments to get its body. A word has next when it links a Translation Words article. An issue or key term has no next: call th_get_article with its path. Notes and words are paged (limit, offset). Each of notes, words and keyTerms reports total, has_more and next_offset. Issues are complete. keyTerms are the 100 most frequent; keyTermsOffset skips that many. A note, a word and next use the book code the tools accept, such as "PHP 2:1". A note gives the translation issue's path; the issue's title is listed once under issues. A word's article does not repeat its category, because the path already has it.`;
+Use it to see what a passage needs, or to count things in a book: reference "JON" answers how many metaphor notes Jonah has. Every note and introduction has next: call that tool with those arguments to get its body. A word has next when it links a Translation Words article. An issue or key term has no next: call th_get_article with its path. Notes and words are paged (limit, offset). Each of notes, words and keyTerms reports total, has_more and next_offset. Issues are complete. keyTerms are the 100 most frequent; keyTermsOffset skips that many. A note, a word and next use the book code the tools accept, such as "PHP 2:1". A note gives the translation issue's path; the issue's title is listed once under issues. A word's article does not repeat its category, because the path already has it. notesAvailable: false means this language has no notes for that book; the words in this result are still real, so say so and do not answer from memory.`;
 
 const outputSchema = withNotAvailableOutput({
   kind: z.enum(["bible", "obs"]).optional(),
@@ -124,6 +124,12 @@ const outputSchema = withNotAvailableOutput({
     .optional(),
   notesError: z.string().optional(),
   wordLinksError: z.string().optional(),
+  notesAvailable: z
+    .boolean()
+    .optional()
+    .describe(
+      "False when this language has no translation notes for the book. Word links in this result are still real.",
+    ),
   message: z.string().optional(),
 });
 
@@ -312,6 +318,7 @@ export const getPassageIndexV3Tool = {
         ...nextOffsetFields(notesPage, wordsPage, keyTermsPage),
         ...(notesError ? { notesError } : {}),
         ...(wordLinksError ? { wordLinksError } : {}),
+        ...(notesSide.kind === "missing" ? { notesAvailable: false } : {}),
         ...(messages.length ? { message: messages.join(" ") } : {}),
       },
       mapApiCacheStatus(cache),
