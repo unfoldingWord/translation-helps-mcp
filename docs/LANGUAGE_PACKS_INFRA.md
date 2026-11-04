@@ -500,6 +500,57 @@ The list answers as the f1.1 entry does, as in the table above: `200` with its `
 - Every 4xx, 429 and the 202 carry `Cache-Control: no-store`; CORS allows any origin and exposes `ETag`,
   `Content-Range`, `Content-Length`, `Accept-Ranges` and `Retry-After`.
 
+## Format 3
+
+Language packs format 3 are segment files (`.seg`) served from the same `LANGUAGE_PACKS` bucket under their own
+`v3/` prefix. The contract is `spec/serving.md` of bt-synergy's `language-pack-v3` package; the code is
+`src/api/routes/packsV3.ts`. The Worker only streams stored bytes: it never decodes a file and never starts a build.
+Format 3 is built and uploaded by the same run that builds a language's 2.0 parts (bt-synergy's pipeline).
+
+### Routes
+
+| Route                          | R2 key                  | Cache                                                                    |
+| ------------------------------ | ----------------------- | ------------------------------------------------------------------------ |
+| `GET /v3/packs/{lang}/catalog` | `v3/catalog/{lang}.seg` | `no-cache, no-transform` (revalidated with `ETag` / `If-None-Match`)     |
+| `GET /v3/packs/common/catalog` | `v3/catalog/common.seg` | same                                                                     |
+| `GET /v3/packs/seg/{id}`       | `v3/seg/{id}.seg`       | `public, max-age=31536000, immutable, no-transform`; `Range` is honoured |
+
+`{id}` is 64 lowercase hex characters (the sha256 of the segment's uncompressed body). `v3/registry/{lang}.json` is
+written by the pipeline and is not served. `HEAD` and `OPTIONS` work; a catalog ignores `Range`.
+
+### `PACKS_V3`
+
+`on` serves the routes; anything else answers `404 {"state":"unavailable","reason":"v3-off"}`. Per environment in
+`wrangler.toml`: top-level staging `on`, `[env.preview]` `on`, `[env.production]` `off`. Production stays off in this
+phase: nothing writes to the production bucket and nothing turns the flag on there without Abel's decision.
+
+### Cleanup
+
+The parts cleanup lists only `parts/` and the content-addressed originals lists, so it never names or deletes a `v3/`
+key (test `ignores format 3 keys` in `tests/unit/packs-cleanup.test.ts`). Segments are shared by every language, so a
+v3 garbage collection needs its own rule; there is none yet.
+
+### Local server
+
+To check a staging folder (one that holds `v3/catalog/*.seg` and `v3/seg/*.seg`) with the Worker's own handler and no
+network or bucket:
+
+```
+npx tsx scripts/packs-v3-local.ts --dir <folder> [--port 8790]
+```
+
+It prints `listening on http://127.0.0.1:<port>` and runs until killed. It reads `<folder>/<key>` through
+`src/packs/dirBucket.ts` (etag = sha256 of the file bytes), sets `PACKS_V3=on`, has no analytics and no rate limit,
+and writes nothing.
+
+### Staging steps
+
+1. Build the folder with the pipeline (`--out <folder>`), without uploading.
+2. Serve it locally (above) and run the client or the cross-reader checks against `http://127.0.0.1:<port>/v3/packs`.
+3. With Abel's yes, upload to the staging bucket only, and check `https://<staging worker>/v3/packs/en/catalog`
+   returns the same bytes and `ETag` as the file.
+4. Production is not touched in this phase.
+
 ## Rotation
 
 - GitHub App private key: App settings → Private keys → generate a new one, update `GITHUB_APP_PRIVATE_KEY` on both
