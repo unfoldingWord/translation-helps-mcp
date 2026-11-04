@@ -45,6 +45,7 @@ new_sqlite_classes = ["TranslationHelpsMCP"]
 [vars]
 API_BASE_URL = "http://localhost:8788"
 BASE_PATH = "/v2"
+PACKS_V3 = "on"   # /v3/packs (format 3); "off" answers 404 v3-off
 # RATE_LIMIT_RPM = "90"   # optional; default 90 when unset. Set "0" to disable.
 # MCP_API_KEY is a wrangler secret (not a plaintext var) when enabling auth.
 
@@ -59,7 +60,7 @@ BASE_PATH = "/v2"
 
 [previews]
 # The MCP preview calls the production API Worker: an API change is checked in the API's own preview.
-vars = { NODE_ENV = "development", BASE_PATH = "/v2", API_BASE_URL = "https://translation-helps-api-v2.unfoldingword.workers.dev", PACKS_TARGET = "staging", PACKS_PARTS_DISPATCH = "off", PACKS_PARTS_DAILY_CAP = "0", PACKS_SWEEP = "parts", PACKS_CLEANUP = "off", PARTS_CHECKS_PER_RUN = "0" }
+vars = { NODE_ENV = "development", BASE_PATH = "/v2", API_BASE_URL = "https://translation-helps-api-v2.unfoldingword.workers.dev", PACKS_TARGET = "staging", PACKS_V3 = "on", PACKS_PARTS_DISPATCH = "off", PACKS_PARTS_DAILY_CAP = "0", PACKS_SWEEP = "parts", PACKS_CLEANUP = "off", PARTS_CHECKS_PER_RUN = "0" }
 
 [[previews.kv_namespaces]]
 binding = "TRANSLATION_HELPS_CACHE"
@@ -94,7 +95,7 @@ service = "translation-helps-api-v2"
 name = "translation-helps-mcp-v2"
 # Production now asks for parts builds and keeps cleanup in dry-run: no deletes until PACKS_CLEANUP is changed to
 # `delete` with Abel's yes after reading the logs.
-vars = { NODE_ENV = "production", BASE_PATH = "/v2", API_BASE_URL = "https://translation-helps-api-v2.unfoldingword.workers.dev", PACKS_TARGET = "production", PACKS_PARTS_DISPATCH = "on", PACKS_CLEANUP = "dry-run" }
+vars = { NODE_ENV = "production", BASE_PATH = "/v2", API_BASE_URL = "https://translation-helps-api-v2.unfoldingword.workers.dev", PACKS_TARGET = "production", PACKS_V3 = "off", PACKS_PARTS_DISPATCH = "on", PACKS_CLEANUP = "dry-run" }
 # Custom hostname routes require the zone on this Cloudflare account.
 # Pages v1 stays at tc-helps.mcp.servant.bible/; attach /v2* in the dashboard when ready:
 #   pattern: tc-helps.mcp.servant.bible/v2*
@@ -136,7 +137,7 @@ service = "translation-helps-api-v2"
 # cap, PACKS_PARTS_DAILY_CAP (default 20), apart from f1.1's 20. PACKS_SWEEP = "parts": the staging cron never sweeps
 # f1.1. PACKS_CLEANUP = "dry-run": the 03 UTC run (and its 04 and 05 retries, when it was postponed or aborted) logs
 # what the parts cleanup would delete and keeps its ledger, and deletes nothing. PARTS_CHECKS_PER_RUN unset: 5.
-vars = { NODE_ENV = "development", BASE_PATH = "/v2", PACKS_TARGET = "staging", PACKS_PARTS_DISPATCH = "on", PACKS_SWEEP = "parts", PACKS_CLEANUP = "dry-run" }
+vars = { NODE_ENV = "development", BASE_PATH = "/v2", PACKS_TARGET = "staging", PACKS_V3 = "on", PACKS_PARTS_DISPATCH = "on", PACKS_SWEEP = "parts", PACKS_CLEANUP = "dry-run" }
 
 # One cron per job, each its own invocation (src/packs/scheduled.ts): the parts cleanup at 03:07 UTC, its retries
 # at 04:07 and 05:07, and the hourly parts slice at :37, which may ask for staging parts builds of es-419 and en.
