@@ -62,12 +62,14 @@ export function dirBucket(root: string): R2Bucket {
       const onlyIf = options?.onlyIf as R2Conditional | undefined;
       // As R2: a failed condition answers the object without a body.
       if (onlyIf?.etagDoesNotMatch === o.etag) return meta(key, o);
-      const range = options?.range as R2Range | undefined;
+      const range = options?.range as
+        | { offset?: number; length?: number; suffix?: number }
+        | undefined;
       let slice: Buffer = o.bytes;
       if (range) {
         const size = o.bytes.length;
         const start =
-          "suffix" in range && range.suffix !== undefined
+          range.suffix !== undefined
             ? Math.max(0, size - range.suffix)
             : (range.offset ?? 0);
         if (start >= size) {
@@ -76,12 +78,15 @@ export function dirBucket(root: string): R2Bucket {
           );
         }
         const length =
-          "suffix" in range && range.suffix !== undefined
+          range.suffix !== undefined
             ? size - start
             : (range.length ?? size - start);
         slice = o.bytes.subarray(start, Math.min(size, start + length));
       }
-      return { ...meta(key, o, range), body: new Response(slice).body };
+      return {
+        ...meta(key, o, range as R2Range | undefined),
+        body: new Response(slice).body,
+      };
     },
   };
   return bucket as unknown as R2Bucket;

@@ -113,6 +113,7 @@ async function main(argv: string[]) {
   if (!dir) {
     console.error("usage: packs-v3-local.ts --dir <folder> [--port 8790]");
     process.exit(2);
+    return;
   }
   const port = Number(argValue(argv, "--port") ?? 8790);
   const started = await startLocalServer({ dir, port });

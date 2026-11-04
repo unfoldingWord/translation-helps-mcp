@@ -523,6 +523,8 @@ written by the pipeline and is not served. `HEAD` and `OPTIONS` work; a catalog 
 `on` serves the routes; anything else answers `404 {"state":"unavailable","reason":"v3-off"}`. Per environment in
 `wrangler.toml`: top-level staging `on`, `[env.preview]` `on`, `[env.production]` `off`. Production stays off in this
 phase: nothing writes to the production bucket and nothing turns the flag on there without Abel's decision.
+The production custom host routes only `/v2*`: `/v3/packs*` would reach Pages v1 there (404/HTML), so attach a
+`/v3/packs*` route to the Worker on that host before turning production on.
 
 ### Cleanup
 
@@ -548,7 +550,10 @@ and writes nothing.
 1. Build the folder with the pipeline (`--out <folder>`), without uploading.
 2. Serve it locally (above) and run the client or the cross-reader checks against `http://127.0.0.1:<port>/v3/packs`.
 3. With Abel's yes, upload to the staging bucket only, and check `https://<staging worker>/v3/packs/en/catalog`
-   returns the same bytes and `ETag` as the file.
+   returns the same bytes as the file (compare the body, for example its sha256). Do not compare the `ETag`: R2's is
+   the MD5 of the object (`md5-N` for multipart), the local server's is sha256.
+   Before a full `en` install, check its segment count against the `parts` rate limit (segments share it, 600 rpm by
+   default): a full `en` may need more than 600 segments.
 4. Production is not touched in this phase.
 
 ## Rotation
