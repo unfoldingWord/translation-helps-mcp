@@ -832,6 +832,8 @@ describe("v3 th_get_passage_index", () => {
     expect(GET_PASSAGE_INDEX_DESCRIPTION).toMatch(
       /An issue or key term has no next: call th_get_article with its path/,
     );
+    expect(GET_PASSAGE_INDEX_DESCRIPTION).toMatch(/PHP 2:1/);
+    expect(GET_PASSAGE_INDEX_DESCRIPTION).toMatch(/listed once under issues/);
     expect(GET_PASSAGE_INDEX_DESCRIPTION).toMatch(/keyTermsOffset/);
     expect(GET_PASSAGE_INDEX_DESCRIPTION).not.toMatch(/rollup/i);
     expect(V3_SERVER_INSTRUCTIONS).toMatch(/th_get_article/);
@@ -860,22 +862,22 @@ describe("v3 th_get_passage_index", () => {
     const notes = data.notes as Array<Record<string, unknown>>;
     expect(notes.map((note) => note.id)).toEqual(["n1", "n2"]);
     expect(notes[0]).toMatchObject({
-      reference: "Genesis 9:9",
+      reference: "GEN 9:9",
       quote: "my covenant",
-      taArticle: { path: "translate/figs-metaphor", title: "Metaphor" },
+      taArticle: { path: "translate/figs-metaphor" },
       next: {
         tool: "th_get_notes",
-        args: { reference: "Genesis 9:9", ids: ["n1"] },
+        args: { reference: "GEN 9:9", ids: ["n1"] },
       },
     });
+    expect(notes[0]?.taArticle).not.toHaveProperty("title");
     expect(JSON.stringify(notes[0])).not.toMatch(/This is my covenant/);
     const words = data.words as Array<Record<string, unknown>>;
     expect(words[0]).toMatchObject({
-      reference: "Genesis 9:9",
+      reference: "GEN 9:9",
       quote: "covenant",
       twArticle: {
         path: "bible/kt/covenant",
-        category: "kt",
         title: "Covenant",
       },
       next: {
@@ -883,6 +885,7 @@ describe("v3 th_get_passage_index", () => {
         args: { path: "bible/kt/covenant" },
       },
     });
+    expect(words[0]?.twArticle).not.toHaveProperty("category");
     expect(data.limit).toBe(200);
     expect(data.issues).toEqual([
       {
@@ -1355,7 +1358,7 @@ describe("v3 th_get_passage_index", () => {
       next?: { args?: Record<string, unknown> };
     }>;
     expect(notes[0]?.next?.args).toEqual({
-      reference: "Genesis 9:9",
+      reference: "GEN 9:9",
       language: "es",
       ids: ["n1"],
     });
@@ -1463,8 +1466,8 @@ describe("v3 th_get_passage_index", () => {
     }>;
     expect(notes.map((note) => note.id)).toEqual(["end", "rest"]);
     expect(notes.map((note) => note.reference)).toEqual([
-      "Genesis 1:31",
-      "Genesis 2:3",
+      "GEN 1:31",
+      "GEN 2:3",
     ]);
     const introductions = result.structuredContent?.introductions as Array<{
       reference: string;

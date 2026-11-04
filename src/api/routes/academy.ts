@@ -17,8 +17,14 @@ import {
 } from "../../core/articleResolve.js";
 import { loadTaCatalog } from "./articleCatalog.js";
 import { jsonArticleMatch } from "./articleResponse.js";
+import {
+  noteLayer,
+  serverTimingActive,
+  withServerTiming,
+} from "../serverTiming.js";
 
 export async function handleAcademy(ctx: RouteContext): Promise<Response> {
+  if (!serverTimingActive()) return withServerTiming(() => handleAcademy(ctx));
   const { url, env, execCtx } = ctx;
   const requestedLanguage = url.searchParams.get("language");
   if (!requestedLanguage)
@@ -48,6 +54,7 @@ export async function handleAcademy(ctx: RouteContext): Promise<Response> {
       () => null,
     );
     if (cached) {
+      noteLayer("kv");
       const all = JSON.parse(cached);
       const page = all.slice(offset, offset + limit);
       return json({
@@ -94,6 +101,8 @@ export async function handleAcademy(ctx: RouteContext): Promise<Response> {
 }
 
 export async function handleAcademyPath(ctx: RouteContext): Promise<Response> {
+  if (!serverTimingActive())
+    return withServerTiming(() => handleAcademyPath(ctx));
   const { url, env, execCtx, pathParam } = ctx;
   const requestedLanguage = url.searchParams.get("language");
   if (!requestedLanguage)

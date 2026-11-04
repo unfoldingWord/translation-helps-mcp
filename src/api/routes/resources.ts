@@ -21,6 +21,7 @@ import {
   pickPreferredCatalogEntry,
   type CatalogEntry,
 } from "@translation-helps/door43";
+import { serverTimingActive, withServerTiming } from "../serverTiming.js";
 
 const ALL_SUBJECTS = [
   { subject: "Aligned Bible,Bible", type: "scripture" as const },
@@ -133,6 +134,8 @@ export function buildAvailabilityForEntries(
 }
 
 export async function handleResources(ctx: RouteContext): Promise<Response> {
+  if (!serverTimingActive())
+    return withServerTiming(() => handleResources(ctx));
   const { url, env } = ctx;
   const requestedLanguage = url.searchParams.get("language");
   if (!requestedLanguage)

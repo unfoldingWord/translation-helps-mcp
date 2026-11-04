@@ -775,8 +775,8 @@ describe("v3 th_search", () => {
 });
 
 describe("v3 instructions", () => {
-  it("is version 2.8.0", () => {
-    expect(VERSION).toBe("2.8.0");
+  it("is version 2.9.0", () => {
+    expect(VERSION).toBe("2.9.0");
   });
 
   it("names every tool, and puts the language rule on the passage parameter", () => {

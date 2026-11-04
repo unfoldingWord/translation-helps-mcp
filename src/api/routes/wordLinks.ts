@@ -37,8 +37,11 @@ import {
   cacheVerse,
 } from "./responseCache.js";
 import { packViewsOf, wordLinksFromViews } from "./packViews.js";
+import { serverTimingActive, withServerTiming } from "../serverTiming.js";
 
 export async function handleWordLinks(ctx: RouteContext): Promise<Response> {
+  if (!serverTimingActive())
+    return withServerTiming(() => handleWordLinks(ctx));
   const { url, env, execCtx } = ctx;
 
   let ref: ReturnType<typeof resolveNotesQuery>;

@@ -42,10 +42,13 @@ import {
   putCachedJson,
   responseCacheKey,
 } from "./responseCache.js";
+import { serverTimingActive, withServerTiming } from "../serverTiming.js";
 
 const SCRIPTURE_SUBJECTS = "Aligned Bible,Bible";
 
 export async function handleScripture(ctx: RouteContext): Promise<Response> {
+  if (!serverTimingActive())
+    return withServerTiming(() => handleScripture(ctx));
   const { url, env, execCtx } = ctx;
   const format = (url.searchParams.get("format") ?? "text") as "text" | "usfm";
   const includeAll = url.searchParams.get("all") === "1";

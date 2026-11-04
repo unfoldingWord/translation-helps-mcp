@@ -17,6 +17,15 @@ export interface ToolCallMetric {
   /** Stable error code if the call failed, otherwise "OK" */
   errorCode: string;
   language?: string;
+  /**
+   * /v3 only. The layer that answered (edge, views, memory, kv, r2, network).
+   * Appended after the existing blobs so earlier queries keep their columns.
+   */
+  layer?: string;
+  /** /v3 only. Sum of API Server-Timing totals, appended after latencyMs. */
+  apiMs?: number;
+  /** /v3 only. Time spent in the MCP worker outside the API wait. */
+  mcpMs?: number;
 }
 
 export interface AnalyticsBinding {
@@ -33,6 +42,12 @@ export interface AnalyticsBinding {
  *   blobs:   [tool, requestId, cacheStatus, errorCode, language]
  *   doubles: [latencyMs]
  *   indexes: [tool]
+ *
+ * A /v3 point appends, and does not reorder:
+ *   blobs[5] = layer
+ *   doubles[1] = apiMs
+ *   doubles[2] = mcpMs
+ * v2 points omit those fields, so a v2 row stays five blobs and one double.
  */
 export function recordToolCall(
   analytics: AnalyticsBinding | undefined,
@@ -40,15 +55,21 @@ export function recordToolCall(
 ): void {
   if (!analytics) return;
   try {
+    const blobs = [
+      metric.tool,
+      metric.requestId,
+      metric.cacheStatus,
+      metric.errorCode,
+      metric.language ?? "",
+    ];
+    const doubles = [metric.latencyMs];
+    if (metric.layer !== undefined) {
+      blobs.push(metric.layer);
+      doubles.push(metric.apiMs ?? 0, metric.mcpMs ?? 0);
+    }
     analytics.writeDataPoint({
-      blobs: [
-        metric.tool,
-        metric.requestId,
-        metric.cacheStatus,
-        metric.errorCode,
-        metric.language ?? "",
-      ],
-      doubles: [metric.latencyMs],
+      blobs,
+      doubles,
       indexes: [metric.tool],
     });
   } catch {

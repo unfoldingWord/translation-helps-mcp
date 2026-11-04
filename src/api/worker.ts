@@ -44,6 +44,7 @@ import {
 import { API_MANIFEST } from "./manifest.js";
 import { gateCompactIndex } from "../core/internalIndex.js";
 import { enforceRateLimit } from "../core/rateLimit.js";
+import { formatServerTiming, serverTimingHeader } from "./serverTiming.js";
 
 // ---------------------------------------------------------------------------
 // CORS / common headers
@@ -56,9 +57,15 @@ const CORS_HEADERS: Record<string, string> = {
 };
 
 function json(body: unknown, status = 200): Response {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...CORS_HEADERS,
+  };
+  const timing = serverTimingHeader(body);
+  if (timing) headers["Server-Timing"] = timing;
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+    headers,
   });
 }
 
@@ -109,11 +116,26 @@ async function withEdgeCache(
 ): Promise<Response> {
   // Cache API is free and colo-local; sits in front of KV response caches.
   // Cloudflare exposes caches.default; DOM lib typings omit it.
+  const started = Date.now();
   const cache = (caches as unknown as { default?: Cache }).default;
   if (cache) {
     try {
       const hit = await cache.match(request);
-      if (hit) return hit;
+      if (hit) {
+        const headers = new Headers(hit.headers);
+        headers.set(
+          "Server-Timing",
+          formatServerTiming({
+            layer: "edge",
+            totalMs: Date.now() - started,
+          }),
+        );
+        return new Response(hit.body, {
+          status: hit.status,
+          statusText: hit.statusText,
+          headers,
+        });
+      }
     } catch {
       // fall through to handler
     }
@@ -127,15 +149,21 @@ async function withEdgeCache(
     request.method === "GET"
   ) {
     const maxAge = response.status === 200 ? 3600 : 300;
-    const headers = new Headers(response.headers);
-    headers.set("Cache-Control", `public, max-age=${maxAge}`);
-    const toCache = new Response(response.body, {
+    const clientHeaders = new Headers(response.headers);
+    clientHeaders.set("Cache-Control", `public, max-age=${maxAge}`);
+    // The stored copy must not replay this request's layer or duration.
+    const cacheHeaders = new Headers(clientHeaders);
+    cacheHeaders.delete("Server-Timing");
+    const toCache = new Response(response.clone().body, {
       status: response.status,
       statusText: response.statusText,
-      headers,
+      headers: cacheHeaders,
     });
-    // Clone for the client — toCache body is consumed by cache.put
-    const forClient = toCache.clone();
+    const forClient = new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: clientHeaders,
+    });
     execCtx.waitUntil(cache.put(request, toCache).catch(() => {}));
     return forClient;
   }

@@ -18,8 +18,11 @@ import {
   putCachedJson,
   responseCacheKey,
 } from "./responseCache.js";
+import { serverTimingActive, withServerTiming } from "../serverTiming.js";
 
 export async function handleQuestions(ctx: RouteContext): Promise<Response> {
+  if (!serverTimingActive())
+    return withServerTiming(() => handleQuestions(ctx));
   const { url, env, execCtx } = ctx;
 
   let ref: ReturnType<typeof requireReferenceAndLanguage>;

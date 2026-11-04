@@ -236,7 +236,15 @@ export function mapApiCacheStatus(
   cache?: string,
 ): "hit" | "miss" | "stale" | "none" {
   if (!cache) return "none";
-  if (cache === "kv" || cache === "memory") return "hit";
+  if (
+    cache === "edge" ||
+    cache === "kv" ||
+    cache === "memory" ||
+    cache === "views" ||
+    cache === "pack"
+  ) {
+    return "hit";
+  }
   if (cache === "r2") return "stale";
   if (cache === "network") return "miss";
   return "none";

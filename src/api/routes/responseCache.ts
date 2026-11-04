@@ -12,6 +12,32 @@ const RESP_TTL_SECONDS = 3600; // 1h — matches catalog:* TTLs
 /** In-process coalescing for identical keys within one isolate. */
 const IN_FLIGHT = new Map<string, Promise<unknown>>();
 
+/** Trimmed, lower-cased, with runs of whitespace collapsed to one space. */
+export function normalizeSearchQuery(query: string): string {
+  return query.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Response-cache key for article search. The query is normalized. Type tokens
+ * are sorted so `ta,tw` and `tw,ta` share an entry. The query is encoded so a
+ * colon inside it cannot collide with the other segments.
+ */
+export function searchResponseCacheKey(
+  query: string,
+  language: string,
+  types: string,
+  limit: number,
+): string {
+  const normalized = normalizeSearchQuery(query);
+  const type = types
+    .split(",")
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean)
+    .sort()
+    .join(",");
+  return `resp:v2:search:${language}:${type}:${limit}:${encodeURIComponent(normalized)}`;
+}
+
 export function responseCacheKey(
   kind: "notes" | "word-links" | "questions" | "scripture",
   language: string,

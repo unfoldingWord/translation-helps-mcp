@@ -10,6 +10,7 @@
  */
 
 import { unzipSync, type Unzipped } from "fflate";
+import { traceLayer } from "./layerTrace.js";
 import type {
   BucketLike,
   KvLike,
@@ -126,6 +127,14 @@ function cacheText(key: string, text: string) {
   }
 }
 
+/** Drop in-process zip and text caches. Tests use this so one file does not warm the next. */
+export function clearZipCachesForTests(): void {
+  ZIP_PROCESS_CACHE.clear();
+  ZIP_IN_FLIGHT.clear();
+  for (const key of [...TEXT_PROCESS_CACHE.keys()]) dropText(key);
+  totalCachedZipBytes = 0;
+}
+
 /** What the in-process caches hold right now. For tests and diagnostics. */
 export function zipFetcherCacheStats(): {
   zips: number;
@@ -168,6 +177,11 @@ export class ZipResourceFetcher2 {
     this.env = env;
   }
 
+  private saw(source: ZipCacheSource): void {
+    this.lastCacheSource = source;
+    traceLayer(source);
+  }
+
   /**
    * Fetch a zip from the given URL.
    * Cache chain: in-process Map → R2 → network.
@@ -179,7 +193,7 @@ export class ZipResourceFetcher2 {
     // L0: in-process cache
     const processHit = ZIP_PROCESS_CACHE.get(url);
     if (processHit) {
-      this.lastCacheSource = "memory";
+      this.saw("memory");
       return processHit;
     }
 
@@ -189,9 +203,11 @@ export class ZipResourceFetcher2 {
       const buf = await existing;
       // Caller joined after the leader set lastCacheSource; report memory
       // because the buffer is now in L0 (or will be by the time we resolve).
-      this.lastCacheSource = ZIP_PROCESS_CACHE.has(url)
-        ? "memory"
-        : (this.lastCacheSource ?? "network");
+      this.saw(
+        ZIP_PROCESS_CACHE.has(url)
+          ? "memory"
+          : (this.lastCacheSource ?? "network"),
+      );
       return buf;
     }
 
@@ -218,7 +234,7 @@ export class ZipResourceFetcher2 {
           evictOldestZip();
           ZIP_PROCESS_CACHE.set(url, buf);
           bufferUrlMap.set(buf, url);
-          this.lastCacheSource = "r2";
+          this.saw("r2");
           return buf;
         }
       } catch {
@@ -257,7 +273,7 @@ export class ZipResourceFetcher2 {
     evictOldestZip();
     ZIP_PROCESS_CACHE.set(url, buf);
     bufferUrlMap.set(buf, url);
-    this.lastCacheSource = "network";
+    this.saw("network");
 
     return buf;
   }
@@ -403,14 +419,14 @@ export class ZipResourceFetcher2 {
 
     const textHit = TEXT_PROCESS_CACHE.get(memKey);
     if (textHit !== undefined) {
-      this.lastCacheSource = "memory";
+      this.saw("memory");
       return textHit || null;
     }
 
     const kvHit = await this.readFileKv(zipUrl, normalizedPath);
     if (kvHit !== undefined && kvHit !== null) {
       cacheText(memKey, kvHit);
-      this.lastCacheSource = "kv";
+      this.saw("kv");
       return kvHit;
     }
 
@@ -446,7 +462,7 @@ export class ZipResourceFetcher2 {
       const kvHit = await this.readFileKv(zipUrl, filePath.replace(/^\//, ""));
       if (kvHit !== undefined && kvHit !== null) {
         cacheText(cacheKey, kvHit);
-        this.lastCacheSource = "kv";
+        this.saw("kv");
         return kvHit;
       }
     }

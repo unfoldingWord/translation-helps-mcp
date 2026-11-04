@@ -21,6 +21,7 @@ import {
   twCategoryFromPath,
 } from "../../../core/passageReference.js";
 import { ApiClient, ApiClientError } from "../../apiClient.js";
+import { isApiTimeout } from "../apiTiming.js";
 import type { Env } from "../../agent.js";
 import {
   mapApiCacheStatus,
@@ -86,7 +87,7 @@ export const GET_PASSAGE_INDEX_DESCRIPTION = `Lists what the translation helps s
 - keyTerms, how often each key term occurs;
 - introductions, the book or chapter introductions that apply.
 
-Use it to see what a passage needs, or to count things in a book: reference "JON" answers how many metaphor notes Jonah has. Every note and introduction has next: call that tool with those arguments to get its body. A word has next when it links a Translation Words article. An issue or key term has no next: call th_get_article with its path. Notes and words are paged (limit, offset). Each of notes, words and keyTerms reports total, has_more and next_offset. Issues are complete. keyTerms are the 100 most frequent; keyTermsOffset skips that many.`;
+Use it to see what a passage needs, or to count things in a book: reference "JON" answers how many metaphor notes Jonah has. Every note and introduction has next: call that tool with those arguments to get its body. A word has next when it links a Translation Words article. An issue or key term has no next: call th_get_article with its path. Notes and words are paged (limit, offset). Each of notes, words and keyTerms reports total, has_more and next_offset. Issues are complete. keyTerms are the 100 most frequent; keyTermsOffset skips that many. A note, a word and next use the book code the tools accept, such as "PHP 2:1". A note gives the translation issue's path; the issue's title is listed once under issues. A word's article does not repeat its category, because the path already has it.`;
 
 const outputSchema = withNotAvailableOutput({
   kind: z.enum(["bible", "obs"]).optional(),
@@ -186,6 +187,15 @@ export const getPassageIndexV3Tool = {
       }),
     ]);
 
+    if (
+      notesSide.kind === "failed" &&
+      wordsSide.kind === "failed" &&
+      isApiTimeout(notesSide.reason) &&
+      isApiTimeout(wordsSide.reason)
+    ) {
+      throw notesSide.reason;
+    }
+
     if (notesSide.kind === "missing" && wordsSide.kind === "missing") {
       const detail = [notesSide, wordsSide]
         .map((side) => text(side.value.message))
@@ -259,8 +269,8 @@ export const getPassageIndexV3Tool = {
     );
     const keyTermsPage = page(keyTerms, KEY_TERMS_PAGE, keyTermsOffset);
 
-    const notesPage = page(notes, limit, offset);
-    const wordsPage = page(words, limit, offset);
+    const notesPage = page(notes.map(withoutIssueTitle), limit, offset);
+    const wordsPage = page(words.map(withoutWordCategory), limit, offset);
     const notesError =
       notesSide.kind === "failed" ? failureText(notesSide.reason) : undefined;
     const wordLinksError =
@@ -317,11 +327,11 @@ function bibleNote(
   language: string,
 ): Row {
   const article = taArticle(row);
-  const reference = passageRowReference(
-    inputReference,
+  const reference = shortReference(
     book,
     row.chapter,
     row.verse,
+    inputReference,
   );
   return {
     reference,
@@ -351,11 +361,11 @@ function bibleWord(
   language: string,
 ): Row {
   const article = twArticle(row);
-  const reference = passageRowReference(
-    inputReference,
+  const reference = shortReference(
     book,
     row.chapter,
     row.verse,
+    inputReference,
   );
   return {
     reference,
@@ -489,6 +499,42 @@ function coveredChapters(value: BibleReferenceRead): string[] {
   const chapters: string[] = [];
   for (let n = from; n <= to; n++) chapters.push(String(n));
   return chapters;
+}
+
+/**
+ * Book code the tools accept ("PHP 2:1"), not the spelled-out book name.
+ * `book` is the USFM code the reference was read as.
+ */
+function shortReference(
+  book: string,
+  chapter: unknown,
+  verse: unknown,
+  inputReference: string,
+): string {
+  const code = book.trim().toUpperCase();
+  const ch = cellNumber(chapter);
+  const vs = cellNumber(verse);
+  if (!code) return passageRowReference(inputReference, book, chapter, verse);
+  if (!vs) return `${code} ${ch}`.trim();
+  return `${code} ${ch}:${vs}`;
+}
+
+function cellNumber(value: unknown): string {
+  const raw = text(value);
+  return /^\d+$/.test(raw) ? String(parseInt(raw, 10)) : raw;
+}
+
+function withoutIssueTitle(row: Row): Row {
+  const article = row.taArticle;
+  if (!article || typeof article !== "object") return row;
+  return { ...row, taArticle: { path: (article as Article).path } };
+}
+
+function withoutWordCategory(row: Row): Row {
+  const article = row.twArticle;
+  if (!article || typeof article !== "object") return row;
+  const typed = article as Article;
+  return { ...row, twArticle: { path: typed.path, title: typed.title } };
 }
 
 function taArticle(row: Row): { path: string; title: string } | null {
