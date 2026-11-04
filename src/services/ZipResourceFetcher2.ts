@@ -41,6 +41,39 @@ interface CatalogResource {
   }>;
 }
 
+/**
+ * Markdown extracts used to be stored under `files/<path>`. A suffix match
+ * wrote the wrong article there (ark of the covenant under covenant.md).
+ * New reads and writes use this prefix so those entries are never served.
+ * TSV, USFM, and other non-markdown files keep the old prefix.
+ */
+const MARKDOWN_EXTRACT_CACHE_DIR = "files/md-v2";
+
+function extractedFileCacheKey(
+  zipCacheKey: string,
+  cleanInner: string,
+): string {
+  const dir = cleanInner.toLowerCase().endsWith(".md")
+    ? MARKDOWN_EXTRACT_CACHE_DIR
+    : "files";
+  return `${zipCacheKey}/${dir}/${cleanInner}`;
+}
+
+/**
+ * True when a zip or tar entry is the requested relative path, optionally
+ * under an archive-root prefix. The match is on whole path segments:
+ * `covenant.md` matches `en_tw/bible/kt/covenant.md`, not `arkofthecovenant.md`.
+ */
+function archiveEntryMatches(entryName: string, relativePath: string): boolean {
+  const entry = entryName.replace(/\\/g, "/").replace(/^\.\//, "");
+  const rel = relativePath
+    .replace(/\\/g, "/")
+    .replace(/^\.\//, "")
+    .replace(/^\/+/, "");
+  if (!rel) return false;
+  return entry === rel || entry.endsWith(`/${rel}`);
+}
+
 export class ZipResourceFetcher2 {
   private tracer: EdgeXRayTracer;
   private kvCache = getKVCache();
@@ -2100,15 +2133,21 @@ export class ZipResourceFetcher2 {
       if (resourceType === "tw") {
         if (!identifier) return { articles: [] };
         const id = String(identifier);
+        // A slash is a resource path even without ".md" ("bible/kt/covenant").
+        // Treating that whole string as a filename built
+        // content/bible/kt/bible/kt/covenant.md and then matched a neighbour.
         const looksLikePath =
-          id.includes("/") && id.toLowerCase().endsWith(".md");
-        const term = id.toLowerCase();
+          id.includes("/") || id.toLowerCase().endsWith(".md");
+        const term = looksLikePath
+          ? (id.split("/").pop() || id).replace(/\.md$/i, "").toLowerCase()
+          : id.toLowerCase().replace(/\.md$/i, "");
 
         let targetPath: string | null = null;
+        let resolvedFromArchive = false;
 
         if (looksLikePath) {
           // If a path is explicitly provided, trust it and skip discovery
-          targetPath = id;
+          targetPath = id.toLowerCase().endsWith(".md") ? id : `${id}.md`;
         } else {
           // INDEX-FIRST: scan archive file list for best matching path
           try {
@@ -2135,6 +2174,7 @@ export class ZipResourceFetcher2 {
               }
               if (idx >= 0) {
                 targetPath = allPaths[idx];
+                resolvedFromArchive = true;
               }
             }
           } catch {
@@ -2147,6 +2187,7 @@ export class ZipResourceFetcher2 {
               ingredients.find((ing) =>
                 (ing.path || "").toLowerCase().endsWith(`/${term}.md`),
               )?.path || null;
+            if (targetPath) resolvedFromArchive = true;
           }
 
           // If no exact match, try to construct path from directory-based ingredients
@@ -2195,13 +2236,10 @@ export class ZipResourceFetcher2 {
           return { articles: [] };
         }
 
-        // If the target path was constructed (not a direct match), try all categories
+        // A path the archive index or ingredients already resolved is exact.
+        // Re-building it (and ignoring that hit) is what doubled bible/kt/...
         let content: string | null = null;
-        const isConstructedPath =
-          !looksLikePath &&
-          !ingredients.find((ing) =>
-            (ing.path || "").toLowerCase().endsWith(`/${term}.md`),
-          );
+        const isConstructedPath = !looksLikePath && !resolvedFromArchive;
 
         if (isConstructedPath) {
           // Try all category patterns for constructed paths
@@ -2286,8 +2324,9 @@ export class ZipResourceFetcher2 {
           }
         }
 
-        if (!content) {
-          // Last-resort fallback: scan ZIP index for any matching path
+        if (!content && !looksLikePath) {
+          // Last-resort fallback: scan ZIP index for any matching path.
+          // An explicit path that missed stays missing — never a neighbour.
           try {
             const allPaths = await this.listZipFiles(zipData);
             const lower = allPaths.map((p) => p.toLowerCase());
@@ -3074,7 +3113,7 @@ export class ZipResourceFetcher2 {
         // R2 + Cache API cache for extracted file content
         if (zipCacheKey) {
           const cleanInner = filePath.replace(/^(\.\/|\/)+/, "");
-          const fileKey = `${zipCacheKey}/files/${cleanInner}`;
+          const fileKey = extractedFileCacheKey(zipCacheKey, cleanInner);
           const { bucket, caches } = getR2Env();
           const r2 = new R2Storage(bucket as any, caches as any);
           // Heuristic content type for text files; these are markdown/tsv/usfm
@@ -3148,10 +3187,11 @@ export class ZipResourceFetcher2 {
                     return;
                   }
                 }
-                // Check for partial matches - look for files ending with just the filename
-                const filename = cleanPath.split("/").pop() || cleanPath;
+                // Archive roots add a prefix (en_tw/, en_tw-v1/). Match the whole
+                // relative path, never a filename suffix: arkofthecovenant.md
+                // ends with covenant.md but is a different article.
                 for (const [key, data] of Object.entries(unzipped)) {
-                  if (key.endsWith(`/${filename}`) || key.endsWith(filename)) {
+                  if (archiveEntryMatches(key, cleanPath)) {
                     const decoder = new TextDecoder("utf-8");
                     resolve(decoder.decode(data));
                     return;
@@ -3197,7 +3237,7 @@ export class ZipResourceFetcher2 {
             const decoder = new TextDecoder("utf-8");
             const matches = (name: string) => {
               if (possiblePaths.includes(name)) return true;
-              return name.endsWith(cleanPath) || name.endsWith(`/${cleanPath}`);
+              return archiveEntryMatches(name, cleanPath);
             };
             const readOct = (
               arr: Uint8Array,
@@ -3249,7 +3289,7 @@ export class ZipResourceFetcher2 {
           if (zipCacheKey) {
             try {
               const cleanInner = filePath.replace(/^(\.\/|\/)+/, "");
-              const fileKey = `${zipCacheKey}/files/${cleanInner}`;
+              const fileKey = extractedFileCacheKey(zipCacheKey, cleanInner);
               const { bucket, caches } = getR2Env();
               const r2 = new R2Storage(bucket as any, caches as any);
               const ext = cleanInner.toLowerCase();

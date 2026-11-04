@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file. See [standa
 
 ## [Unreleased]
 
+## [7.5.1] - 2026-11-04
+
+### Fixed
+
+- **Translation Words / Academy** — An exact path or term now returns that article. A filename that only ends with the requested name (covenant / arkofthecovenant) is no longer used, and a missing file stays not-found. Markdown extracts are cached under `files/md-v2` so a previously stored wrong article is not served.
+
 ## [7.4.1] - 2026-03-20
 
 ### Fixed
