@@ -10,6 +10,7 @@ import { json, apiError } from "../worker.js";
 import { extractTitleFromMarkdown } from "@translation-helps/door43";
 import type { ArticleMatch } from "../../core/articleResolve.js";
 import { rewriteHelpsLinks } from "../../core/articleLinks.js";
+import type { ResourceSource } from "./helpers.js";
 
 export function jsonArticleMatch(options: {
   kind: "tw" | "ta";
@@ -20,6 +21,7 @@ export function jsonArticleMatch(options: {
   article: string | null;
   titleOf: (path: string) => string | undefined;
   subtitle?: string;
+  source?: ResourceSource;
 }): Response {
   const {
     kind,
@@ -30,6 +32,7 @@ export function jsonArticleMatch(options: {
     article,
     titleOf,
     subtitle,
+    source,
   } = options;
   const tool = kind === "tw" ? "get_word_article" : "get_academy_article";
   const label = kind === "tw" ? "Translation Words" : "Translation Academy";
@@ -43,6 +46,7 @@ export function jsonArticleMatch(options: {
       candidates: match.candidates,
       language,
       requestedLanguage,
+      ...(source ? { source } : {}),
     });
   }
 
@@ -78,5 +82,6 @@ export function jsonArticleMatch(options: {
     article,
     related,
     ...(subtitle ? { subtitle } : {}),
+    ...(source ? { source } : {}),
   });
 }

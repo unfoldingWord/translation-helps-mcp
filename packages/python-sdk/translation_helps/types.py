@@ -99,6 +99,14 @@ class ArticleLink(TypedDict):
     title: str
 
 
+class ResourceSource(TypedDict):
+    """Catalog repo a notes, questions, or article answer came from."""
+    owner: str
+    repo: str
+    version: str
+    language: str
+
+
 class ArticleToolContent(TypedDict, total=False):
     """structuredContent of get_word_article and get_academy_article.
 
@@ -118,6 +126,7 @@ class ArticleToolContent(TypedDict, total=False):
     code: Literal["RESOURCE_NOT_AVAILABLE"]
     message: str
     hints: List[str]
+    source: ResourceSource
 
 
 class WordArticleContent(ArticleToolContent):

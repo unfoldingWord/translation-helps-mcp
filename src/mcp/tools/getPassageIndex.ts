@@ -23,6 +23,7 @@ import {
   okCached,
   mapApiCacheStatus,
   metaOutputSchema,
+  notAvailable,
   withNotAvailableOutput,
   type ToolModule,
 } from "./shared.js";
@@ -123,7 +124,8 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
     "When studying a passage step by step, call this after get_passage_context, then drill with get_note(id), get_academy_article(taArticle.path), or get_word_article(twArticle.path). " +
     "A direct question about a term, a concept, the notes, or the questions does not need this index first. " +
     "Use search_articles for a concept that is not linked to this passage. " +
-    "Empty arrays mean nothing is available for the passage — not an error (isError remains false).",
+    "Empty arrays mean this passage has none. " +
+    "available: false means this language has no notes for that book: say so and do not answer from memory.",
   inputSchema,
   outputSchema,
   annotations: { readOnlyHint: true, title: "Get Passage Index" },
@@ -138,6 +140,9 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
           value: {
             notes: [] as Array<Record<string, unknown>>,
             book: "",
+            language: undefined as string | undefined,
+            available: undefined as boolean | undefined,
+            message: undefined as string | undefined,
             meta: undefined as { cache?: string } | undefined,
           },
         })
@@ -145,6 +150,9 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
           .get<{
             notes: Array<Record<string, unknown>>;
             book?: string;
+            language?: string;
+            available?: boolean;
+            message?: string;
             meta?: { cache?: string };
           }>("/api/v1/notes", { reference, language })
           .then((value) => ({ status: "fulfilled" as const, value }))
@@ -164,6 +172,18 @@ export const getPassageIndexTool: ToolModule<typeof inputSchema> = {
 
     const notesPayload =
       notesRes.status === "fulfilled" ? notesRes.value : undefined;
+    if (!skipNotes && notesPayload?.available === false) {
+      const book = notesPayload.book ?? "";
+      const lang = notesPayload.language || language;
+      return notAvailable(
+        book
+          ? `translation notes for "${book}" in language "${lang}"`
+          : `translation notes for language "${lang}"`,
+        typeof notesPayload.message === "string"
+          ? notesPayload.message
+          : undefined,
+      );
+    }
     const wordPayload =
       wordLinksRes.status === "fulfilled" ? wordLinksRes.value : undefined;
     const rawNotes = notesPayload?.notes ?? [];

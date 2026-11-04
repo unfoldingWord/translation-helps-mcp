@@ -132,7 +132,7 @@ All methods return `MCPToolResult` (`content`, optional `structuredContent`, opt
 | `getAcademyArticle(opts)` | `path` (req), `language?`                        | Full TA article. Exact path is best; `metaphor` and `figs-metaphor` also resolve.        |
 | `getWordArticle(opts)`    | `path` (req), `language?`                        | Full TW article. Exact path is best; `covenant`, `sheol`, and `son of god` also resolve. |
 
-`getWordArticle` and `getAcademyArticle` put the article in `structuredContent` (`WordArticleContent` / `AcademyArticleContent`): `path`, `title`, `article`, `requestedPath`, `resolvedFrom` (`category`, `title`, `plural`, `manual`, or `partial`), `related` (`{ path, title }[]`), `candidates` when several articles match, and `note` on a partial title match.
+`getWordArticle` and `getAcademyArticle` put the article in `structuredContent` (`WordArticleContent` / `AcademyArticleContent`): `path`, `title`, `article`, `requestedPath`, `resolvedFrom` (`category`, `title`, `plural`, `manual`, or `partial`), `related` (`{ path, title }[]`), `candidates` when several articles match, `note` on a partial title match, and `source` (`{ owner, repo, version, language }`) for the catalog repo that answered. Notes and questions include the same `source`. `available: false` means that language has no such resource for the book.
 
 #### Step 4 — Check
 

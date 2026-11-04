@@ -24,6 +24,8 @@ import type { Env } from "../../agent.js";
 import {
   notAvailable,
   ok,
+  readResourceSource,
+  resourceSourceSchema,
   withNotAvailableOutput,
 } from "../../tools/shared.js";
 import { v3LanguageParam } from "../params.js";
@@ -67,7 +69,7 @@ const inputSchema = z.object({
  * resource. A phrase with no match is an empty list.
  */
 export const GET_NOTES_DESCRIPTION =
-  'Returns translation notes in full. Each note has the original-language quote it explains, the matching words in the language\'s own text where available, the explanation, and the Translation Academy article for its translation issue. Pass ids from th_get_passage_index to get several notes in one call, or phrase to keep only notes whose quote or text contains it. With neither, every note in the reference comes back, which can be long for a whole chapter. reference may be a passage, an introduction ("JHN 1:intro", "JHN front:intro"), a book alone (its introduction) or an Open Bible Stories reference. kind "study" returns Open Bible Stories study notes, written for discussion groups; the Bible has no study notes. A phrase that matches nothing returns an empty list, not an error.';
+  'Returns translation notes in full. Each note has the original-language quote it explains, the matching words in the language\'s own text where available, the explanation, and the Translation Academy article for its translation issue. Pass ids from th_get_passage_index to get several notes in one call, or phrase to keep only notes whose quote or text contains it. With neither, every note in the reference comes back, which can be long for a whole chapter. reference may be a passage, an introduction ("JHN 1:intro", "JHN front:intro"), a book alone (its introduction) or an Open Bible Stories reference. kind "study" returns Open Bible Stories study notes, written for discussion groups; the Bible has no study notes. A phrase that matches nothing returns an empty list, not an error. available: false means this language has no notes for that book: say so and do not answer from memory.';
 
 const outputSchema = withNotAvailableOutput({
   kind: z.enum(["bible", "obs"]).optional(),
@@ -76,6 +78,7 @@ const outputSchema = withNotAvailableOutput({
   language: z.string().optional(),
   phrase: z.string().optional(),
   notes: z.array(z.record(z.string(), z.unknown())).optional(),
+  source: resourceSourceSchema,
   message: z.string().optional(),
 });
 
@@ -121,13 +124,18 @@ export const getNotesV3Tool = {
       reference: plan.reference,
       language,
     });
+    const source = readResourceSource(data.source);
     if (data.available === false) {
+      const book = text(data.book);
       return notAvailable(
         value.kind === "obs"
           ? `OBS ${noteKind} notes for language "${language}"`
-          : `translation notes for language "${language}"`,
+          : book
+            ? `translation notes for "${book}" in language "${language}"`
+            : `translation notes for language "${language}"`,
         text(data.message),
         V3_LIST_RESOURCES_HINT,
+        source,
       );
     }
 
@@ -162,6 +170,7 @@ export const getNotesV3Tool = {
         language,
         ...(phrase ? { phrase } : {}),
         notes,
+        ...(source ? { source } : {}),
         ...(message ? { message } : {}),
       },
       message ??

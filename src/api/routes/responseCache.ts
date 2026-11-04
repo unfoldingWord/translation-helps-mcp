@@ -48,9 +48,10 @@ export function responseCacheKey(
   ...extra: string[]
 ): string {
   const v = verse ?? "all";
-  // v2: TSV parser unescapes literal `\n` / `<br>` in note/question text.
-  // Bump this when cached JSON shape or text normalization changes.
-  const base = `resp:v2:${kind}:${language}:${book}:${chapter}:${v}`;
+  // Notes and questions are v3: their payload adds `source`. The other kinds
+  // stay v2. Bump a kind when its cached JSON shape changes.
+  const generation = kind === "notes" || kind === "questions" ? "v3" : "v2";
+  const base = `resp:${generation}:${kind}:${language}:${book}:${chapter}:${v}`;
   return extra.length > 0 ? `${base}:${extra.join(":")}` : base;
 }
 

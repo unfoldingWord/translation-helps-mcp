@@ -224,6 +224,14 @@ export interface ArticleLink {
   title: string;
 }
 
+/** Catalog repo a notes, questions, or article answer came from. */
+export interface ResourceSource {
+  owner: string;
+  repo: string;
+  version: string;
+  language: string;
+}
+
 /**
  * `structuredContent` of `get_word_article` / `get_academy_article`.
  * `candidates` is set when several articles match and none was chosen.
@@ -243,6 +251,8 @@ export interface ArticleToolContent {
   code?: "RESOURCE_NOT_AVAILABLE";
   message?: string;
   hints?: string[];
+  /** Catalog repo this article came from, when the server knows it. */
+  source?: ResourceSource;
 }
 
 export type WordArticleContent = ArticleToolContent;

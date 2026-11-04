@@ -14,6 +14,8 @@ import type { Env } from "../../agent.js";
 import {
   notAvailable,
   ok,
+  readResourceSource,
+  resourceSourceSchema,
   withNotAvailableOutput,
 } from "../../tools/shared.js";
 import { v3LanguageParam } from "../params.js";
@@ -44,7 +46,7 @@ const inputSchema = z.object({
  * soft "not available", and the description says so before the call.
  */
 export const GET_QUESTIONS_DESCRIPTION =
-  'Returns comprehension questions for a Bible passage or an Open Bible Stories reference, each with its expected answer. They check whether a translation draft says what the source says: use them after drafting, or when the user asks for questions on a passage. kind "study" returns Open Bible Stories study questions, about meaning and application for discussion groups, which often cover a range of frames; the Bible has only translation questions. Not every language or book has questions: available false means none exist.';
+  'Returns comprehension questions for a Bible passage or an Open Bible Stories reference, each with its expected answer. They check whether a translation draft says what the source says: use them after drafting, or when the user asks for questions on a passage. kind "study" returns Open Bible Stories study questions, about meaning and application for discussion groups, which often cover a range of frames; the Bible has only translation questions. Not every language or book has questions: available false means none exist. Do not answer from memory.';
 
 const v3MetaOutputSchema = z
   .object({
@@ -58,6 +60,7 @@ const outputSchema = withNotAvailableOutput({
   reference: z.string().optional(),
   language: z.string().optional(),
   questions: z.array(z.record(z.string(), z.unknown())).optional(),
+  source: resourceSourceSchema,
   meta: v3MetaOutputSchema,
 });
 
@@ -111,13 +114,18 @@ export const getQuestionsV3Tool = {
       language,
     });
 
+    const source = readResourceSource(data.source);
     if (data.available === false) {
+      const book = stringField(data.book);
       return notAvailable(
         value.kind === "obs"
           ? `OBS ${questionKind} questions for language "${language}"`
-          : `translation questions for language "${language}"`,
-        String(data.message ?? ""),
+          : book
+            ? `translation questions for "${book}" in language "${language}"`
+            : `translation questions for language "${language}"`,
+        stringField(data.message),
         V3_LIST_RESOURCES_HINT,
+        source,
       );
     }
 
@@ -130,6 +138,7 @@ export const getQuestionsV3Tool = {
         reference: value.reference,
         language: stringField(data.language) ?? language,
         questions,
+        ...(source ? { source } : {}),
         ...(meta ? { meta } : {}),
       },
       `${questions.length} ${questionKind} question(s) for ${value.reference} (${language})`,

@@ -10,6 +10,7 @@ import {
   zipUrlFromEntry,
   buildBookPaths,
   pickPreferredCatalogEntry,
+  sourceFromCatalog,
 } from "./helpers.js";
 import { parseTranslationQuestionsTsv } from "@translation-helps/door43";
 import {
@@ -78,19 +79,30 @@ export async function handleQuestions(ctx: RouteContext): Promise<Response> {
       env.TRANSLATION_HELPS_CACHE,
     );
     if (entries.length === 0) {
-      return {
-        payload: { reference, language, book, chapter, questions: [] },
-        cache: "network" as const,
-      };
+      const payload = unavailableQuestions(
+        reference,
+        language,
+        book,
+        chapter,
+        `No TSV Translation Questions resource available for book "${book}" in language "${language}".`,
+      );
+      putCachedJson(env.TRANSLATION_HELPS_CACHE, cacheKey, payload, execCtx);
+      return { payload, cache: "network" as const };
     }
 
     const entry = pickPreferredCatalogEntry(entries);
     if (!entry) {
-      return {
-        payload: { reference, language, book, chapter, questions: [] },
-        cache: "network" as const,
-      };
+      const payload = unavailableQuestions(
+        reference,
+        language,
+        book,
+        chapter,
+        `No TSV Translation Questions resource available for book "${book}" in language "${language}".`,
+      );
+      putCachedJson(env.TRANSLATION_HELPS_CACHE, cacheKey, payload, execCtx);
+      return { payload, cache: "network" as const };
     }
+    const source = sourceFromCatalog(entry, language);
     const zipUrl = zipUrlFromEntry(entry);
 
     const fetcher = makeFetcher(env, execCtx);
@@ -103,10 +115,16 @@ export async function handleQuestions(ctx: RouteContext): Promise<Response> {
     }
     const zipSource = fetcher.lastCacheSource ?? "network";
     if (!tsv) {
-      return {
-        payload: { reference, language, book, chapter, questions: [] },
-        cache: zipSource,
-      };
+      const payload = unavailableQuestions(
+        reference,
+        language,
+        book,
+        chapter,
+        `No TSV Translation Questions file for "${book}" in language "${language}".`,
+        source,
+      );
+      putCachedJson(env.TRANSLATION_HELPS_CACHE, cacheKey, payload, execCtx);
+      return { payload, cache: zipSource };
     }
 
     const questions = parseTranslationQuestionsTsv(
@@ -123,10 +141,36 @@ export async function handleQuestions(ctx: RouteContext): Promise<Response> {
       verse: verseStart ?? null,
       verseEnd: verseEnd ?? null,
       questions,
+      source,
     };
     putCachedJson(env.TRANSLATION_HELPS_CACHE, cacheKey, payload, execCtx);
     return { payload, cache: zipSource };
   });
 
   return json({ ...body.payload, meta: { cache: body.cache } });
+}
+
+/**
+ * Same envelope whether the catalog has no entry or the zip has no file.
+ * A verse in a book the file does cover stays a success with `questions: []`.
+ */
+function unavailableQuestions(
+  reference: string,
+  language: string,
+  book: string,
+  chapter: string,
+  message: string,
+  source?: ReturnType<typeof sourceFromCatalog>,
+): Record<string, unknown> {
+  return {
+    reference,
+    language,
+    book,
+    chapter,
+    questions: [],
+    available: false,
+    code: "RESOURCE_NOT_AVAILABLE",
+    message,
+    ...(source ? { source } : {}),
+  };
 }

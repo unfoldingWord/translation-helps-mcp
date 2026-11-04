@@ -163,5 +163,6 @@ export async function handleWordsPath(ctx: RouteContext): Promise<Response> {
     match,
     article,
     titleOf: (path) => titles.get(path),
+    source: catalog.source,
   });
 }
