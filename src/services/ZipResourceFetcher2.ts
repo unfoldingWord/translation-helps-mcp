@@ -2324,9 +2324,10 @@ export class ZipResourceFetcher2 {
           }
         }
 
-        if (!content && !looksLikePath) {
-          // Last-resort fallback: scan ZIP index for any matching path.
-          // An explicit path that missed stays missing — never a neighbour.
+        if (!content) {
+          // The requested path missed. Find the same whole file name
+          // (`/grace.md`) in another category, kt then names then other.
+          // arkofthecovenant.md ends with covenant.md and does not match.
           try {
             const allPaths = await this.listZipFiles(zipData);
             const lower = allPaths.map((p) => p.toLowerCase());

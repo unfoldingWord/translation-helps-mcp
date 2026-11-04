@@ -23,6 +23,7 @@ const zipBytes = zipSync(
     "en_tw/bible/kt/falsegod.md": article("False God", "MARKER_FALSEGOD"),
     "en_tw/bible/kt/antichrist.md": article("Antichrist", "MARKER_ANTICHRIST"),
     "en_tw/bible/kt/covenant.md": article("Covenant", "MARKER_COVENANT"),
+    "en_tw/bible/kt/grace.md": article("Grace", "MARKER_GRACE"),
     "en_tw/bible/kt/god.md": article("God", "MARKER_GOD"),
     "en_tw/bible/kt/christ.md": article("Christ", "MARKER_CHRIST"),
     "en_ta/translate/figs-explicitinfo/01.md": article(
@@ -83,17 +84,20 @@ function makeFetcher(): ZipResourceFetcher2 {
   return fetcher;
 }
 
-async function twArticle(
-  identifier: string,
-): Promise<{ markdown?: string; articles: Array<{ markdown: string }> }> {
+async function twArticle(identifier: string): Promise<{
+  markdown?: string;
+  path?: string;
+  articles: Array<{ markdown: string; path?: string }>;
+}> {
   const result = (await makeFetcher().getMarkdownContent(
     "en",
     "unfoldingWord",
     "tw",
     identifier,
-  )) as { articles?: Array<{ markdown: string }> };
+  )) as { articles?: Array<{ markdown: string; path?: string }> };
   return {
     markdown: result.articles?.[0]?.markdown,
+    path: result.articles?.[0]?.path,
     articles: result.articles || [],
   };
 }
@@ -144,6 +148,33 @@ describe("exact translation word paths", () => {
   it("returns no article when the exact file is absent", async () => {
     const { articles } = await twArticle("bible/kt/not-a-real-term");
     expect(articles).toEqual([]);
+  });
+
+  it("finds grace in kt when the path says other", async () => {
+    const { markdown, path } = await twArticle("bible/other/grace");
+    expect(markdown).toContain("MARKER_GRACE");
+    expect(path?.replace(/\\/g, "/")).toMatch(/\/kt\/grace\.md$/);
+  });
+
+  it("finds kt/covenant, not the ark, when the path says names", async () => {
+    const { markdown, path } = await twArticle("bible/names/covenant");
+    expect(markdown).toContain("MARKER_COVENANT");
+    expect(markdown).not.toContain("MARKER_ARK");
+    expect(path?.replace(/\\/g, "/")).toMatch(/\/kt\/covenant\.md$/);
+  });
+
+  it("still returns the ark for its own kt path", async () => {
+    const { markdown, path } = await twArticle("bible/kt/arkofthecovenant");
+    expect(markdown).toContain("MARKER_ARK");
+    expect(markdown).not.toContain("MARKER_COVENANT");
+    expect(path?.replace(/\\/g, "/")).toMatch(/kt\/arkofthecovenant\.md$/);
+  });
+
+  it("returns not-found for a name that exists nowhere, including a suffix of a real file", async () => {
+    const missing = await twArticle("bible/other/not-a-real-term");
+    expect(missing.articles).toEqual([]);
+    const arkSuffix = await twArticle("bible/names/ark");
+    expect(arkSuffix.articles).toEqual([]);
   });
 
   it("does not take a Translation Academy neighbour that shares a filename", async () => {
