@@ -18,6 +18,7 @@
  */
 
 import type { WaitUntilHost } from "../platform.js";
+import { traceLayer } from "./layerTrace.js";
 
 const GITEA_API = "https://git.door43.org/api/v1";
 const GITEA_BASE = "https://git.door43.org";
@@ -505,11 +506,18 @@ export async function catalogSearch(
     requireTcReady: !omitTcReadyTopic(opts),
   });
   const cacheKey = `catalog:search:${url}`;
-  if (opts.fresh) return fetchAndStoreCatalogSearch(url, cacheKey, null);
+  if (opts.fresh) {
+    const freshEntries = await fetchAndStoreCatalogSearch(url, cacheKey, null);
+    traceLayer("network");
+    return freshEntries;
+  }
 
   // L0: in-process cache
   const processHit = processCacheGet(cacheKey);
-  if (processHit) return processHit;
+  if (processHit) {
+    traceLayer("memory");
+    return processHit;
+  }
 
   // L1: KV cache (stale-while-revalidate)
   const cached = await kvGet(opts.kv, cacheKey);
@@ -523,11 +531,19 @@ export async function catalogSearch(
           opts.ctx,
         );
       }
+      traceLayer("kv");
       return parsed.data;
     }
   }
 
-  return fetchAndStoreCatalogSearch(url, cacheKey, opts.kv, opts.ctx);
+  const fetched = await fetchAndStoreCatalogSearch(
+    url,
+    cacheKey,
+    opts.kv,
+    opts.ctx,
+  );
+  traceLayer("network");
+  return fetched;
 }
 
 async function fetchAndStoreCatalogSearch(
@@ -741,11 +757,14 @@ export async function listLanguages(
       if (parsed.stale) {
         void refreshListLanguages(url, cacheKey, kv);
       }
+      traceLayer("kv");
       return parsed.data;
     }
   }
 
-  return fetchAndStoreListLanguages(url, cacheKey, kv);
+  const listed = await fetchAndStoreListLanguages(url, cacheKey, kv);
+  traceLayer("network");
+  return listed;
 }
 
 async function fetchAndStoreListLanguages(

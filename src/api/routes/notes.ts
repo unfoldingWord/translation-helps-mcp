@@ -39,8 +39,10 @@ import {
   cacheVerse,
 } from "./responseCache.js";
 import { notesFromViews, packViewsOf } from "./packViews.js";
+import { serverTimingActive, withServerTiming } from "../serverTiming.js";
 
 export async function handleNotes(ctx: RouteContext): Promise<Response> {
+  if (!serverTimingActive()) return withServerTiming(() => handleNotes(ctx));
   const { url, env, execCtx } = ctx;
 
   let ref: ReturnType<typeof resolveNotesQuery>;

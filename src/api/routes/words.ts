@@ -17,8 +17,14 @@ import {
 } from "../../core/articleResolve.js";
 import { loadTwCatalog } from "./articleCatalog.js";
 import { jsonArticleMatch } from "./articleResponse.js";
+import {
+  noteLayer,
+  serverTimingActive,
+  withServerTiming,
+} from "../serverTiming.js";
 
 export async function handleWords(ctx: RouteContext): Promise<Response> {
+  if (!serverTimingActive()) return withServerTiming(() => handleWords(ctx));
   const { url, env, execCtx } = ctx;
   const requestedLanguage = url.searchParams.get("language");
   if (!requestedLanguage)
@@ -52,6 +58,7 @@ export async function handleWords(ctx: RouteContext): Promise<Response> {
       () => null,
     );
     if (cached) {
+      noteLayer("kv");
       const all = JSON.parse(cached);
       const page = all.slice(offset, offset + limit);
       return json({
@@ -101,6 +108,8 @@ export async function handleWords(ctx: RouteContext): Promise<Response> {
 }
 
 export async function handleWordsPath(ctx: RouteContext): Promise<Response> {
+  if (!serverTimingActive())
+    return withServerTiming(() => handleWordsPath(ctx));
   const { url, env, execCtx, pathParam } = ctx;
   const requestedLanguage = url.searchParams.get("language");
   if (!requestedLanguage)

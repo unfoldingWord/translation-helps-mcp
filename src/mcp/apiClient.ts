@@ -21,6 +21,12 @@ import {
   INTERNAL_INDEX_HEADER,
   INTERNAL_INDEX_VALUE,
 } from "../core/internalIndex.js";
+import {
+  ApiTimeoutError,
+  isTimeoutSignal,
+  noteV3ApiResponse,
+  v3ApiTimeoutMs,
+} from "./v3/apiTiming.js";
 
 // ---------------------------------------------------------------------------
 // Error type
@@ -109,7 +115,7 @@ export class ApiClient {
       }
     }
 
-    const response = await this.fetchUrl(url.toString());
+    const response = await this.fetchUrl(url.toString(), true);
 
     if (!response.ok) {
       let code = "API_ERROR";
@@ -145,17 +151,36 @@ export class ApiClient {
     const url = new URL(`${this.baseUrl}/api/v1/prefetch`);
     url.searchParams.set("reference", reference);
     url.searchParams.set("language", language);
-    return this.fetchUrl(url.toString())
+    return this.fetchUrl(url.toString(), false)
       .then(() => undefined)
       .catch(() => undefined);
   }
 
-  private fetchUrl(url: string): Promise<Response> {
-    const init = indexRequestInit(url);
-    if (this.fetcher) {
-      return this.fetcher.fetch(url, init);
+  private async fetchUrl(url: string, timed: boolean): Promise<Response> {
+    const init: RequestInit = { ...(indexRequestInit(url) ?? {}) };
+    const timeoutMs = v3ApiTimeoutMs();
+    if (timeoutMs && timeoutMs > 0) {
+      init.signal = AbortSignal.timeout(timeoutMs);
     }
-    return fetch(url, init);
+    const started = Date.now();
+    try {
+      const response = this.fetcher
+        ? await this.fetcher.fetch(url, init)
+        : await fetch(url, init);
+      if (timed) {
+        noteV3ApiResponse(
+          response.headers.get("Server-Timing"),
+          Date.now() - started,
+        );
+      }
+      return response;
+    } catch (error) {
+      if (timeoutMs && isTimeoutSignal(error)) {
+        if (timed) noteV3ApiResponse(null, Date.now() - started);
+        throw new ApiTimeoutError();
+      }
+      throw error;
+    }
   }
 }
 

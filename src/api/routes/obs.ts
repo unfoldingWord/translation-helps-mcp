@@ -35,6 +35,7 @@ import {
   resolveTitleFromPath,
   type ObsReference,
 } from "@translation-helps/door43";
+import { serverTimingActive, withServerTiming } from "../serverTiming.js";
 
 // Subjects used for catalog lookup. Comma-joined aliases cover gateway
 // languages that omit the "TSV " prefix (e.g. es-419 OBS TQ).
@@ -123,6 +124,7 @@ function obsTsvPaths(entry: CatalogEntry, fallbacks: string[]): string[] {
 // ---------------------------------------------------------------------------
 
 export async function handleObs(ctx: RouteContext): Promise<Response> {
+  if (!serverTimingActive()) return withServerTiming(() => handleObs(ctx));
   const { url, env, execCtx } = ctx;
 
   let params: ReturnType<typeof requireObsParams>;
@@ -196,6 +198,7 @@ export async function handleObs(ctx: RouteContext): Promise<Response> {
 // ---------------------------------------------------------------------------
 
 export async function handleObsNotes(ctx: RouteContext): Promise<Response> {
+  if (!serverTimingActive()) return withServerTiming(() => handleObsNotes(ctx));
   const { url, env, execCtx } = ctx;
 
   let params: ReturnType<typeof requireObsParams>;
@@ -272,6 +275,8 @@ export async function handleObsNotes(ctx: RouteContext): Promise<Response> {
 // ---------------------------------------------------------------------------
 
 export async function handleObsQuestions(ctx: RouteContext): Promise<Response> {
+  if (!serverTimingActive())
+    return withServerTiming(() => handleObsQuestions(ctx));
   const { url, env, execCtx } = ctx;
 
   let params: ReturnType<typeof requireObsParams>;
@@ -333,6 +338,8 @@ export async function handleObsQuestions(ctx: RouteContext): Promise<Response> {
 export async function handleObsStudyNotes(
   ctx: RouteContext,
 ): Promise<Response> {
+  if (!serverTimingActive())
+    return withServerTiming(() => handleObsStudyNotes(ctx));
   const { url, env, execCtx } = ctx;
 
   let params: ReturnType<typeof requireObsParams>;
@@ -393,6 +400,8 @@ export async function handleObsStudyNotes(
 export async function handleObsStudyQuestions(
   ctx: RouteContext,
 ): Promise<Response> {
+  if (!serverTimingActive())
+    return withServerTiming(() => handleObsStudyQuestions(ctx));
   const { url, env, execCtx } = ctx;
 
   let params: ReturnType<typeof requireObsParams>;
@@ -455,6 +464,8 @@ function twCategory(path: string): string {
 }
 
 export async function handleObsWordLinks(ctx: RouteContext): Promise<Response> {
+  if (!serverTimingActive())
+    return withServerTiming(() => handleObsWordLinks(ctx));
   const { url, env, execCtx } = ctx;
 
   let params: ReturnType<typeof requireObsParams>;

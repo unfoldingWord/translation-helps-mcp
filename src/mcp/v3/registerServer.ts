@@ -20,6 +20,12 @@ import { z } from "zod";
 import { logger } from "../../core/logger.js";
 import { recordToolCall } from "../../core/metrics.js";
 import {
+  isApiTimeout,
+  slowSourceAnswer,
+  v3ToolMetric,
+  withV3ApiTiming,
+} from "./apiTiming.js";
+import {
   ErrorCode,
   isTranslationHelpsError,
   type TranslationHelpsError,
@@ -347,85 +353,140 @@ function registerV3Surface(
         let cacheStatus: "hit" | "miss" | "stale" | "none" = "none";
         const metricTool = `v3:${name}`;
 
-        try {
-          logger.info("tool:call", { tool: name, requestId, surface: "v3" });
-          const result = await handler(params as never, env, requestId);
-          if (result && typeof result === "object" && "cacheStatus" in result) {
-            cacheStatus = result.cacheStatus ?? "none";
+        logger.info("tool:call", { tool: name, requestId, surface: "v3" });
+        const outcome = await withV3ApiTiming(async () => {
+          try {
+            const result = await handler(params as never, env, requestId);
+            if (
+              result &&
+              typeof result === "object" &&
+              "cacheStatus" in result
+            ) {
+              cacheStatus = result.cacheStatus ?? "none";
+            }
+            const latencyMs = Date.now() - start;
+            return {
+              kind: "ok" as const,
+              result,
+              latencyMs,
+              metric: v3ToolMetric(latencyMs, cacheStatus),
+            };
+          } catch (err) {
+            const latencyMs = Date.now() - start;
+            if (isApiTimeout(err)) {
+              const metric = v3ToolMetric(latencyMs, "miss");
+              return {
+                kind: "timeout" as const,
+                latencyMs,
+                metric: {
+                  ...metric,
+                  cacheStatus: "miss" as const,
+                  layer: "network",
+                },
+              };
+            }
+            return {
+              kind: "error" as const,
+              err,
+              latencyMs,
+              metric: v3ToolMetric(latencyMs, "none"),
+            };
           }
+        });
+
+        if (outcome.kind === "ok") {
           recordToolCall(env.ANALYTICS, {
             tool: metricTool,
             requestId,
-            latencyMs: Date.now() - start,
-            cacheStatus,
+            latencyMs: outcome.latencyMs,
             errorCode,
             language: params.language as string | undefined,
+            ...outcome.metric,
           });
-          return forModel(result) as never;
-        } catch (err) {
-          if (isTranslationHelpsError(err)) {
-            errorCode = err.code;
-            logger.error("tool:error", {
-              tool: name,
-              requestId,
-              code: err.code,
-              message: err.message,
-              surface: "v3",
-            });
-            recordToolCall(env.ANALYTICS, {
-              tool: metricTool,
-              requestId,
-              latencyMs: Date.now() - start,
-              cacheStatus: "none",
-              errorCode,
-            });
-            return mcpError(err) as never;
-          }
+          return forModel(outcome.result) as never;
+        }
 
-          if (err instanceof ApiClientError && err.status === 404) {
-            errorCode = "RESOURCE_NOT_AVAILABLE";
-            logger.info("tool:not_available", {
-              tool: name,
-              requestId,
-              message: err.message,
-              surface: "v3",
-            });
-            recordToolCall(env.ANALYTICS, {
-              tool: metricTool,
-              requestId,
-              latencyMs: Date.now() - start,
-              cacheStatus: "none",
-              errorCode,
-            });
-            return mcpNotAvailable(err.message) as never;
-          }
-
-          const message = err instanceof Error ? err.message : String(err);
-          errorCode = ErrorCode.INTERNAL_ERROR;
-          logger.error("tool:unexpected_error", {
+        if (outcome.kind === "timeout") {
+          errorCode = "TIMEOUT";
+          logger.info("tool:slow_source", {
             tool: name,
             requestId,
-            code: errorCode,
-            message,
             surface: "v3",
           });
           recordToolCall(env.ANALYTICS, {
             tool: metricTool,
             requestId,
-            latencyMs: Date.now() - start,
-            cacheStatus: "none",
+            latencyMs: outcome.latencyMs,
             errorCode,
+            language: params.language as string | undefined,
+            ...outcome.metric,
           });
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `Error ${errorCode}: Internal error in ${name}: ${message}`,
-              },
-            ],
-            isError: true,
-          } as never;
+          return slowSourceAnswer() as never;
         }
+
+        const err = outcome.err;
+        if (isTranslationHelpsError(err)) {
+          errorCode = err.code;
+          logger.error("tool:error", {
+            tool: name,
+            requestId,
+            code: err.code,
+            message: err.message,
+            surface: "v3",
+          });
+          recordToolCall(env.ANALYTICS, {
+            tool: metricTool,
+            requestId,
+            latencyMs: outcome.latencyMs,
+            errorCode,
+            ...outcome.metric,
+          });
+          return mcpError(err) as never;
+        }
+
+        if (err instanceof ApiClientError && err.status === 404) {
+          errorCode = "RESOURCE_NOT_AVAILABLE";
+          logger.info("tool:not_available", {
+            tool: name,
+            requestId,
+            message: err.message,
+            surface: "v3",
+          });
+          recordToolCall(env.ANALYTICS, {
+            tool: metricTool,
+            requestId,
+            latencyMs: outcome.latencyMs,
+            errorCode,
+            ...outcome.metric,
+          });
+          return mcpNotAvailable(err.message) as never;
+        }
+
+        const message = err instanceof Error ? err.message : String(err);
+        errorCode = ErrorCode.INTERNAL_ERROR;
+        logger.error("tool:unexpected_error", {
+          tool: name,
+          requestId,
+          code: errorCode,
+          message,
+          surface: "v3",
+        });
+        recordToolCall(env.ANALYTICS, {
+          tool: metricTool,
+          requestId,
+          latencyMs: outcome.latencyMs,
+          errorCode,
+          ...outcome.metric,
+        });
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Error ${errorCode}: Internal error in ${name}: ${message}`,
+            },
+          ],
+          isError: true,
+        } as never;
       },
     );
   }

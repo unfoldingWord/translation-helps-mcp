@@ -12,6 +12,7 @@ import {
   buildTwArticle,
 } from "@translation-helps/door43";
 import type { AcademyArticle, WordArticle } from "@translation-helps/door43";
+import { noteLayer } from "../serverTiming.js";
 
 type Env = RouteContext["env"];
 
@@ -55,11 +56,15 @@ export async function loadTwCatalog(
   const { language, zipUrl } = resolved;
   const memKey = `tw:${zipUrl}`;
   const cachedMemory = memoryTw.get(memKey);
-  if (cachedMemory) return cachedMemory;
+  if (cachedMemory) {
+    noteLayer("memory");
+    return cachedMemory;
+  }
 
   const kvKey = `catalog:tw:${language}`;
   const kv = await readKv(env, kvKey);
   if (kv) {
+    noteLayer("kv");
     const value = {
       language,
       zipUrl,
@@ -104,11 +109,15 @@ export async function loadTaCatalog(
   const { language, zipUrl } = resolved;
   const memKey = `ta:${zipUrl}`;
   const cachedMemory = memoryTa.get(memKey);
-  if (cachedMemory) return cachedMemory;
+  if (cachedMemory) {
+    noteLayer("memory");
+    return cachedMemory;
+  }
 
   const kvKey = `catalog:ta:${language}`;
   const kv = await readKv(env, kvKey);
   if (kv) {
+    noteLayer("kv");
     const value = {
       language,
       zipUrl,

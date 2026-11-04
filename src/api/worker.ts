@@ -44,6 +44,7 @@ import {
 import { API_MANIFEST } from "./manifest.js";
 import { gateCompactIndex } from "../core/internalIndex.js";
 import { enforceRateLimit } from "../core/rateLimit.js";
+import { serverTimingHeader } from "./serverTiming.js";
 
 // ---------------------------------------------------------------------------
 // CORS / common headers
@@ -56,9 +57,15 @@ const CORS_HEADERS: Record<string, string> = {
 };
 
 function json(body: unknown, status = 200): Response {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...CORS_HEADERS,
+  };
+  const timing = serverTimingHeader(body);
+  if (timing) headers["Server-Timing"] = timing;
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+    headers,
   });
 }
 

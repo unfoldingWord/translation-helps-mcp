@@ -310,7 +310,11 @@ function apiFetcher(calls: URL[]): Fetcher {
 }
 
 interface AnalyticsSpy {
-  points: Array<{ blobs?: string[]; indexes?: string[] }>;
+  points: Array<{
+    blobs?: string[];
+    doubles?: number[];
+    indexes?: string[];
+  }>;
 }
 
 function baseEnv(
@@ -322,7 +326,11 @@ function baseEnv(
   return {
     MCP_AGENT: namespace,
     ANALYTICS: {
-      writeDataPoint(data: { blobs?: string[]; indexes?: string[] }) {
+      writeDataPoint(data: {
+        blobs?: string[];
+        doubles?: number[];
+        indexes?: string[];
+      }) {
         analytics.points.push(data);
       },
     },
@@ -508,7 +516,7 @@ describe("/v3/mcp worker fetch", () => {
     expect(namespace.names).toEqual([]);
   });
 
-  it("answers initialize as 2.8.0 with no session and no persona", async () => {
+  it("answers initialize as 2.9.0 with no session and no persona", async () => {
     const namespace = durableObjectNamespace();
     const response = await postMcp(
       "/v3/mcp",
@@ -524,7 +532,7 @@ describe("/v3/mcp worker fetch", () => {
     const body = await readJson(response);
     expect(body.result?.serverInfo).toEqual({
       name: SERVER_NAME,
-      version: "2.8.0",
+      version: "2.9.0",
     });
     const instructions = body.result?.instructions ?? "";
     expect(instructions).not.toMatch(/You are Ezer/);
@@ -1130,6 +1138,44 @@ describe("/v3/mcp worker fetch", () => {
     expect(JSON.stringify(none.result?.structuredContent)).toMatch(
       /zzzz nothing/,
     );
+  });
+
+  it("keeps next on notes and words for Philippians 2", async () => {
+    const namespace = durableObjectNamespace();
+    const analytics: AnalyticsSpy = { points: [] };
+    const body = await readJson(
+      await postMcp(
+        "/v3/mcp",
+        rpc("tools/call", {
+          name: "th_get_passage_index",
+          arguments: { reference: "PHP 2", language: "en" },
+        }),
+        baseEnv(namespace, analytics, []),
+      ),
+    );
+    expect(body.result?.isError).not.toBe(true);
+    const notes = body.result?.structuredContent?.notes as Array<{
+      reference?: string;
+      next?: { tool?: string };
+      taArticle?: { path?: string; title?: string };
+    }>;
+    const words = body.result?.structuredContent?.words as Array<{
+      reference?: string;
+      next?: { tool?: string };
+      twArticle?: { path?: string; category?: string };
+    }>;
+    expect(notes[0]?.reference).toMatch(/^PHP /);
+    expect(notes[0]?.next?.tool).toBe("th_get_notes");
+    expect(notes[0]?.taArticle).not.toHaveProperty("title");
+    expect(words[0]?.reference).toMatch(/^PHP /);
+    expect(words[0]?.next?.tool).toBe("th_get_article");
+    expect(words[0]?.twArticle).not.toHaveProperty("category");
+    const point = analytics.points.find(
+      (row) => row.blobs?.[0] === "v3:th_get_passage_index",
+    );
+    expect(point?.blobs).toHaveLength(6);
+    expect(point?.doubles).toHaveLength(3);
+    expect(namespace.names).toEqual([]);
   });
 
   it("accepts keyTermsOffset and the old rollupOffset name", async () => {

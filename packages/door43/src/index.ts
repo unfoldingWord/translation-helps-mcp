@@ -36,6 +36,12 @@ export type {
 
 // Catalog / DCS client
 export {
+  dataLayers,
+  traceLayer,
+  withDataLayers,
+} from "./resources/layerTrace.js";
+export type { TracedLayer } from "./resources/layerTrace.js";
+export {
   clearCatalogProcessCache,
   catalogSearch,
   listLanguages,
@@ -60,6 +66,7 @@ export type {
 // ZIP fetcher
 export {
   ZipResourceFetcher2,
+  clearZipCachesForTests,
   zipFetcherCacheStats,
 } from "./resources/ZipResourceFetcher2.js";
 export type {
