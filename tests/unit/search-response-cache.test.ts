@@ -91,6 +91,12 @@ describe("search response cache", () => {
       language: "en",
       zipUrl: "https://example.test/articles.zip",
       articles: [],
+      source: {
+        owner: "unfoldingWord",
+        repo: "en_tw",
+        version: "v82",
+        language: "en",
+      },
     };
     let loads = 0;
     vi.spyOn(articleCatalog, "loadTaCatalog").mockImplementation(async () => {

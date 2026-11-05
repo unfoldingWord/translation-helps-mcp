@@ -15,6 +15,9 @@ import {
   languageParam,
   ok,
   metaOutputSchema,
+  notAvailable,
+  readResourceSource,
+  resourceSourceSchema,
   withNotAvailableOutput,
   type ToolModule,
 } from "./shared.js";
@@ -32,6 +35,7 @@ const outputSchema = withNotAvailableOutput({
   reference: z.string().optional(),
   language: z.string().optional(),
   questions: z.array(z.record(z.string(), z.unknown())).optional(),
+  source: resourceSourceSchema,
   meta: metaOutputSchema,
 });
 
@@ -41,7 +45,8 @@ export const getPassageQuestionsTool: ToolModule<typeof inputSchema> = {
     "Fetch Translation Questions for a verse. For a direct question about the questions for a passage, call this with the reference. " +
     "When studying a passage step by step, use it after a translation draft to check that the meaning came through. " +
     "Returns questions[] with { reference, question, response }. response is the expected answer. " +
-    "Empty questions: [] means none are available — not an error.",
+    "Empty questions: [] means this verse has none. " +
+    "available: false means this language has no questions for that book: say so and do not answer from memory.",
   inputSchema,
   outputSchema,
   annotations: { readOnlyHint: true, title: "Get Passage Questions" },
@@ -56,16 +61,36 @@ export const getPassageQuestionsTool: ToolModule<typeof inputSchema> = {
 
     const data = await client.get<{
       questions: Array<Record<string, unknown>>;
+      book?: string;
+      language?: string;
+      available?: boolean;
+      message?: string;
+      source?: unknown;
       meta?: { cache?: string };
     }>("/api/v1/questions", { reference, language });
 
+    if (data.available === false) {
+      const book = typeof data.book === "string" ? data.book : "";
+      const lang = data.language || language;
+      return notAvailable(
+        book
+          ? `translation questions for "${book}" in language "${lang}"`
+          : `translation questions for language "${lang}"`,
+        typeof data.message === "string" ? data.message : undefined,
+        undefined,
+        readResourceSource(data.source),
+      );
+    }
+
     const questions = data.questions ?? [];
     const cache = data.meta?.cache;
+    const source = readResourceSource(data.source);
     return ok(
       {
         reference,
         language,
         questions,
+        ...(source ? { source } : {}),
         ...(cache ? { meta: { cache } } : {}),
       },
       `${questions.length} question(s) for ${reference}${cache ? ` [${cache}]` : ""}`,

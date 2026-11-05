@@ -27,6 +27,32 @@ export {
 };
 export type { CatalogEntry, CatalogKVCache };
 
+/** The catalog repo a notes, questions, or article answer came from. */
+export interface ResourceSource {
+  owner: string;
+  repo: string;
+  version: string;
+  language: string;
+}
+
+/**
+ * Owner, repo, release and language of the catalog row that was actually used.
+ * `version` is the prod branch or tag. A release stamp (`tag#published`) is
+ * the fallback when that row has no branch name.
+ */
+export function sourceFromCatalog(
+  entry: CatalogEntry,
+  language: string,
+): ResourceSource {
+  const tagged = entry.stamp?.split("#")[0]?.trim() ?? "";
+  return {
+    owner: entry.owner,
+    repo: entry.repo,
+    version: entry.catalog?.prod?.branch_or_tag_name?.trim() || tagged,
+    language: entry.language?.trim() || language,
+  };
+}
+
 /**
  * Resolve the effective catalog language + its matching entries for a given subject.
  *
@@ -44,8 +70,13 @@ export async function resolveLanguageVariant(
   language: string,
   subject: string,
   kv: CatalogKVCache | null | undefined,
+  options?: { strict?: boolean },
 ): Promise<{ language: string; entries: CatalogEntry[] }> {
-  return resolveCatalogLanguage(language, { subject, kv });
+  return resolveCatalogLanguage(language, {
+    subject,
+    kv,
+    strict: options?.strict,
+  });
 }
 
 /**

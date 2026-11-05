@@ -68,12 +68,15 @@ const V2_TOOL_NAMES = [
 ] as const;
 
 /**
- * SHA-256 of the v2 tools/list schemas (name, inputSchema, outputSchema)
- * as T-050 left them on v2 (2.5.0). A change to a v2 tool schema fails this
- * even when the Durable Object and the HTTP path are updated together.
+ * SHA-256 of the v2 tools/list schemas (name, inputSchema, outputSchema).
+ * Descriptions are not part of the digest. T-065 (2.10.0) changed it because
+ * get_note, get_questions, get_word_article, and get_academy_article gained
+ * an optional source object. The correction adds optional notesAvailable on
+ * get_passage_index. A later schema change fails this even when the Durable
+ * Object and the HTTP path are updated together.
  */
 const V2_SCHEMA_SHA256 =
-  "e76613e64a4d05e351eb86fc57a32fbf302c37b1918fa46c17bc37fcc0c24314";
+  "63de8eb3bd80c5dfae302336491a006663246cd256426112654536667c5d0863";
 
 const V3_TOOL_NAMES = [
   "th_get_passage",
@@ -516,7 +519,7 @@ describe("/v3/mcp worker fetch", () => {
     expect(namespace.names).toEqual([]);
   });
 
-  it("answers initialize as 2.9.0 with no session and no persona", async () => {
+  it("answers initialize as 2.10.0 with no session and no persona", async () => {
     const namespace = durableObjectNamespace();
     const response = await postMcp(
       "/v3/mcp",
@@ -532,7 +535,7 @@ describe("/v3/mcp worker fetch", () => {
     const body = await readJson(response);
     expect(body.result?.serverInfo).toEqual({
       name: SERVER_NAME,
-      version: "2.9.0",
+      version: "2.10.0",
     });
     const instructions = body.result?.instructions ?? "";
     expect(instructions).not.toMatch(/You are Ezer/);

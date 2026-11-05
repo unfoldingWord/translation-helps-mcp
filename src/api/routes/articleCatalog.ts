@@ -4,7 +4,12 @@
  */
 
 import type { RouteContext } from "../worker.js";
-import { makeFetcher, resolveResourceZip } from "./helpers.js";
+import {
+  makeFetcher,
+  resolveResourceZip,
+  sourceFromCatalog,
+  type ResourceSource,
+} from "./helpers.js";
 import {
   parseTaArticlePathsFromZipEntries,
   parseTwArticlePathsFromZipEntries,
@@ -20,6 +25,7 @@ export interface ArticleCatalog<T> {
   language: string;
   zipUrl: string;
   articles: T[];
+  source: ResourceSource;
 }
 
 const memoryTw = new Map<string, ArticleCatalog<WordArticle>>();
@@ -53,7 +59,8 @@ export async function loadTwCatalog(
     env.TRANSLATION_HELPS_CACHE,
   );
   if (!resolved) return null;
-  const { language, zipUrl } = resolved;
+  const { language, zipUrl, entry } = resolved;
+  const source = sourceFromCatalog(entry, language);
   const memKey = `tw:${zipUrl}`;
   const cachedMemory = memoryTw.get(memKey);
   if (cachedMemory) {
@@ -69,6 +76,7 @@ export async function loadTwCatalog(
       language,
       zipUrl,
       articles: JSON.parse(kv) as WordArticle[],
+      source,
     };
     memoryTw.set(memKey, value);
     return value;
@@ -90,7 +98,7 @@ export async function loadTwCatalog(
   }
   articles.sort((a, b) => a.path.localeCompare(b.path));
   writeKv(env, kvKey, JSON.stringify(articles));
-  const value = { language, zipUrl, articles };
+  const value = { language, zipUrl, articles, source };
   memoryTw.set(memKey, value);
   return value;
 }
@@ -106,7 +114,8 @@ export async function loadTaCatalog(
     env.TRANSLATION_HELPS_CACHE,
   );
   if (!resolved) return null;
-  const { language, zipUrl } = resolved;
+  const { language, zipUrl, entry } = resolved;
+  const source = sourceFromCatalog(entry, language);
   const memKey = `ta:${zipUrl}`;
   const cachedMemory = memoryTa.get(memKey);
   if (cachedMemory) {
@@ -122,6 +131,7 @@ export async function loadTaCatalog(
       language,
       zipUrl,
       articles: JSON.parse(kv) as AcademyArticle[],
+      source,
     };
     memoryTa.set(memKey, value);
     return value;
@@ -138,7 +148,7 @@ export async function loadTaCatalog(
   );
   articles.sort((a, b) => a.path.localeCompare(b.path));
   writeKv(env, kvKey, JSON.stringify(articles));
-  const value = { language, zipUrl, articles };
+  const value = { language, zipUrl, articles, source };
   memoryTa.set(memKey, value);
   return value;
 }

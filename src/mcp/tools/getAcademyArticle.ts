@@ -17,6 +17,7 @@ import { z } from "zod";
 import {
   languageParam,
   ok,
+  resourceSourceSchema,
   withNotAvailableOutput,
   type ToolModule,
 } from "./shared.js";
@@ -55,6 +56,7 @@ const outputSchema = withNotAvailableOutput({
   note: z.string().optional(),
   related: z.array(articleCandidate).optional(),
   candidates: z.array(articleCandidate).optional(),
+  source: resourceSourceSchema,
 });
 
 export const getAcademyArticleTool: ToolModule<typeof inputSchema> = {

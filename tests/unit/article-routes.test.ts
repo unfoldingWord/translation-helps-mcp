@@ -26,9 +26,12 @@ vi.mock("@translation-helps/door43", async (importOriginal) => {
             owner: "unfoldingWord",
             repo: academy ? `${lang}_ta` : `${lang}_tw`,
             name: academy ? `${lang}_ta` : `${lang}_tw`,
+            language: lang,
             subject: opts?.subject,
             ingredients: [],
-            catalog: { prod: { zipball_url: zipUrl } },
+            catalog: {
+              prod: { zipball_url: zipUrl, branch_or_tag_name: "v82" },
+            },
           },
         ],
       };
@@ -88,6 +91,38 @@ beforeEach(() => {
 });
 
 describe("word and academy routes", () => {
+  it("names the catalog repo the article came from", async () => {
+    const word = await read(
+      await handleWordsPath({
+        url: routeUrl({ language: "en" }),
+        env: {} as never,
+        pathParam: "bible/kt/covenant",
+      }),
+    );
+    expect(word.status).toBe(200);
+    expect(word.body.source).toEqual({
+      owner: "unfoldingWord",
+      repo: "en_tw",
+      version: "v82",
+      language: "en",
+    });
+
+    const academy = await read(
+      await handleAcademyPath({
+        url: routeUrl({ language: "en" }),
+        env: {} as never,
+        pathParam: "translate/figs-metaphor",
+      }),
+    );
+    expect(academy.status).toBe(200);
+    expect(academy.body.source).toEqual({
+      owner: "unfoldingWord",
+      repo: "en_ta",
+      version: "v82",
+      language: "en",
+    });
+  });
+
   it("keeps an exact path and does not set resolvedFrom", async () => {
     const { status, body } = await read(
       await handleWordsPath({

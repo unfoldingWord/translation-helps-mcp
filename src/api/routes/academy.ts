@@ -165,5 +165,6 @@ export async function handleAcademyPath(ctx: RouteContext): Promise<Response> {
     article,
     titleOf: (path) => titles.get(path),
     ...(subtitle ? { subtitle } : {}),
+    source: catalog.source,
   });
 }

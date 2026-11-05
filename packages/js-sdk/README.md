@@ -122,7 +122,7 @@ All methods return `MCPToolResult` (`content`, optional `structuredContent`, opt
 
 | Method                  | Options                                      | Description                                                                                                       |
 | ----------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `getPassageIndex(opts)` | `reference` (req), `language?`, `skipNotes?` | Compact index: note IDs + quotes + TA/TW paths (no article bodies). Includes `issues[]` and `keyTerms[]` rollups. |
+| `getPassageIndex(opts)` | `reference` (req), `language?`, `skipNotes?` | Compact index: note IDs + quotes + TA/TW paths (no article bodies). Includes `issues[]` and `keyTerms[]` rollups. `notesAvailable: false` means the language has no notes for that book; the word links in the result are still real. |
 
 #### Step 3 — Drill
 
@@ -132,7 +132,7 @@ All methods return `MCPToolResult` (`content`, optional `structuredContent`, opt
 | `getAcademyArticle(opts)` | `path` (req), `language?`                        | Full TA article. Exact path is best; `metaphor` and `figs-metaphor` also resolve.        |
 | `getWordArticle(opts)`    | `path` (req), `language?`                        | Full TW article. Exact path is best; `covenant`, `sheol`, and `son of god` also resolve. |
 
-`getWordArticle` and `getAcademyArticle` put the article in `structuredContent` (`WordArticleContent` / `AcademyArticleContent`): `path`, `title`, `article`, `requestedPath`, `resolvedFrom` (`category`, `title`, `plural`, `manual`, or `partial`), `related` (`{ path, title }[]`), `candidates` when several articles match, and `note` on a partial title match.
+`getWordArticle` and `getAcademyArticle` put the article in `structuredContent` (`WordArticleContent` / `AcademyArticleContent`): `path`, `title`, `article`, `requestedPath`, `resolvedFrom` (`category`, `title`, `plural`, `manual`, or `partial`), `related` (`{ path, title }[]`), `candidates` when several articles match, `note` on a partial title match, and `source` (`{ owner, repo, version, language }`) for the catalog repo that answered. Notes and questions include the same `source`. `available: false` means that language has no such resource for the book.
 
 #### Step 4 — Check
 

@@ -17,7 +17,10 @@
  */
 
 import type { Env } from "../worker.js";
-import { formatQuoteDisplay, resolveTitleFromPath } from "@translation-helps/door43";
+import {
+  formatQuoteDisplay,
+  resolveTitleFromPath,
+} from "@translation-helps/door43";
 
 /** The schema of the views this server reads. */
 export const PACK_VIEWS_SCHEMA = 1;
@@ -49,6 +52,33 @@ export const VARIANTS: Record<string, string[]> = {
 
 type Aligned = { literal: string | null; simple: string | null };
 type Source = { key: string; title: string; version: string | null } | null;
+
+/**
+ * One `source` object from a view's `sources` map.
+ *
+ * The view does not store a repo name. `key` is `owner/language/id`, and `id`
+ * is the repo name after the first `_` (the same split bt-synergy's
+ * catalogIdentity uses), so the repo is `${language}_${id}`. `version` is the
+ * view's own version. Callers keep the original `sources` map as well.
+ */
+export function sourceFromPackView(
+  sources: Record<string, Source> | undefined,
+  kind: string,
+):
+  | { owner: string; repo: string; version: string; language: string }
+  | undefined {
+  const row = sources?.[kind];
+  if (!row?.key) return undefined;
+  const [owner, language, ...rest] = row.key.split("/");
+  const id = rest.join("/");
+  if (!owner || !language || !id) return undefined;
+  return {
+    owner,
+    repo: `${language}_${id}`,
+    version: row.version ?? "",
+    language,
+  };
+}
 
 interface NoteView {
   id: string;
@@ -163,9 +193,7 @@ export async function notesFromViews(
   const rows = [
     ...(first?.notes.filter((n) => n.intro === "book") ?? []),
     ...view.notes.filter((n) => n.intro === "chapter"),
-    ...view.notes.filter((n) =>
-      inVerses(n, args.verseStart, args.verseEnd),
-    ),
+    ...view.notes.filter((n) => inVerses(n, args.verseStart, args.verseEnd)),
   ];
   return {
     language: view.language,
@@ -235,7 +263,9 @@ export async function wordLinksFromViews(
         occurrence: l.occurrence,
         twLink: l.twLink,
         wordPath: l.articlePath,
-        twTitle: l.title ?? (l.articlePath ? resolveTitleFromPath(l.articlePath) : null),
+        twTitle:
+          l.title ??
+          (l.articlePath ? resolveTitleFromPath(l.articlePath) : null),
         gatewayQuote: {
           original: l.origWords ? formatQuoteDisplay(l.origWords) : l.origWords,
           aligned: l.aligned.literal ?? "",

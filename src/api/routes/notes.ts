@@ -19,6 +19,7 @@ import {
   zipUrlFromEntry,
   buildBookPaths,
   pickPreferredCatalogEntry,
+  sourceFromCatalog,
 } from "./helpers.js";
 import { parseTranslationNotesTsv } from "@translation-helps/door43";
 import { resolveTitleFromPath } from "@translation-helps/door43";
@@ -38,7 +39,11 @@ import {
   responseCacheKey,
   cacheVerse,
 } from "./responseCache.js";
-import { notesFromViews, packViewsOf } from "./packViews.js";
+import {
+  notesFromViews,
+  packViewsOf,
+  sourceFromPackView,
+} from "./packViews.js";
 import { serverTimingActive, withServerTiming } from "../serverTiming.js";
 
 export async function handleNotes(ctx: RouteContext): Promise<Response> {
@@ -77,6 +82,7 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
       verseEnd,
     });
     if (fromPack) {
+      const source = sourceFromPackView(fromPack.sources, "notes");
       return json({
         reference,
         language: fromPack.language,
@@ -85,6 +91,7 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
         verse: verseStart ?? null,
         notes: fromPack.notes,
         sources: fromPack.sources,
+        ...(source ? { source } : {}),
         meta: { cache: "pack" },
       });
     }
@@ -132,7 +139,7 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
           language,
           book,
           chapter,
-          `No TSV Translation Notes resource available for language "${language}".`,
+          `No TSV Translation Notes resource available for book "${book}" in language "${language}".`,
         ),
         cache: "network" as const,
       };
@@ -146,11 +153,12 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
           language,
           book,
           chapter,
-          `No TSV Translation Notes resource available for language "${language}".`,
+          `No TSV Translation Notes resource available for book "${book}" in language "${language}".`,
         ),
         cache: "network" as const,
       };
     }
+    const source = sourceFromCatalog(entry, language);
     const zipUrl = zipUrlFromEntry(entry);
 
     const fetcher = makeFetcher(env, execCtx);
@@ -171,6 +179,7 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
           book,
           chapter,
           `No TSV Translation Notes file for "${book}" in language "${language}".`,
+          source,
         ),
         cache: zipSource,
       };
@@ -193,6 +202,7 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
         chapter,
         verse: verseStart ?? null,
         notes: rows.map((row) => indexNote(row, taMap)),
+        source,
       };
       putCachedJson(env.TRANSLATION_HELPS_CACHE, cacheKey, payload, execCtx);
       return { payload, cache: zipSource };
@@ -238,6 +248,7 @@ export async function handleNotes(ctx: RouteContext): Promise<Response> {
       chapter,
       verse: verseStart ?? null,
       notes: enriched,
+      source,
     };
     putCachedJson(env.TRANSLATION_HELPS_CACHE, cacheKey, payload, execCtx);
     return { payload, cache: zipSource };
@@ -259,6 +270,7 @@ function unavailableNotes(
   book: string,
   chapter: string,
   message: string,
+  source?: ReturnType<typeof sourceFromCatalog>,
 ): Record<string, unknown> {
   return {
     reference,
@@ -269,6 +281,7 @@ function unavailableNotes(
     available: false,
     code: "RESOURCE_NOT_AVAILABLE",
     message,
+    ...(source ? { source } : {}),
   };
 }
 

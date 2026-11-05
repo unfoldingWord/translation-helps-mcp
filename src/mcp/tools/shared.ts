@@ -135,6 +135,38 @@ export function withNotAvailableOutput(
   return { ...successFields, ...notAvailableOutputFields };
 }
 
+/** Catalog repo an answer came from. Optional on the tool result. */
+export const resourceSourceSchema = z
+  .object({
+    owner: z.string().describe("Door43 owner of the repo that answered."),
+    repo: z.string().describe("Repository name, for example ar_tn."),
+    version: z.string().describe("Release or branch named by the catalog row."),
+    language: z.string().describe("Language code of that repo."),
+  })
+  .optional()
+  .describe("The catalog repo this answer came from.");
+
+export interface ResourceSource {
+  owner: string;
+  repo: string;
+  version: string;
+  language: string;
+}
+
+/** Keep a `source` object only when it names an owner and a repo. */
+export function readResourceSource(value: unknown): ResourceSource | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const row = value as Record<string, unknown>;
+  if (typeof row.owner !== "string" || !row.owner) return undefined;
+  if (typeof row.repo !== "string" || !row.repo) return undefined;
+  return {
+    owner: row.owner,
+    repo: row.repo,
+    version: typeof row.version === "string" ? row.version : "",
+    language: typeof row.language === "string" ? row.language : "",
+  };
+}
+
 /** Optional `meta.cache` / timings block returned by several passage tools. */
 export const metaOutputSchema = z
   .object({
@@ -204,6 +236,7 @@ export function notAvailable(
   description: string,
   extra?: string,
   hint = "Run list_resources to see what is available for this language.",
+  source?: ResourceSource,
 ): ToolResult {
   const message =
     `No ${description} available for this reference or language.` +
@@ -213,6 +246,7 @@ export function notAvailable(
     code: "RESOURCE_NOT_AVAILABLE",
     message,
     hints: [hint],
+    ...(source ? { source } : {}),
   };
   return {
     content: [{ type: "text", text: JSON.stringify(data) }],

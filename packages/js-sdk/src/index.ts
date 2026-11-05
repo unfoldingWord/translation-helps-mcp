@@ -14,6 +14,7 @@ export type {
   GetWordArticleOptions,
   ArticleResolvedFrom,
   ArticleLink,
+  ResourceSource,
   ArticleToolContent,
   WordArticleContent,
   AcademyArticleContent,

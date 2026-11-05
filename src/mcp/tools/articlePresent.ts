@@ -7,6 +7,7 @@
 
 import { rewriteHelpsLinks } from "../../core/articleLinks.js";
 import type { ResolvedFrom } from "../../core/articleResolve.js";
+import { readResourceSource } from "./shared.js";
 
 export interface ArticlePayload {
   language?: string;
@@ -24,6 +25,7 @@ export interface ArticlePayload {
   candidates?: Array<{ path: string; title: string }>;
   /** Translation Academy question, from sub-title.md when the zip has one. */
   subtitle?: string;
+  source?: unknown;
 }
 
 export function presentArticle(
@@ -31,6 +33,7 @@ export function presentArticle(
   kind: "tw" | "ta",
   fallbackPath: string,
 ): Record<string, unknown> {
+  const source = readResourceSource(data.source);
   if (data.available === false) {
     return {
       available: false,
@@ -39,6 +42,7 @@ export function presentArticle(
       requestedPath: data.requestedPath ?? fallbackPath,
       candidates: data.candidates ?? [],
       ...(data.hints ? { hints: data.hints } : {}),
+      ...(source ? { source } : {}),
     };
   }
 
@@ -61,5 +65,6 @@ export function presentArticle(
     ...(data.resolvedFrom ? { resolvedFrom: data.resolvedFrom } : {}),
     ...(data.note ? { note: data.note } : {}),
     related: presented.related,
+    ...(source ? { source } : {}),
   };
 }

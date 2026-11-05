@@ -16,6 +16,9 @@ import {
   languageParam,
   ok,
   metaOutputSchema,
+  notAvailable,
+  readResourceSource,
+  resourceSourceSchema,
   withNotAvailableOutput,
   type ToolModule,
 } from "./shared.js";
@@ -59,6 +62,7 @@ const outputSchema = withNotAvailableOutput({
   id: z.union([z.string(), z.null()]).optional(),
   phrase: z.union([z.string(), z.null()]).optional(),
   notes: z.array(z.record(z.string(), z.unknown())).optional(),
+  source: resourceSourceSchema,
   meta: metaOutputSchema,
 });
 
@@ -71,7 +75,8 @@ export const getNoteTool: ToolModule<typeof inputSchema> = {
     "Verse links in the note are references such as Genesis 1:29. rc://*/tn/help/... is a note reference, not an article path. " +
     "When studying a passage step by step, pass id from get_passage_index. " +
     "Pass phrase to match a strategic-language phrase against quote and the note body. " +
-    "Empty notes: [] when none match — not an error.",
+    "Empty notes: [] when none match — not an error. " +
+    "available: false means this language has no notes for that book: say so and do not answer from memory.",
   inputSchema,
   outputSchema,
   annotations: { readOnlyHint: true, title: "Get Note" },
@@ -83,8 +88,25 @@ export const getNoteTool: ToolModule<typeof inputSchema> = {
     const data = await client.get<{
       notes: Array<Record<string, unknown>>;
       book?: string;
+      language?: string;
+      available?: boolean;
+      message?: string;
+      source?: unknown;
       meta?: { cache?: string };
     }>("/api/v1/notes", { reference, language });
+
+    if (data.available === false) {
+      const book = typeof data.book === "string" ? data.book : "";
+      const lang = data.language || language;
+      return notAvailable(
+        book
+          ? `translation notes for "${book}" in language "${lang}"`
+          : `translation notes for language "${lang}"`,
+        typeof data.message === "string" ? data.message : undefined,
+        undefined,
+        readResourceSource(data.source),
+      );
+    }
 
     let notes = data.notes ?? [];
     const referenceBook = bookNameToUsfm(
@@ -114,6 +136,7 @@ export const getNoteTool: ToolModule<typeof inputSchema> = {
     notes = notes.map((row) => shapeNote(row, referenceBook));
 
     const cache = data.meta?.cache;
+    const source = readResourceSource(data.source);
     return ok(
       {
         reference,
@@ -121,6 +144,7 @@ export const getNoteTool: ToolModule<typeof inputSchema> = {
         id: id ?? null,
         phrase: phrase ?? null,
         notes,
+        ...(source ? { source } : {}),
         ...(cache ? { meta: { cache } } : {}),
       },
       `${notes.length} note(s) for ${reference}${phrase ? ` matching phrase "${phrase}"` : ""}${cache ? ` [${cache}]` : ""}`,
