@@ -64,7 +64,8 @@ export function parseV3Path(path: string): V3Target | null {
   const parts = path.split("/");
   if (parts.length !== 2) return null;
   const [first = "", second = ""] = parts;
-  if (first === "seg") {
+  // `seg` is also a language (Segeju): the second element decides.
+  if (first === "seg" && second !== "catalog") {
     if (!SEGMENT_ID_RE.test(second)) return null;
     return { route: "seg", id: second, key: `v3/seg/${second}.seg` };
   }

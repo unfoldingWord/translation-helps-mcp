@@ -178,6 +178,17 @@ describe("parseV3Path", () => {
     });
     expect(parseV3Path("x")).toBeNull();
   });
+
+  it("seg/catalog is the catalog of the language seg", () => {
+    expect(parseV3Path("seg/catalog")).toEqual({
+      route: "catalog",
+      lang: "seg",
+      key: "v3/catalog/seg.seg",
+    });
+    expect(parseV3Path("seg/xyz")).toBeNull();
+    expect(parseV3Path(`seg/${HEX.toUpperCase()}`)).toBeNull();
+    expect(parseV3Path(`seg/${HEX}`)?.route).toBe("seg");
+  });
 });
 
 describe("GET /v3/packs/<lang>/catalog", () => {
@@ -205,6 +216,22 @@ describe("GET /v3/packs/<lang>/catalog", () => {
     const { call, gets } = setup();
     expect((await call("ES-419/catalog")).status).toBe(200);
     expect(gets[0]?.key).toBe("v3/catalog/es-419.seg");
+  });
+
+  it("serves the catalog of the language seg", async () => {
+    const { call, gets } = setup({
+      objects: {
+        "v3/catalog/seg.seg": {
+          bytes: CAT_BYTES,
+          etag: "g1",
+          contentType: "application/octet-stream",
+        },
+      },
+    });
+    const res = await call("seg/catalog");
+    expect(res.status).toBe(200);
+    expect(gets[0]?.key).toBe("v3/catalog/seg.seg");
+    expect(res.headers.get("Cache-Control")).toBe("no-cache, no-transform");
   });
 
   it("serves the common catalog", async () => {
@@ -408,6 +435,7 @@ describe("errors", () => {
     "es-419",
     "seg",
     `seg/${HEX}/x`,
+    "seg/xyz",
     "common/x",
     "x_y/catalog",
     "",
