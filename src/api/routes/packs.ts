@@ -92,7 +92,7 @@ type Target = {
 
 type Served = { response: Response; outcome: Outcome };
 
-const CORS: Record<string, string> = {
+export const CORS: Record<string, string> = {
   // The Pages cache in front does not vary by Origin, so the answer must be the same for every origin.
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
@@ -100,7 +100,7 @@ const CORS: Record<string, string> = {
   "Access-Control-Expose-Headers":
     "ETag, Content-Range, Content-Length, Accept-Ranges, Retry-After",
 };
-const NO_STORE = "no-store";
+export const NO_STORE = "no-store";
 const IMMUTABLE = "public, max-age=31536000, immutable";
 const CACHE_CONTROL = {
   entry: "no-cache",
@@ -118,8 +118,8 @@ const CONTENT_TYPE = {
 } as const;
 const SHA256_RE = /^[0-9a-f]{64}$/;
 /** About 730 requests download all of English; a limit of their own keeps them from blocking list checks. */
-const PARTS_RATE_LIMIT_SCOPE = "parts";
-const DEFAULT_PARTS_RPM = 600;
+export const PARTS_RATE_LIMIT_SCOPE = "parts";
+export const DEFAULT_PARTS_RPM = 600;
 
 /**
  * Lowercases, resolves the regional variant packs are built under (es → es-419), and validates. The mapping is
@@ -180,7 +180,7 @@ function parsePath(path: string): Target | null {
 }
 
 /** Etags without quotes or W/, so a client that drops the quotes still gets its 304. */
-function parseIfNoneMatch(header: string | null): string[] {
+export function parseIfNoneMatch(header: string | null): string[] {
   if (!header) return [];
   return header
     .split(",")
@@ -193,12 +193,14 @@ function parseIfNoneMatch(header: string | null): string[] {
     .filter((t) => t !== "");
 }
 
-function matches(tags: string[], etag: string): boolean {
+export function matches(tags: string[], etag: string): boolean {
   return tags.some((t) => t === "*" || t === etag);
 }
 
 /** One `bytes=` range; anything else (several ranges, other units, garbage) is ignored, as RFC 9110 allows. */
-function parseRange(header: string | null): R2Range | "unsatisfiable" | null {
+export function parseRange(
+  header: string | null,
+): R2Range | "unsatisfiable" | null {
   if (!header) return null;
   const m = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
   if (!m) return null;
@@ -216,7 +218,7 @@ function parseRange(header: string | null): R2Range | "unsatisfiable" | null {
 }
 
 /** The bytes a satisfiable range covers in an object of `size` bytes, end inclusive. */
-function rangeBounds(range: R2Range, size: number): [number, number] {
+export function rangeBounds(range: R2Range, size: number): [number, number] {
   if ("suffix" in range) return [Math.max(0, size - range.suffix), size - 1];
   const start = range.offset ?? 0;
   const end =
@@ -226,7 +228,7 @@ function rangeBounds(range: R2Range, size: number): [number, number] {
   return [start, end];
 }
 
-function rangeStart(range: R2Range, size: number): number {
+export function rangeStart(range: R2Range, size: number): number {
   return rangeBounds(range, size)[0];
 }
 
@@ -273,7 +275,9 @@ function unsatisfiable(size: number): Served {
   );
 }
 
-function hasBody(object: R2Object | R2ObjectBody): object is R2ObjectBody {
+export function hasBody(
+  object: R2Object | R2ObjectBody,
+): object is R2ObjectBody {
   return "body" in object && object.body !== undefined;
 }
 

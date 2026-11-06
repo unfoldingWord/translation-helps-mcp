@@ -222,6 +222,29 @@ describe("runPartsCleanup: what is named", () => {
     ).toBe(false);
   });
 
+  it("ignores format 3 keys", async () => {
+    const v3 = {
+      "v3/catalog/en.seg": { text: "cat", uploaded: OLD_DATE },
+      "v3/catalog/common.seg": { text: "common", uploaded: OLD_DATE },
+      [`v3/seg/${sha(5)}.seg`]: { text: "seg", uploaded: OLD_DATE },
+      "v3/registry/en.json": { text: "{}", uploaded: OLD_DATE },
+    };
+    const plain = world();
+    const base = await daily(plain, 0, 60);
+    const w = world(v3);
+    const s = await daily(w, 0, 60);
+    expect(s).toEqual(base);
+    expect(w.r2.deleted).toEqual(plain.r2.deleted);
+    expect(w.r2.deleted.some((k) => k.startsWith("v3/"))).toBe(false);
+    for (const k of Object.keys(v3)) expect(w.r2.objects.has(k)).toBe(true);
+    expect(
+      w.r2.ops.some((op) => op.key?.startsWith("v3/") && op.op !== "get"),
+    ).toBe(false);
+    expect(
+      Object.keys(w.ledger()!.since).some((k) => k.startsWith("v3/")),
+    ).toBe(false);
+  });
+
   it("does not take a stray object under parts/ for a part", async () => {
     const w = world({ "parts/readme.txt": { text: "x", uploaded: OLD_DATE } });
     await daily(w, 0, 40);
