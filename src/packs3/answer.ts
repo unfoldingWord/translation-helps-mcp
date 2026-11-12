@@ -18,6 +18,7 @@ import {
   scriptureAdapterParams,
   scriptureFromPacks3,
 } from "./adapters/scripture";
+import { searchAdapterParams, searchFromPacks3 } from "./adapters/search";
 
 /** `auto` tries format 3 then the API; `off` skips format 3; `only` never calls the API (comparisons only). */
 export type Packs3Mode = "auto" | "off" | "only";
@@ -70,6 +71,11 @@ export const ADAPTERS: Packs3Adapter[] = [
         env,
         articleAdapterParams(path, "/api/v1/academy/", params),
       ),
+  },
+  {
+    match: (path) => path === "/api/v1/search",
+    run: (env, _path, params) =>
+      searchFromPacks3(env, searchAdapterParams(params)),
   },
 ];
 
