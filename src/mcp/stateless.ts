@@ -29,6 +29,7 @@ import { registerTranslationHelpsServer } from "./registerServer.js";
 import { V3_SERVER_INSTRUCTIONS } from "./v3/instructions.js";
 import { registerV3Server } from "./v3/registerServer.js";
 import { V3NormalizingMcpServer } from "./v3/server.js";
+import { packs3ModeFromRequest } from "./apiClient.js";
 import type { Env } from "./agent.js";
 
 const JSON_AND_EVENT_STREAM = "application/json, text/event-stream";
@@ -61,11 +62,20 @@ function withStreamableAccept(request: Request): Request {
   return new Request(request, { headers });
 }
 
+/** The env the tools receive, with the per-request format 3 mode (debug only). */
+function withPacks3Mode(env: Env, request: Request): Env {
+  const mode = packs3ModeFromRequest(request, env);
+  return mode ? { ...env, PACKS3_MODE: mode } : env;
+}
+
 export function handleStatelessMcpRequest(
   request: Request,
   env: Env,
 ): Promise<Response> {
-  return serveStateless(openStatelessServer(env), request);
+  return serveStateless(
+    openStatelessServer(withPacks3Mode(env, request)),
+    request,
+  );
 }
 
 /** /v3/mcp. Stateless only: initialize does not mint a session id. */
@@ -82,7 +92,10 @@ export function handleV3StatelessMcpRequest(
   request: Request,
   env: Env,
 ): Promise<Response> {
-  return serveStateless(openV3StatelessServer(env), request);
+  return serveStateless(
+    openV3StatelessServer(withPacks3Mode(env, request)),
+    request,
+  );
 }
 
 function serveStateless(

@@ -27,6 +27,8 @@ import {
   noteV3ApiResponse,
   v3ApiTimeoutMs,
 } from "./v3/apiTiming.js";
+import { attemptPacks3, type Packs3Mode } from "../packs3/answer.js";
+import type { Packs3Env } from "../packs3/catalogs.js";
 
 // ---------------------------------------------------------------------------
 // Error type
@@ -56,6 +58,25 @@ export interface ApiEnv {
   API?: Fetcher;
   /** Base URL for the REST API worker (local dev / fallback). */
   API_BASE_URL?: string;
+  /** Format 3 reads (see src/packs3). Without LANGUAGE_PACKS no format 3 read is tried. */
+  LANGUAGE_PACKS?: R2Bucket;
+  PACKS_V3?: string;
+  PACKS_V3_TRUSTED_KEYS?: string;
+  PACKS_V3_DEBUG?: string;
+  /** Set per request by the stateless handler from `x-th-packs3`, only when PACKS_V3_DEBUG is "on". */
+  PACKS3_MODE?: string;
+}
+
+export type ApiClientOptions = { packs3?: Packs3Env & { mode?: Packs3Mode } };
+
+/** `x-th-packs3: off | only`, honoured only with PACKS_V3_DEBUG === "on". */
+export function packs3ModeFromRequest(
+  request: Request,
+  env: { PACKS_V3_DEBUG?: string },
+): Packs3Mode | undefined {
+  if (env.PACKS_V3_DEBUG !== "on") return undefined;
+  const v = request.headers.get("x-th-packs3");
+  return v === "off" || v === "only" ? v : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -74,8 +95,23 @@ function isLocalApiBaseUrl(url: string): boolean {
 export class ApiClient {
   private readonly baseUrl: string;
   private readonly fetcher: Fetcher | null;
+  private readonly packs3?: Packs3Env & { mode?: Packs3Mode };
 
-  constructor(env: ApiEnv) {
+  constructor(env: ApiEnv, options?: ApiClientOptions) {
+    this.packs3 =
+      options?.packs3 ??
+      (env.LANGUAGE_PACKS
+        ? {
+            LANGUAGE_PACKS: env.LANGUAGE_PACKS,
+            PACKS_V3: env.PACKS_V3,
+            PACKS_V3_TRUSTED_KEYS: env.PACKS_V3_TRUSTED_KEYS,
+            mode:
+              env.PACKS_V3_DEBUG === "on" &&
+              (env.PACKS3_MODE === "off" || env.PACKS3_MODE === "only")
+                ? env.PACKS3_MODE
+                : undefined,
+          }
+        : undefined);
     const base = env.API_BASE_URL?.replace(/\/$/, "");
 
     // Vite's platformProxy and unbound wrangler service bindings expose env.API
@@ -109,6 +145,16 @@ export class ApiClient {
     path: string,
     params?: Record<string, string | number | undefined>,
   ): Promise<T> {
+    const p3 = this.packs3;
+    const mode = p3?.mode ?? "auto";
+    if (p3 && mode !== "off") {
+      const a = await attemptPacks3(p3, path, params ?? {});
+      if (a.hit) return a.value as T;
+      if (mode === "only") {
+        throw new ApiClientError("PACKS3_FALLBACK", a.reason, 404, false);
+      }
+    }
+
     const url = new URL(`${this.baseUrl}${path}`);
     if (params) {
       for (const [key, value] of Object.entries(params)) {
