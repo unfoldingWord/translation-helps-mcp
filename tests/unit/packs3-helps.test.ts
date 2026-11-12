@@ -14,14 +14,18 @@ import {
   notesFromPacks3,
   wordLinksFromPacks3,
   VERIFIED_NOTES,
+  VERIFIED_BOOKS,
+  VERIFIED_ORIGINALS,
+  proofOfNoLink,
 } from "../../src/packs3/adapters/helps";
 import { answerFromPacks3 } from "../../src/packs3/answer";
+import { VERIFIED } from "../../src/packs3/adapters/scripture";
 
 const STAGING =
   "78d2e6299a2de4d0:c2057cec32b948452849e7fcba6af323961a091ea82645eb297bb368e1c8d911";
 const DIR = join(__dirname, "..", "fixtures", "packs3");
 
-function env(): Packs3Env {
+function env(extra: Record<string, unknown> = {}): Packs3Env {
   const objects: Record<string, Uint8Array> = {};
   for (const d of ["catalog", "seg"]) {
     for (const f of readdirSync(join(DIR, "v3", d))) {
@@ -30,6 +34,8 @@ function env(): Packs3Env {
       );
     }
   }
+  for (const [k, v] of Object.entries(extra))
+    objects[k] = new TextEncoder().encode(JSON.stringify(v));
   const bucket = {
     async get(key: string) {
       const bytes = objects[key];
@@ -40,6 +46,7 @@ function env(): Packs3Env {
         size: bytes.length,
         body: new Response(bytes).body,
         arrayBuffer: async () => bytes.slice().buffer,
+        json: async () => JSON.parse(new TextDecoder().decode(bytes)),
       };
     },
   };
@@ -280,10 +287,14 @@ describe("notes", () => {
           reference: `Tit ${c}`,
           language: lang,
         });
+        const want = l.chapters[String(c)].notes;
+        if (want.some((r) => /^[A-Za-z]/.test(String(r.quote)))) {
+          expect(built, `${lang} ${c}`).toBeUndefined();
+          continue;
+        }
         expect(built, `${lang} ${c}`).toBeDefined();
         const rows = (built!.answer as { notes: (Row & { note: string })[] })
           .notes;
-        const want = l.chapters[String(c)].notes;
         expect(rows.map((r) => r.id)).toEqual(want.map((r) => r.id));
         rows.forEach((r, i) => {
           if (!want[i].noteLinks) {
@@ -386,7 +397,7 @@ describe("notes", () => {
     ).toBeUndefined();
   });
 
-  it("es-419 TIT 1:1: every verse row, alignedQuote included, equals the route's", async () => {
+  it("es-419 TIT 1:1: every verse row, aligned words included, equals the route's", async () => {
     const built = await buildNotesAnswer(env(), {
       reference: "Tit 1:1",
       language: "es-419",
@@ -477,5 +488,131 @@ describe("registered adapters", () => {
         language: "en",
       }),
     ).toBeUndefined();
+  });
+});
+
+describe("fix round 1: shapes, quotes, books, references, texts", () => {
+  const view = { schema: 1, language: "en", book: "TIT", chapter: 1 };
+
+  it("the route answers from v1 views when the bucket has the chapter's view: no answer from format 3", async () => {
+    const e = env({ "v1/en/notes/TIT/1.json": view });
+    expect(
+      await notesFromPacks3(e, { reference: "Tit 1:1", language: "en" }),
+    ).toBeUndefined();
+    const w = env({ "v1/en/word-links/TIT/1.json": view });
+    expect(
+      await wordLinksFromPacks3(w, { reference: "Tit 1:1", language: "en" }),
+    ).toBeUndefined();
+    // A regional variant counts (es -> es-419), another chapter's view does not.
+    const v = env({
+      "v1/es-419/word-links/TIT/1.json": { ...view, language: "es-419" },
+    });
+    expect(
+      await wordLinksFromPacks3(v, { reference: "Tit 1:1", language: "es" }),
+    ).toBeUndefined();
+    const other = env({ "v1/en/word-links/TIT/2.json": view });
+    expect(
+      await wordLinksFromPacks3(other, {
+        reference: "Tit 1:1",
+        language: "en",
+      }),
+    ).toBeDefined();
+    // The views are not used for fields=index, so format 3 answers it.
+    expect(
+      await wordLinksFromPacks3(w, {
+        reference: "Tit",
+        language: "en",
+        fields: "index",
+      }),
+    ).toBeDefined();
+  });
+
+  it("answers have no `simple`: that field exists only in the views' shape", async () => {
+    const got = (await wordLinksFromPacks3(env(), {
+      reference: "Tit 1:1",
+      language: "en",
+    })) as { wordLinks: { gatewayQuote: Row }[] };
+    for (const r of got.wordLinks)
+      expect(r.gatewayQuote).not.toHaveProperty("simple");
+    expect(got).not.toHaveProperty("sources");
+  });
+
+  it("a note whose quote the builder could not place (es-419 TIT 1:6 'Connecting Statement:') is never answered", async () => {
+    expect(
+      await buildNotesAnswer(env(), {
+        reference: "Tit 1:6",
+        language: "es-419",
+      }),
+    ).toBeUndefined();
+    // Chapter 1 of the route has it, with aligned "": the adapter does not guess that.
+    expect(
+      await buildNotesAnswer(env(), { reference: "Tit 1", language: "es-419" }),
+    ).toBeUndefined();
+  });
+
+  it("only the books whose answers are pinned are answered; another gives undefined and warns once", async () => {
+    expect([...(VERIFIED_BOOKS.get("en") ?? [])]).toEqual(["tit"]);
+    expect([...(VERIFIED_BOOKS.get("es-419") ?? [])].sort()).toEqual([
+      "rut",
+      "tit",
+    ]);
+    VERIFIED_BOOKS.get("en")!.delete("tit");
+    try {
+      const args = { reference: "Tit", language: "en", fields: "index" };
+      expect(await notesFromPacks3(env(), args)).toBeUndefined();
+      expect(await wordLinksFromPacks3(env(), args)).toBeUndefined();
+      expect(console.warn).toHaveBeenCalledWith(
+        "packs3 fallback",
+        expect.objectContaining({ reason: "unverified-book" }),
+      );
+    } finally {
+      VERIFIED_BOOKS.get("en")!.add("tit");
+    }
+  });
+
+  it("a row without an article link is accepted only when nothing in it looks like a dropped reference", () => {
+    const cols = (note: string) => ({
+      note,
+      tags: "",
+      quote: "x",
+      isIntro: false,
+      occurrence: "1",
+    });
+    expect(proofOfNoLink(cols("Alternate translation: [a]"))).toBe(true);
+    expect(proofOfNoLink(cols("See rc://*/ta/man/translate/figs-x"))).toBe(
+      false,
+    );
+    expect(proofOfNoLink(cols("(See: translate/figs-metaphor)"))).toBe(false);
+    expect(proofOfNoLink(cols("(See: [[rc://*/ta/man/translate/x]])"))).toBe(
+      false,
+    );
+    expect(proofOfNoLink({ ...cols("a"), extra: "ta" })).toBe(false);
+    expect(proofOfNoLink({ ...cols("a"), tags: "x" })).toBe(false);
+  });
+
+  it("aligned and original texts must be verified: otherwise no answer without fields=index", async () => {
+    const args = { reference: "Tit 1:1", language: "en" };
+    const ult = VERIFIED["unfoldingWord/en/ult"];
+    delete VERIFIED["unfoldingWord/en/ult"];
+    try {
+      expect(await wordLinksFromPacks3(env(), args)).toBeUndefined();
+      expect(
+        await wordLinksFromPacks3(env(), {
+          ...args,
+          reference: "Tit",
+          fields: "index",
+        }),
+      ).toBeDefined();
+    } finally {
+      VERIFIED["unfoldingWord/en/ult"] = ult;
+    }
+    VERIFIED_ORIGINALS.delete("unfoldingWord/el-x-koine/ugnt");
+    try {
+      resetReadersForTests();
+      expect(await wordLinksFromPacks3(env(), args)).toBeUndefined();
+    } finally {
+      VERIFIED_ORIGINALS.add("unfoldingWord/el-x-koine/ugnt");
+    }
+    expect(await wordLinksFromPacks3(env(), args)).toBeDefined();
   });
 });

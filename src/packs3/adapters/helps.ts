@@ -17,12 +17,16 @@ import {
 import type { PackReader } from "../../../vendor/language-pack-client/index.js";
 import { resolveNotesQuery } from "../../api/routes/helpers";
 import { markdownHeading } from "../../api/routes/notes";
-import { sourceFromPackView } from "../../api/routes/packViews";
+import {
+  PACK_VIEWS_SCHEMA,
+  sourceFromPackView,
+  VARIANTS,
+} from "../../api/routes/packViews";
 import type { Packs3Env } from "../catalogs";
 import { warnOnce } from "../keys";
 import { withReader } from "../readers";
 import type { Packs3Params } from "../answer";
-import { BOOKS, FIRST_NT } from "./scripture";
+import { BOOKS, FIRST_NT, VERIFIED } from "./scripture";
 
 /** Resources whose rows were compared with the route's (en TIT, es-419 TIT and RUT, every row of every chapter). */
 export const VERIFIED_NOTES = new Set([
@@ -40,6 +44,53 @@ export const VERIFIED_ARTICLES = new Set([
   "es-419_gl/es-419/ta",
   "es-419_gl/es-419/tw",
 ]);
+/**
+ * The (language, book) pairs whose rows were compared with the route's live answers (tests/fixtures/packs3/live). Any
+ * other book gives `undefined` (warning "unverified-book"). A pair is added after Task 10's comparison shows the answers
+ * equal for that book. Keys are the catalog's language (as `c.lang`) and the lowercase book code.
+ */
+export const VERIFIED_BOOKS = new Map<string, Set<string>>([
+  ["en", new Set(["tit"])],
+  ["es-419", new Set(["tit", "rut"])],
+]);
+/** The originals the quote positions of the pinned rows index (the route matches its quotes in the same text). */
+export const VERIFIED_ORIGINALS = new Set(["unfoldingWord/el-x-koine/ugnt"]);
+
+/**
+ * The route's `supportReference` of a row with no article link in format 3 is "" only if the builder did not drop an
+ * unresolved reference (it keeps no trace of one). What can be shown from the data: the row has only the known columns
+ * (an extra one could be a reference) and its body has no text that looks like a reference to an article. That is a
+ * test, not a proof: see Gaps in the Task 6 report.
+ */
+const KNOWN_COLS = new Set(["note", "tags", "quote", "isIntro", "occurrence"]);
+const REFERENCE_LIKE =
+  /rc:\/\/|\[\[|ta\/man|(translate|checking|process|intro)\/[a-z0-9-]+|(figs|grammar|writing|translate|guidelines|bible|kt|names|other)-[a-z]{3,}/i;
+export function proofOfNoLink(cols: Cols): boolean {
+  if (Object.keys(cols).some((k) => !KNOWN_COLS.has(k))) return false;
+  if (cols.tags !== undefined && cols.tags !== "") return false;
+  return typeof cols.note === "string" && !REFERENCE_LIKE.test(cols.note);
+}
+
+/** Whether the route would answer this chapter from v1 views (same bucket, same keys), which have another shape. */
+async function viewsExist(
+  env: Packs3Env,
+  q: Query,
+  language: string,
+  kind: "notes" | "links",
+): Promise<boolean> {
+  if (q.indexMode || !Number.isInteger(Number(q.chapter))) return false;
+  const code = language.toLowerCase();
+  for (const lang of [code, ...(VARIANTS[code] ?? [])]) {
+    const object = await env.LANGUAGE_PACKS?.get(
+      `v1/${lang}/${kind === "notes" ? "notes" : "word-links"}/${q.book.toUpperCase()}/${Number(q.chapter)}.json`,
+    );
+    if (!object) continue;
+    const view = (await object.json()) as { schema?: number } | null;
+    if (view && view.schema === PACK_VIEWS_SCHEMA) return true;
+  }
+  return false;
+}
+
 /** The text whose alignment the route uses for `gatewayQuote.aligned`, by language. */
 export const ALIGNED_TEXT = new Map([
   ["en", "unfoldingWord/en/ult"],
@@ -328,11 +379,17 @@ async function withHelps<T>(
   const q = queryOf(params);
   if (!q) return undefined;
   const code = q.book.toLowerCase();
+  // The route answers from views, with another shape (reference, tags, sources, simple), when they have the chapter.
+  if (await viewsExist(env, q, params.language, kind)) return undefined;
   const verified = kind === "notes" ? VERIFIED_NOTES : VERIFIED_LINKS;
   const subject =
     kind === "notes" ? "TSV Translation Notes" : "TSV Translation Words Links";
   const answer = await withReader(env, params.language, async (reader, c) => {
     if (!reader.listed(`book:${code}`)) return undefined;
+    if (!VERIFIED_BOOKS.get(c.lang)?.has(code)) {
+      warnOnce(params.language, "unverified-book");
+      return undefined;
+    }
     const own = c.catalogs.find((x) => x.name !== "common");
     const resources = ((own?.catalog as { resources?: Resource[] })
       ?.resources ?? []) as Resource[];
@@ -380,8 +437,12 @@ async function prepare(
 > {
   const chosen = ctx.placed.filter((p) => inQuery(p, ctx.q, notes));
   const concepts: string[] = [];
-  for (const { link } of chosen) {
-    if (link === undefined) continue;
+  for (const { link, row, kind } of chosen) {
+    if (link === undefined) {
+      if (notes && kind === "verse" && !proofOfNoLink(row.cols))
+        return undefined;
+      continue;
+    }
     if (!link.startsWith(notes ? "ta:" : "tw:")) return undefined;
     concepts.push(link);
   }
@@ -392,6 +453,12 @@ async function prepare(
   // Aligned words: New Testament only, from the verified text.
   if (BOOKS.indexOf(ctx.book.toLowerCase()) < FIRST_NT) return undefined;
   const res = ALIGNED_TEXT.get(ctx.lang);
+  // The aligned text must be a verified one of the scripture adapter, and the original the one the positions index.
+  if (!res || !(res in VERIFIED)) return undefined;
+  const orig = (await ctx.reader.orig(ctx.book.toLowerCase())) as
+    | { key?: string }
+    | undefined;
+  if (!orig?.key || !VERIFIED_ORIGINALS.has(orig.key)) return undefined;
   const unit = res ? ctx.data.texts?.find((t) => t.res === res) : undefined;
   const aligned = alignedOf(unit);
   if (!aligned) return undefined;
@@ -408,8 +475,8 @@ function gatewayAligned(
   if (!/^\d+$/.test(p.verse)) return undefined;
   const pos = positionsOf(p.row);
   if (!pos) return undefined;
-  // A quote the builder could not place in the original ("Connecting Statement:") has no aligned words in the route either.
-  if (pos.length === 0) return "";
+  // The route finds its own words with its own matcher: a quote the builder could not place says nothing about it.
+  if (pos.length === 0) return undefined;
   return aligned(p.chapter, p.verse, pos);
 }
 
