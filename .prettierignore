@@ -1,2 +1,5 @@
 # The chat lives outside the build (see chat/README.md)
 chat/
+
+# vendored bundle: byte-for-byte as built (SOURCE.json holds its hash)
+vendor/
