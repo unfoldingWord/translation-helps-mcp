@@ -1,0 +1,390 @@
+{
+  "source": "https://translation-helps-mcp-v2-preview.unfoldingword.workers.dev",
+  "catalogs": {
+    "common": {
+      "key": "v3/catalog/common.seg",
+      "id": "e47a3e63650cd4fb394034bfb71e5bf52806df055d83dd581f00ad147082f196",
+      "size": 16136,
+      "etag": "\"6b2dc122ca44b49524820393ae2491bf\""
+    },
+    "en": {
+      "key": "v3/catalog/en.seg",
+      "id": "8f4a68e644e3d602e76080e1355b1dff88cb51c2f198c4b3f8eb5b59f07f754e",
+      "size": 16805,
+      "etag": "\"3b7d4416fd7d9c67eccc1deec64194f2\""
+    },
+    "es-419": {
+      "key": "v3/catalog/es-419.seg",
+      "id": "bd22968c1e94b0ad5629fc235f335395ff508f0a1953921edb00eea35cbbd88a",
+      "size": 5410,
+      "etag": "\"c579869bd9762786b5131afe6b1f4516\""
+    }
+  },
+  "segments": {
+    "0d6aa08b52c12c667feba6c03df3d43fe8339aea496bdf948262189c11f3389d": {
+      "key": "v3/seg/0d6aa08b52c12c667feba6c03df3d43fe8339aea496bdf948262189c11f3389d.seg",
+      "size": 35170,
+      "units": ["en:book:tit"]
+    },
+    "eb31d4e8493c4025870888fc5cd159a057e6a6e168a9fff2455f1d5185d53cc0": {
+      "key": "v3/seg/eb31d4e8493c4025870888fc5cd159a057e6a6e168a9fff2455f1d5185d53cc0.seg",
+      "size": 15056,
+      "units": ["en:orig:tit"]
+    },
+    "579bc9b5446489e9eeb53d8c2fdf1ab48329187b8c06099f6509f74cbab0d9ea": {
+      "key": "v3/seg/579bc9b5446489e9eeb53d8c2fdf1ab48329187b8c06099f6509f74cbab0d9ea.seg",
+      "size": 130471,
+      "units": ["en:art:tw:kt"]
+    },
+    "35cd2c6d6cd227fe8ed29c4483e566e0b0358fcf9b0f73c94ac536e40ee25b49": {
+      "key": "v3/seg/35cd2c6d6cd227fe8ed29c4483e566e0b0358fcf9b0f73c94ac536e40ee25b49.seg",
+      "size": 260075,
+      "units": ["en:art:ta:translate"]
+    },
+    "2b47bb3dc34fb380967d4e93798d2efe0cf07fb294f6b4b4d71184a3c8e5c326": {
+      "key": "v3/seg/2b47bb3dc34fb380967d4e93798d2efe0cf07fb294f6b4b4d71184a3c8e5c326.seg",
+      "size": 29930,
+      "units": ["en:map"]
+    },
+    "d10a3aea7ed955ca9f0c6295d5898e9a2b412cd19d8945bd2b3a76a22976712e": {
+      "key": "v3/seg/d10a3aea7ed955ca9f0c6295d5898e9a2b412cd19d8945bd2b3a76a22976712e.seg",
+      "size": 3344,
+      "units": ["en:map"]
+    },
+    "347f934d5a3b67112d01c208a1e8f6d59b06fdace6b74985cf85976df499ddb6": {
+      "key": "v3/seg/347f934d5a3b67112d01c208a1e8f6d59b06fdace6b74985cf85976df499ddb6.seg",
+      "size": 2898,
+      "units": ["en:map"]
+    },
+    "55e2571713c3f47b744b5f8d786d9d766496bb99e22b5a627ad45e35b73c780d": {
+      "key": "v3/seg/55e2571713c3f47b744b5f8d786d9d766496bb99e22b5a627ad45e35b73c780d.seg",
+      "size": 2529,
+      "units": ["en:map"]
+    },
+    "5f25cc6040970d2bae29ef722ba867875480fed60f13735e4ab0f3275da99b3c": {
+      "key": "v3/seg/5f25cc6040970d2bae29ef722ba867875480fed60f13735e4ab0f3275da99b3c.seg",
+      "size": 3624,
+      "units": ["en:map"]
+    },
+    "baf2d54ecd5f6c31d276b3d443ac1fe1a2fbd6d20448d0c25b44a978b59b8354": {
+      "key": "v3/seg/baf2d54ecd5f6c31d276b3d443ac1fe1a2fbd6d20448d0c25b44a978b59b8354.seg",
+      "size": 2098,
+      "units": ["en:map"]
+    },
+    "5e7031f6e6b521e7f947de0a20fca5c1cc03a1c23a481e84581896ed5b968fc2": {
+      "key": "v3/seg/5e7031f6e6b521e7f947de0a20fca5c1cc03a1c23a481e84581896ed5b968fc2.seg",
+      "size": 2671,
+      "units": ["en:map"]
+    },
+    "7627d6c953c43c57362dc10ca23c1d08776a971521cca22174d467f6cbfa2919": {
+      "key": "v3/seg/7627d6c953c43c57362dc10ca23c1d08776a971521cca22174d467f6cbfa2919.seg",
+      "size": 1081,
+      "units": ["en:map"]
+    },
+    "f514d20d90eb18eb1277c94d59b7ba494d5ff2eb2c977dce08596fc49720fe8f": {
+      "key": "v3/seg/f514d20d90eb18eb1277c94d59b7ba494d5ff2eb2c977dce08596fc49720fe8f.seg",
+      "size": 3492,
+      "units": ["en:map"]
+    },
+    "e08c273ce9f87ce6eeb742d716d2bc849ac982f4245b044882aee2903b36e44d": {
+      "key": "v3/seg/e08c273ce9f87ce6eeb742d716d2bc849ac982f4245b044882aee2903b36e44d.seg",
+      "size": 3045,
+      "units": ["en:map"]
+    },
+    "3a187630a39d42608d65d7e158e1c7f829d48fcdd946a724a59eb6289e66aa3a": {
+      "key": "v3/seg/3a187630a39d42608d65d7e158e1c7f829d48fcdd946a724a59eb6289e66aa3a.seg",
+      "size": 3155,
+      "units": ["en:map"]
+    },
+    "513c2d206854ab7c2251c02d4dade5045d69ad6abff5bc2e6740aef933a267e6": {
+      "key": "v3/seg/513c2d206854ab7c2251c02d4dade5045d69ad6abff5bc2e6740aef933a267e6.seg",
+      "size": 2759,
+      "units": ["en:map"]
+    },
+    "2691f0d5fc7accd1e7a6b9dc4bdbe17b09f0870b373ae6c109f78bdb6aa18dcd": {
+      "key": "v3/seg/2691f0d5fc7accd1e7a6b9dc4bdbe17b09f0870b373ae6c109f78bdb6aa18dcd.seg",
+      "size": 1577,
+      "units": ["en:map"]
+    },
+    "185c8e3f371c2ec7104e767e3473249431f60be84a559ffe8a4f10971acd9b69": {
+      "key": "v3/seg/185c8e3f371c2ec7104e767e3473249431f60be84a559ffe8a4f10971acd9b69.seg",
+      "size": 1750,
+      "units": ["en:map"]
+    },
+    "c4a8d27761652976344a5d4360d49f7d0f25fd198e0db3c8dba0a80d50fd9853": {
+      "key": "v3/seg/c4a8d27761652976344a5d4360d49f7d0f25fd198e0db3c8dba0a80d50fd9853.seg",
+      "size": 1346,
+      "units": ["en:map"]
+    },
+    "e18555c2551f24e3088a0b91588e47ad3fee0d833bee722d594b23e25de3cdff": {
+      "key": "v3/seg/e18555c2551f24e3088a0b91588e47ad3fee0d833bee722d594b23e25de3cdff.seg",
+      "size": 3839,
+      "units": ["en:map"]
+    },
+    "8fbb7f44d9f11998457a08db64745bdf6092e0e26472e80cf49fcbf87572958f": {
+      "key": "v3/seg/8fbb7f44d9f11998457a08db64745bdf6092e0e26472e80cf49fcbf87572958f.seg",
+      "size": 7696,
+      "units": ["en:map"]
+    },
+    "9d028df8b853b77efd18e6b29f6a899524775ae1ed6288197cf91424289393a0": {
+      "key": "v3/seg/9d028df8b853b77efd18e6b29f6a899524775ae1ed6288197cf91424289393a0.seg",
+      "size": 3520,
+      "units": ["en:map"]
+    },
+    "4f5a80f8db5dc75c24ff3283c0c2349f86b388cc2b3df97588112bdcebf7cfaa": {
+      "key": "v3/seg/4f5a80f8db5dc75c24ff3283c0c2349f86b388cc2b3df97588112bdcebf7cfaa.seg",
+      "size": 1205,
+      "units": ["en:map"]
+    },
+    "bf717f9eb8ab9d85216216db3f7ded4a92d01cd41e92b6bbeaa358edfcc296e5": {
+      "key": "v3/seg/bf717f9eb8ab9d85216216db3f7ded4a92d01cd41e92b6bbeaa358edfcc296e5.seg",
+      "size": 1033,
+      "units": ["en:map"]
+    },
+    "6c316eaf6f07b2e364db07e7730bd064889d4db45ea7bb9b53cf8c7d2e2c4b9c": {
+      "key": "v3/seg/6c316eaf6f07b2e364db07e7730bd064889d4db45ea7bb9b53cf8c7d2e2c4b9c.seg",
+      "size": 1914,
+      "units": ["en:map"]
+    },
+    "9024970e28f628f3c3974ed97ab9734d293907580723398499434daa630b454c": {
+      "key": "v3/seg/9024970e28f628f3c3974ed97ab9734d293907580723398499434daa630b454c.seg",
+      "size": 1423,
+      "units": ["en:map"]
+    },
+    "4a3f4b46488d468e2853252354a288244d096bb085c6beb515d04d9f2a1ace9c": {
+      "key": "v3/seg/4a3f4b46488d468e2853252354a288244d096bb085c6beb515d04d9f2a1ace9c.seg",
+      "size": 994,
+      "units": ["en:map"]
+    },
+    "3d92833b8e7b57d002be384530c8d2eea512fe5a556e974fcad86c2d640ca94b": {
+      "key": "v3/seg/3d92833b8e7b57d002be384530c8d2eea512fe5a556e974fcad86c2d640ca94b.seg",
+      "size": 1299,
+      "units": ["en:map"]
+    },
+    "4149ce4c6555b26a2a5acb75cefa2df8c06df8bc5475f66f2e3a8cbfa7d0dffc": {
+      "key": "v3/seg/4149ce4c6555b26a2a5acb75cefa2df8c06df8bc5475f66f2e3a8cbfa7d0dffc.seg",
+      "size": 626,
+      "units": ["en:map"]
+    },
+    "c89726162f342a07ffdfd07217dcea0e04e1c7bd650ac6a329087ceb8e3fd62f": {
+      "key": "v3/seg/c89726162f342a07ffdfd07217dcea0e04e1c7bd650ac6a329087ceb8e3fd62f.seg",
+      "size": 790,
+      "units": ["en:map"]
+    },
+    "2440fb8daa4a6368b2e2c6440bb4347d1e4e273b7386337151d4090350f9879d": {
+      "key": "v3/seg/2440fb8daa4a6368b2e2c6440bb4347d1e4e273b7386337151d4090350f9879d.seg",
+      "size": 1159,
+      "units": ["en:map"]
+    },
+    "d5168d893e46e0698aefe100e43bbf67b0e332a3d6840a6a1bae16c0ccc672c1": {
+      "key": "v3/seg/d5168d893e46e0698aefe100e43bbf67b0e332a3d6840a6a1bae16c0ccc672c1.seg",
+      "size": 705,
+      "units": ["en:map"]
+    },
+    "a3dfdfed623ac17267e499a84607e748a52526cfb34ab25df41106d6d90095a6": {
+      "key": "v3/seg/a3dfdfed623ac17267e499a84607e748a52526cfb34ab25df41106d6d90095a6.seg",
+      "size": 905,
+      "units": ["en:map"]
+    },
+    "50c9160dc57277e5ff7f52ef424457213e8e375b8488c7a076ccf23a396df50f": {
+      "key": "v3/seg/50c9160dc57277e5ff7f52ef424457213e8e375b8488c7a076ccf23a396df50f.seg",
+      "size": 915,
+      "units": ["en:map"]
+    },
+    "5627250a18cad032f7d7202bf4d4695c1581c568233e2d59b68ffe34aef45c75": {
+      "key": "v3/seg/5627250a18cad032f7d7202bf4d4695c1581c568233e2d59b68ffe34aef45c75.seg",
+      "size": 712,
+      "units": ["en:map"]
+    },
+    "c6e6aa676e1439998f9312b260375825f3e59f33051b3eee0ff6062a39a0062a": {
+      "key": "v3/seg/c6e6aa676e1439998f9312b260375825f3e59f33051b3eee0ff6062a39a0062a.seg",
+      "size": 1750,
+      "units": ["en:map"]
+    },
+    "f3b266923835c015eadaca38def54b25491ec09786859291648fc1eedeb20c9f": {
+      "key": "v3/seg/f3b266923835c015eadaca38def54b25491ec09786859291648fc1eedeb20c9f.seg",
+      "size": 861,
+      "units": ["en:map"]
+    },
+    "1342676364cf3c7cdf07271b323513c0ef1775c66760477f36e843c9281a00d5": {
+      "key": "v3/seg/1342676364cf3c7cdf07271b323513c0ef1775c66760477f36e843c9281a00d5.seg",
+      "size": 5094,
+      "units": ["en:map"]
+    },
+    "7633502d7a8c10d014f7aad9c27281c5872b7f2cc3b1f7235ffa5e21f0477e27": {
+      "key": "v3/seg/7633502d7a8c10d014f7aad9c27281c5872b7f2cc3b1f7235ffa5e21f0477e27.seg",
+      "size": 3472,
+      "units": ["en:map"]
+    },
+    "0fc44e0bf9aefe026b39b9502ab833f77dd0547c0c620b41c0df0becc67dc03e": {
+      "key": "v3/seg/0fc44e0bf9aefe026b39b9502ab833f77dd0547c0c620b41c0df0becc67dc03e.seg",
+      "size": 4186,
+      "units": ["en:map"]
+    },
+    "9431ac6a7af6be953aa746e24ae26b7cebcbe6f8bebda6964c1f3917fc84b422": {
+      "key": "v3/seg/9431ac6a7af6be953aa746e24ae26b7cebcbe6f8bebda6964c1f3917fc84b422.seg",
+      "size": 2974,
+      "units": ["en:map"]
+    },
+    "9667088245927a7bb18d2490b7d4b03cb068f26868dcdcc6c13257267e50385c": {
+      "key": "v3/seg/9667088245927a7bb18d2490b7d4b03cb068f26868dcdcc6c13257267e50385c.seg",
+      "size": 3824,
+      "units": ["en:map"]
+    },
+    "ab9e1547ba6767f602296295d79beffa25b14f8097c391b7344384bbfd2c73cb": {
+      "key": "v3/seg/ab9e1547ba6767f602296295d79beffa25b14f8097c391b7344384bbfd2c73cb.seg",
+      "size": 2628,
+      "units": ["en:map"]
+    },
+    "db0728e94fa3e74c21a01281d04d1ef2da7bc074e44ce7cf9e28ea0e2c9d2ed3": {
+      "key": "v3/seg/db0728e94fa3e74c21a01281d04d1ef2da7bc074e44ce7cf9e28ea0e2c9d2ed3.seg",
+      "size": 2774,
+      "units": ["en:map"]
+    },
+    "acd8bd288df89c5931e9e71c872eb93a2a87523fd3d04bbada9e537cb65909d7": {
+      "key": "v3/seg/acd8bd288df89c5931e9e71c872eb93a2a87523fd3d04bbada9e537cb65909d7.seg",
+      "size": 1920,
+      "units": ["en:map"]
+    },
+    "41ae8d517d3e99099be76afd52ac6993f3b8c5dcb3858ecb477e18664f5abdcc": {
+      "key": "v3/seg/41ae8d517d3e99099be76afd52ac6993f3b8c5dcb3858ecb477e18664f5abdcc.seg",
+      "size": 1395,
+      "units": ["en:map"]
+    },
+    "b4e7b9a324b96c2c22e1290de9f8081d567d2e9e735e9d86cea1410d14d5ae57": {
+      "key": "v3/seg/b4e7b9a324b96c2c22e1290de9f8081d567d2e9e735e9d86cea1410d14d5ae57.seg",
+      "size": 969,
+      "units": ["en:map"]
+    },
+    "8e609213f42dd8bb6b2cc7cf8e406d0bc39a8a07cb97baebddfe7ccf8db625e8": {
+      "key": "v3/seg/8e609213f42dd8bb6b2cc7cf8e406d0bc39a8a07cb97baebddfe7ccf8db625e8.seg",
+      "size": 938,
+      "units": ["en:map"]
+    },
+    "ff8a75d9431c1ace78564e9efe2dc2e7ac72e3771cfd5c108c08aff1566c83a3": {
+      "key": "v3/seg/ff8a75d9431c1ace78564e9efe2dc2e7ac72e3771cfd5c108c08aff1566c83a3.seg",
+      "size": 1182,
+      "units": ["en:map"]
+    },
+    "a6f08b6a36b9cdcfadc938d624e9cfcc02f4d69910fa2897a2164c4558e067a9": {
+      "key": "v3/seg/a6f08b6a36b9cdcfadc938d624e9cfcc02f4d69910fa2897a2164c4558e067a9.seg",
+      "size": 1206,
+      "units": ["en:map"]
+    },
+    "6b2ced4b1d28a5c3b6c6c344d32b092cb9de37cdc413cbbf28b380dd956cabd9": {
+      "key": "v3/seg/6b2ced4b1d28a5c3b6c6c344d32b092cb9de37cdc413cbbf28b380dd956cabd9.seg",
+      "size": 795,
+      "units": ["en:map"]
+    },
+    "76766c29e0f94b43465384c868c8b3e7ecef01298b02010396635a9849b0d633": {
+      "key": "v3/seg/76766c29e0f94b43465384c868c8b3e7ecef01298b02010396635a9849b0d633.seg",
+      "size": 1281,
+      "units": ["en:map"]
+    },
+    "a95472a48c778f6f37a194e637bdcfceb9cae0b8cd79252a984776a929d3f9e7": {
+      "key": "v3/seg/a95472a48c778f6f37a194e637bdcfceb9cae0b8cd79252a984776a929d3f9e7.seg",
+      "size": 1072,
+      "units": ["en:map"]
+    },
+    "d4d0a0cfa82a0f955c2add1d8d69379c0493ba99f05762824392622d20591bc2": {
+      "key": "v3/seg/d4d0a0cfa82a0f955c2add1d8d69379c0493ba99f05762824392622d20591bc2.seg",
+      "size": 683,
+      "units": ["en:map"]
+    },
+    "58162405ce87a23e194a6b798dd01b4512550df17e53ad476c7a87d54a720af0": {
+      "key": "v3/seg/58162405ce87a23e194a6b798dd01b4512550df17e53ad476c7a87d54a720af0.seg",
+      "size": 555,
+      "units": ["en:map"]
+    },
+    "5f88b876f061d62d01ec4b03c5d74c287953a085d111de225087bca9dc7ad680": {
+      "key": "v3/seg/5f88b876f061d62d01ec4b03c5d74c287953a085d111de225087bca9dc7ad680.seg",
+      "size": 2195,
+      "units": ["en:map"]
+    },
+    "6e706e080a3e13d940f0c2a9413aafb384279953c1c1c2327e60c4a6235de800": {
+      "key": "v3/seg/6e706e080a3e13d940f0c2a9413aafb384279953c1c1c2327e60c4a6235de800.seg",
+      "size": 1234,
+      "units": ["en:map"]
+    },
+    "003e5e3d833a1e2cff4ce536da035a6bc113699e8e552a72e69f3dfd9a417b94": {
+      "key": "v3/seg/003e5e3d833a1e2cff4ce536da035a6bc113699e8e552a72e69f3dfd9a417b94.seg",
+      "size": 1085,
+      "units": ["en:map"]
+    },
+    "25da557b69b94e9b8f4b2b0f5c53472c6ab146cf313eb5d826e650e0272e82ce": {
+      "key": "v3/seg/25da557b69b94e9b8f4b2b0f5c53472c6ab146cf313eb5d826e650e0272e82ce.seg",
+      "size": 1005,
+      "units": ["en:map"]
+    },
+    "d77e28ca21f1ee3a1eeb85247d88a406ef3ceec2fcd316cf3fbc396856aa96a9": {
+      "key": "v3/seg/d77e28ca21f1ee3a1eeb85247d88a406ef3ceec2fcd316cf3fbc396856aa96a9.seg",
+      "size": 1140,
+      "units": ["en:map"]
+    },
+    "898eb8cc2eb03d9731cb1de8bcba22cf925d262937af92b0e9c6a21f970a5076": {
+      "key": "v3/seg/898eb8cc2eb03d9731cb1de8bcba22cf925d262937af92b0e9c6a21f970a5076.seg",
+      "size": 558,
+      "units": ["en:map"]
+    },
+    "4385065e00a491af8d5e88c4699e11789254bc33a17af938793b9e8aca56c5ad": {
+      "key": "v3/seg/4385065e00a491af8d5e88c4699e11789254bc33a17af938793b9e8aca56c5ad.seg",
+      "size": 495,
+      "units": ["en:map"]
+    },
+    "b5f9228f8caafaf5d2542e5c48b07346401cf971b056dacddce7f3be27fe7960": {
+      "key": "v3/seg/b5f9228f8caafaf5d2542e5c48b07346401cf971b056dacddce7f3be27fe7960.seg",
+      "size": 684,
+      "units": ["en:map"]
+    },
+    "3423e0775f169f1f325ed5afe03fe3a209106c6bb3816a7d738e35d9e2072a6a": {
+      "key": "v3/seg/3423e0775f169f1f325ed5afe03fe3a209106c6bb3816a7d738e35d9e2072a6a.seg",
+      "size": 2163,
+      "units": ["en:map"]
+    },
+    "c7fea84769cdc3e2073894b813668b1036931b16892e1e35caa8c62be4fc22dd": {
+      "key": "v3/seg/c7fea84769cdc3e2073894b813668b1036931b16892e1e35caa8c62be4fc22dd.seg",
+      "size": 53497,
+      "units": ["es-419:book:rut"]
+    },
+    "2061fdf3716ec4939a7c99dfedaea99ec8bfe380c3cbc21f4516c08654f62c0e": {
+      "key": "v3/seg/2061fdf3716ec4939a7c99dfedaea99ec8bfe380c3cbc21f4516c08654f62c0e.seg",
+      "size": 32340,
+      "units": ["es-419:orig:rut"]
+    },
+    "6f77b6b7d7417ebb14e3de81b01ee1b58c4182fc5a866220c8ddff1798fd319e": {
+      "key": "v3/seg/6f77b6b7d7417ebb14e3de81b01ee1b58c4182fc5a866220c8ddff1798fd319e.seg",
+      "size": 147508,
+      "units": ["es-419:art:tw:kt"]
+    },
+    "3a872484ab09afc14431fd9e71a94f52b03e3f0444314873df4d0577426a349a": {
+      "key": "v3/seg/3a872484ab09afc14431fd9e71a94f52b03e3f0444314873df4d0577426a349a.seg",
+      "size": 281359,
+      "units": ["es-419:art:ta:translate"]
+    },
+    "4f526d01ff1b69149c29f5890e3937d802472cb29e6097a509aa7c6b6e9de5c1": {
+      "key": "v3/seg/4f526d01ff1b69149c29f5890e3937d802472cb29e6097a509aa7c6b6e9de5c1.seg",
+      "size": 26434,
+      "units": ["es-419:map"]
+    },
+    "c0b6f82e8be012b7fb20a62d3c5b39f86e369435fa6fde7421790653c443373c": {
+      "key": "v3/seg/c0b6f82e8be012b7fb20a62d3c5b39f86e369435fa6fde7421790653c443373c.seg",
+      "size": 816,
+      "units": ["es-419:map"]
+    },
+    "50bdbe4c3bf3b05fe6b415bb5b209c8e105aad5cc97524574ca14b89fb43bff3": {
+      "key": "v3/seg/50bdbe4c3bf3b05fe6b415bb5b209c8e105aad5cc97524574ca14b89fb43bff3.seg",
+      "size": 654,
+      "units": ["es-419:map"]
+    },
+    "2ecb147f545425624766fd580fc324bc39ba5609fbd313e7a83a9292845c0ac8": {
+      "key": "v3/seg/2ecb147f545425624766fd580fc324bc39ba5609fbd313e7a83a9292845c0ac8.seg",
+      "size": 609,
+      "units": ["es-419:map"]
+    },
+    "94cc6e7ce47cbd9a29081c398e4fd8e95eb88560d5465822fb5a50be081a3491": {
+      "key": "v3/seg/94cc6e7ce47cbd9a29081c398e4fd8e95eb88560d5465822fb5a50be081a3491.seg",
+      "size": 481,
+      "units": ["es-419:map"]
+    }
+  }
+}
