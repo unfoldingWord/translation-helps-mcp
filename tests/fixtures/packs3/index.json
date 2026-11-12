@@ -29,12 +29,22 @@
     "eb31d4e8493c4025870888fc5cd159a057e6a6e168a9fff2455f1d5185d53cc0": {
       "key": "v3/seg/eb31d4e8493c4025870888fc5cd159a057e6a6e168a9fff2455f1d5185d53cc0.seg",
       "size": 15056,
-      "units": ["en:orig:tit"]
+      "units": ["en:orig:tit", "es-419:orig:tit"]
     },
     "579bc9b5446489e9eeb53d8c2fdf1ab48329187b8c06099f6509f74cbab0d9ea": {
       "key": "v3/seg/579bc9b5446489e9eeb53d8c2fdf1ab48329187b8c06099f6509f74cbab0d9ea.seg",
       "size": 130471,
       "units": ["en:art:tw:kt"]
+    },
+    "26a37330e613463829f1e4e8cf7c10090d24964be5d3a24dfc4b81f4a1411452": {
+      "key": "v3/seg/26a37330e613463829f1e4e8cf7c10090d24964be5d3a24dfc4b81f4a1411452.seg",
+      "size": 126387,
+      "units": ["en:art:tw:names"]
+    },
+    "c313c42b609eff36d2eb2b189aeeffe94de3970e9ae8f5fdf8020f74064e3cc2": {
+      "key": "v3/seg/c313c42b609eff36d2eb2b189aeeffe94de3970e9ae8f5fdf8020f74064e3cc2.seg",
+      "size": 181744,
+      "units": ["en:art:tw:other"]
     },
     "35cd2c6d6cd227fe8ed29c4483e566e0b0358fcf9b0f73c94ac536e40ee25b49": {
       "key": "v3/seg/35cd2c6d6cd227fe8ed29c4483e566e0b0358fcf9b0f73c94ac536e40ee25b49.seg",
@@ -351,10 +361,25 @@
       "size": 32340,
       "units": ["es-419:orig:rut"]
     },
+    "12e4f2c8c44626fda329709ee53f852cef3d93046a36f145f2196738f794469b": {
+      "key": "v3/seg/12e4f2c8c44626fda329709ee53f852cef3d93046a36f145f2196738f794469b.seg",
+      "size": 37713,
+      "units": ["es-419:book:tit"]
+    },
     "6f77b6b7d7417ebb14e3de81b01ee1b58c4182fc5a866220c8ddff1798fd319e": {
       "key": "v3/seg/6f77b6b7d7417ebb14e3de81b01ee1b58c4182fc5a866220c8ddff1798fd319e.seg",
       "size": 147508,
       "units": ["es-419:art:tw:kt"]
+    },
+    "1ea2aba696da3e350af1f4876dcecd41dff013569e8629b137bf49cbecd23256": {
+      "key": "v3/seg/1ea2aba696da3e350af1f4876dcecd41dff013569e8629b137bf49cbecd23256.seg",
+      "size": 105928,
+      "units": ["es-419:art:tw:names"]
+    },
+    "34bd2c54701615742bfb413f6ab156b15002c23344f744771b04727b2bc9490f": {
+      "key": "v3/seg/34bd2c54701615742bfb413f6ab156b15002c23344f744771b04727b2bc9490f.seg",
+      "size": 197004,
+      "units": ["es-419:art:tw:other"]
     },
     "3a872484ab09afc14431fd9e71a94f52b03e3f0444314873df4d0577426a349a": {
       "key": "v3/seg/3a872484ab09afc14431fd9e71a94f52b03e3f0444314873df4d0577426a349a.seg",
@@ -385,11 +410,6 @@
       "key": "v3/seg/94cc6e7ce47cbd9a29081c398e4fd8e95eb88560d5465822fb5a50be081a3491.seg",
       "size": 481,
       "units": ["es-419:map"]
-    },
-    "12e4f2c8c44626fda329709ee53f852cef3d93046a36f145f2196738f794469b": {
-      "key": "v3/seg/12e4f2c8c44626fda329709ee53f852cef3d93046a36f145f2196738f794469b.seg",
-      "size": 37713,
-      "units": ["es-419:book:tit"]
     }
   }
 }

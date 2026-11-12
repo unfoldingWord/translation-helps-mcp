@@ -32,11 +32,11 @@ export type ScriptureApiResponse = {
 };
 
 /** Canonical order of ids.md: the position in this list, from 0, is the bit of a book in a catalog's `books`. */
-const BOOKS =
+export const BOOKS =
   "gen exo lev num deu jos jdg rut 1sa 2sa 1ki 2ki 1ch 2ch ezr neh est job psa pro ecc sng isa jer lam ezk dan hos jol amo oba jon mic nam hab zep hag zec mal mat mrk luk jhn act rom 1co 2co gal eph php col 1th 2th 1ti 2ti tit phm heb jas 1pe 2pe 1jn 2jn 3jn jud rev".split(
     " ",
   );
-const FIRST_NT = BOOKS.indexOf("mat");
+export const FIRST_NT = BOOKS.indexOf("mat");
 
 /**
  * The resources this adapter may answer with, key (`owner/lang/id`) -> the `resourceType` the route gives

@@ -316,7 +316,7 @@ function indexNote(
   };
 }
 
-function markdownHeading(note: string): string {
+export function markdownHeading(note: string): string {
   for (const line of note.split("\n")) {
     const match = /^#{1,6}\s+(.+?)\s*#*\s*$/.exec(line.trim());
     if (match?.[1]) return match[1].trim();

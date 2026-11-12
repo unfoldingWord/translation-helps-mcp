@@ -1,6 +1,11 @@
 import { parseTrustedKeys, warnOnce } from "./keys";
 import type { Packs3Env } from "./catalogs";
 import {
+  helpsAdapterParams,
+  notesFromPacks3,
+  wordLinksFromPacks3,
+} from "./adapters/helps";
+import {
   scriptureAdapterParams,
   scriptureFromPacks3,
 } from "./adapters/scripture";
@@ -25,6 +30,16 @@ export const ADAPTERS: Packs3Adapter[] = [
     match: (path) => path === "/api/v1/scripture",
     run: (env, _path, params) =>
       scriptureFromPacks3(env, scriptureAdapterParams(params)),
+  },
+  {
+    match: (path) => path === "/api/v1/notes",
+    run: (env, _path, params) =>
+      notesFromPacks3(env, helpsAdapterParams(params)),
+  },
+  {
+    match: (path) => path === "/api/v1/word-links",
+    run: (env, _path, params) =>
+      wordLinksFromPacks3(env, helpsAdapterParams(params)),
   },
 ];
 
