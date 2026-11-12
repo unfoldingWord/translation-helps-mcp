@@ -1,6 +1,11 @@
 import { parseTrustedKeys, warnOnce } from "./keys";
 import type { Packs3Env } from "./catalogs";
 import {
+  academyPathFromPacks3,
+  articleAdapterParams,
+  wordsPathFromPacks3,
+} from "./adapters/articles";
+import {
   helpsAdapterParams,
   notesFromPacks3,
   wordLinksFromPacks3,
@@ -49,6 +54,22 @@ export const ADAPTERS: Packs3Adapter[] = [
     match: (path) => path === "/api/v1/questions",
     run: (env, _path, params) =>
       questionsFromPacks3(env, questionsAdapterParams(params)),
+  },
+  {
+    match: (path) => path.startsWith("/api/v1/words/") && path.length > 14,
+    run: (env, path, params) =>
+      wordsPathFromPacks3(
+        env,
+        articleAdapterParams(path, "/api/v1/words/", params),
+      ),
+  },
+  {
+    match: (path) => path.startsWith("/api/v1/academy/") && path.length > 16,
+    run: (env, path, params) =>
+      academyPathFromPacks3(
+        env,
+        articleAdapterParams(path, "/api/v1/academy/", params),
+      ),
   },
 ];
 
