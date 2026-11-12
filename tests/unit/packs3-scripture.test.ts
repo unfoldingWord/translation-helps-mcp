@@ -6,7 +6,10 @@ import {
   type Packs3Env,
 } from "../../src/packs3/catalogs";
 import { resetReadersForTests } from "../../src/packs3/readers";
-import { scriptureFromPacks3 } from "../../src/packs3/adapters/scripture";
+import {
+  scriptureFromPacks3,
+  VERIFIED,
+} from "../../src/packs3/adapters/scripture";
 import { answerFromPacks3 } from "../../src/packs3/answer";
 
 const STAGING =
@@ -166,6 +169,37 @@ describe("scriptureFromPacks3", () => {
     ["all=1", { reference: "Tit 1:1", language: "en", all: "1" }],
   ])("returns undefined for %s", async (_name, params) => {
     expect(await scriptureFromPacks3(env(), params)).toBeUndefined();
+  });
+});
+
+describe("verified resources", () => {
+  it("falls back, warning once, when a picked resource is not in the table", async () => {
+    const saved = VERIFIED["unfoldingWord/en/ust"];
+    delete VERIFIED["unfoldingWord/en/ust"];
+    try {
+      const params = { reference: "Tit 1:1", language: "en" };
+      expect(await scriptureFromPacks3(env(), params)).toBeUndefined();
+      expect(await scriptureFromPacks3(env(), params)).toBeUndefined();
+      const warns = (
+        console.warn as unknown as { mock: { calls: unknown[][] } }
+      ).mock.calls.filter(
+        (c) =>
+          (c[1] as { reason?: string } | undefined)?.reason ===
+          "unverified-resource",
+      );
+      expect(warns).toHaveLength(1);
+    } finally {
+      VERIFIED["unfoldingWord/en/ust"] = saved;
+    }
+  });
+
+  it("uses the table abbreviation where it differs from the resource id", async () => {
+    const got = await scriptureFromPacks3(env(), {
+      reference: "Tit 1:1",
+      language: "es-419",
+    });
+    expect(got?.versions[0].resourceType).toBe("tpl");
+    expect(got?.versions[0].source).toContain("es-419_glt");
   });
 });
 

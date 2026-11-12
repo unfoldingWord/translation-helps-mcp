@@ -15,6 +15,7 @@ import {
 import { requireReferenceAndLanguage } from "../../api/routes/helpers";
 import { scriptureVersionsForBook } from "../../api/routes/scripture";
 import type { Packs3Env } from "../catalogs";
+import { warnOnce } from "../keys";
 import { withReader } from "../readers";
 import type { Packs3Params } from "../answer";
 
@@ -38,11 +39,18 @@ const BOOKS =
 const FIRST_NT = BOOKS.indexOf("mat");
 
 /**
- * The abbreviation the Door43 catalog gives a resource when it is not the repo's last word. Format 3 keeps only the
- * resource id (`glt`), so these are known cases, taken from the route's answers (es-419_glt is `tpl`).
+ * The resources this adapter may answer with, key (`owner/lang/id`) -> the `resourceType` the route gives
+ * (the catalog's abbreviation, which format 3 does not keep: es-419_glt is `tpl`). Every entry was checked against
+ * live answers of the API Worker (read-only GET /api/v1/scripture, 2026-11-12; en TIT, MAT, MRK; es-419 and `es` TIT):
+ * the abbreviation as shown, no version dropped for its `\id` language/script, no `versionsNote`. To add one, repeat
+ * that check for the new key on a few books and add the line. A picked resource that is not here makes the adapter
+ * give `undefined` (the route answers). The lasting fix is the builder carrying the abbreviation in the catalog.
  */
-const ABBREVIATIONS: Record<string, string> = {
+export const VERIFIED: Record<string, string> = {
+  "unfoldingWord/en/ult": "ult",
+  "unfoldingWord/en/ust": "ust",
   "es-419_gl/es-419/glt": "tpl",
+  "es-419_gl/es-419/gst": "gst",
 };
 
 type Piece = [string, boolean];
@@ -127,7 +135,7 @@ function entryOf(res: Resource, index: number, code: string): CatalogEntry {
     owner,
     repo,
     name: repo,
-    abbreviation: ABBREVIATIONS[res.key] ?? id,
+    abbreviation: VERIFIED[res.key] ?? id,
     ingredients: hasBit(res.books, index) ? [{ identifier: code }] : [],
   } as unknown as CatalogEntry;
 }
@@ -201,6 +209,13 @@ export async function scriptureFromPacks3(
       )
         return undefined;
       if (decision.picked.length === 0) return undefined;
+      const unverified = decision.picked.some(
+        (e) => !(resources[entries.indexOf(e)].key in VERIFIED),
+      );
+      if (unverified) {
+        warnOnce(params.language, "unverified-resource");
+        return undefined;
+      }
 
       const data = (await reader.book(code)) as
         | { texts?: TextUnit[] }
