@@ -67,6 +67,8 @@ Conclusions the plan relies on:
 
 ## Decisions for Abel before this runs
 
+**Abel approved the plan on 2026-11-12 with the five recommended decisions ("Sí, ejecútalo").**
+
 1. **How the library gets in.** Recommended: a vendored bundle (`vendor/language-pack-client/index.js`, a few hundred KB),
    rebuilt by a script from a tc-study commit and checked by a test against its recorded sha256. Alternatives: publish
    `@bt-synergy/language-pack-client` to npm (a release process in tc-study), or a git dependency (npm cannot install a
@@ -453,3 +455,6 @@ format 3 published to the `language-packs` bucket, each with Abel's yes.
 ## Deviations from this plan
 
 (The controller records them here as they happen.)
+
+- Open item, not a C4 task: a shared USFM writer (with `\zaln`) from a format 3 book, in bt-synergy. tc-study (C5) needs it
+  too; until it exists `format: "usfm"` stays on today's path.
