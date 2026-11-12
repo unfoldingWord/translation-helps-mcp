@@ -144,6 +144,7 @@ describe("getCatalogs", () => {
       ),
     );
     expect(rejected).toHaveLength(1);
+    expect(reasons(warn)[0]).toMatch(/^catalog-rejected:[A-Z_]+$/);
   });
   it("an unsigned published catalog gives null", async () => {
     const objects = fixtureObjects();
@@ -161,6 +162,9 @@ describe("getCatalogs", () => {
     objects["v3/catalog/en.seg"] = { bytes, etag: "unsigned" };
     const { env } = setup(objects);
     expect(await getCatalogs(env, "en")).toBeNull();
+    expect(
+      reasons(warn).filter((r) => r.startsWith("catalog-rejected:")),
+    ).toHaveLength(1);
   });
   it("corrupt catalog bytes give null", async () => {
     const objects = fixtureObjects();
@@ -243,5 +247,137 @@ describe("segment LRU", () => {
     expect(gets).toHaveLength(3);
     await get("b");
     expect(gets).toHaveLength(4);
+  });
+});
+
+const reasons = (w: { mock: { calls: unknown[][] } }) =>
+  w.mock.calls.map((c) => (c[1] as { reason: string }).reason);
+
+describe("fix round 1", () => {
+  it("a change of trusted keys never serves a pair verified under other keys", async () => {
+    const raw = randomBytes(32);
+    const id = createHash("sha256").update(raw).digest("hex").slice(0, 16);
+    const other = `${id}:${Array.from(raw, (b) => b.toString(16).padStart(2, "0")).join("")}`;
+    const { env } = setup();
+    expect(await getCatalogs(env, "en", 0)).not.toBeNull();
+    const b = { ...env, PACKS_V3_TRUSTED_KEYS: other };
+    expect(await getCatalogs(b, "en", 1000)).toBeNull();
+    expect(await getCatalogs(b, "en", 62_000)).toBeNull();
+  });
+
+  it("concurrent refreshes share one read", async () => {
+    const { env, gets } = setup();
+    await getCatalogs(env, "en", 0);
+    gets.length = 0;
+    await Promise.all([
+      getCatalogs(env, "en", 61_000),
+      getCatalogs(env, "en", 61_000),
+    ]);
+    expect(gets).toHaveLength(2);
+  });
+
+  it("a stale refresh finishing late does not overwrite newer state", async () => {
+    const objects = fixtureObjects();
+    const { bucket } = fakeBucket(objects);
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let stall = false;
+    const slow = {
+      async get(key: string, o?: R2GetOptions) {
+        const res = (await (
+          bucket as unknown as {
+            get: (k: string, o?: R2GetOptions) => Promise<unknown>;
+          }
+        ).get(key, o)) as {
+          arrayBuffer?: () => Promise<ArrayBuffer>;
+        } | null;
+        if (stall && res?.arrayBuffer && key.endsWith("/en.seg")) {
+          return {
+            ...res,
+            arrayBuffer: async () => (
+              await gate,
+              new Uint8Array([1, 2]).buffer
+            ),
+          };
+        }
+        return res;
+      },
+    } as unknown as R2Bucket;
+    const env: Packs3Env = {
+      LANGUAGE_PACKS: slow,
+      PACKS_V3: "on",
+      PACKS_V3_TRUSTED_KEYS: STAGING,
+    };
+    stall = true;
+    const late = getCatalogs(env, "en", 0); // stalls, will be rejected as corrupt
+    await new Promise((r) => setTimeout(r, 10));
+    resetPacks3CachesForTests();
+    stall = false;
+    expect(await getCatalogs(env, "en", 1000)).not.toBeNull();
+    release();
+    await late;
+    expect(await getCatalogs(env, "en", 2000)).not.toBeNull();
+  });
+
+  it("concurrent misses of one segment count its bytes once", async () => {
+    const six = 6 * 1024 * 1024;
+    const seg = () => ({ bytes: new Uint8Array(six), etag: "s" });
+    const { env, gets } = setup({
+      "v3/seg/a.seg": seg(),
+      "v3/seg/b.seg": seg(),
+      "v3/seg/c.seg": seg(),
+    });
+    const get = segmentGetter(env);
+    await Promise.all([get("a"), get("a")]);
+    await get("b");
+    const n = gets.length;
+    await get("a");
+    expect(gets).toHaveLength(n);
+  });
+
+  it("logs the rejection code, and a transient read error is not cached as a rejection", async () => {
+    const objects = fixtureObjects();
+    objects["v3/catalog/en.seg"] = {
+      bytes: new Uint8Array([1, 2, 3, 4]),
+      etag: "bad",
+    };
+    const a = setup(objects);
+    expect(await getCatalogs(a.env, "en")).toBeNull();
+    expect(
+      reasons(warn).some((r) => /^catalog-rejected:[A-Z_]+$/.test(r)),
+    ).toBe(true);
+
+    resetPacks3CachesForTests();
+    let fail = true;
+    const good = fakeBucket(fixtureObjects()).bucket;
+    const flaky = {
+      async get(key: string, o?: R2GetOptions) {
+        const res = (await (
+          good as unknown as {
+            get: (k: string, o?: R2GetOptions) => Promise<unknown>;
+          }
+        ).get(key, o)) as {
+          arrayBuffer: () => Promise<ArrayBuffer>;
+        } | null;
+        if (fail && res && key.endsWith("/en.seg")) {
+          return {
+            ...res,
+            arrayBuffer: async () => {
+              throw new Error("boom");
+            },
+          };
+        }
+        return res;
+      },
+    } as unknown as R2Bucket;
+    const env: Packs3Env = {
+      LANGUAGE_PACKS: flaky,
+      PACKS_V3: "on",
+      PACKS_V3_TRUSTED_KEYS: STAGING,
+    };
+    expect(await getCatalogs(env, "en", 0)).toBeNull();
+    expect(reasons(warn)).toContain("r2-read-error");
+    fail = false;
+    expect(await getCatalogs(env, "en", 1000)).not.toBeNull();
   });
 });
