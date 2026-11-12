@@ -8,6 +8,7 @@ already serves, wherever a pack covers the call, with the same inputs and the sa
 everything else.
 
 **Architecture:**
+
 - **The hook is `ApiClient.get`.** Every `/v3` tool reads its data through `ApiClient.get(path, params)`
   (`src/mcp/apiClient.ts`), which today calls the API Worker. A new layer, `src/packs3/`, answers some of those paths
   **in the MCP Worker**, with the same JSON the API Worker returns, built from format 3 segments read from the R2 binding
@@ -29,6 +30,7 @@ everything else.
 build the vendored bundle from tc-study.
 
 **Spec:**
+
 - The format: `packages/language-pack-v3/spec/` in tc-study master (`ac276343`), with `serving.md` (routes and R2 keys)
   and `catalog.md` (signatures).
 - The tool contract: the `/v3` tools as they are on `uw/v2` (`408c84b0`): `src/mcp/v3/tools/*.ts`, their tests
@@ -41,21 +43,22 @@ Done before planning with `openFromSegments` over HTTP from the staging Worker (
 all signed with key `78d2e6299a2de4d0`). Heap is `process.memoryUsage().heapUsed` after `Bun.gc(true)`, one process per
 query. Bun's JSC heap is not V8's: Task 1 repeats the numbers that matter under V8 with a 128 MB cap.
 
-| Query (en unless noted) | Segments | Downloaded | Heap after | Time |
-| --- | --- | --- | --- | --- |
-| verify both catalogs | 2 | 33 KB | ~3 MB | 1.3 s |
-| `passage('tit 1:1')` (book + `map` with parts) | 61 | 0.18 MB | 12 MB | 3.0 s |
-| `book('psa')` (11.1 MB inflated) | 1 | 1.10 MB | **38 MB** | 1.5 s |
-| `passage('psa 23:1-3')` | 61 | 1.24 MB | 51 MB | 3.3 s |
-| `articles('ta:translate')` / `tw:kt` / `tw:names` / `tw:other` | 1 each | 0.13–0.26 MB | 5 MB | 0.4–1.2 s |
-| map cores only (`mapsOf(…, {coreOnly})`) | 4 | 0.56 MB | 43 MB | 1.2 s |
-| `mapsOf(['xmap','map','xtopics','topics'])` with parts | 254 | 1.79 MB | 96 MB | 7.9 s |
-| `aligned` (17 units) | 17 | 3.74 MB | **292 MB** | 2.4 s |
-| `books({article})`, `topics({book})`, `concept`, `lookup` (they call `maps()`, aligned included) | 211–271 | 5.4–5.5 MB | **295–510 MB** | 9.5–11 s |
-| `renderings({strong:'G5485'})` (opens every NT book) | 131 | 20.9 MB | **~1.5 GB** | 46 s |
-| es-419 `book('rut')`, `articles(…)`, `aligned` | 1 / 1 / 16 | ≤0.28 MB | ≤14 MB | ≤1.4 s |
+| Query (en unless noted)                                                                          | Segments   | Downloaded   | Heap after     | Time      |
+| ------------------------------------------------------------------------------------------------ | ---------- | ------------ | -------------- | --------- |
+| verify both catalogs                                                                             | 2          | 33 KB        | ~3 MB          | 1.3 s     |
+| `passage('tit 1:1')` (book + `map` with parts)                                                   | 61         | 0.18 MB      | 12 MB          | 3.0 s     |
+| `book('psa')` (11.1 MB inflated)                                                                 | 1          | 1.10 MB      | **38 MB**      | 1.5 s     |
+| `passage('psa 23:1-3')`                                                                          | 61         | 1.24 MB      | 51 MB          | 3.3 s     |
+| `articles('ta:translate')` / `tw:kt` / `tw:names` / `tw:other`                                   | 1 each     | 0.13–0.26 MB | 5 MB           | 0.4–1.2 s |
+| map cores only (`mapsOf(…, {coreOnly})`)                                                         | 4          | 0.56 MB      | 43 MB          | 1.2 s     |
+| `mapsOf(['xmap','map','xtopics','topics'])` with parts                                           | 254        | 1.79 MB      | 96 MB          | 7.9 s     |
+| `aligned` (17 units)                                                                             | 17         | 3.74 MB      | **292 MB**     | 2.4 s     |
+| `books({article})`, `topics({book})`, `concept`, `lookup` (they call `maps()`, aligned included) | 211–271    | 5.4–5.5 MB   | **295–510 MB** | 9.5–11 s  |
+| `renderings({strong:'G5485'})` (opens every NT book)                                             | 131        | 20.9 MB      | **~1.5 GB**    | 46 s      |
+| es-419 `book('rut')`, `articles(…)`, `aligned`                                                   | 1 / 1 / 16 | ≤0.28 MB     | ≤14 MB         | ≤1.4 s    |
 
 Conclusions the plan relies on:
+
 - The seven tools need only `book`, `orig`, `passage`, `articles`/`article` and the catalog. Those fit: Psalms, the
   largest book, is the worst case (C4.4: under 128 MB with Psalms in English).
 - `maps()`, `lookup`, `books`, `topics`, `concept`, `renderings` and `search` must not run in the Worker as the
@@ -142,12 +145,12 @@ Conclusions the plan relies on:
 
 As in phases 1–3 (`.claude/lp3-controller.md`, copied into this worktree):
 
-| Agent | Model | Use |
-| --- | --- | --- |
-| `lp3-implementer` | sonnet | one task or fix round, from its brief file |
-| `lp3-reviewer` | sonnet | one task's review, from brief, report and diff |
-| `lp3-runner` | haiku | any test or build run the controller needs |
-| final reviewers | opus | three in parallel at the end |
+| Agent             | Model  | Use                                            |
+| ----------------- | ------ | ---------------------------------------------- |
+| `lp3-implementer` | sonnet | one task or fix round, from its brief file     |
+| `lp3-reviewer`    | sonnet | one task's review, from brief, report and diff |
+| `lp3-runner`      | haiku  | any test or build run the controller needs     |
+| final reviewers   | opus   | three in parallel at the end                   |
 
 - **One controller session** (Sonnet), started by the supervisor (this planning session), runs the plan in
   `wt/th-c4` only. No two implementers at once.
@@ -169,15 +172,17 @@ As in phases 1–3 (`.claude/lp3-controller.md`, copied into this worktree):
 ### Task 1: Vendored library and the V8 measurement
 
 **Files:**
+
 - Create: `scripts/vendor-language-pack-client.mjs`, `vendor/language-pack-client/{index.js,index.d.ts,SOURCE.json,LICENSE,README.md}`,
   `scripts/measure-packs3.mjs`, `docs/packs3-measurements.md`
 - Test: `tests/unit/packs3-vendor.test.ts`
 
 **Interfaces:**
+
 - Produces: `vendor/language-pack-client/index.js`, an ESM bundle exporting exactly `openFromSegments`,
   `verifyCatalogFile`, `ClientError`, and the types `PackReader`, `VerifiedCatalog`, `TrustPolicy`, `Answer`,
   `PassageData`, `ArticleData` (in `index.d.ts`). `SOURCE.json`: `{ repo: "unfoldingWord/tc-study", commit, built,
-  bundleSha256, bytes }`.
+bundleSha256, bytes }`.
 - Usage: `node scripts/vendor-language-pack-client.mjs --tc-study <path to a tc-study checkout at the commit>`. It
   builds with `bun build <entry> --target=browser --format=esm --minify` from a temporary entry file that re-exports
   only the names above, so jszip and the store code are left out. It copies the library's LICENSE.
@@ -190,26 +195,28 @@ As in phases 1–3 (`.claude/lp3-controller.md`, copied into this worktree):
   - `the bundle is under 400 KB`.
 - [ ] **Step 2: Run** `npx vitest run tests/unit/packs3-vendor.test.ts`; expected: FAIL (no bundle).
 - [ ] **Step 3: Write the script and build** from `C:/Users/LENOVO/Git/Github/wt/lp3-c5` (tc-study master
-  `ac276343`; read-only, use `git -C … worktree` or `git archive` into a temporary folder if it needs `bun install`).
+      `ac276343`; read-only, use `git -C … worktree` or `git archive` into a temporary folder if it needs `bun install`).
 - [ ] **Step 4: Run** the test; expected: PASS.
 - [ ] **Step 5: Measure under V8.** `scripts/measure-packs3.mjs --base https://translation-helps-mcp-v2-preview.unfoldingword.workers.dev`
-  verifies en, es-419 and common with the staging key, opens a reader, and runs in sequence, recording
-  `process.memoryUsage().heapUsed` after `global.gc()` and the wall time of each: `book('psa')`, `passage('psa 119:1-8')`,
-  `passage('psa 23:1-3')`, `orig('psa')`, `articles('tw:kt')`, `articles('ta:translate')`, then the same reader for
-  `book('isa')` and `book('jer')`. Run it as `node --expose-gc --max-old-space-size=128 scripts/measure-packs3.mjs` and
-  again with `--max-old-space-size=64`. Write the table to `docs/packs3-measurements.md` with the Bun table above.
-  **Gate:** if the 128 MB run fails or the heap after Psalms exceeds 80 MB, stop and return `BLOCKED` with the numbers;
-  the controller asks the supervisor.
+      verifies en, es-419 and common with the staging key, opens a reader, and runs in sequence, recording
+      `process.memoryUsage().heapUsed` after `global.gc()` and the wall time of each: `book('psa')`, `passage('psa 119:1-8')`,
+      `passage('psa 23:1-3')`, `orig('psa')`, `articles('tw:kt')`, `articles('ta:translate')`, then the same reader for
+      `book('isa')` and `book('jer')`. Run it as `node --expose-gc --max-old-space-size=128 scripts/measure-packs3.mjs` and
+      again with `--max-old-space-size=64`. Write the table to `docs/packs3-measurements.md` with the Bun table above.
+      **Gate:** if the 128 MB run fails or the heap after Psalms exceeds 80 MB, stop and return `BLOCKED` with the numbers;
+      the controller asks the supervisor.
 - [ ] **Step 6: Commit** `packs3: vendor the language pack client and measure it under V8`.
 
 ### Task 2: Keys, catalogs and segments from R2
 
 **Files:**
+
 - Create: `src/packs3/keys.ts`, `src/packs3/catalogs.ts`, `src/packs3/segments.ts`,
   `tests/fixtures/packs3/` (with `README.md`), `scripts/fetch-packs3-fixtures.mjs`
 - Test: `tests/unit/packs3-catalogs.test.ts`
 
 **Interfaces:**
+
 - Consumes: `verifyCatalogFile` (Task 1), `normalizePackLanguage` from `src/api/routes/packs.ts`.
 - Produces:
   - `parseTrustedKeys(value: string | undefined): Record<string, Uint8Array> | null`: `null` for unset, empty or any
@@ -235,7 +242,7 @@ As in phases 1–3 (`.claude/lp3-controller.md`, copied into this worktree):
 
 - [ ] **Step 1: Fixtures.** Run the script; check the size; commit them in this task.
 - [ ] **Step 2: Write the failing tests**, with a fake bucket over the fixture folder (`src/packs/dirBucket.ts` or a
-  copy of the `fakeBucket` of `tests/unit/packs-v3.test.ts`):
+      copy of the `fakeBucket` of `tests/unit/packs-v3.test.ts`):
   - `parseTrustedKeys`: the staging key parses; `""`, `"x"`, a 63-hex key, and a key id that does not match its key
     all give `null`.
   - `loads and verifies en with the staging key`; `es is es-419`.
@@ -244,7 +251,7 @@ As in phases 1–3 (`.claude/lp3-controller.md`, copied into this worktree):
   - `catalog signed by another key → null, logged once`; `unsigned published catalog → null`;
     `corrupt catalog bytes → null`.
   - `reuses the pair for 60 s` (count R2 gets with an injected `now`); `after 60 s an unchanged ETag is not verified
-    again`; `a changed ETag loads the new catalog`.
+again`; `a changed ETag loads the new catalog`.
   - `common id not the one required → null, reason common-mismatch`.
   - `segment LRU`: the second get of an id makes no R2 call; past 16 MB the least recently used is evicted.
 - [ ] **Step 3: Run**; expected: FAIL. **Step 4: Implement.** **Step 5: Run**; expected: PASS.
@@ -253,10 +260,12 @@ As in phases 1–3 (`.claude/lp3-controller.md`, copied into this worktree):
 ### Task 3: Readers within a memory budget
 
 **Files:**
+
 - Create: `src/packs3/readers.ts`
 - Test: `tests/unit/packs3-readers.test.ts`, `tests/unit/packs3-allowed-calls.test.ts`
 
 **Interfaces:**
+
 - Consumes: `getCatalogs`, `segmentGetter` (Task 2); `openFromSegments` (Task 1).
 - Produces: `withReader<T>(env: Packs3Env, lang: string, use: (r: PackReader, c: Catalogs3) => Promise<T>): Promise<T | null>`.
   `null` when `getCatalogs` is `null`.
@@ -282,6 +291,7 @@ As in phases 1–3 (`.claude/lp3-controller.md`, copied into this worktree):
 ### Task 4: The hook in `ApiClient.get`, the switch and the routing table
 
 **Files:**
+
 - Create: `src/packs3/answer.ts`
 - Modify: `src/mcp/apiClient.ts` (`get`), `src/mcp/stateless.ts` (per-request mode), `src/worker.ts` (`Env`: `PACKS_V3_TRUSTED_KEYS`,
   `PACKS_V3_DEBUG`), `wrangler.toml` (`[vars]`, `[previews]`, `[env.preview]`: the staging key and `PACKS_V3_DEBUG = "on"`;
@@ -289,6 +299,7 @@ As in phases 1–3 (`.claude/lp3-controller.md`, copied into this worktree):
 - Test: `tests/unit/packs3-hook.test.ts`
 
 **Interfaces:**
+
 - Produces:
   - `type Packs3Mode = "auto" | "off" | "only"`.
   - `answerFromPacks3(env: Packs3Env, path: string, params: Record<string, string | number | undefined>): Promise<unknown | undefined>`.
@@ -340,8 +351,8 @@ where `ScriptureApiResponse` is the type `handleScripture` returns (export it fr
   `el-x-koine_ugnt/archive/v0.34.zip`, and text starts with the verse number (`"1 Pablo, siervo de Dios…"`).
   `versionsNote` from `describeStandIns`. `meta.cache: "pack"`.
 - [ ] **Steps:** failing tests (`es-419 TIT 1:1` and `en TIT 1:1-3`, every field; `format usfm`, `OBS 3:5`, `MAT 5:1` in
-  es-419, `fr` → `undefined`) → FAIL → implement → PASS → `npm run test:ci` → commit
-  `packs3: scripture from format 3 books`.
+      es-419, `fr` → `undefined`) → FAIL → implement → PASS → `npm run test:ci` → commit
+      `packs3: scripture from format 3 books`.
 
 ### Task 6: Notes and word links (`/api/v1/notes`, `/api/v1/word-links`)
 
@@ -355,9 +366,9 @@ returning the JSON of `handleNotes` / `handleWordLinks` for the same params, inc
   book introduction, chapter introductions and `taArticle` / `twArticle` paths as today.
 - Fall back: study notes; OBS; the resource absent from the book in the catalog; a notes row format 3 cannot place.
 - [ ] **Steps:** failing tests (`en TIT 1:1` notes and word links, every field of the first two rows and the counts;
-  `en TIT` whole book with `fields=index`, total counts and the `front:intro` row; `es-419 RUT 1:1` notes with
-  `alignedQuote`; fallbacks) → FAIL → implement → PASS → commit `packs3: notes and word links from format 3`.
-  Codex reviews this task.
+      `en TIT` whole book with `fields=index`, total counts and the `front:intro` row; `es-419 RUT 1:1` notes with
+      `alignedQuote`; fallbacks) → FAIL → implement → PASS → commit `packs3: notes and word links from format 3`.
+      Codex reviews this task.
 
 ### Task 7: Questions (`/api/v1/questions`)
 
@@ -366,13 +377,14 @@ returning the JSON of `handleNotes` / `handleWordLinks` for the same params, inc
 **Interfaces:** `questionsFromPacks3(env, params): Promise<unknown | undefined>`, the JSON of `handleQuestions`.
 
 - [ ] **Steps:** failing tests (`en TIT 1:1-3` every record field and `source`; `es-419 RUT 1` count; OBS and study →
-  `undefined`) → FAIL → implement → PASS → commit `packs3: questions from format 3`.
+      `undefined`) → FAIL → implement → PASS → commit `packs3: questions from format 3`.
 
 ### Task 8: Articles (`/api/v1/words/{path}`, `/api/v1/academy/{path}`)
 
 **Files:** Create `src/packs3/adapters/articles.ts`; modify `src/packs3/answer.ts`. Test `tests/unit/packs3-articles.test.ts`.
 
 **Interfaces:**
+
 - `articleCatalogFromPacks3(env, lang, kind: "tw" | "ta"): Promise<ArticleCatalog<WordArticle | AcademyArticle> | undefined>`,
   the same `ArticleCatalog` type `articleCatalog.ts` builds from Door43, built from the article groups (`tw:kt`,
   `tw:names`, `tw:other`; `ta:translate`, `ta:checking`, `ta:process`, `ta:intro`), cached per catalog key.
@@ -382,9 +394,9 @@ returning the JSON of `handleNotes` / `handleWordLinks` for the same params, inc
 - Ids: `bible/kt/grace` ↔ `tw:kt/grace`; `translate/figs-metaphor` ↔ `ta:translate/figs-metaphor`. `related` from
   `ArticleData.related` with titles, as the route shapes it today.
 - [ ] **Steps:** failing tests (`bible/kt/grace` en, `translate/figs-metaphor` en and es-419 with `related`;
-  the term `metaphor`, the term `gracia` in es-419; an rc link; an unknown path → the same not-found JSON the route
-  gives, or `undefined` if the route would ask Door43 again) → FAIL → implement → PASS → commit
-  `packs3: Translation Words and Academy articles from format 3`.
+      the term `metaphor`, the term `gracia` in es-419; an rc link; an unknown path → the same not-found JSON the route
+      gives, or `undefined` if the route would ask Door43 again) → FAIL → implement → PASS → commit
+      `packs3: Translation Words and Academy articles from format 3`.
 
 ### Task 9: Search (`/api/v1/search`)
 
@@ -393,9 +405,10 @@ returning the JSON of `handleNotes` / `handleWordLinks` for the same params, inc
 **Interfaces:** `searchFromPacks3(env, params: { q, language, limit?, types? }): Promise<unknown | undefined>`, the JSON of
 `handleSearch`, ranking with the route's own ranking function over `articleCatalogFromPacks3` (Task 8). If the ranking
 is not a pure exported function, export it from `search.ts` without changing it.
+
 - [ ] **Steps:** failing tests (`"figures of speech"`, `"covenant"` tw only, `"abstract nouns"` ta only in en;
-  `"metáfora"` in es-419; the same top results and order as the route gives over the same titles) → FAIL → implement
-  → PASS → commit `packs3: article search from format 3`.
+      `"metáfora"` in es-419; the same top results and order as the route gives over the same titles) → FAIL → implement
+      → PASS → commit `packs3: article search from format 3`.
 
 ---
 
@@ -423,11 +436,11 @@ budget, debug header).
   difference, timings per call).
 - [ ] **Step 1:** Write the call list and the script.
 - [ ] **Step 2: Local run.** Download the staging bucket's v3 keys into a scratch folder outside the repo (the fixture
-  script with `--all`), run the MCP Worker with `wrangler dev` over a local R2 filled from that folder, the
-  staging key and `PACKS_V3_DEBUG=on`, `API_BASE_URL` pointed at the production API Worker (as staging does today).
-  Run the comparison on that base. Every difference is fixed or entered in the known-differences file with its reason;
-  the reasons go to the controller, who records each as a ruling (the supervisor asks Abel about any that changes what
-  a caller sees).
+      script with `--all`), run the MCP Worker with `wrangler dev` over a local R2 filled from that folder, the
+      staging key and `PACKS_V3_DEBUG=on`, `API_BASE_URL` pointed at the production API Worker (as staging does today).
+      Run the comparison on that base. Every difference is fixed or entered in the known-differences file with its reason;
+      the reasons go to the controller, who records each as a ruling (the supervisor asks Abel about any that changes what
+      a caller sees).
 - [ ] **Step 3:** Update the infra doc; commit `packs3: comparison of every tool call, format 3 against today`.
 
 ## Gate (local)
@@ -458,3 +471,8 @@ format 3 published to the `language-packs` bucket, each with Abel's yes.
 
 - Open item, not a C4 task: a shared USFM writer (with `\zaln`) from a format 3 book, in bt-synergy. tc-study (C5) needs it
   too; until it exists `format: "usfm"` stays on today's path.
+- Task 3 (Codex review, ruled by the controller): the reader budget is **1 MB** compressed (plan said 3 MB), at most
+  **2 readers live plus retired** in total (a third concurrent call falls back to the API Worker, reason `readers-busy`),
+  and the segment LRU of Task 2 is **8 MB** (plan said 16 MB). Why: Task 1 measured ~41 MB of heap per compressed MB, so
+  2 readers x 3 MB would pass a 128 MB isolate. The unit counting also includes the `map` unit and the groups of related
+  articles. S4 measures the real peak.
