@@ -43,8 +43,15 @@ book('psa') 56.0 MB, passage('psa 119:1-8') 59.3 MB, passage('psa 23:1-3') 59.4 
 
 ## Reader byte budget (Task 3)
 
-Heap measured at about 41 MB per compressed MB opened (Psalms: 1.17 MB compressed, 57 MB heap after the book). A 3 MB budget
-would allow about 123 MB in one reader, and two readers could exceed the 128 MB isolate. The budget is 1.5 MB compressed
-(about 60 MB per reader), two readers at most, so the worst case is about 120 MB plus a call that crosses the budget: a
-reader is only replaced on the next call, so one large unit (Psalms) can take it past 1.5 MB. This is an estimate, not a
-measurement of two readers at once.
+Heap measured at about 41 MB per compressed MB opened (Psalms: 1.17 MB compressed, 57 MB heap after the book, about 48 MB
+of it for the unit itself). Rules: at most 2 readers per isolate (live and recycled-but-running together; a third call
+falls back to the API Worker), a reader is replaced once the compressed bytes of its opened units pass 1 MB, and the
+compressed segment cache is 8 MB.
+
+Arithmetic: 1 MB x 41 MB/MB = about 41 MB per reader at the budget, 2 readers = about 82 MB, plus the 8 MB segment cache
+and the isolate's own code and temporaries, about 90 MB plus working memory, against the 128 MB isolate.
+
+Caveat: the budget is checked between calls, so a single unit can overshoot it (Psalms alone is about 48 MB), and the
+overshoot happens inside one callback: a reader at 0.9 MB that then reads Psalms reaches about 85 MB alone. Two such
+readers would not fit, which is why they are bounded together. This is an estimate, not a measurement of two readers at
+once: it is to be measured in staging step S4 (the exceededMemory tail).

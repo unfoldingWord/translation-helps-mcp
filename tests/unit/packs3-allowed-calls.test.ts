@@ -53,7 +53,22 @@ export function forbiddenNamesInReaderFiles(src: string): string[] {
     /\{[^{}]*\b(maps|mapsOf|lookup|books|topics|concept|context|renderings|search|segments)\b[^{}]*\}\s*=(?!=)/g,
   ];
   for (const re of rules) for (const m of code.matchAll(re)) bad.push(m[1]);
+  // Indirect access: Reflect, and call/apply/bind on any value in such a file.
+  for (const m of code.matchAll(/\bReflect\s*\./g)) bad.push("Reflect");
+  for (const m of code.matchAll(/\.\s*(call|apply|bind)\s*\(/g))
+    bad.push(`.${m[1]}(`);
   return [...new Set(bad)];
+}
+
+/** A forbidden method name as a quoted string anywhere (property access by string). Applies to every src/packs3 file. */
+export function forbiddenStringLiterals(src: string): string[] {
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  const out: string[] = [];
+  for (const m of code.matchAll(
+    /(["'`])(maps|mapsOf|lookup|books|topics|concept|context|renderings|search|segments)\1/g,
+  ))
+    out.push(`"${m[2]}"`);
+  return [...new Set(out)];
 }
 
 function files(dir: string): string[] {
@@ -91,6 +106,27 @@ describe("allowed library calls", () => {
     expect(f("const o = { search: 1 }; o.search")).toEqual([]); // no reader in the file
   });
 
+  it("flags Reflect access and call/apply/bind in reader files", () => {
+    const head = "import { openFromSegments } from 'x';\n";
+    const f = forbiddenNamesInReaderFiles;
+    expect(f(head + "Reflect.get(rd, 'x').call(rd, 'faith')").sort()).toEqual([
+      ".call(",
+      "Reflect",
+    ]);
+    expect(f(head + "rd.size.bind(rd)")).toEqual([".bind("]);
+    expect(f("const x = fn.call(1)")).toEqual([]); // no reader in the file
+  });
+
+  it("flags forbidden names as string literals", () => {
+    expect(forbiddenStringLiterals("const k = 'search'; rd[k]")).toEqual([
+      '"search"',
+    ]);
+    expect(forbiddenStringLiterals("x(`maps`)")).toEqual(['"maps"']);
+    expect(forbiddenStringLiterals("const s = 'searching'; // 'maps'")).toEqual(
+      [],
+    );
+  });
+
   it("scanner accepts allowed calls and ignores comments", () => {
     expect(
       forbiddenReaderCalls(
@@ -106,6 +142,7 @@ describe("allowed library calls", () => {
       for (const c of [
         ...forbiddenReaderCalls(src),
         ...forbiddenNamesInReaderFiles(src),
+        ...forbiddenStringLiterals(src),
       ])
         found.push(`${f}: ${c}`);
     }

@@ -228,9 +228,9 @@ describe("segment LRU", () => {
     expect(gets).toHaveLength(1);
     expect(await get("zz")).toBeUndefined();
   });
-  it("past 16 MB the least recently used is evicted", async () => {
-    const six = 6 * 1024 * 1024;
-    expect(SEGMENT_CACHE_MAX_BYTES).toBe(16 * 1024 * 1024);
+  it("past 8 MB the least recently used is evicted", async () => {
+    const six = 3 * 1024 * 1024;
+    expect(SEGMENT_CACHE_MAX_BYTES).toBe(8 * 1024 * 1024);
     const { env, gets } = setup({
       "v3/seg/a.seg": seg(six),
       "v3/seg/b.seg": seg(six),
@@ -240,7 +240,7 @@ describe("segment LRU", () => {
     await get("a");
     await get("b");
     await get("a");
-    await get("c"); // 18 MB: b is evicted
+    await get("c"); // 9 MB: b is evicted
     expect(gets).toHaveLength(3);
     await get("a");
     await get("c");
@@ -320,7 +320,7 @@ describe("fix round 1", () => {
   });
 
   it("concurrent misses of one segment count its bytes once", async () => {
-    const six = 6 * 1024 * 1024;
+    const six = 3 * 1024 * 1024;
     const seg = () => ({ bytes: new Uint8Array(six), etag: "s" });
     const { env, gets } = setup({
       "v3/seg/a.seg": seg(),

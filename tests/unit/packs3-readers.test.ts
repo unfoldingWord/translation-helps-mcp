@@ -8,6 +8,9 @@ type FakeReader = {
 };
 
 const BOOKS: Record<string, string> = { psa: "PSA", "1 john": "1JN" };
+const RELATED: Record<string, string[]> = {
+  "tw/a": ["ta/translate/x"],
+};
 const catalogsByLang = new Map<
   string,
   { lang: string; key: string; catalogs: unknown[] } | null
@@ -55,11 +58,25 @@ vi.mock("../../vendor/language-pack-client/index.js", () => ({
         r.calls.push(`passage:${ref}`);
         const m = /^(\d?\s?[a-z]+)/i.exec(ref.trim());
         const book = m ? BOOKS[m[1].toLowerCase()] : undefined;
-        return { revision: { units: book ? { [`book:${book}`]: 1 } : {} } };
+        const units: Record<string, number> = book
+          ? { [`book:${book}`]: 1 }
+          : {};
+        units.map = 1; // the library loads the whole map unit for coverage
+        return { revision: { units } };
+      },
+      installed(u: string) {
+        r.calls.push(`installed:${u}`);
+        return true;
       },
       async article(id: string) {
         r.calls.push(`article:${id}`);
-        return { revision: { units: {} } };
+        const related = RELATED[id];
+        return {
+          data: related
+            ? { id, related: related.map((x) => ({ id: x })) }
+            : { id },
+          revision: { units: {} },
+        };
       },
     };
     opened.push(r);
@@ -173,7 +190,7 @@ describe("withReader", () => {
     expect(opened.length).toBe(4);
   });
 
-  it("recycles past 1.5 MB; a running call keeps its reader", async () => {
+  it("recycles past 1 MB; a running call keeps its reader", async () => {
     let release!: () => void;
     const gate = new Promise<void>((r) => (release = r));
     const slow = withReader(env, "a", async (r) => {
@@ -199,7 +216,7 @@ describe("withReader", () => {
 
   it("does not recycle below the budget", async () => {
     await withReader(env, "a", async (r) => {
-      opened[0].sizes["book:PSA"] = 1 * MB;
+      opened[0].sizes["book:PSA"] = 0.5 * MB;
       await r.book("PSA");
     });
     expect(await id("a")).toBe(0);
@@ -223,19 +240,70 @@ describe("withReader", () => {
     expect(liveReadersForTests()).toBe(1);
   });
 
-  it("a reader evicted by LRU while in flight is released at the end", async () => {
+  it("never holds more than two readers: a third overlapping call gets null", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const gates: Array<() => void> = [];
+    const hold = (lang: string) =>
+      withReader(
+        env,
+        lang,
+        () => new Promise<number>((r) => gates.push(() => r(1))),
+      );
+    const a = hold("a");
+    const b = hold("b");
+    await tick();
+    expect(await withReader(env, "c", async () => 1)).toBeNull();
+    expect(liveReadersForTests()).toBe(2);
+    expect(warn).toHaveBeenCalledWith("packs3 fallback", {
+      lang: "c",
+      reason: "readers-busy",
+    });
+    await withReader(env, "c", async () => 1);
+    expect(warn).toHaveBeenCalledTimes(1); // once per (lang, reason)
+    gates.forEach((g) => g());
+    await Promise.all([a, b]);
+    expect(await withReader(env, "c", async () => 7)).toBe(7);
+    expect(liveReadersForTests()).toBe(2);
+    warn.mockRestore();
+  });
+
+  it("a recycle while two readers are held also gets null", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     let release!: () => void;
     const gate = new Promise<void>((r) => (release = r));
-    const slow = withReader(env, "a", async () => {
+    const a = withReader(env, "a", async (r) => {
+      await r.book("PSA");
       await gate;
     });
+    const b = withReader(env, "b", () => gate);
     await tick();
-    await id("b");
-    await id("c"); // evicts a, still running
-    expect(liveReadersForTests()).toBe(3);
+    opened[0].sizes["book:GEN"] = 2 * MB;
+    await withReader(env, "a", async (r) => {
+      await r.book("GEN");
+    }); // counted over budget, shares reader 0
+    expect(await withReader(env, "a", async () => 1)).toBeNull();
     release();
-    await slow;
-    expect(liveReadersForTests()).toBe(2);
+    await Promise.all([a, b]);
+    expect(await withReader(env, "a", async () => 2)).toBe(2);
+    warn.mockRestore();
+  });
+
+  it("counts the map unit a passage loads", async () => {
+    await withReader(env, "a", async (r) => {
+      opened[0].sizes.map = 2 * MB;
+      await r.passage("PSA 1:1");
+    });
+    expect(opened[0].calls).toContain("size:map");
+    expect(await id("a")).toBe(1);
+  });
+
+  it("counts the groups an article's related ids point into", async () => {
+    await withReader(env, "a", async (r) => {
+      opened[0].sizes["art:ta/translate"] = 2 * MB;
+      await r.article("tw/a");
+    });
+    expect(opened[0].calls).toContain("size:art:ta/translate");
+    expect(await id("a")).toBe(1);
   });
 
   it("the byte counter only calls allowed methods", async () => {

@@ -3,16 +3,18 @@ import {
   type PackReader,
 } from "../../vendor/language-pack-client/index.js";
 import { getCatalogs, type Catalogs3, type Packs3Env } from "./catalogs";
+import { warnOnce } from "./keys";
 import { segmentGetter } from "./segments";
 
-/** Live readers per isolate; the least recently used is dropped past this. */
+/** Readers held by an isolate, live and recycled-but-running together. A call that would need a third gets null. */
 export const MAX_READERS = 2;
 /**
  * Compressed bytes of opened units after which the next call gets a fresh reader.
- * Task 1 measured about 41 MB of heap per compressed MB, so 1.5 MB is about 60 MB
- * per reader and two readers stay under the 128 MB isolate (docs/packs3-measurements.md).
+ * Task 1 measured about 41 MB of heap per compressed MB; see the arithmetic and the
+ * overshoot caveat in docs/packs3-measurements.md. A reader is replaced between
+ * calls, so one unit (Psalms) can take it past the budget inside a callback.
  */
-export const READER_BYTE_BUDGET = 1.5 * 1024 * 1024;
+export const READER_BYTE_BUDGET = 1 * 1024 * 1024;
 
 type Entry = {
   lang: string;
@@ -66,11 +68,23 @@ function makeEntry(lang: string, c: Catalogs3, env: Packs3Env): Entry {
   const count = (cls: "book" | "orig" | "art", key: string) =>
     countUnit(reader.unitOf(cls, key));
   /** Units the library itself reports having used for an answer (its own reference parsing). */
+  const countRelated = (a: unknown) => {
+    // The library opens the groups of related articles through the raw reader.
+    const rel = (a as { data?: { related?: Array<{ id?: unknown }> } })?.data
+      ?.related;
+    for (const x of rel ?? []) {
+      if (typeof x?.id !== "string") continue;
+      const unit =
+        reader.unitOf("art", x.id) ??
+        `art:${x.id.includes("/") ? x.id.slice(0, x.id.lastIndexOf("/")) : x.id}`;
+      if (reader.installed(unit)) countUnit(unit);
+    }
+  };
   const countAnswer = <A>(a: A): A => {
     const units = (a as { revision?: { units?: Record<string, number> } })
       ?.revision?.units;
     for (const u of Object.keys(units ?? {}))
-      if (/^(book|orig|art):/.test(u)) countUnit(u);
+      if (/^(book|orig|art):|^map$/.test(u)) countUnit(u);
     return a;
   };
   // The view is typed PackReader and built from allowed methods only: tsc is the
@@ -96,7 +110,9 @@ function makeEntry(lang: string, c: Catalogs3, env: Packs3Env): Entry {
       countUnit(
         reader.unitOf("art", id) ?? `art:${id.slice(0, id.lastIndexOf("/"))}`,
       );
-      return countAnswer(await reader.article(id, section));
+      const a = await reader.article(id, section);
+      countRelated(a);
+      return countAnswer(a);
     },
   };
   return e;
@@ -104,7 +120,8 @@ function makeEntry(lang: string, c: Catalogs3, env: Packs3Env): Entry {
 
 /**
  * Runs `use` with the reader for the language's verified catalogs. One live
- * reader per catalog key, at most MAX_READERS per isolate. Past the byte budget
+ * reader per catalog key, at most MAX_READERS per isolate (live and recycled together; `null` and a
+ * `readers-busy` fallback when all are running). Past the byte budget
  * the next call gets a fresh reader; calls already running keep theirs, and a
  * dropped reader is released when its last call ends. `null` without catalogs.
  */
@@ -129,12 +146,17 @@ export async function withReader<T>(
     live.delete(c.key); // refresh recency
     live.set(c.key, e);
   } else {
+    // Live and retired readers count together; only an idle live reader can be dropped for a new one.
+    while (live.size + retired.size >= MAX_READERS) {
+      const idle = [...live].find(([, x]) => x.running === 0);
+      if (!idle) {
+        warnOnce(lang, "readers-busy");
+        return null;
+      }
+      live.delete(idle[0]);
+    }
     e = makeEntry(lang, c, env);
     live.set(c.key, e);
-    while (live.size > MAX_READERS) {
-      const [oldKey, oldest] = live.entries().next().value as [string, Entry];
-      retire(oldKey, oldest);
-    }
   }
 
   const entry = e;

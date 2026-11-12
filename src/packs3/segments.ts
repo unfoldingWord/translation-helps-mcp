@@ -1,7 +1,7 @@
 import type { Packs3Env } from "./catalogs";
 
 /** Compressed segment bytes kept per isolate, least recently used out first. */
-export const SEGMENT_CACHE_MAX_BYTES = 16 * 1024 * 1024;
+export const SEGMENT_CACHE_MAX_BYTES = 8 * 1024 * 1024;
 
 const lru = new Map<string, Uint8Array>();
 let held = 0;
