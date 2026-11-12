@@ -385,6 +385,11 @@
       "key": "v3/seg/94cc6e7ce47cbd9a29081c398e4fd8e95eb88560d5465822fb5a50be081a3491.seg",
       "size": 481,
       "units": ["es-419:map"]
+    },
+    "12e4f2c8c44626fda329709ee53f852cef3d93046a36f145f2196738f794469b": {
+      "key": "v3/seg/12e4f2c8c44626fda329709ee53f852cef3d93046a36f145f2196738f794469b.seg",
+      "size": 37713,
+      "units": ["es-419:book:tit"]
     }
   }
 }

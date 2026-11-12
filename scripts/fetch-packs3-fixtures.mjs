@@ -10,7 +10,7 @@ const BASE = (process.argv[2] ?? "https://translation-helps-mcp-v2-preview.unfol
 const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "tests", "fixtures", "packs3");
 const WANT = {
   en: ["book:tit", "orig:tit", "art:tw:kt", "art:ta:translate", "map"],
-  "es-419": ["book:rut", "orig:rut", "art:tw:kt", "art:ta:translate", "map"],
+  "es-419": ["book:rut", "orig:rut", "book:tit", "orig:tit", "art:tw:kt", "art:ta:translate", "map"],
 };
 const hex = (u8) => Array.from(u8, (b) => b.toString(16).padStart(2, "0")).join("");
 const index = { source: BASE, catalogs: {}, segments: {} };

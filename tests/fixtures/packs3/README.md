@@ -4,7 +4,7 @@ Real catalogs and segments of the staging Worker (`https://translation-helps-mcp
 stored under their R2 keys (`v3/catalog/{lang}.seg`, `v3/seg/{id}.seg`). They are signed with the staging key
 `78d2e6299a2de4d0`. `index.json` lists ids, sizes and the units each segment serves.
 
-Contents: the `en`, `es-419` and common catalogs; `en` `book:tit`, `orig:tit`; `es-419` `book:rut`, `orig:rut`;
+Contents: the `en`, `es-419` and common catalogs; `en` `book:tit`, `orig:tit`; `es-419` `book:rut`, `orig:rut`, `book:tit` (its `orig:tit` is the same segment as the English one);
 `art:tw:kt` and `art:ta:translate` of both languages; the `map` unit of both languages.
 
 Sources (all CC BY-SA 4.0): unfoldingWord Translation Words, Translation Academy, ULT/UST and the Hebrew and Greek

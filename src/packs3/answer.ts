@@ -1,5 +1,9 @@
 import { parseTrustedKeys, warnOnce } from "./keys";
 import type { Packs3Env } from "./catalogs";
+import {
+  scriptureAdapterParams,
+  scriptureFromPacks3,
+} from "./adapters/scripture";
 
 /** `auto` tries format 3 then the API; `off` skips format 3; `only` never calls the API (comparisons only). */
 export type Packs3Mode = "auto" | "off" | "only";
@@ -16,7 +20,13 @@ export type Packs3Adapter = {
 };
 
 /** One entry per API path format 3 can answer. Tasks 5-9 add them. */
-export const ADAPTERS: Packs3Adapter[] = [];
+export const ADAPTERS: Packs3Adapter[] = [
+  {
+    match: (path) => path === "/api/v1/scripture",
+    run: (env, _path, params) =>
+      scriptureFromPacks3(env, scriptureAdapterParams(params)),
+  },
+];
 
 export type Packs3Attempt =
   | { hit: true; value: unknown }
