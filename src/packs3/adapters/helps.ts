@@ -183,7 +183,9 @@ function linkOf(row: HelpRow): string | undefined | null {
 const REF = /^(\d+):(\d+)(?:-(\d+))?$/;
 
 /** A row's chapter and verse text, or `undefined` when its reference is not a single canonical `c:v` or `c:a-b`. */
-function refOf(row: HelpRow): { chapter: string; verse: string } | undefined {
+export function refOf(
+  row: HelpRow,
+): { chapter: string; verse: string } | undefined {
   const m = REF.exec(row.ref);
   if (!m) return undefined;
   const first = Number(m[2]);
@@ -421,7 +423,7 @@ async function withHelps<T>(
 }
 
 /** A body that has links in a form format 3 rewrites (and cannot give back as it was). */
-const LINKED = /\[\[(?:ta|tw):|\]\(ref:|rc:\/\//;
+export const LINKED = /\[\[(?:ta|tw):|\]\(ref:|rc:\/\//;
 
 /** Rows and aligned-word machinery shared by both routes. */
 async function prepare(
