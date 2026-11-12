@@ -40,3 +40,11 @@ book('psa') 56.0 MB, passage('psa 119:1-8') 59.3 MB, passage('psa 23:1-3') 59.4 
 - Heap only grows within one reader (decoded units are kept): after Psalms, the Psalms originals and the other books it is
   84-86 MB. A Worker isolate has 128 MB in total, so a reader must not be kept across requests for several books.
 - Wall times include the network fetches from staging, not just decoding.
+
+## Reader byte budget (Task 3)
+
+Heap measured at about 41 MB per compressed MB opened (Psalms: 1.17 MB compressed, 57 MB heap after the book). A 3 MB budget
+would allow about 123 MB in one reader, and two readers could exceed the 128 MB isolate. The budget is 1.5 MB compressed
+(about 60 MB per reader), two readers at most, so the worst case is about 120 MB plus a call that crosses the budget: a
+reader is only replaced on the next call, so one large unit (Psalms) can take it past 1.5 MB. This is an estimate, not a
+measurement of two readers at once.

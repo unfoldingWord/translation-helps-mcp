@@ -37,6 +37,25 @@ export function forbiddenReaderCalls(src: string): string[] {
   return [...bad];
 }
 
+/**
+ * Second net, independent of variable names: in a file that touches a
+ * PackReader or openFromSegments, no forbidden method name may appear as
+ * `.name`, `["name"]` or in a destructuring pattern. (tsc is the primary guard:
+ * the wrapper's view is typed PackReader, which only declares allowed methods.)
+ */
+export function forbiddenNamesInReaderFiles(src: string): string[] {
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  if (!/\bPackReader\b|\bopenFromSegments\b/.test(code)) return [];
+  const bad: string[] = [];
+  const rules = [
+    /\.\s*(maps|mapsOf|lookup|books|topics|concept|context|renderings|search|segments)\b/g,
+    /\[\s*["'`](maps|mapsOf|lookup|books|topics|concept|context|renderings|search|segments)["'`]\s*\]/g,
+    /\{[^{}]*\b(maps|mapsOf|lookup|books|topics|concept|context|renderings|search|segments)\b[^{}]*\}\s*=(?!=)/g,
+  ];
+  for (const re of rules) for (const m of code.matchAll(re)) bad.push(m[1]);
+  return [...new Set(bad)];
+}
+
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((f) => {
     const p = join(dir, f);
@@ -58,6 +77,20 @@ describe("allowed library calls", () => {
     ).toEqual(["x.concept"]);
   });
 
+  it("name scan flags alias, destructuring, other param names and brackets", () => {
+    const head = "import { openFromSegments } from 'x';\n";
+    const f = forbiddenNamesInReaderFiles;
+    expect(f(head + "const g = rd.search; g('x')")).toEqual(["search"]);
+    expect(f(head + "const { maps, book } = rd;")).toEqual(["maps"]);
+    expect(f(head + "use((x: PackReader) => x.lookup('a'))")).toEqual([
+      "lookup",
+    ]);
+    expect(f(head + "rd['concept']('a')")).toEqual(["concept"]);
+    expect(f(head + "rd[`segments`]()")).toEqual(["segments"]);
+    expect(f(head + "await rd.book('a'); rd.size('u')")).toEqual([]);
+    expect(f("const o = { search: 1 }; o.search")).toEqual([]); // no reader in the file
+  });
+
   it("scanner accepts allowed calls and ignores comments", () => {
     expect(
       forbiddenReaderCalls(
@@ -68,9 +101,14 @@ describe("allowed library calls", () => {
 
   it("src/packs3 calls only allowed methods on readers", () => {
     const found: string[] = [];
-    for (const f of files(join(__dirname, "..", "..", "src", "packs3")))
-      for (const c of forbiddenReaderCalls(readFileSync(f, "utf8")))
+    for (const f of files(join(__dirname, "..", "..", "src", "packs3"))) {
+      const src = readFileSync(f, "utf8");
+      for (const c of [
+        ...forbiddenReaderCalls(src),
+        ...forbiddenNamesInReaderFiles(src),
+      ])
         found.push(`${f}: ${c}`);
+    }
     expect(found).toEqual([]);
   });
 });

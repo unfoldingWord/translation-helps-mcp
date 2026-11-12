@@ -7,8 +7,12 @@ import { segmentGetter } from "./segments";
 
 /** Live readers per isolate; the least recently used is dropped past this. */
 export const MAX_READERS = 2;
-/** Compressed bytes of opened units after which the next call gets a fresh reader (about 30 MB inflated). */
-export const READER_BYTE_BUDGET = 3 * 1024 * 1024;
+/**
+ * Compressed bytes of opened units after which the next call gets a fresh reader.
+ * Task 1 measured about 41 MB of heap per compressed MB, so 1.5 MB is about 60 MB
+ * per reader and two readers stay under the 128 MB isolate (docs/packs3-measurements.md).
+ */
+export const READER_BYTE_BUDGET = 1.5 * 1024 * 1024;
 
 type Entry = {
   lang: string;
@@ -54,12 +58,23 @@ function makeEntry(lang: string, c: Catalogs3, env: Packs3Env): Entry {
     running: 0,
     view: undefined as unknown as PackReader,
   };
-  const count = (cls: "book" | "orig" | "art", key: string) => {
-    const unit = reader.unitOf(cls, key);
+  const countUnit = (unit: string | undefined) => {
     if (!unit || e.counted.has(unit)) return;
     e.counted.add(unit);
     e.bytes += reader.size(unit);
   };
+  const count = (cls: "book" | "orig" | "art", key: string) =>
+    countUnit(reader.unitOf(cls, key));
+  /** Units the library itself reports having used for an answer (its own reference parsing). */
+  const countAnswer = <A>(a: A): A => {
+    const units = (a as { revision?: { units?: Record<string, number> } })
+      ?.revision?.units;
+    for (const u of Object.keys(units ?? {}))
+      if (/^(book|orig|art):/.test(u)) countUnit(u);
+    return a;
+  };
+  // The view is typed PackReader and built from allowed methods only: tsc is the
+  // primary guard, the allowed-calls test the second.
   e.view = {
     get lang() {
       return reader.lang;
@@ -75,12 +90,14 @@ function makeEntry(lang: string, c: Catalogs3, env: Packs3Env): Entry {
     book: (b) => (count("book", b), reader.book(b)),
     orig: (b) => (count("orig", b), reader.orig(b)),
     articles: (g) => (count("art", g), reader.articles(g)),
-    passage: (ref) => {
-      const book = ref.trim().split(/[\s.:]/)[0];
-      if (book) count("book", book);
-      return reader.passage(ref);
+    passage: async (ref) => countAnswer(await reader.passage(ref)),
+    article: async (id, section) => {
+      // Same unit the library derives: unitOf("art", id), else "art:" + id up to the last "/".
+      countUnit(
+        reader.unitOf("art", id) ?? `art:${id.slice(0, id.lastIndexOf("/"))}`,
+      );
+      return countAnswer(await reader.article(id, section));
     },
-    article: (id, section) => reader.article(id, section),
   };
   return e;
 }

@@ -7,6 +7,7 @@ type FakeReader = {
   [k: string]: unknown;
 };
 
+const BOOKS: Record<string, string> = { psa: "PSA", "1 john": "1JN" };
 const catalogsByLang = new Map<
   string,
   { lang: string; key: string; catalogs: unknown[] } | null
@@ -35,7 +36,8 @@ vi.mock("../../vendor/language-pack-client/index.js", () => ({
       },
       unitOf(cls: string, key: string) {
         r.calls.push(`unitOf:${cls}:${key}`);
-        return `${cls}:${key}`;
+        // strict: exact keys only, no case folding, no groups for articles
+        return cls === "art" && key !== "tw" ? undefined : `${cls}:${key}`;
       },
       async book(b: string) {
         r.calls.push(`book:${b}`);
@@ -51,7 +53,13 @@ vi.mock("../../vendor/language-pack-client/index.js", () => ({
       },
       async passage(ref: string) {
         r.calls.push(`passage:${ref}`);
-        return {};
+        const m = /^(\d?\s?[a-z]+)/i.exec(ref.trim());
+        const book = m ? BOOKS[m[1].toLowerCase()] : undefined;
+        return { revision: { units: book ? { [`book:${book}`]: 1 } : {} } };
+      },
+      async article(id: string) {
+        r.calls.push(`article:${id}`);
+        return { revision: { units: {} } };
       },
     };
     opened.push(r);
@@ -92,10 +100,64 @@ describe("withReader", () => {
     expect(opened.length).toBe(1);
   });
 
-  it("new catalog key -> new reader", async () => {
+  it("new catalog key -> new reader, old one released", async () => {
     const first = await id("a");
     catalogsByLang.set("a", cat("a", "k2"));
     expect(await id("a")).not.toBe(first);
+    expect(liveReadersForTests()).toBe(1);
+  });
+
+  it("two calls racing to create the same key get one reader", async () => {
+    const ids = await Promise.all([id("a"), id("a"), id("a")]);
+    expect(new Set(ids).size).toBe(1);
+    expect(opened.length).toBe(1);
+  });
+
+  it("concurrent calls count a unit once and together trigger a recycle", async () => {
+    await id("a");
+    opened[0].sizes["book:PSA"] = 1 * MB;
+    opened[0].sizes["book:GEN"] = 1 * MB;
+    await Promise.all([
+      withReader(env, "a", (r) => r.book("PSA")),
+      withReader(env, "a", (r) => r.book("PSA")),
+      withReader(env, "a", (r) => r.book("GEN")),
+    ]);
+    expect(opened[0].calls.filter((c) => c === "size:book:PSA").length).toBe(1);
+    expect(await id("a")).toBe(1); // 2 MB counted > 1.5 MB
+  });
+
+  it("counts passages whatever the case or form of the reference", async () => {
+    for (const ref of ["PSA 1:1", "psa 1:1", "1 John 3:16"]) {
+      const unit = ref.toLowerCase().startsWith("1") ? "book:1JN" : "book:PSA";
+      resetReadersForTests();
+      opened.length = 0;
+      let first!: FakeReader;
+      await withReader(env, "a", async (r) => {
+        first = opened[0];
+        first.sizes[unit] = 2 * MB;
+        await r.passage(ref);
+      });
+      expect(first.calls).toContain(`size:${unit}`);
+      expect(await id("a")).toBe(1);
+    }
+  });
+
+  it("counts article reads (unitOf, else the id up to the last slash)", async () => {
+    await withReader(env, "a", async (r) => {
+      opened[0].sizes["art:tw"] = 2 * MB;
+      await r.article("tw");
+    });
+    expect(await id("a")).toBe(1);
+    resetReadersForTests();
+    opened.length = 0;
+    await withReader(env, "a", async (r) => {
+      opened[0].sizes["art:ta/translate"] = 1 * MB;
+      opened[0].sizes["art:ta/checking"] = 1 * MB;
+      await r.article("ta/translate/figs-metaphor");
+      await r.article("ta/checking/acceptable");
+    });
+    expect(opened[0].calls).toContain("size:art:ta/translate");
+    expect(await id("a")).toBe(1);
   });
 
   it("keeps at most two readers across three languages (LRU)", async () => {
@@ -111,7 +173,7 @@ describe("withReader", () => {
     expect(opened.length).toBe(4);
   });
 
-  it("recycles past 3 MB; a running call keeps its reader", async () => {
+  it("recycles past 1.5 MB; a running call keeps its reader", async () => {
     let release!: () => void;
     const gate = new Promise<void>((r) => (release = r));
     const slow = withReader(env, "a", async (r) => {
