@@ -61,10 +61,18 @@ type TextUnit = { res?: string; pieces?: Piece[]; events?: Event[] };
 const PLAIN_PARA = /^(para:(p|m|mi|nb|b|pi\d?|q\d?|li\d?)|ms:ts)$/;
 
 /**
- * The verses `start`..`end` of `chapter`, each with its number in front, joined by a space, or `undefined` when the
- * unit has something the route would show differently (notes, headings, bridges) or lacks the passage.
+ * Text where format 3 lost the whitespace USFM has: a word glued to `{`, `}` glued to a word, or punctuation glued
+ * to the next word (staging en ULT MAT 5:3 "Blessed{are}", "spirit,for": the space after `\zaln-e\*` and the line
+ * ends are gone). The route keeps them, so such a passage is not ours to rebuild.
  */
-function verseText(
+const LOST_SPACE = /[\p{L}\p{N}]\{|\}[\p{L}\p{N}]|[.,;:!?][\p{L}{]/u;
+
+/**
+ * The verses `start`..`end` of `chapter`, each with its number in front, joined by a space, or `undefined` when the
+ * unit has something the route would show differently (notes, headings, bridges, a `\ts\*` between two verses of the
+ * range, where the route keeps a blank line, lost whitespace) or lacks the passage.
+ */
+export function verseText(
   unit: TextUnit,
   chapter: string,
   start: number,
@@ -76,6 +84,7 @@ function verseText(
   let chapterSeen = false;
   const found: string[] = [];
   let open: { n: number; from: number } | undefined;
+  let tsInRange = false;
   const close = (to: number) => {
     if (!open) return;
     const text = pieces
@@ -99,17 +108,22 @@ function verseText(
       close(at);
       if (!/^\d+$/.test(value)) return undefined;
       const n = Number(value);
-      if (n >= start && n <= end) open = { n, from: at };
+      if (n >= start && n <= end) {
+        if (tsInRange && n > start) return undefined;
+        open = { n, from: at };
+      }
       continue;
     }
     if (!open) continue;
     if (kind === "close") continue;
+    if (kind === "open" && value === "ms:ts") tsInRange = true;
     if (kind === "open" && PLAIN_PARA.test(value)) continue;
     return undefined;
   }
   close(pieces.length);
   if (!chapterSeen || found.length === 0) return undefined;
-  return found.join(" ");
+  const text = found.join(" ");
+  return LOST_SPACE.test(text) ? undefined : text;
 }
 
 type Resource = {

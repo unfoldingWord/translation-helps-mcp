@@ -8,6 +8,7 @@ import {
 import { resetReadersForTests } from "../../src/packs3/readers";
 import {
   scriptureFromPacks3,
+  verseText,
   VERIFIED,
 } from "../../src/packs3/adapters/scripture";
 import { answerFromPacks3 } from "../../src/packs3/answer";
@@ -211,5 +212,67 @@ describe("registered adapter", () => {
       format: "text",
     })) as { meta: { cache: string } } | undefined;
     expect(got?.meta).toEqual({ cache: "pack" });
+  });
+});
+
+// MAT 5:3-5 of the staging en ULT (2026-11-13): format 3 lost the space after `\zaln-e\*` and the line ends, and the
+// route shows the `\ts\*` blank line inside a range. Today's text: "3 “Blessed {are} the poor in spirit, for theirs ...".
+const W = (t: string): [string, boolean] => [t, true];
+const N = (t: string): [string, boolean] => [t, false];
+const MAT5 = {
+  pieces: [
+    N("“"),
+    W("Blessed"),
+    N("{"),
+    W("are"),
+    N("} "),
+    W("the"),
+    N(" "),
+    W("poor"),
+    N(","),
+    W("for"),
+    N(" "),
+    W("them"),
+    N("."),
+    W("Blessed"),
+    N(" "),
+    W("ones"),
+    N(". "),
+    W("Blessed"),
+    N(" "),
+    W("meek"),
+    N("."),
+  ],
+  events: [
+    [0, "chapter", "5"],
+    [0, "open", "para:q1"],
+    [0, "verse", "3"],
+    [12, "open", "para:q1"],
+    [12, "verse", "4"],
+    [17, "open", "ms:ts"],
+    [17, "close", ""],
+    [17, "open", "para:q1"],
+    [17, "verse", "5"],
+  ] as [number, string, string][],
+};
+
+describe("verseText", () => {
+  it("falls back when format 3 lost the space between a word and the next piece", () => {
+    expect(verseText(MAT5, "5", 3, 3)).toBeUndefined();
+  });
+
+  it("falls back when a ts milestone falls between two verses of the range", () => {
+    const clean = {
+      pieces: [W("a"), N(" "), W("b"), N(". "), W("c"), N(".")],
+      events: [
+        [0, "chapter", "5"],
+        [0, "verse", "4"],
+        [4, "open", "ms:ts"],
+        [4, "close", ""],
+        [4, "verse", "5"],
+      ] as [number, string, string][],
+    };
+    expect(verseText(clean, "5", 4, 4)).toBe("4 a b.");
+    expect(verseText(clean, "5", 4, 5)).toBeUndefined();
   });
 });
