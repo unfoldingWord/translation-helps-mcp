@@ -465,6 +465,137 @@ budget, debug header).
 Production is not in this plan: it needs the production signing key in `[env.production]`, `PACKS_V3 = "on"` there, and
 format 3 published to the `language-packs` bucket, each with Abel's yes.
 
+---
+
+## Part D: widening what format 3 serves (added 2026-11-13, approved by Abel: "Sí, amplíalo")
+
+**Why.** Task 10's local run served 8 of 72 real calls from format 3: no wrong answers, but almost everything fell back.
+Three causes:
+
+- The verified lists are per-answer content hashes (`VERIFIED_ANSWERS`, `VERIFIED_CATALOGS`) and hand lists of
+  (language, book). They break with every republish and cover few books.
+- The bt-synergy builder loses whitespace after `\zaln-e\*` and at line ends in en ULT/UST.
+- Some causes are untraced (en ROM 8:28, `bible/kt/grace`, es-419 TIT 1 index, JHN 1:intro, JHN 3 questions).
+
+**Rule that replaces the hashes.** Format 3 serves a call when its resource, at the release the catalog names, passed a
+**whole-resource sweep** against today's answers:
+
+- Every chapter of every book, every article, for that kind of call, with 0 differences.
+- Items that differ are listed as exceptions and fall back.
+- The proof is keyed by `(lang, resource key, release, kind)`, not by content hash. A republish with the same releases
+  keeps working, and a new release falls back until it is swept again.
+- The safety property stays: format 3 never gives an answer that was not proven equal for that release.
+
+### Task 11: The builder keeps whitespace (bt-synergy)
+
+**Where:**
+
+- A new worktree `C:/Users/LENOVO/Git/Github/wt/lp3-ws` from tc-study `origin/master`, branch `fix/v3-aligned-whitespace`.
+- `packages/language-pack-v3/src/build/bookTexts.ts`, or wherever the aligned USFM becomes text pieces. The implementer
+  finds it.
+- A test beside it.
+
+**Steps:**
+
+- [ ] Write the failing test. With a USFM fixture of `\zaln-s … \w a\w*\zaln-e\* \zaln-s … \w b\w*\zaln-e\*` and a verse
+      that ends one line and continues on the next, the built text is `"a b"` and `"…end next…"`, with single spaces.
+- [ ] Run it: FAIL. Fix the builder. Run it: PASS. Run `bun test` in the package.
+- [ ] Make a real-data check script. It rebuilds en ULT and UST from the phase-0 sample and counts pieces that match
+      `LOST_SPACE` (`src/packs3/adapters/scripture.ts:68` in th-c4). Expected: 0.
+- [ ] Commit `build: keep whitespace after \zaln-e\* and at line ends`.
+
+**After it:** the supervisor asks Abel separately for **S0**, which pushes this branch, opens its tc-study PR, and
+republishes en (and es-419 if its count was not 0) to staging, the way phase 3 did. Tasks 12–14 do not wait for S0.
+The sweep of en ULT/UST runs again after S0.
+
+### Task 12: The sweep script
+
+**Files:**
+
+- Create `scripts/sweep-packs3.mjs` and `src/packs3/verified.json` (empty `{}`).
+- Test: `tests/unit/packs3-sweep.test.ts`, the pure parts only.
+
+**What the script does:**
+
+- Usage: `node scripts/sweep-packs3.mjs --lang en|es-419 --kind passage|notes|links|questions|articles|search --bucket <dir> --api https://translation-helps-api-v2.unfoldingword.workers.dev [--books …] [--resume]`.
+- It runs the adapters in Node over a local copy of the staging bucket, and gets today's answers from the API Worker
+  that staging uses.
+- Items per kind:
+  - `passage`, `notes`, `links`, `questions`: every chapter of every book the catalog lists, plus a whole-book index for
+    notes and links.
+  - `articles`: every article id in the catalog's tw and ta groups.
+  - `search`: a fixed query list of 40 en and 40 es-419 queries.
+- It compares the normalized JSON exactly as `compare-packs3.mjs` does (share that code; don't copy it).
+- It writes or merges `verified.json` entries:
+  `{"<lang>|<resource key>|<release>|<kind>": {"items": N, "exceptions": ["<item>", …], "swept": "<ISO date>"}}`.
+- It writes the differences to a report beside it.
+- Network: concurrency 4, retries with backoff on 429/5xx, `--resume` from a local cache. It is read-only against the
+  API; the volume is a few thousand GETs per language.
+
+**Steps:**
+
+- [ ] Test the pure parts: key building, merging, and exception listing.
+- [ ] Implement the script. Run it on es-419 `questions` as the smoke test.
+- [ ] Commit `packs3: sweep a whole resource against today's answers`.
+
+### Task 13: Serve by sweep, not by hash
+
+**Files:**
+
+- Modify the adapters' verified checks (`scripture.ts`, `helps.ts`, `questions.ts`, `articles*.ts`, `search.ts`) so all
+  of them use one helper.
+- Create `src/packs3/verified.ts`.
+- Remove `VERIFIED_ANSWERS`, `VERIFIED_CATALOGS` and the hand (language, book) maps.
+
+**Interfaces:**
+
+- `isVerified(lang, resourceKey, release, kind, item?): boolean`. It is true when `verified.json` has the entry and the
+  item is not an exception.
+- The release comes from the catalog's `resources[].release`.
+
+**Tests:**
+
+- A listed entry is served.
+- A release bump falls back.
+- An exception item falls back.
+- An unknown kind falls back.
+- The existing adapter tests pass with a fixture `verified.json`.
+
+**Commit:** `packs3: serve what a whole-resource sweep proved, by release`.
+
+### Task 14: Sweep and fix, kind by kind
+
+Run the sweep for en and es-419 one kind at a time, in this order: `passage`, `notes`, `links`, `questions`,
+`articles`, `search`. Each kind is its own sub-task (14a–14f) with its own implementer and review.
+
+For each kind:
+
+- Run the sweep and read the differences report.
+- Fix the adapter bugs it shows. Expected candidates:
+  - Old Testament originals and Psalm superscriptions in verse numbering;
+  - book and chapter introductions;
+  - en `bible/kt/grace` and rc links;
+  - es-419 index;
+  - `JHN 1:intro`;
+  - the tA catalog proof for tA search and articles.
+- Re-run the sweep, then commit the code fix and `verified.json` together.
+
+Differences that come from the data, not the adapter, stay as exceptions. Each one gets its reason in the report. Any
+exception that a caller would notice goes to the supervisor; the builder whitespace is the known one until S0.
+
+### Task 15: Explicit fallbacks, and the 72 calls again
+
+- Fix Task 10's review items:
+  - Under `PACKS_V3_DEBUG`, the Worker marks a fallback explicitly (a `_packs3` field in debug mode only, never in
+    normal answers), so `compare-packs3.mjs` stops inferring fallbacks from answer text.
+  - Trace the 8 untraced reasons.
+- Re-run the 72-call local comparison.
+- **Target:** every call outside the planned fallbacks (OBS, `format usfm`, `th_list_resources`, `fr`, and es-419 books
+  the pack lacks) is served from format 3 and equal, except the swept exceptions. Report the count.
+- Commit `packs3: explicit fallback marks; comparison after the sweeps`.
+
+Then the three final Opus reviews (area 3 adds Tasks 12–15; area 1 adds Task 13), the local gate, and `FIN:`.
+
 ## Deviations from this plan
 
 (The controller records them here as they happen.)
