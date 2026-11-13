@@ -108,10 +108,9 @@ describe("compare-packs3 pure parts", () => {
       { path: "$.structuredContent.x", a: 1, b: 2 },
       { path: "$.content[0].text", a: "1 note(s)", b: "2 note(s)" },
     ];
-    expect(s.dropMirroredText(diffs).map((d) => d.path)).toEqual([
-      "$.structuredContent.x",
-      "$.content[0].text",
-    ]);
+    expect(
+      s.dropMirroredText(diffs).map((d: { path: string }) => d.path),
+    ).toEqual(["$.structuredContent.x", "$.content[0].text"]);
   });
 
   it("call list is valid, with enough calls and the required ones", () => {

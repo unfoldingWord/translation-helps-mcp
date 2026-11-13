@@ -556,6 +556,39 @@ and writes nothing.
    default): a full `en` may need more than 600 segments.
 4. Production is not touched in this phase.
 
+### Format 3 reads (the MCP tools)
+
+The MCP tools can answer from format 3 instead of calling the API Worker (`src/packs3/`, entry `attemptPacks3` in
+`src/packs3/answer.ts`, called by `src/mcp/apiClient.ts`).
+
+- **Switch.** Format 3 reads run only when `PACKS_V3 = "on"` and `PACKS_V3_TRUSTED_KEYS` holds at least one key. Top
+  level and `[env.preview]` are on with the staging key; `[env.production]` has `PACKS_V3 = "off"` and
+  `PACKS_V3_TRUSTED_KEYS = ""`, so every production call stays on today's path.
+- **Keys.** `PACKS_V3_TRUSTED_KEYS` is `<keyId>:<hex public key>` (comma separated for more). A catalog
+  (`v3/catalog/{lang}.seg`, `v3/catalog/common.seg`) whose signature no listed key verifies is not used. Production
+  needs the production key here, with Abel's yes.
+- **Fallback.** Any call format 3 cannot answer exactly as today goes to the API Worker. The reasons are logged once
+  per isolate and language as `packs3 fallback { lang, reason }`: `v3-off`, `no-keys`, `no-adapter` (no format 3 adapter
+  for that API path: OBS, `th_list_resources`), `adapter-undefined` (the adapter declined: an unverified book,
+  resource or article catalog, Old Testament text, a whole chapter, `format: "usfm"`, a note that links an article,
+  lost whitespace), `adapter-exception`, `readers-busy`, plus finer ones (`no-catalog`, `unverified-book`,
+  `note-links`, `unverified-article`, `unverified-article-catalog`, `unverified-resource`). Allowlists (helps
+  `VERIFIED_BOOKS`, `articles-verified.ts`, the search and questions sets, scripture `VERIFIED`) widen only after a
+  whole-answer equal comparison.
+- **Budget.** A reader keeps at most **1 MB** of compressed segments; at most **2 readers** per isolate, live and
+  retired together; a third concurrent call falls back with reason `readers-busy`. The decoded segment LRU holds at
+  most **8 MB** (`SEGMENT_CACHE_MAX_BYTES`). Why: about 41 MB of heap per compressed MB was measured, inside a 128 MB
+  isolate.
+- **Debug header.** With `PACKS_V3_DEBUG = "on"` (never in production) a request may send `x-th-packs3: off` (today's
+  path only) or `x-th-packs3: only` (format 3 only; a call it cannot answer gives the fallback reason as an error, never
+  an API call). The comparison uses it.
+- **Comparison.** `node scripts/compare-packs3.mjs --base <url>` runs `tests/contracts/packs3-calls.json` with `off`
+  against `only` (or plain against plain with `--base-b`) and writes `docs/packs3-comparison.md`. A local run:
+  `node scripts/fetch-packs3-fixtures.mjs --all --out <folder>` (the staging bucket's `v3/` keys), put them into a
+  local R2 persist folder (`getPlatformProxy` with `persist: { path: "<persist>/v3" }`), then
+  `npx wrangler dev --port 8811 --persist-to <persist> --var API_BASE_URL:https://translation-helps-api-v2.unfoldingword.workers.dev --var RATE_LIMIT_RPM:100000`
+  (the default 90 rpm limit cuts a run short; the script reports `RATE_LIMITED` calls as failures).
+
 ## Rotation
 
 - GitHub App private key: App settings → Private keys → generate a new one, update `GITHUB_APP_PRIVATE_KEY` on both

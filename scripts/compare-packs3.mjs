@@ -270,6 +270,12 @@ async function main() {
     const a = await callTool(sideA.base, sideA.headers, call.tool, call.args, key);
     const b = await callTool(sideB.base, sideB.headers, call.tool, call.args, key);
     const row = { call, msA: a.ms, msB: b.ms, problems: [], skew: [], known: [], failing: [], fallback: null };
+    if (/"RATE_LIMITED"/.test(JSON.stringify([a.result, b.result]))) {
+      row.problems.push("rate limited: the run says nothing about this call (raise RATE_LIMIT_RPM and rerun)");
+      rows.push(row);
+      console.log(`FAIL ${call.tool} ${JSON.stringify(call.args)} rate limited`);
+      continue;
+    }
     if (!baseB) {
       row.fallback = fallbackReason(b.result, a.result);
       const fb = row.fallback !== null;
