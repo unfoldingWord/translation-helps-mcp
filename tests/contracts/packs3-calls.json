@@ -1,0 +1,587 @@
+[
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "JHN 3:16",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "TIT 1:1-3",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "PSA 23",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "PSA 119:1-8",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "GEN 1:1",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "ROM 8:28",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "MAT 5:3-10",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "JON 1:1-3",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "OBS 3:5",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "TIT 1:1",
+      "language": "en",
+      "format": "usfm"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "JON",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "TIT 1",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "PSA 23",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "JHN 3:16",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "ROM 8",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "OBS 3:5",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "JON",
+      "language": "en",
+      "limit": 10,
+      "offset": 10
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "TIT 1:1",
+      "language": "en",
+      "phrase": "servant"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "JHN 1:intro",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "JHN 3:16",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "JON 1:3",
+      "language": "en",
+      "ids": ["__FROM_INDEX__"]
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "OBS 3:5",
+      "language": "en",
+      "kind": "study"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "Jonah",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_questions",
+    "args": {
+      "reference": "TIT 1",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_questions",
+    "args": {
+      "reference": "JHN 3",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_questions",
+    "args": {
+      "reference": "ROM 8:28",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_questions",
+    "args": {
+      "reference": "OBS 3",
+      "language": "en",
+      "kind": "study"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "bible/kt/grace",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "translate/figs-metaphor",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "covenant",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "metaphor",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "rc://en/tw/dict/bible/kt/love",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "bible/kt/grace",
+      "language": "en",
+      "detail": "summary"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_search",
+    "args": {
+      "query": "figures of speech",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_search",
+    "args": {
+      "query": "abstract nouns",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_search",
+    "args": {
+      "query": "covenant",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_search",
+    "args": {
+      "query": "metaphor",
+      "language": "en",
+      "type": "ta",
+      "limit": 5
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_list_resources",
+    "args": {
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_list_resources",
+    "args": {
+      "language": "en",
+      "book": "JON"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_list_resources",
+    "args": {},
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "JHN 3:16",
+      "language": "fr"
+    },
+    "expect": "fallback"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "RUT 1:1",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "JON 1:3",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "TIT 1:1-3",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "PSA 23",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "JHN 3:16",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "Juan 3:16",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "MAT 5:3-10",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "MAT 5:1",
+      "language": "es-419"
+    },
+    "expect": "fallback"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "JON",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "TIT 1",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "PSA 23",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "RUT 1",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "JON 1:3",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "TIT 1:1",
+      "language": "es-419",
+      "phrase": "siervo"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "JHN 1:intro",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "ROM 8:28",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "JON 1:3",
+      "language": "es-419",
+      "ids": ["__FROM_INDEX__"]
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_questions",
+    "args": {
+      "reference": "RUT 1",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_questions",
+    "args": {
+      "reference": "TIT 1",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_questions",
+    "args": {
+      "reference": "JHN 3",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_questions",
+    "args": {
+      "reference": "OBS 3",
+      "language": "es-419",
+      "kind": "study"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "bible/kt/grace",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "translate/figs-metaphor",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "metáfora",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "pacto",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "bible/kt/grace",
+      "language": "es-419",
+      "detail": "summary"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_search",
+    "args": {
+      "query": "gracia",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_search",
+    "args": {
+      "query": "figuras de lenguaje",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_search",
+    "args": {
+      "query": "pacto",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_list_resources",
+    "args": {
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_list_resources",
+    "args": {
+      "language": "es-419",
+      "book": "JON"
+    },
+    "expect": "pack"
+  }
+]
