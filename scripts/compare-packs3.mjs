@@ -25,13 +25,21 @@ const ID_PLACEHOLDER = "__FROM_INDEX__";
 /** Removes what is allowed to differ: requestId, meta.timings, meta.cache and the text summary's [cache] tag. */
 export function normalize(value) {
   if (typeof value === "string") {
-    return value.replace(/[ \t]*\[cache[^\]]*\]/gi, "");
+    if (value.startsWith("{") || value.startsWith("[")) {
+      // The text content blocks carry the JSON answer as a string (with its own meta).
+      try {
+        return JSON.stringify(normalize(JSON.parse(value)));
+      } catch {
+        /* not JSON */
+      }
+    }
+    return value.replace(/[ \t]*\[(?:cache|kv|r2|pack|memory|stale|hit|miss)[^\]]*\](?=\s*$)/gi, "");
   }
   if (Array.isArray(value)) return value.map((v) => normalize(v));
   if (value && typeof value === "object") {
     const out = {};
     for (const [k, v] of Object.entries(value)) {
-      if (k === "requestId") continue;
+      if (k === "requestId" || k === "cacheStatus") continue; // cacheStatus is cache metadata like meta.cache
       if (k === "meta" && v && typeof v === "object" && !Array.isArray(v)) {
         const { timings: _t, cache: _c, ...rest } = v;
         if (Object.keys(rest).length) out[k] = normalize(rest);
@@ -135,8 +143,50 @@ export function validateKnown(known) {
   );
 }
 
-export function isFallback(result) {
-  return JSON.stringify(result ?? "").includes("PACKS3_FALLBACK");
+const FALLBACK_REASONS = /^(adapter-undefined|adapter-exception|readers-busy|no-adapter|no-keys|v3-off|[a-z0-9-]+)$/;
+
+/** Under `x-th-packs3: only` a call format 3 cannot answer comes back as PACKS3_FALLBACK, or as RESOURCE_NOT_AVAILABLE
+ *  whose message is the fallback reason (the tools map the client error). Returns the reason, or null. */
+export function fallbackReason(result, offResult) {
+  const text = JSON.stringify(result ?? "");
+  const gap = /(?:Translation notes|Word links|OBS notes)[^"]*? (?:are not available|failed to load)/;
+  const offText = JSON.stringify(offResult ?? "");
+  // th_get_passage_index turns a part's fallback (a 404 from the client under `only`) into "not available": a gap
+  // that today's path does not show is a fallback of that part.
+  const g = gap.exec(text);
+  if (offResult !== undefined && g && !offText.includes(g[0])) return "part not available under only (part)";
+  // Some tools (th_get_article) map the client's 404 to their own "not found" answer: an answer that is unavailable
+  // only under `only` fell back.
+  if (
+    offResult !== undefined &&
+    result?.structuredContent?.available === false &&
+    offResult?.structuredContent?.available !== false &&
+    !/^(adapter-|readers-|no-|v3-)/.test(String(result.structuredContent.message ?? ""))
+  ) {
+    return "not available under only";
+  }
+  const sc = result?.structuredContent;
+  if (sc?.available === false && sc?.code === "RESOURCE_NOT_AVAILABLE" && typeof sc.message === "string" && FALLBACK_REASONS.test(sc.message) && /^(adapter-|readers-|no-|v3-)/.test(sc.message)) {
+    return sc.message;
+  }
+  if (text.includes("PACKS3_FALLBACK")) return "PACKS3_FALLBACK";
+  // A composite answer (th_get_passage_index) where one part fell back carries the reason in its error text.
+  const m = /\b(adapter-undefined|adapter-exception|readers-busy|no-adapter)\b/.exec(text);
+  if (m) return `${m[1]} (part)`;
+  return null;
+}
+
+export function isFallback(result, offResult) {
+  return fallbackReason(result, offResult) !== null;
+}
+
+/** A text block that carries the JSON answer repeats every structuredContent difference: keep only the latter. */
+export function dropMirroredText(diffs) {
+  const structured = diffs.some((d) => d.path.startsWith("$.structuredContent"));
+  if (!structured) return diffs;
+  return diffs.filter(
+    (d) => !(/^\$\.content\[\d+\]\.text$/.test(d.path) && typeof d.a === "string" && /^[[{]/.test(d.a)),
+  );
 }
 
 // ---- network part ----
@@ -187,6 +237,13 @@ function arg(name) {
   return i > 0 ? process.argv[i + 1] : undefined;
 }
 
+function fbSummary(rows) {
+  const by = {};
+  for (const r of rows) if (r.fallback) by[r.fallback] = (by[r.fallback] ?? 0) + 1;
+  const parts = Object.entries(by).map(([k, n]) => `${k} ${n}`);
+  return parts.length ? parts.join(", ") : "none";
+}
+
 const md = (v) => "`" + String(JSON.stringify(v)).slice(0, 160).replace(/`/g, "'") + "`";
 
 async function main() {
@@ -212,14 +269,15 @@ async function main() {
     const call = await resolveIds(original, sideA.base, sideA.headers, key);
     const a = await callTool(sideA.base, sideA.headers, call.tool, call.args, key);
     const b = await callTool(sideB.base, sideB.headers, call.tool, call.args, key);
-    const row = { call, msA: a.ms, msB: b.ms, problems: [], skew: [], known: [], failing: [] };
+    const row = { call, msA: a.ms, msB: b.ms, problems: [], skew: [], known: [], failing: [], fallback: null };
     if (!baseB) {
-      const fb = isFallback(b.result);
-      if (call.expect === "pack" && fb) row.problems.push("expected a pack answer, got PACKS3_FALLBACK");
+      row.fallback = fallbackReason(b.result, a.result);
+      const fb = row.fallback !== null;
+      if (call.expect === "pack" && fb) row.problems.push(`expected a pack answer, got a fallback (${row.fallback})`);
       if (call.expect === "fallback" && !fb) row.problems.push("expected PACKS3_FALLBACK, got an answer");
     }
-    if (call.expect === "pack" || baseB) {
-      Object.assign(row, classify(diffPaths(normalize(a.result), normalize(b.result)), call, known));
+    if ((call.expect === "pack" && row.fallback === null) || baseB) {
+      Object.assign(row, classify(dropMirroredText(diffPaths(normalize(a.result), normalize(b.result))), call, known));
     }
     rows.push(row);
     const bad = row.problems.length + row.failing.length;
@@ -235,18 +293,33 @@ async function main() {
       `Known differences hit: ${rows.reduce((n, r) => n + r.known.length, 0)}. ` +
       `Release skew: ${rows.reduce((n, r) => n + r.skew.length, 0)}.`,
     "",
+    `Fallbacks under \`only\`: ${fbSummary(rows)}.`,
+    "",
     "## Differences",
     "",
   ];
   for (const r of rows) {
     const t = `${r.call.tool} ${JSON.stringify(r.call.args)}`;
     for (const p of r.problems) out.push(`- FAIL ${t}: ${p}`);
-    for (const d of r.failing) out.push(`- FAIL ${t} ${d.path}: A ${md(d.a)} B ${md(d.b)}`);
+    for (const d of r.failing.slice(0, 6)) out.push(`- FAIL ${t} ${d.path}: A ${md(d.a)} B ${md(d.b)}`);
+    if (r.failing.length > 6) out.push(`- FAIL ${t}: and ${r.failing.length - 6} more differences`);
     for (const d of r.known) out.push(`- known ${t} ${d.path}: ${d.reason}`);
     for (const d of r.skew) out.push(`- release skew ${t} ${d.path}: A ${md(d.a)} B ${md(d.b)}`);
   }
-  out.push("", "## Timings (ms)", "", "| tool | args | A | B |", "|---|---|---|---|");
-  for (const r of rows) out.push(`| ${r.call.tool} | ${md(r.call.args)} | ${r.msA} | ${r.msB} |`);
+  out.push("", "## Every call (timings in ms)", "", "| tool | args | expect | result | A | B |", "|---|---|---|---|---|---|");
+  for (const r of rows) {
+    const bad = r.problems.length + r.failing.length;
+    const result = bad
+      ? "FAIL"
+      : r.fallback
+        ? `fallback (${r.fallback})${r.call.why ? `: ${r.call.why}` : ""}`
+        : r.known.length
+          ? "known differences"
+          : r.skew.length
+            ? "release skew"
+            : "equal";
+    out.push(`| ${r.call.tool} | ${md(r.call.args)} | ${r.call.expect} | ${result} | ${r.msA} | ${r.msB} |`);
+  }
   writeFileSync(arg("out") ?? "docs/packs3-comparison.md", out.join("\n") + "\n");
   console.log(`${rows.length} calls, ${failed.length} failed`);
   process.exit(failed.length ? 1 : 0);

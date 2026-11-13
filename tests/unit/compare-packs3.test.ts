@@ -84,6 +84,36 @@ describe("compare-packs3 pure parts", () => {
     expect(s.isFallback({ content: [{ text: "ok" }] })).toBe(false);
   });
 
+  it("sees a fallback the tool turned into 'not available', only when today's path answers", () => {
+    const off = { structuredContent: { title: "grace" } };
+    const only = {
+      structuredContent: { available: false, message: "No article was found" },
+    };
+    expect(s.fallbackReason(only, off)).toBe("not available under only");
+    expect(s.fallbackReason(only, only)).toBeNull();
+    const part = {
+      structuredContent: {
+        notes: [],
+        message: 'Translation notes are not available for language "en".',
+      },
+    };
+    expect(s.fallbackReason(part, { structuredContent: { notes: [1] } })).toBe(
+      "part not available under only (part)",
+    );
+  });
+
+  it("drops the text block that mirrors structuredContent differences", () => {
+    const diffs = [
+      { path: "$.content[1].text", a: '{"x":1}', b: '{"x":2}' },
+      { path: "$.structuredContent.x", a: 1, b: 2 },
+      { path: "$.content[0].text", a: "1 note(s)", b: "2 note(s)" },
+    ];
+    expect(s.dropMirroredText(diffs).map((d) => d.path)).toEqual([
+      "$.structuredContent.x",
+      "$.content[0].text",
+    ]);
+  });
+
   it("call list is valid, with enough calls and the required ones", () => {
     const calls = JSON.parse(
       readFileSync("tests/contracts/packs3-calls.json", "utf8"),
@@ -92,9 +122,21 @@ describe("compare-packs3 pure parts", () => {
     expect(v.errors).toEqual([]);
     expect(v.en).toBeGreaterThanOrEqual(30);
     expect(v.es).toBeGreaterThanOrEqual(20);
+    type Call = { expect: string; args: Record<string, unknown>; why?: string };
+    const fallbacks = calls.filter((c: Call) => c.expect === "fallback");
+    // The two planned fallbacks, and every call the local comparison saw fall back, with its reason (Task 10 part B).
+    const planned = fallbacks.filter(
+      (c: Call) =>
+        c.args.language === "fr" ||
+        (c.args.language === "es-419" && c.args.reference === "MAT 5:1"),
+    );
+    expect(planned).toHaveLength(2);
+    for (const c of fallbacks) {
+      if (!planned.includes(c)) expect(c.why).toBeTruthy();
+    }
     expect(
-      calls.filter((c: { expect: string }) => c.expect === "fallback"),
-    ).toHaveLength(2);
+      calls.filter((c: Call) => c.expect === "pack").length,
+    ).toBeGreaterThan(0);
     expect(new Set(calls.map((c: { tool: string }) => c.tool))).toEqual(
       new Set(s.TOOLS),
     );

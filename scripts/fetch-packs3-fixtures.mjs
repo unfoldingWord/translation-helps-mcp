@@ -6,8 +6,13 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { verifyCatalogFile } from "../vendor/language-pack-client/index.js";
 
-const BASE = (process.argv[2] ?? "https://translation-helps-mcp-v2-preview.unfoldingword.workers.dev").replace(/\/$/, "");
-const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "tests", "fixtures", "packs3");
+// Options: --all (every unit of en and es-419, for the local comparison) and --out <folder> (default tests/fixtures/packs3).
+const args = process.argv.slice(2);
+const ALL = args.includes("--all");
+const outAt = args.indexOf("--out");
+const OUT = outAt >= 0 ? args[outAt + 1] : join(dirname(fileURLToPath(import.meta.url)), "..", "tests", "fixtures", "packs3");
+const positional = args.filter((a, i) => !a.startsWith("--") && args[i - 1] !== "--out");
+const BASE = (positional[0] ?? "https://translation-helps-mcp-v2-preview.unfoldingword.workers.dev").replace(/\/$/, "");
 const WANT = {
   en: ["book:tit", "orig:tit", "art:tw:kt", "art:tw:names", "art:tw:other", "art:ta:translate", "map"],
   "es-419": ["book:rut", "orig:rut", "book:tit", "orig:tit", "art:tw:kt", "art:tw:names", "art:tw:other", "art:ta:translate", "map"],
@@ -43,8 +48,9 @@ async function segment(idBytes, unit) {
 }
 
 const common = await catalog("common");
-for (const [lang, units] of Object.entries(WANT)) {
+for (const [lang, wanted] of Object.entries(WANT)) {
   const cat = await catalog(lang);
+  const units = ALL ? [...new Set([...cat.units, ...common.units].map((u) => u.id))] : wanted;
   for (const unit of units) {
     for (const c of [cat, common]) {
       const u = c.units.find((x) => x.id === unit);
