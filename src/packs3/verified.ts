@@ -6,7 +6,7 @@
  * What the sweep writes per kind (and what `isVerified` reads):
  * - passage: items `BOOK C:V` for every verse and `BOOK C:1-N` per chapter; `chapters: { BOOK: [c, ...] }`. Its
  *   exceptions are grouped per chapter, `BOOK C:v,v,a-b` (the items `BOOK C:v` and `BOOK C:a-b`); one it cannot read
- *   makes the whole entry unusable. With `--range-windows`, `joins: { BOOK: "c:v,a-b;c:v" }`: the verse boundaries
+ *   makes the whole entry unusable, as does an unreadable `joins` string of any book. With `--range-windows`, `joins: { BOOK: "c:v,a-b;c:v" }`: the verse boundaries
  *   a swept 2-3 verse window proved (see `isVerified`).
  * - notes, links: `BOOK C` (`chapters`) for the default shape; `fields=index` items (whole book and chapter) are
  *   `indexWholeBooks` / `indexChapters`, their exceptions `index:BOOK C`. questions: items `BOOK` (`wholeBooks`) and `BOOK C` (`chapters`, "front" and 0 included).
@@ -98,6 +98,18 @@ const JOINS_CHAPTER = /^(\d+):(\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)$/;
  * The proven boundaries of `chapter` (`v` is the boundary between verses v and v+1) from a passage entry's `joins`
  * (`{ "TIT": "1:1-4,6;3:4" }`), or `undefined` when there are none or the book's string cannot be read (fail closed).
  */
+function joinsParses(line: string): boolean {
+  return line.split(";").every((p) => JOINS_CHAPTER.test(p) && joinRunsOk(p));
+}
+function joinRunsOk(part: string): boolean {
+  const m = JOINS_CHAPTER.exec(part);
+  if (!m) return false;
+  return m[2]!.split(",").every((run) => {
+    const [x, y = x] = run.split("-").map(Number);
+    return y! >= x! && y! - x! <= 1000;
+  });
+}
+
 function joinsOf(
   joins: unknown,
   book: string,
@@ -158,6 +170,12 @@ function wellFormed(e: VerifiedEntry): boolean {
     if (v === undefined) continue;
     if (!isPlain(v)) return false;
     if (!Object.values(v).every((l) => typeof l === "string")) return false;
+  }
+  // every book's joins string must parse (the same parser as the lookup), or the whole entry is unusable
+  if (isPlain(o.joins)) {
+    for (const book of Object.keys(o.joins)) {
+      if (!joinsParses(o.joins[book] as string)) return false;
+    }
   }
   if (o.deps !== undefined) {
     if (!isPlain(o.deps)) return false;

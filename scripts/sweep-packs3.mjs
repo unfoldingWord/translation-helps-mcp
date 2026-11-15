@@ -7,7 +7,7 @@
  *
  * Usage (the adapters are TypeScript, so run it with tsx, which the repo already has):
  *   npx tsx scripts/sweep-packs3.mjs --lang en|es-419 --kind passage|notes|links|questions|articles|search \
- *     --bucket <dir> --api <url> [--api-index <local url>] [--books tit,rut] [--resume] [--max-age-hours 24] [--out-dir <dir>] [--cache <dir>] [--keys <id:hex>] [--range-windows N]
+ *     --bucket <dir> --api <url> [--api-index <local url>] [--books tit,rut] [--resume] [--max-age-hours 24] [--out-dir <dir>] [--cache <dir>] [--keys <id:hex>] [--range-windows N-or-all]
  *
  * - `--bucket` is a local copy of the staging bucket (a folder with `v3/catalog`, `v3/seg`); catalogs are verified with
  *   the trusted key as the Worker does (`--keys`, default the staging key of wrangler.toml).
@@ -250,8 +250,14 @@ export function passageItems(book, verses, { windows = 0 } = {}) {
 /**
  * The range windows of a chapter's verses (ascending): 3-verse windows from the first verse that share their ends
  * (1-3, 3-5, 5-7, …; the last may hold 2 verses), the first `n`. Each equal window proves the boundaries inside it,
- * so the first N windows prove the chapter's first 2N boundaries: deterministic, and contiguous from verse 1.
+ * so the windows cover every boundary of the chapter; a cap `n` keeps the first n (the first 2n boundaries), Infinity none.
  */
+/** `--range-windows` value: absent = 0, "all" = no cap, else a whole number (NaN when not). */
+export function parseRangeWindows(v) {
+  if (v === undefined) return 0;
+  return v === "all" ? Infinity : Number(v);
+}
+
 export function rangeWindows(verses, n) {
   const out = [];
   for (let i = 0; i + 1 < verses.length && out.length < n; i += 2) {
@@ -572,9 +578,9 @@ async function main() {
   const only = arg("books")?.toLowerCase().split(",").filter(Boolean);
   const maxAgeHours = Number(arg("max-age-hours") ?? 24);
   const writeVerified = shouldWriteVerified({ books: only });
-  const rangeWindowCount = Number(arg("range-windows") ?? 0);
-  if (!Number.isInteger(rangeWindowCount) || rangeWindowCount < 0 || (rangeWindowCount && kind !== "passage")) {
-    console.error("--range-windows N: a whole number, passage only");
+  const rangeWindowCount = parseRangeWindows(arg("range-windows"));
+  if ((rangeWindowCount !== Infinity && !Number.isInteger(rangeWindowCount)) || rangeWindowCount < 0 || (rangeWindowCount && kind !== "passage")) {
+    console.error("--range-windows N|all: a whole number or all, passage only");
     process.exit(2);
   }
 

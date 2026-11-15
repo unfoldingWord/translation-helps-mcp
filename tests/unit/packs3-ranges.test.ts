@@ -174,9 +174,12 @@ describe("isVerified: a range on boundary proofs (`joins`)", () => {
   it("fails closed on a joins field it cannot read", () => {
     setVerifiedForTests({ [K]: base({ joins: { TIT: "1:x" } }) });
     expect(ok("TIT 1:3-4")).toBe(false);
-    expect(ok("TIT 1:3")).toBe(true);
     setVerifiedForTests({ [K]: base({ joins: ["TIT"] as never }) });
     expect(ok("TIT 1:3")).toBe(false); // a field of the wrong type: the entry is unusable
+    // a corrupt string of ANOTHER book refuses the whole entry, single verses too
+    setVerifiedForTests({ [K]: base({ joins: { TIT: "1:1-4", RUT: "1:x" } }) });
+    expect(ok("TIT 1:3-4")).toBe(false);
+    expect(ok("TIT 1:3")).toBe(false);
   });
 });
 
@@ -192,6 +195,17 @@ describe("sweep: range windows", () => {
     ]);
     expect(s.rangeWindows([1], 3)).toEqual([]);
     expect(s.rangeWindows([1, 2, 3], 0)).toEqual([]);
+    // uncapped: every boundary of the chapter is inside some window
+    const all = s.rangeWindows([1, 2, 3, 4, 5, 6, 7, 8], Infinity);
+    expect(all).toEqual([
+      [1, 3],
+      [3, 5],
+      [5, 7],
+      [7, 8],
+    ]);
+    expect(s.parseRangeWindows("all")).toBe(Infinity);
+    expect(s.parseRangeWindows("3")).toBe(3);
+    expect(Number.isNaN(s.parseRangeWindows("x"))).toBe(true);
   });
 
   it("adds window items only when asked", () => {
