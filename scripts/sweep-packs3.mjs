@@ -7,14 +7,19 @@
  *
  * Usage (the adapters are TypeScript, so run it with tsx, which the repo already has):
  *   npx tsx scripts/sweep-packs3.mjs --lang en|es-419 --kind passage|notes|links|questions|articles|search \
- *     --bucket <dir> --api <url> [--books tit,rut] [--resume] [--out-dir <dir>] [--cache <dir>] [--keys <id:hex>]
+ *     --bucket <dir> --api <url> [--books tit,rut] [--resume] [--max-age-hours 24] [--out-dir <dir>] [--cache <dir>] [--keys <id:hex>]
  *
  * - `--bucket` is a local copy of the staging bucket (a folder with `v3/catalog`, `v3/seg`); catalogs are verified with
  *   the trusted key as the Worker does (`--keys`, default the staging key of wrangler.toml).
  * - The API Worker is only read (GET): concurrency 4, retries with backoff on 429 and 5xx. Answers are cached in
- *   `<out-dir>/sweep-cache`; `--resume` reads that cache instead of asking again.
- * - `<out-dir>/verified.json` (default src/packs3) is merged, and `<out-dir>/verified-differences-<lang>-<kind>.md`
- *   lists the exceptions beside it.
+ *   `<out-dir>/sweep-cache` (git-ignored) with the fetch time and the catalog key; `--resume` reads that cache instead
+ *   of asking again, but refetches an answer of another catalog key or older than `--max-age-hours` (24).
+ * - A whole run merges `<out-dir>/verified.json` (default src/packs3) and writes `verified-differences-<lang>-<kind>.md`
+ *   beside it. A narrowed run (`--books`) NEVER touches verified.json: it writes the report and
+ *   `sweep-partial-<lang>-<kind>.json` only. Zero items for the kind or a resource is an error and writes nothing.
+ * - TODO (Task 14): the API's own chapter count of a book is not cheaply available, so chapters come from format 3's
+ *   book data (text events, helps rows incl. "front"); a chapter only the API has is not an item, and Task 13 must
+ *   serve only the `chapters` an entry lists.
  * - Until Task 13 removes the adapters' (language, book) lists, they are opened for the sweep (every book), so the
  *   sweep says what the adapter does on a book, not that the book is not on a list.
  * Pure parts are exported for tests/unit/packs3-sweep.test.ts.
@@ -35,9 +40,10 @@ const SUBJECTS = {
   tw: ["Translation Words"],
   ta: ["Translation Academy"],
 };
-// `articles` and `search` cover both article resources, in the order ta, tw.
+// `articles` covers both article resources, in the order ta, tw. `search` covers tw only: that is all
+// adapters/search.ts serves (types=tw), so a ta entry would claim a proof nothing made.
 SUBJECTS.articles = [...SUBJECTS.ta, ...SUBJECTS.tw];
-SUBJECTS.search = SUBJECTS.articles;
+SUBJECTS.search = SUBJECTS.tw;
 
 const STAGING_KEY = "78d2e6299a2de4d0:c2057cec32b948452849e7fcba6af323961a091ea82645eb297bb368e1c8d911";
 
@@ -79,8 +85,123 @@ export function listExceptions(results) {
   return [...new Set(results.filter((r) => r.status !== "equal").map((r) => r.item))].sort();
 }
 
-export function buildEntry(results, swept) {
-  return { items: new Set(results.map((r) => r.item)).size, exceptions: listExceptions(results), swept };
+/**
+ * A verified.json entry (key `"<lang>|<resource key>|<release>|<kind>"`):
+ *   { items: N, exceptions: [item, ...], swept: ISO date,
+ *     deps: { "<catalog>|<resource key>": "<release>" },   // every other resource the answers depended on
+ *     chapters: { "TIT": [0, 1, 2, "front"] },             // books/chapters swept (passage: items are verses + ranges)
+ *     wholeBooks: ["TIT"],                                  // notes/links: the whole-book item was swept
+ *     ids: ["bible/kt/grace"],                              // articles and search: the exact items swept
+ *     skippedBooks: ["GEN"] }                               // passage: books the resource lists that are not served (OT)
+ * Task 13 serves an item only if it is in that list, is not an exception, and every `deps` release equals the catalog's.
+ */
+export function buildEntry(results, swept, extra = {}) {
+  return { items: new Set(results.map((r) => r.item)).size, exceptions: listExceptions(results), swept, ...extra };
+}
+
+/** Only a run over the whole resource may write verified.json: any narrowed run (`--books`) never does. */
+export function shouldWriteVerified(opts) {
+  return !(opts.books && opts.books.length > 0);
+}
+
+/** Keys of the resources that have no item (a whole run with one is an error, not an empty proof). */
+export function emptyResources(items, resources) {
+  return resources.filter((r) => !items.some((it) => it.res.includes(r.key))).map((r) => r.key);
+}
+
+/** Is a cached API answer still usable: same catalog key and fetched less than `maxAgeHours` ago. */
+export function cacheFresh(cached, catalogKey, nowMs, maxAgeHours) {
+  if (!cached || typeof cached.fetchedAt !== "number" || cached.catalog !== catalogKey) return false;
+  return nowMs - cached.fetchedAt <= maxAgeHours * 3600 * 1000;
+}
+
+/** `owner/lang/id` keys of the zips named in an answer's `versions[].source` (`.../<owner>/<lang>_<id>/archive/<rel>.zip`). */
+export function keysFromVersions(versions) {
+  const keys = new Set();
+  for (const v of versions ?? []) {
+    const m = /^https:\/\/git\.door43\.org\/([^/]+)\/([^/]+)\/archive\//.exec(String(v?.source ?? ""));
+    if (!m) continue;
+    const i = m[2].indexOf("_");
+    if (i > 0) keys.add(`${m[1]}/${m[2].slice(0, i)}/${m[2].slice(i + 1)}`);
+  }
+  return [...keys].sort();
+}
+
+/**
+ * The results that count for one resource. An item of the resource's list whose answer did not contain the resource
+ * (passage: `used` lists the resources the answer was made of) is an exception for it.
+ */
+export function resultsForResource(key, results) {
+  return results
+    .filter((r) => r.res.includes(key))
+    .map((r) => (r.used && !r.used.includes(key) ? { ...r, status: "not-in-answer" } : r));
+}
+
+const HELPER = { notes: "Translation Academy", links: "Translation Words" };
+const ORIGINALS = ["Greek New Testament", "Hebrew Old Testament"];
+
+/**
+ * The other resources an answer depended on: `{ "<catalog>|<resource key>": "<release>" }`.
+ * `catalogs` is `[{ name, resources }]` (own catalog first, then common). passage: the resources the answers were made of
+ * (`usedKeys`); notes/links: the aligned text, the originals and the article resource they take titles from;
+ * questions, articles and search stand alone.
+ */
+export function depsFor(kind, selfKey, catalogs, { alignedKey, usedKeys = [] } = {}) {
+  const wanted = (r) => {
+    if (r.key === selfKey) return false;
+    if (kind === "passage") return usedKeys.includes(r.key);
+    if (kind === "notes" || kind === "links") {
+      return r.key === alignedKey || ORIGINALS.includes(r.subject) || r.subject === HELPER[kind];
+    }
+    return false;
+  };
+  const out = {};
+  for (const c of catalogs) for (const r of c.resources ?? []) if (wanted(r)) out[`${c.name}|${r.key}`] = r.release;
+  return Object.fromEntries(Object.keys(out).sort().map((k) => [k, out[k]]));
+}
+
+/** What an item list covers: `{ chapters, wholeBooks? }` for items with a book, else `{ ids }`. */
+export function coverageOf(items) {
+  const chapterItems_ = items.filter((i) => i.book);
+  if (!chapterItems_.length) return { ids: [...new Set(items.map((i) => i.item))].sort() };
+  const chapters = {};
+  const whole = new Set();
+  for (const i of chapterItems_) {
+    if (i.chapter === undefined) whole.add(i.book);
+    else (chapters[i.book] ??= new Set()).add(i.chapter);
+  }
+  const order = (a, b) => (typeof a === "number" && typeof b === "number" ? a - b : typeof a === "number" ? -1 : typeof b === "number" ? 1 : String(a) < String(b) ? -1 : 1);
+  return {
+    chapters: Object.fromEntries(Object.keys(chapters).sort().map((b) => [b, [...chapters[b]].sort(order)])),
+    ...(whole.size ? { wholeBooks: [...whole].sort() } : {}),
+  };
+}
+
+/** `{ chapter: [verse numbers] }` from lists of text events (`[pos, "chapter"|"verse", n]`): union, numeric verses only. */
+export function verseMap(eventLists) {
+  const map = {};
+  for (const events of eventLists) {
+    let chapter;
+    for (const e of events ?? []) {
+      if (e[1] === "chapter") {
+        chapter = /^\d+$/.test(String(e[2])) ? Number(e[2]) : undefined;
+        if (chapter !== undefined) (map[chapter] ??= new Set());
+      } else if (e[1] === "verse" && chapter !== undefined && /^\d+$/.test(String(e[2]))) map[chapter].add(Number(e[2]));
+    }
+  }
+  return Object.fromEntries(
+    Object.keys(map).map(Number).sort((a, b) => a - b).map((c) => [c, [...map[c]].sort((a, b) => a - b)]),
+  );
+}
+
+/** Passage items of a book: `BOOK C:V` for every verse and one `BOOK C:1-N` range per chapter (N > 1). */
+export function passageItems(book, verses) {
+  const out = [];
+  for (const [c, vs] of Object.entries(verses)) {
+    for (const v of vs) out.push({ item: `${book} ${c}:${v}`, book, chapter: Number(c) });
+    if (vs.length > 1) out.push({ item: `${book} ${c}:1-${vs[vs.length - 1]}`, book, chapter: Number(c) });
+  }
+  return out;
 }
 
 /** Existing entries plus new ones (a new entry replaces the same key); keys sorted; inputs untouched. */
@@ -98,11 +219,12 @@ export function classifyItem(attempt, api) {
   return diffs.length ? { status: "differs", diffs } : { status: "equal" };
 }
 
-/** Chapter numbers of several lists of chapter strings: numeric only, unique, ascending. */
+/** Chapters of several lists of chapter strings, unique: numbers ascending (0 is the intro), then names such as "front". */
 export function unionChapters(lists) {
-  const set = new Set();
-  for (const list of lists) for (const c of list) if (/^\d+$/.test(String(c))) set.add(Number(c));
-  return [...set].sort((a, b) => a - b);
+  const nums = new Set();
+  const names = new Set();
+  for (const list of lists) for (const c of list) (/^\d+$/.test(String(c)) ? nums.add(Number(c)) : names.add(String(c)));
+  return [...[...nums].sort((a, b) => a - b), ...[...names].sort()];
 }
 
 /** `["TIT", "TIT 1", …]` (the whole-book item only where `withBook`). */
@@ -157,11 +279,14 @@ async function localBucket(dir) {
 }
 
 /** GET with retries (429 and 5xx back off, 4 tries after the first); `undefined` for any other non-2xx. Cached on disk. */
-async function apiGet(base, req, cacheDir, resume) {
+async function apiGet(base, req, cache) {
   const qs = new URLSearchParams(req.params).toString();
   const url = `${base.replace(/\/$/, "")}${req.path}?${qs}`;
-  const file = join(cacheDir, createHash("sha1").update(url).digest("hex") + ".json");
-  if (resume && existsSync(file)) return JSON.parse(readFileSync(file, "utf8")).body;
+  const file = join(cache.dir, createHash("sha1").update(url).digest("hex") + ".json");
+  if (cache.resume && existsSync(file)) {
+    const cached = JSON.parse(readFileSync(file, "utf8"));
+    if (cacheFresh(cached, cache.catalogKey, Date.now(), cache.maxAgeHours)) return cached.body;
+  }
   let last = 0;
   for (let attempt = 0; attempt < 5; attempt++) {
     let res;
@@ -178,7 +303,7 @@ async function apiGet(base, req, cacheDir, resume) {
       continue;
     }
     const body = res.ok ? await res.json().catch(() => undefined) : undefined;
-    writeFileSync(file, JSON.stringify({ url, status: res.status, body }));
+    writeFileSync(file, JSON.stringify({ url, status: res.status, fetchedAt: Date.now(), catalog: cache.catalogKey, body }));
     return body;
   }
   console.error(`API gave ${last} for ${url} after retries`);
@@ -214,17 +339,20 @@ async function main() {
   const cacheDir = resolve(arg("cache") ?? join(outDir, "sweep-cache"));
   mkdirSync(cacheDir, { recursive: true });
   const only = arg("books")?.toLowerCase().split(",").filter(Boolean);
+  const maxAgeHours = Number(arg("max-age-hours") ?? 24);
+  const writeVerified = shouldWriteVerified({ books: only });
 
   const { getCatalogs } = await import("../src/packs3/catalogs.ts");
   const { withReader } = await import("../src/packs3/readers.ts");
   const { attemptPacks3 } = await import("../src/packs3/answer.ts");
-  const { BOOKS } = await import("../src/packs3/adapters/scripture.ts");
+  const { BOOKS, FIRST_NT } = await import("../src/packs3/adapters/scripture.ts");
   const { GROUPS, pathOfId } = await import("../src/packs3/adapters/articles.ts");
   const helps = await import("../src/packs3/adapters/helps.ts");
   const questions = await import("../src/packs3/adapters/questions.ts");
   // Open the adapters' hand lists of books for the sweep (Task 13 removes them).
-  for (const m of [helps.VERIFIED_BOOKS, questions.VERIFIED_QUESTION_BOOKS]) {
+  for (const [name, m] of [["VERIFIED_BOOKS", helps.VERIFIED_BOOKS], ["VERIFIED_QUESTION_BOOKS", questions.VERIFIED_QUESTION_BOOKS]]) {
     if (m instanceof Map) m.set(lang, new Set(BOOKS));
+    else console.error(`warning: ${name} is not a Map any more; the sweep did not open it (the adapter's own book list applies)`);
   }
 
   const env = {
@@ -235,11 +363,13 @@ async function main() {
   const cats = await getCatalogs(env, lang);
   if (!cats) throw new Error(`no verified catalogs for ${lang} in ${bucketDir}`);
   const own = cats.catalogs.find((c) => c.name !== "common");
+  const catList = [own, ...cats.catalogs.filter((c) => c !== own)].map((c) => ({ name: c.name, resources: c.catalog.resources ?? [] }));
   const resources = resourcesOfKind(kind, own.catalog.resources ?? []);
   if (!resources.length) throw new Error(`the ${lang} catalog has no resource for ${kind}`);
 
-  // Items: { res (resource keys they prove), sub (request kind), item }.
+  // Items: { res (resource keys they count for), sub (request kind), item, book?, chapter? }.
   const items = [];
+  const skippedBooks = new Map(); // resource key -> books it lists that are not served
   if (kind === "search") {
     for (const q of searchQueries(lang)) items.push({ sub: "search", item: q, res: resources.map((r) => r.key) });
   } else if (kind === "articles") {
@@ -255,23 +385,43 @@ async function main() {
   } else {
     const hasBit = (r, i) => ((r.books?.[i >> 3] ?? 0) & (1 << (i & 7))) !== 0;
     const withBook = kind === "notes" || kind === "links";
-    const codes = BOOKS.filter((code, i) => resources.some((r) => hasBit(r, i)) && (!only || only.includes(code)));
-    for (const code of codes) {
-      const chapters = await withReader(env, lang, async (reader) => {
+    for (const [i, code] of BOOKS.entries()) {
+      const listing = resources.filter((r) => hasBit(r, i));
+      if (!listing.length || (only && !only.includes(code))) continue;
+      const B = code.toUpperCase();
+      if (kind === "passage" && i < FIRST_NT) {
+        // The scripture adapter serves the New Testament only; Hebrew is not proven.
+        for (const r of listing) skippedBooks.set(r.key, [...(skippedBooks.get(r.key) ?? []), B]);
+        continue;
+      }
+      const res = listing.map((r) => r.key);
+      const found = await withReader(env, lang, async (reader) => {
         const data = await reader.book(code);
-        const lists = [];
-        for (const t of data?.texts ?? []) lists.push((t.events ?? []).filter((e) => e[1] === "chapter").map((e) => e[2]));
+        const textEvents = (data?.texts ?? []).map((t) => t.events ?? []);
+        const orig = await reader.orig(code).catch(() => undefined);
+        if (orig?.events) textEvents.push(orig.events);
+        const lists = textEvents.map((ev) => ev.filter((e) => e[1] === "chapter").map((e) => e[2]));
         for (const v of Object.values(data ?? {})) {
           if (v && Array.isArray(v.rows)) lists.push(v.rows.map((r) => String(r.ref).split(":")[0]));
         }
-        const orig = await reader.orig(code).catch(() => undefined);
-        if (orig?.events) lists.push(orig.events.filter((e) => e[1] === "chapter").map((e) => e[2]));
-        return unionChapters(lists);
+        return { chapters: unionChapters(lists), verses: verseMap(textEvents) };
       });
-      for (const item of chapterItems(code.toUpperCase(), chapters ?? [], withBook)) {
-        items.push({ sub: kind, item, res: resources.map((r) => r.key) });
+      if (kind === "passage") {
+        for (const p of passageItems(B, found?.verses ?? {})) items.push({ ...p, sub: kind, res });
+      } else {
+        if (withBook) items.push({ sub: kind, item: B, book: B, res });
+        for (const c of found?.chapters ?? []) items.push({ sub: kind, item: `${B} ${c}`, book: B, chapter: c, res });
       }
     }
+  }
+  if (!items.length) {
+    console.error(`${lang} ${kind}: no items to sweep; nothing written`);
+    process.exit(2);
+  }
+  const empty = emptyResources(items, resources);
+  if (empty.length && writeVerified) {
+    console.error(`${lang} ${kind}: no items for ${empty.join(", ")}; nothing written`);
+    process.exit(2);
   }
   console.log(`${lang} ${kind}: ${items.length} items, ${resources.length} resource(s)`);
 
@@ -283,11 +433,13 @@ async function main() {
     return p;
   };
   let done = 0;
+  const cache = { dir: cacheDir, resume: flag("resume"), catalogKey: cats.key, maxAgeHours };
   const results = await pool(items, 4, async (it) => {
     const req = requestOf(it.sub, lang, it.item);
-    const body = await apiGet(api, req, cacheDir, flag("resume"));
+    const body = await apiGet(api, req, cache);
     const attempt = await runAdapter(req.path, req.params);
-    const r = { ...it, ...classifyItem(attempt, body) };
+    const used = kind === "passage" && attempt.hit ? keysFromVersions(attempt.value?.versions) : undefined;
+    const r = { ...it, ...classifyItem(attempt, body), ...(used ? { used } : {}) };
     if (++done % 100 === 0) console.log(`${done}/${items.length}`);
     return r;
   });
@@ -295,10 +447,18 @@ async function main() {
   const swept = new Date().toISOString();
   const entries = {};
   const lines = [`# Sweep differences: ${lang} ${kind}`, "", `Swept ${swept}, API ${api}, catalog ${cats.key}.`, ""];
+  const alignedKey = helps.ALIGNED_TEXT.get(lang);
   for (const r of resources) {
-    const mine = results.filter((x) => x.res.includes(r.key));
+    const mine = resultsForResource(r.key, results);
+    if (!mine.length) continue; // only a narrowed run gets here with none
     const key = sweepKey(lang, r.key, r.release, kind);
-    entries[key] = buildEntry(mine, swept);
+    const usedKeys = [...new Set(mine.flatMap((x) => x.used ?? []))];
+    const skipped = skippedBooks.get(r.key);
+    entries[key] = buildEntry(mine, swept, {
+      deps: depsFor(kind, r.key, catList, { alignedKey, usedKeys }),
+      ...coverageOf(items.filter((it) => it.res.includes(r.key))),
+      ...(skipped ? { skippedBooks: skipped } : {}),
+    });
     const bad = mine.filter((x) => x.status !== "equal");
     const by = {};
     for (const x of bad) {
@@ -306,8 +466,15 @@ async function main() {
       by[why] = (by[why] ?? 0) + 1;
     }
     lines.push(`## ${key}`, "", `Items ${entries[key].items}, exceptions ${entries[key].exceptions.length}` +
-      (bad.length ? ` (${Object.entries(by).map(([k, n]) => `${k} ${n}`).join(", ")})` : ""), "");
+      (bad.length ? ` (${Object.entries(by).map(([k, n]) => `${k} ${n}`).join(", ")})` : "") +
+      (writeVerified ? "" : " (narrowed run: not written to verified.json)"), "");
+    let listed = 0;
     for (const x of bad) {
+      if (x.status === "not-in-answer") continue; // counted above, too many to list
+      if (listed++ >= 200) {
+        lines.push("- and more (see the counts above)");
+        break;
+      }
       if (x.status === "differs") {
         lines.push(`- ${x.item}: differs`);
         for (const d of x.diffs.slice(0, 3)) lines.push(`  - ${d.path}: today ${cellOf(d.a)} format 3 ${cellOf(d.b)}`);
@@ -317,12 +484,21 @@ async function main() {
     lines.push("");
   }
   const vfile = join(outDir, "verified.json");
-  const existing = existsSync(vfile) ? JSON.parse(readFileSync(vfile, "utf8")) : {};
-  writeFileSync(vfile, JSON.stringify(mergeVerified(existing, entries), null, 2) + "\n");
+  const pfile = join(outDir, `sweep-partial-${lang}-${kind}.json`);
+  if (writeVerified) {
+    const existing = existsSync(vfile) ? JSON.parse(readFileSync(vfile, "utf8")) : {};
+    writeFileSync(vfile, JSON.stringify(mergeVerified(existing, entries), null, 2) + "\n");
+  } else {
+    writeFileSync(pfile, JSON.stringify(entries, null, 2) + "\n");
+  }
   const rfile = join(outDir, `verified-differences-${lang}-${kind}.md`);
   writeFileSync(rfile, lines.join("\n") + "\n");
   for (const [k, e] of Object.entries(entries)) console.log(`${k}: ${e.items} items, ${e.exceptions.length} exceptions`);
-  console.log(`wrote ${vfile} and ${rfile}`);
+  console.log(
+    writeVerified
+      ? `wrote ${vfile} and ${rfile}`
+      : `narrowed run (--books): verified.json NOT written; wrote ${pfile} and ${rfile}`,
+  );
 }
 
 const self = process.argv[1] ? process.argv[1].replace(/\\/g, "/") : "";

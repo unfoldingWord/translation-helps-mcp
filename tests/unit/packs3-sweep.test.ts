@@ -23,8 +23,12 @@ describe("sweep-packs3 pure parts", () => {
     expect(
       s.resourcesOfKind("passage", resources).map((r: any) => r.key),
     ).toEqual(["a/en/ult"]);
+    // search is served from tw only: no ta entry
     expect(
       s.resourcesOfKind("search", resources).map((r: any) => r.key),
+    ).toEqual(["a/en/tw"]);
+    expect(
+      s.resourcesOfKind("articles", resources).map((r: any) => r.key),
     ).toEqual(["a/en/ta", "a/en/tw"]);
     expect(s.resourcesOfKind("nonsense", resources)).toEqual([]);
   });
@@ -49,6 +53,21 @@ describe("sweep-packs3 pure parts", () => {
       items: 2,
       exceptions: ["b"],
       swept: "2026-11-14T00:00:00.000Z",
+    });
+    // the documented shape: deps and the exact coverage ride along
+    expect(
+      s.buildEntry(results, "d", {
+        deps: { "en|x/y/z": "v1" },
+        chapters: { TIT: [1] },
+        skippedBooks: ["GEN"],
+      }),
+    ).toEqual({
+      items: 2,
+      exceptions: ["b"],
+      swept: "d",
+      deps: { "en|x/y/z": "v1" },
+      chapters: { TIT: [1] },
+      skippedBooks: ["GEN"],
     });
   });
 
@@ -102,12 +121,13 @@ describe("sweep-packs3 pure parts", () => {
       "TIT 3",
     ]);
     expect(s.chapterItems("TIT", [1, 2], false)).toEqual(["TIT 1", "TIT 2"]);
+    // numbers ascending (0 = intro), then names such as "front"
     expect(
       s.unionChapters([
         ["1", "2"],
-        ["2", "10", "x"],
+        ["2", "10", "front", "0"],
       ]),
-    ).toEqual([1, 2, 10]);
+    ).toEqual([0, 1, 2, 10, "front"]);
   });
 
   it("has 40 distinct search queries per language, already normalized", () => {
@@ -144,6 +164,160 @@ describe("sweep-packs3 pure parts", () => {
     expect(s.requestOf("search", "en", "grace")).toEqual({
       path: "/api/v1/search",
       params: { q: "grace", language: "en", types: "tw", limit: "5" },
+    });
+  });
+
+  it("writes verified.json only for a whole run, never a narrowed one", () => {
+    expect(s.shouldWriteVerified({})).toBe(true);
+    expect(s.shouldWriteVerified({ books: undefined })).toBe(true);
+    expect(s.shouldWriteVerified({ books: [] })).toBe(true);
+    expect(s.shouldWriteVerified({ books: ["tit"] })).toBe(false);
+  });
+
+  it("finds resources without items", () => {
+    const items = [{ item: "a", res: ["r1"] }];
+    expect(s.emptyResources(items, [{ key: "r1" }, { key: "r2" }])).toEqual([
+      "r2",
+    ]);
+    expect(s.emptyResources([], [{ key: "r1" }])).toEqual(["r1"]);
+  });
+
+  it("trusts a cached answer only for the same catalog key and within the max age", () => {
+    const h = 3600 * 1000;
+    const c = { fetchedAt: 1000, catalog: "K", body: {} };
+    expect(s.cacheFresh(c, "K", 1000 + 23 * h, 24)).toBe(true);
+    expect(s.cacheFresh(c, "K", 1000 + 25 * h, 24)).toBe(false);
+    expect(s.cacheFresh(c, "K", 1000 + 25 * h, 48)).toBe(true);
+    expect(s.cacheFresh(c, "OTHER", 1000, 24)).toBe(false);
+    expect(s.cacheFresh({ body: {} }, "K", 1000, 24)).toBe(false);
+    expect(s.cacheFresh(undefined, "K", 1000, 24)).toBe(false);
+  });
+
+  it("reads the resource keys an answer was made of from its sources", () => {
+    expect(
+      s.keysFromVersions([
+        {
+          source: "https://git.door43.org/unfoldingWord/en_ult/archive/v91.zip",
+        },
+        {
+          source: "https://git.door43.org/es-419_gl/es-419_glt/archive/v5.zip",
+        },
+        {
+          source:
+            "https://git.door43.org/unfoldingWord/el-x-koine_ugnt/archive/v0.34.zip",
+        },
+        { source: "nonsense" },
+      ]),
+    ).toEqual([
+      "es-419_gl/es-419/glt",
+      "unfoldingWord/el-x-koine/ugnt",
+      "unfoldingWord/en/ult",
+    ]);
+  });
+
+  it("credits a passage item only to resources the answer contained", () => {
+    const results = [
+      {
+        item: "TIT 1:1",
+        res: ["a/ult", "a/ust"],
+        status: "equal",
+        used: ["a/ult", "x/ugnt"],
+      },
+      { item: "TIT 1:2", res: ["a/ult"], status: "equal", used: ["a/ult"] },
+      { item: "TIT 2:1", res: ["a/ust"], status: "equal" },
+    ];
+    const ult = s.resultsForResource("a/ult", results);
+    expect(s.listExceptions(ult)).toEqual([]);
+    expect(ult).toHaveLength(2);
+    const ust = s.resultsForResource("a/ust", results);
+    expect(s.listExceptions(ust)).toEqual(["TIT 1:1"]);
+    expect(ust).toHaveLength(2);
+  });
+
+  it("records the releases of the resources an answer depended on", () => {
+    const cats = [
+      {
+        name: "en",
+        resources: [
+          { key: "o/en/tn", subject: "TSV Translation Notes", release: "v1" },
+          { key: "o/en/ult", subject: "Aligned Bible", release: "v2" },
+          { key: "o/en/ust", subject: "Aligned Bible", release: "v3" },
+          { key: "o/en/ta", subject: "Translation Academy", release: "v4" },
+          { key: "o/en/tw", subject: "Translation Words", release: "v5" },
+        ],
+      },
+      {
+        name: "common",
+        resources: [
+          { key: "o/el/ugnt", subject: "Greek New Testament", release: "v6" },
+          { key: "o/en/ta", subject: "Translation Academy", release: "v4" },
+        ],
+      },
+    ];
+    expect(
+      s.depsFor("notes", "o/en/tn", cats, { alignedKey: "o/en/ult" }),
+    ).toEqual({
+      "common|o/el/ugnt": "v6",
+      "common|o/en/ta": "v4",
+      "en|o/en/ta": "v4",
+      "en|o/en/ult": "v2",
+    });
+    expect(
+      s.depsFor("links", "o/en/twl", cats, { alignedKey: "o/en/ult" }),
+    ).toEqual({
+      "common|o/el/ugnt": "v6",
+      "en|o/en/tw": "v5",
+      "en|o/en/ult": "v2",
+    });
+    expect(
+      s.depsFor("passage", "o/en/ult", cats, {
+        usedKeys: ["o/en/ult", "o/en/ust", "o/el/ugnt"],
+      }),
+    ).toEqual({ "common|o/el/ugnt": "v6", "en|o/en/ust": "v3" });
+    expect(s.depsFor("questions", "o/en/tq", cats)).toEqual({});
+    expect(s.depsFor("articles", "o/en/ta", cats)).toEqual({});
+  });
+
+  it("says exactly which items an entry covers", () => {
+    expect(
+      s.coverageOf([
+        { item: "TIT", book: "TIT" },
+        { item: "TIT 2", book: "TIT", chapter: 2 },
+        { item: "TIT 1", book: "TIT", chapter: 1 },
+        { item: "TIT front", book: "TIT", chapter: "front" },
+        { item: "TIT 0", book: "TIT", chapter: 0 },
+      ]),
+    ).toEqual({ chapters: { TIT: [0, 1, 2, "front"] }, wholeBooks: ["TIT"] });
+    expect(
+      s.coverageOf([{ item: "b/x" }, { item: "a/y" }, { item: "b/x" }]),
+    ).toEqual({ ids: ["a/y", "b/x"] });
+  });
+
+  it("makes passage items: every verse and one range per chapter, from the union of verse events", () => {
+    const ev1 = [
+      [0, "chapter", "1"],
+      [1, "verse", "1"],
+      [2, "verse", "2"],
+      [3, "chapter", "2"],
+      [4, "verse", "1"],
+    ];
+    const ev2 = [
+      [0, "chapter", "1"],
+      [1, "verse", "3"],
+      [2, "verse", "1"],
+    ];
+    const verses = s.verseMap([ev1, ev2]);
+    expect(verses).toEqual({ 1: [1, 2, 3], 2: [1] });
+    expect(s.passageItems("TIT", verses).map((x: any) => x.item)).toEqual([
+      "TIT 1:1",
+      "TIT 1:2",
+      "TIT 1:3",
+      "TIT 1:1-3",
+      "TIT 2:1",
+    ]);
+    expect(s.passageItems("TIT", verses)[0]).toMatchObject({
+      book: "TIT",
+      chapter: 1,
     });
   });
 
