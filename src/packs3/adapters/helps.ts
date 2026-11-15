@@ -5,15 +5,18 @@
  * - Format 3 rewrites a note body's links as ids (`ref:tit 1:5`, `[[ta:…]]`, `[[tw:…]]`); `restoreLinks` gives them
  *   back in the form the en and es-419 notes use (`../01/05.md`, `rc:` links with the `*` language). Another form could have been
  *   written: the sweep proves each chapter, and a body with a form it cannot rebuild is not returned.
- * - The aligned words (`gatewayQuote.aligned`) are rebuilt from the verse's alignment for New Testament books only: on
- *   Hebrew books some rows of the route differ (its own quote matching), and which ones cannot be told from the data.
+ * - The aligned words (`gatewayQuote.aligned`) are rebuilt from the verse's alignment (notes: every book; word links:
+ *   New Testament only). Where the route's own quote matching answers otherwise (repeated words, Hebrew rows), the
+ *   sweep keeps the chapter as an exception.
  * - Only the resources of the tables below, checked against the route's live answers (2026-11-12), are answered.
  */
 import {
   formatQuoteDisplay,
   isCanonicalUsfmBook,
+  QuoteMatcher,
   verseOverlapsQueryRange,
 } from "@translation-helps/door43";
+import { joinAlignedTokens } from "../../api/routes/alignmentHelper";
 import type { PackReader } from "../../../vendor/language-pack-client/index.js";
 import { resolveNotesQuery } from "../../api/routes/helpers";
 import { markdownHeading } from "../../api/routes/notes";
@@ -24,10 +27,10 @@ import {
 } from "../../api/routes/packViews";
 import type { Packs3Env } from "../catalogs";
 import { warnOnce } from "../keys";
-import { withReader } from "../readers";
+import { withReader, type SizeProbe } from "../readers";
 import type { Packs3Params } from "../answer";
 import { depsCover, isVerified, releaseOfCatalogs } from "../verified";
-import { BOOKS, FIRST_NT } from "./scripture";
+import { BOOKS, bookBytes, FIRST_NT } from "./scripture";
 
 /**
  * The route's `supportReference` of a row with no article link in format 3 is "" only if the builder did not drop an
@@ -424,6 +427,20 @@ type Ctx = {
   releases: Map<string, string>;
 };
 
+/**
+ * The compressed bytes a helps call opens: the book, plus its originals when aligned words are built (default shape).
+ * Over READER_BYTE_BUDGET (en Psalms, Genesis…) the call runs in an exclusive reader; over its cap it gives `null`.
+ */
+export function helpsNeed(
+  reader: SizeProbe,
+  code: string,
+  indexMode: boolean,
+): number {
+  if (!indexMode) return bookBytes(reader, code);
+  const unit = reader.unitOf("book", code);
+  return unit ? reader.size(unit) : 0;
+}
+
 async function withHelps<T>(
   env: Packs3Env,
   params: HelpsParams,
@@ -437,50 +454,55 @@ async function withHelps<T>(
   if (await viewsExist(env, q, params.language, kind)) return undefined;
   const subject =
     kind === "notes" ? "TSV Translation Notes" : "TSV Translation Words Links";
-  const answer = await withReader(env, params.language, async (reader, c) => {
-    if (!reader.listed(`book:${code}`)) return undefined;
-    const own = c.catalogs.find((x) => x.name !== "common");
-    const resources = ((own?.catalog as { resources?: Resource[] })
-      ?.resources ?? []) as Resource[];
-    const data = (await reader.book(code)) as Ctx["data"] | undefined;
-    const table = data?.[kind] as Table | undefined;
-    if (!data || !table?.res || !Array.isArray(table.rows)) return undefined;
-    const resource = resources.find(
-      (r) => r.key === table.res && r.subject === subject,
-    );
-    if (!resource) return undefined;
-    const releaseOf = releaseOfCatalogs(c.catalogs);
-    // The sweep's items: the whole book (`*`) or one chapter; a verse or a range is served from its chapter's proof.
-    // The default shape of a whole book is not a route answer: only `fields=index` has one.
-    if (q.chapter === "*" && !q.indexMode) return undefined;
-    const item =
-      q.chapter === "*"
-        ? q.book.toUpperCase()
-        : `${q.book.toUpperCase()} ${q.chapter}`;
-    if (
-      !isVerified(c.lang, resource.key, resource.release, kind, item, {
+  const answer = await withReader(
+    env,
+    params.language,
+    async (reader, c) => {
+      if (!reader.listed(`book:${code}`)) return undefined;
+      const own = c.catalogs.find((x) => x.name !== "common");
+      const resources = ((own?.catalog as { resources?: Resource[] })
+        ?.resources ?? []) as Resource[];
+      const data = (await reader.book(code)) as Ctx["data"] | undefined;
+      const table = data?.[kind] as Table | undefined;
+      if (!data || !table?.res || !Array.isArray(table.rows)) return undefined;
+      const resource = resources.find(
+        (r) => r.key === table.res && r.subject === subject,
+      );
+      if (!resource) return undefined;
+      const releaseOf = releaseOfCatalogs(c.catalogs);
+      // The sweep's items: the whole book (`*`) or one chapter; a verse or a range is served from its chapter's proof.
+      // The default shape of a whole book is not a route answer: only `fields=index` has one.
+      if (q.chapter === "*" && !q.indexMode) return undefined;
+      const item =
+        q.chapter === "*"
+          ? q.book.toUpperCase()
+          : `${q.book.toUpperCase()} ${q.chapter}`;
+      if (
+        !isVerified(c.lang, resource.key, resource.release, kind, item, {
+          releaseOf,
+          index: q.indexMode,
+        })
+      ) {
+        warnOnce(params.language, "unverified-resource");
+        return undefined;
+      }
+      const placed =
+        kind === "notes" ? placeNotes(table.rows) : placeLinks(table.rows);
+      if (!placed) return undefined;
+      return use({
+        q,
+        lang: c.lang,
+        book: q.book,
+        reader,
+        data,
+        resource,
+        placed,
         releaseOf,
-        index: q.indexMode,
-      })
-    ) {
-      warnOnce(params.language, "unverified-resource");
-      return undefined;
-    }
-    const placed =
-      kind === "notes" ? placeNotes(table.rows) : placeLinks(table.rows);
-    if (!placed) return undefined;
-    return use({
-      q,
-      lang: c.lang,
-      book: q.book,
-      reader,
-      data,
-      resource,
-      placed,
-      releaseOf,
-      releases: new Map(resources.map((r) => [r.key, r.release])),
-    });
-  });
+        releases: new Map(resources.map((r) => [r.key, r.release])),
+      });
+    },
+    { need: (r) => helpsNeed(r, code, q.indexMode) },
+  );
   return answer ?? undefined;
 }
 
@@ -519,7 +541,10 @@ async function prepare(
   | {
       chosen: Placed[];
       titles: Titles;
+      /** Word links: from the builder's placement of the words. */
       aligned?: ReturnType<typeof alignedOf>;
+      /** Notes: by the route's own quote matcher. */
+      matched?: ReturnType<typeof routeMatcherOf>;
     }
   | undefined
 > {
@@ -552,8 +577,11 @@ async function prepare(
     return undefined;
   }
   if (ctx.q.indexMode) return { chosen, titles };
-  // Aligned words: New Testament only, from the verified text.
-  if (BOOKS.indexOf(ctx.book.toLowerCase()) < FIRST_NT) return undefined;
+  // Aligned words, from the verified text. Notes: every book (the Hebrew original too; the sweep proves each chapter,
+  // and a chapter where the route's matcher answers otherwise is an exception). Word links: New Testament only (their
+  // Old Testament chapters were never swept with aligned words).
+  if (!notes && BOOKS.indexOf(ctx.book.toLowerCase()) < FIRST_NT)
+    return undefined;
   const res = ALIGNED_TEXT.get(ctx.lang);
   // The aligned text must have been swept as passages (the same release the notes were swept with), and the original
   // is one of the entry's `deps`, so a changed release of it has no proof.
@@ -567,13 +595,146 @@ async function prepare(
   )
     return undefined;
   const orig = (await ctx.reader.orig(ctx.book.toLowerCase())) as
-    | { key?: string }
+    | ({ key?: string } & TextUnit)
     | undefined;
   if (!orig?.key) return undefined;
   const unit = res ? ctx.data.texts?.find((t) => t.res === res) : undefined;
+  if (notes) {
+    const matched = routeMatcherOf(ctx.book, orig, unit);
+    return matched ? { chosen, titles, matched } : undefined;
+  }
   const aligned = alignedOf(unit);
   if (!aligned) return undefined;
   return { chosen, titles, aligned };
+}
+
+type Token = { id: number; text: string; type: "word"; align?: number[] };
+
+/**
+ * The word tokens of each verse (`c:v`, numbers as the route's `parseInt` reads them) as the route's USFM tokenizer
+ * gives them: the `\w` words after a `\v`, not the words of a footnote (`\+w`). Original tokens are numbered by their
+ * place among the unit's words (the numbers the alignment uses); aligned tokens from 1 in each verse, with the original
+ * places they translate. A verse number met twice, apart, is `doubtful` (the route keeps only its last part).
+ */
+function verseTokens(
+  unit: TextUnit | undefined,
+  aligned: boolean,
+): { verses: Map<string, Token[]>; doubtful: Set<string> } | undefined {
+  const { pieces, events, align } = unit ?? {};
+  if (!pieces || !events || (aligned && !align)) return undefined;
+  const verses = new Map<string, Token[]>();
+  const doubtful = new Set<string>();
+  const open: string[] = [];
+  let ch = "";
+  let vs = "";
+  let last = "";
+  let e = 0;
+  let w = 0;
+  for (let p = 0; p < pieces.length; p++) {
+    while (e < events.length && events[e][0] <= p) {
+      const [, kind, name] = events[e];
+      if (kind === "chapter") {
+        ch = name;
+        vs = "";
+      } else if (kind === "verse") vs = name;
+      else if (kind === "open") open.push(name);
+      else if (kind === "close") open.pop();
+      e++;
+    }
+    if (!pieces[p][1]) continue;
+    const id = w++;
+    if (open.some((n) => n.startsWith("note:"))) continue;
+    const c = /^\d+/.exec(ch);
+    const v = /^\d+/.exec(vs);
+    if (!c || !v) continue;
+    const key = `${Number(c[0])}:${Number(v[0])}`;
+    let list = verses.get(key);
+    if (!list) verses.set(key, (list = []));
+    else if (key !== last) doubtful.add(key);
+    last = key;
+    const text = pieces[p][0];
+    if (!aligned) list.push({ id, text, type: "word" });
+    else {
+      const to = align![id];
+      if (!Array.isArray(to)) return undefined;
+      list.push({
+        id: list.length + 1,
+        text,
+        type: "word",
+        ...(to.length ? { align: [...to] } : {}),
+      });
+    }
+  }
+  if (aligned && w !== align!.length) return undefined;
+  return { verses, doubtful };
+}
+
+/**
+ * The route's `gatewayQuote.aligned` (`batchGatewayQuotes`): its own `QuoteMatcher` finds the quote's words in the
+ * original verse (by text and occurrence, not by the builder's placement), then the aligned words that translate them,
+ * joined by `joinAlignedTokens`. `undefined` for a verse whose words cannot be told the same.
+ */
+export function routeMatcherOf(
+  book: string,
+  orig: TextUnit | undefined,
+  text: TextUnit | undefined,
+):
+  | ((
+      chapter: string,
+      verse: string,
+      quote: string,
+      occurrence: string,
+    ) => string | undefined)
+  | undefined {
+  const o = verseTokens(orig, false);
+  const t = verseTokens(text, true);
+  if (!o || !t) return undefined;
+  const matcher = new QuoteMatcher();
+  const upper = book.toUpperCase();
+  return (chapter, verse, quote, occurrence) => {
+    if (verse === "intro" || quote.trim().length === 0) return "";
+    const c = parseInt(chapter, 10);
+    const v = parseInt(verse, 10);
+    if (isNaN(c) || isNaN(v)) return "";
+    const key = `${c}:${v}`;
+    if (o.doubtful.has(key) || t.doubtful.has(key)) return undefined;
+    const chapters = (tokens: Token[] | undefined) =>
+      tokens
+        ? [
+            {
+              number: c,
+              verseCount: 1,
+              paragraphCount: 0,
+              verses: [
+                {
+                  number: v,
+                  text: tokens.map((x) => x.text).join(" "),
+                  tokens,
+                },
+              ],
+            },
+          ]
+        : [];
+    const ref = { book: upper, startChapter: c, startVerse: v, endVerse: v };
+    try {
+      const found = matcher.findOriginalTokens(
+        chapters(o.verses.get(key)),
+        quote,
+        parseInt(occurrence || "1", 10),
+        ref,
+      );
+      if (!found.success || found.totalTokens.length === 0) return "";
+      const hit = matcher.findAlignedTokens(
+        found.totalTokens,
+        chapters(t.verses.get(key)),
+        ref,
+      );
+      if (!hit.success || hit.totalAlignedTokens.length === 0) return "";
+      return joinAlignedTokens(hit.totalAlignedTokens);
+    } catch {
+      return "";
+    }
+  };
 }
 
 /** Today's `gatewayQuote.aligned` of a row, or `undefined` when it cannot be given the same. */
@@ -605,7 +766,7 @@ export async function buildNotesAnswer(
   return withHelps(env, params, "notes", async (ctx) => {
     const prep = await prepare(ctx, true);
     if (!prep) return undefined;
-    const { chosen, titles, aligned } = prep;
+    const { chosen, titles, matched } = prep;
     let exact = true;
     const notes: Array<Record<string, unknown>> = [];
     for (const p of chosen) {
@@ -638,7 +799,7 @@ export async function buildNotesAnswer(
         continue;
       }
       if (body === undefined) exact = false;
-      const at = gatewayAligned(p, quote, aligned!);
+      const at = matched!(p.chapter, p.verse, quote, occurrence);
       if (at === undefined) return undefined;
       notes.push({
         book: "",

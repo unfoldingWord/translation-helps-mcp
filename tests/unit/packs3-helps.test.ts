@@ -17,7 +17,9 @@ import {
   placeNotes,
   chosenRows,
   restoreLinks,
+  helpsNeed,
 } from "../../src/packs3/adapters/helps";
+import { READER_BYTE_BUDGET } from "../../src/packs3/readers";
 import { answerFromPacks3 } from "../../src/packs3/answer";
 import { setVerifiedForTests } from "../../src/packs3/verified";
 import { injectFixtureProofs } from "./packs3-fixture-verified";
@@ -523,10 +525,87 @@ describe("notes", () => {
     });
   });
 
-  it("es-419 RUT 1:1 notes give undefined: its aligned quotes differ from the route's in some rows of the book", async () => {
+  it("es-419 RUT 3:1-2 (Hebrew original): the aligned words of every row equal the route's", async () => {
+    const built = await buildNotesAnswer(env(), {
+      reference: "Rut 3:1-2",
+      language: "es-419",
+    });
+    expect(built).toBeDefined();
+    const rows = (built!.answer as { notes: Row[] }).notes;
+    // Today's answer of the API Worker (GET /api/v1/notes?reference=RUT+3&language=es-419, read 2026-11-15).
+    const want: Array<[string, string, string]> = [
+      ["f68r", "intro", ""],
+      ["t4y5", "intro", ""],
+      ["jdr3", "1", "Entonces Noemí … le dijo"],
+      ["r7ar", "1", "su suegra"],
+      ["f1uc", "1", "Hija mía"],
+      [
+        "nxr8",
+        "1",
+        "No debería yo buscar un lugar de descanso para ti que sea bueno para ti",
+      ],
+      ["uw2p", "1", "un lugar de descanso para ti"],
+      ["jdr4", "2", "Ahora"],
+      ["b4h8", "2", "no es Booz nuestro pariente"],
+      ["j31t", "2", "jóvenes trabajadoras tú has estado"],
+      ["nd8v", "2", "Mira"],
+      ["ms25", "2", "estará aventando"],
+    ];
     expect(
-      await notesFromPacks3(env(), {
-        reference: "Rut 1:1",
+      rows
+        .slice(0, want.length)
+        .map((r) => [
+          r.id,
+          r.verse,
+          (r.gatewayQuote as { aligned: string }).aligned,
+        ]),
+    ).toEqual(want);
+  });
+
+  it("es-419 RUT 2:1: a quote the route's matcher cannot find in the Hebrew words (qere in a footnote) gives the route's empty words", async () => {
+    const built = await buildNotesAnswer(env(), {
+      reference: "Rut 2:1",
+      language: "es-419",
+    });
+    expect(built).toBeDefined();
+    const rows = (built!.answer as { notes: Row[] }).notes;
+    // GET /api/v1/notes?reference=RUT+2&language=es-419, read 2026-11-15: the quote has the qere מוֹדַ֣ע, the text the
+    // ketiv מידע (the qere is in a footnote the route does not read), so the route finds no words.
+    expect(
+      rows.map((r) => [
+        r.id,
+        r.verse,
+        (r.gatewayQuote as { aligned: string }).aligned,
+      ]),
+    ).toEqual([
+      ["f68r", "intro", ""],
+      ["ld2v", "intro", ""],
+      ["ab10", "1", ""],
+      ["t2sn", "1", ""],
+      ["b4q7", "1", "un hombre de gran fortuna"],
+      ["ab09", "1", "del clan de Elimelec"],
+    ]);
+  });
+
+  it("the reader need of a notes call: the book, plus its originals when aligned words are built", () => {
+    const probe = (sizes: Record<string, number>) => ({
+      unitOf: (cls: string, key: string) =>
+        `${cls}:${key}` in sizes ? `${cls}:${key}` : undefined,
+      size: (u: string) => sizes[u] ?? 0,
+    });
+    // staging en: book:psa 1097745 + orig:psa 418898 compressed bytes
+    const psa = probe({ "book:psa": 1097745, "orig:psa": 418898 });
+    expect(helpsNeed(psa, "psa", false)).toBe(1097745 + 418898);
+    expect(helpsNeed(psa, "psa", true)).toBe(1097745);
+    const rut = probe({ "book:rut": 900000, "orig:rut": 200000 });
+    expect(helpsNeed(rut, "rut", true)).toBeLessThan(READER_BYTE_BUDGET);
+    expect(helpsNeed(rut, "rut", false)).toBeGreaterThan(READER_BYTE_BUDGET);
+  });
+
+  it("word links of an Old Testament book stay New Testament only (not swept)", async () => {
+    expect(
+      await wordLinksFromPacks3(env(), {
+        reference: "Rut 3:1",
         language: "es-419",
       }),
     ).toBeUndefined();
