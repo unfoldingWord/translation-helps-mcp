@@ -289,6 +289,29 @@ describe("sweep-packs3 pure parts", () => {
       ]),
     ).toEqual({ chapters: { TIT: [0, 1, 2, "front"] }, wholeBooks: ["TIT"] });
     expect(
+      s.coverageOf([
+        { item: "TIT 1", book: "TIT", chapter: 1 },
+        { item: "index:TIT", book: "TIT", index: true },
+        { item: "index:TIT 1", book: "TIT", chapter: 1, index: true },
+        { item: "index:TIT 0", book: "TIT", chapter: 0, index: true },
+      ]),
+    ).toEqual({
+      chapters: { TIT: [1] },
+      indexChapters: { TIT: [0, 1] },
+      indexWholeBooks: ["TIT"],
+    });
+    expect(s.requestOf("notes", "en", "TIT 1", { index: true })).toEqual({
+      path: "/api/v1/notes",
+      params: { reference: "TIT 1", language: "en", fields: "index" },
+    });
+    expect(
+      s.requestOf("links", "en", "TIT", { index: true }).params.fields,
+    ).toBe("index");
+    expect(() =>
+      s.requestOf("questions", "en", "TIT", { index: true }),
+    ).toThrow();
+    expect(s.indexItem("TIT 1")).toBe("index:TIT 1");
+    expect(
       s.coverageOf([{ item: "b/x" }, { item: "a/y" }, { item: "b/x" }]),
     ).toEqual({ ids: ["a/y", "b/x"] });
   });

@@ -47,7 +47,12 @@ export async function injectFixtureProofs(
         exceptions: [],
         deps: {},
         chapters: chaptersOf(books),
-        ...(kind === "passage" ? {} : { wholeBooks: Object.keys(books) }),
+        ...(kind === "passage"
+          ? {}
+          : {
+              indexChapters: chaptersOf(books),
+              indexWholeBooks: Object.keys(books),
+            }),
       };
     }
   }

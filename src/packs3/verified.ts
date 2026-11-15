@@ -5,7 +5,8 @@
  *
  * What the sweep writes per kind (and what `isVerified` reads):
  * - passage: items `BOOK C:V` for every verse and `BOOK C:1-N` per chapter; `chapters: { BOOK: [c, ...] }`.
- * - notes, links, questions: items `BOOK` (`wholeBooks`) and `BOOK C` (`chapters`, "front" and 0 included).
+ * - notes, links: `BOOK C` (`chapters`) for the default shape; `fields=index` items (whole book and chapter) are
+ *   `indexWholeBooks` / `indexChapters`, their exceptions `index:BOOK C`. questions: items `BOOK` (`wholeBooks`) and `BOOK C` (`chapters`, "front" and 0 included).
  * - articles and the search kind: the exact item in `ids`.
  * `exceptions` lists the items whose answers did not equal today's; `deps` the other resources (`"<catalog>|<key>"`)
  * with the release the answers were made from; `skippedBooks` the books of a passage entry that were not swept.
@@ -21,11 +22,16 @@ export type VerifiedEntry = {
   wholeBooks?: string[];
   ids?: string[];
   skippedBooks?: string[];
+  /** notes/links `fields=index` proofs: chapters per book and whole books (their exceptions are `index:<item>`). */
+  indexChapters?: Record<string, Array<number | string>>;
+  indexWholeBooks?: string[];
 };
 
 export type VerifiedOpts = {
   /** The release the catalog has for `"<catalog>|<resource key>"`, or `undefined` when it has none. */
   releaseOf?: (depKey: string) => string | undefined;
+  /** The `fields=index` shape (notes, links): it is proven by its own lists and `index:` exceptions only. */
+  index?: boolean;
 };
 
 let table: Record<string, VerifiedEntry> = raw as Record<string, VerifiedEntry>;
@@ -65,22 +71,35 @@ const CHAPTER_KINDS = new Set(["notes", "links", "questions"]);
 // The kind's name is built, not written: tests/unit/packs3-allowed-calls.test.ts forbids that string literal in src/packs3.
 const ID_KINDS = new Set(["articles", ["sea", "rch"].join("")]);
 
+const strings = (v: unknown): string[] =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+
 function chapterListed(
-  e: VerifiedEntry,
+  chapters: unknown,
   book: string,
   chapter: string | number,
 ): boolean {
-  return !!e.chapters?.[book]?.some((c) => String(c) === String(chapter));
+  if (typeof chapters !== "object" || chapters === null) return false;
+  if (!Object.hasOwn(chapters, book)) return false;
+  const list = (chapters as Record<string, unknown>)[book];
+  return Array.isArray(list) && list.some((c) => String(c) === String(chapter));
 }
 
-function itemListed(e: VerifiedEntry, kind: string, item: string): boolean {
-  if (ID_KINDS.has(kind)) return !!e.ids?.includes(item);
+function itemListed(
+  e: VerifiedEntry,
+  kind: string,
+  item: string,
+  index: boolean,
+): boolean {
+  if (ID_KINDS.has(kind)) return strings(e.ids).includes(item);
   if (CHAPTER_KINDS.has(kind)) {
     const m = /^(\S+)(?: (\S+))?$/.exec(item);
     if (!m) return false;
+    const chapters = index ? e.indexChapters : e.chapters;
+    const whole = index ? e.indexWholeBooks : e.wholeBooks;
     return m[2] === undefined
-      ? !!e.wholeBooks?.includes(m[1]!)
-      : chapterListed(e, m[1]!, m[2]);
+      ? strings(whole).includes(m[1]!)
+      : chapterListed(chapters, m[1]!, m[2]);
   }
   return false;
 }
@@ -100,21 +119,27 @@ export function isVerified(
   if (open) return true;
   if (!CHAPTER_KINDS.has(kind) && !ID_KINDS.has(kind) && kind !== "passage")
     return false;
-  const e = table[`${lang}|${resourceKey}|${release}|${kind}`];
-  if (!e) return false;
-  for (const [depKey, depRelease] of Object.entries(e.deps ?? {})) {
+  const k = `${lang}|${resourceKey}|${release}|${kind}`;
+  const e = Object.hasOwn(table, k) ? table[k] : undefined;
+  if (typeof e !== "object" || e === null) return false;
+  const deps =
+    typeof e.deps === "object" && e.deps !== null && !Array.isArray(e.deps)
+      ? e.deps
+      : {};
+  for (const [depKey, depRelease] of Object.entries(deps)) {
     const have = opts.releaseOf?.(depKey);
     if (have === undefined || have !== depRelease) return false;
   }
   if (item === undefined) return true;
-  const exceptions = e.exceptions ?? [];
-  if (exceptions.includes(item)) return false;
+  const index = opts.index === true && CHAPTER_KINDS.has(kind);
+  const exceptions = strings(e.exceptions);
+  if (exceptions.includes(index ? `index:${item}` : item)) return false;
   if (kind === "passage") {
     const m = PASSAGE.exec(item);
     if (!m) return false;
     const [, book, chapter, a, b] = m;
-    if (e.skippedBooks?.includes(book!)) return false;
-    if (!chapterListed(e, book!, chapter!)) return false;
+    if (strings(e.skippedBooks).includes(book!)) return false;
+    if (!chapterListed(e.chapters, book!, chapter!)) return false;
     // A verse is served when its chapter is listed and it is no exception. A range: its exact item was swept (only
     // `C:1-N` is) and every verse in it is clean, so a range never rests on an item nobody compared.
     if (b === undefined) return true;
@@ -124,8 +149,8 @@ export function isVerified(
     return true;
   }
   const m = /^(\S+)/.exec(item);
-  if (m && e.skippedBooks?.includes(m[1]!)) return false;
-  return itemListed(e, kind, item);
+  if (m && strings(e.skippedBooks).includes(m[1]!)) return false;
+  return itemListed(e, kind, item, index);
 }
 
 /** A passage range `BOOK C:first-last` (or a single verse when equal): see `isVerified`. */

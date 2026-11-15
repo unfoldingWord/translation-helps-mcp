@@ -95,7 +95,7 @@
       "language": "en"
     },
     "expect": "fallback",
-    "why": "helps book not in VERIFIED_BOOKS (unverified-book)"
+    "why": "helps item not swept (unverified-resource)"
   },
   {
     "tool": "th_get_passage_index",
@@ -113,7 +113,7 @@
       "language": "en"
     },
     "expect": "fallback",
-    "why": "helps book not in VERIFIED_BOOKS (unverified-book)"
+    "why": "helps item not swept (unverified-resource)"
   },
   {
     "tool": "th_get_passage_index",
@@ -122,7 +122,7 @@
       "language": "en"
     },
     "expect": "fallback",
-    "why": "helps book not in VERIFIED_BOOKS (unverified-book)"
+    "why": "helps item not swept (unverified-resource)"
   },
   {
     "tool": "th_get_passage_index",
@@ -131,7 +131,7 @@
       "language": "en"
     },
     "expect": "fallback",
-    "why": "helps book not in VERIFIED_BOOKS (unverified-book)"
+    "why": "helps item not swept (unverified-resource)"
   },
   {
     "tool": "th_get_passage_index",
@@ -151,7 +151,7 @@
       "offset": 10
     },
     "expect": "fallback",
-    "why": "helps book not in VERIFIED_BOOKS (unverified-book)"
+    "why": "helps item not swept (unverified-resource)"
   },
   {
     "tool": "th_get_notes",
@@ -170,7 +170,7 @@
       "language": "en"
     },
     "expect": "fallback",
-    "why": "helps book not in VERIFIED_BOOKS (unverified-book)"
+    "why": "helps item not swept (unverified-resource)"
   },
   {
     "tool": "th_get_notes",
@@ -179,7 +179,7 @@
       "language": "en"
     },
     "expect": "fallback",
-    "why": "helps book not in VERIFIED_BOOKS (unverified-book)"
+    "why": "helps item not swept (unverified-resource)"
   },
   {
     "tool": "th_get_notes",
@@ -189,7 +189,7 @@
       "ids": ["__FROM_INDEX__"]
     },
     "expect": "fallback",
-    "why": "helps book not in VERIFIED_BOOKS (unverified-book)"
+    "why": "helps item not swept (unverified-resource)"
   },
   {
     "tool": "th_get_notes",
@@ -208,7 +208,7 @@
       "language": "en"
     },
     "expect": "fallback",
-    "why": "helps book not in VERIFIED_BOOKS (unverified-book)"
+    "why": "helps item not swept (unverified-resource)"
   },
   {
     "tool": "th_get_questions",
@@ -446,7 +446,7 @@
       "language": "es-419"
     },
     "expect": "fallback",
-    "why": "helps book not in VERIFIED_BOOKS (unverified-book)"
+    "why": "helps item not swept (unverified-resource)"
   },
   {
     "tool": "th_get_passage_index",
@@ -482,7 +482,7 @@
       "language": "es-419"
     },
     "expect": "fallback",
-    "why": "helps book not in VERIFIED_BOOKS (unverified-book)"
+    "why": "helps item not swept (unverified-resource)"
   },
   {
     "tool": "th_get_notes",
@@ -520,7 +520,7 @@
       "ids": ["__FROM_INDEX__"]
     },
     "expect": "fallback",
-    "why": "helps book not in VERIFIED_BOOKS (unverified-book)"
+    "why": "helps item not swept (unverified-resource)"
   },
   {
     "tool": "th_get_questions",

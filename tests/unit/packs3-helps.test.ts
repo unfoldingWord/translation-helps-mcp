@@ -555,7 +555,8 @@ describe("fix round 1: shapes, quotes, books, references, texts", () => {
     await injectFixtureProofs(env(), (t) => {
       for (const e of Object.values(t)) {
         delete e.chapters?.TIT;
-        e.wholeBooks = e.wholeBooks?.filter((b) => b !== "TIT");
+        delete e.indexChapters?.TIT;
+        e.indexWholeBooks = e.indexWholeBooks?.filter((b) => b !== "TIT");
       }
     });
     try {
@@ -566,6 +567,28 @@ describe("fix round 1: shapes, quotes, books, references, texts", () => {
         "packs3 fallback",
         expect.objectContaining({ reason: "unverified-resource" }),
       );
+    } finally {
+      setVerifiedForTests(undefined);
+    }
+  });
+
+  it("fields=index is answered only from an index proof; a default-shape proof is not enough, nor is a default whole book", async () => {
+    await injectFixtureProofs(env(), (t) => {
+      for (const e of Object.values(t)) {
+        delete e.indexChapters;
+        delete e.indexWholeBooks;
+      }
+    });
+    try {
+      for (const reference of ["Tit", "Tit 1"]) {
+        const args = { reference, language: "en", fields: "index" };
+        expect(await notesFromPacks3(env(), args)).toBeUndefined();
+        expect(await wordLinksFromPacks3(env(), args)).toBeUndefined();
+      }
+      // the default shape of the whole book is not a route answer
+      expect(
+        await notesFromPacks3(env(), { reference: "Tit", language: "en" }),
+      ).toBeUndefined();
     } finally {
       setVerifiedForTests(undefined);
     }

@@ -90,7 +90,9 @@ export function listExceptions(results) {
  *   { items: N, exceptions: [item, ...], swept: ISO date,
  *     deps: { "<catalog>|<resource key>": "<release>" },   // every other resource the answers depended on
  *     chapters: { "TIT": [0, 1, 2, "front"] },             // books/chapters swept (passage: items are verses + ranges)
- *     wholeBooks: ["TIT"],                                  // notes/links: the whole-book item was swept
+ *     wholeBooks: ["TIT"],                                  // questions: the whole-book item was swept
+ *     indexChapters: { "TIT": [0, 1] }, indexWholeBooks: ["TIT"],  // notes/links: the `fields=index` items swept
+ *                                                           // (their exceptions are listed as "index:TIT 1")
  *     ids: ["bible/kt/grace"],                              // articles and search: the exact items swept
  *     skippedBooks: ["GEN"] }                               // passage: books the resource lists that are not served (OT)
  * Task 13 serves an item only if it is in that list, is not an exception, and every `deps` release equals the catalog's.
@@ -162,19 +164,35 @@ export function depsFor(kind, selfKey, catalogs, { alignedKey, usedKeys = [] } =
 
 /** What an item list covers: `{ chapters, wholeBooks? }` for items with a book, else `{ ids }`. */
 export function coverageOf(items) {
-  const chapterItems_ = items.filter((i) => i.book);
-  if (!chapterItems_.length) return { ids: [...new Set(items.map((i) => i.item))].sort() };
-  const chapters = {};
-  const whole = new Set();
-  for (const i of chapterItems_) {
-    if (i.chapter === undefined) whole.add(i.book);
-    else (chapters[i.book] ??= new Set()).add(i.chapter);
-  }
+  if (!items.some((i) => i.book)) return { ids: [...new Set(items.map((i) => i.item))].sort() };
   const order = (a, b) => (typeof a === "number" && typeof b === "number" ? a - b : typeof a === "number" ? -1 : typeof b === "number" ? 1 : String(a) < String(b) ? -1 : 1);
-  return {
-    chapters: Object.fromEntries(Object.keys(chapters).sort().map((b) => [b, [...chapters[b]].sort(order)])),
-    ...(whole.size ? { wholeBooks: [...whole].sort() } : {}),
+  const collect = (list) => {
+    const chapters = {};
+    const whole = new Set();
+    for (const i of list) {
+      if (i.chapter === undefined) whole.add(i.book);
+      else (chapters[i.book] ??= new Set()).add(i.chapter);
+    }
+    return {
+      chapters: Object.fromEntries(Object.keys(chapters).sort().map((b) => [b, [...chapters[b]].sort(order)])),
+      whole: [...whole].sort(),
+    };
   };
+  const plain = collect(items.filter((i) => i.book && !i.index));
+  const idx = collect(items.filter((i) => i.book && i.index));
+  const hasPlain = items.some((i) => i.book && !i.index);
+  const hasIdx = items.some((i) => i.book && i.index);
+  return {
+    ...(hasPlain || !hasIdx ? { chapters: plain.chapters } : {}),
+    ...(plain.whole.length ? { wholeBooks: plain.whole } : {}),
+    ...(hasIdx ? { indexChapters: idx.chapters } : {}),
+    ...(idx.whole.length ? { indexWholeBooks: idx.whole } : {}),
+  };
+}
+
+/** The sweep item of an index-shape request: `index:BOOK C` (exceptions carry the same prefix). */
+export function indexItem(item) {
+  return `index:${item}`;
 }
 
 /** `{ chapter: [verse numbers] }` from lists of text events (`[pos, "chapter"|"verse", n]`): union, numeric verses only. */
@@ -233,7 +251,12 @@ export function chapterItems(book, chapters, withBook) {
 }
 
 /** The API request of an item; `kind` is a sweep kind or an article sub-kind (`tw`, `ta`). */
-export function requestOf(kind, language, item) {
+export function requestOf(kind, language, item, { index = false } = {}) {
+  if (index) {
+    if (kind !== "notes" && kind !== "links") throw new Error(`no index shape for ${kind}`);
+    const r = requestOf(kind, language, item);
+    return { ...r, params: { ...r.params, fields: "index" } };
+  }
   switch (kind) {
     case "passage":
       return { path: "/api/v1/scripture", params: { reference: item, language } };
@@ -412,8 +435,12 @@ async function main() {
       if (kind === "passage") {
         for (const p of passageItems(B, found?.verses ?? {})) items.push({ ...p, sub: kind, res });
       } else {
-        if (withBook) items.push({ sub: kind, item: B, book: B, res });
-        for (const c of found?.chapters ?? []) items.push({ sub: kind, item: `${B} ${c}`, book: B, chapter: c, res });
+        // notes/links: the default whole-book request is not valid on the route, so a whole book is an index item only.
+        if (withBook) items.push({ sub: kind, item: indexItem(B), book: B, res, index: true, bare: B });
+        for (const c of found?.chapters ?? []) {
+          items.push({ sub: kind, item: `${B} ${c}`, book: B, chapter: c, res });
+          if (withBook) items.push({ sub: kind, item: indexItem(`${B} ${c}`), book: B, chapter: c, res, index: true, bare: `${B} ${c}` });
+        }
       }
     }
   }
@@ -438,7 +465,7 @@ async function main() {
   let done = 0;
   const cache = { dir: cacheDir, resume: flag("resume"), catalogKey: cats.key, maxAgeHours };
   const results = await pool(items, 4, async (it) => {
-    const req = requestOf(it.sub, lang, it.item);
+    const req = requestOf(it.sub, lang, it.index ? it.bare : it.item, { index: !!it.index });
     const body = await apiGet(api, req, cache);
     const attempt = await runAdapter(req.path, req.params);
     const used = kind === "passage" && attempt.hit ? keysFromVersions(attempt.value?.versions) : undefined;

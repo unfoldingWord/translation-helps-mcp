@@ -382,6 +382,8 @@ async function withHelps<T>(
     if (!resource) return undefined;
     const releaseOf = releaseOfCatalogs(c.catalogs);
     // The sweep's items: the whole book (`*`) or one chapter; a verse or a range is served from its chapter's proof.
+    // The default shape of a whole book is not a route answer: only `fields=index` has one.
+    if (q.chapter === "*" && !q.indexMode) return undefined;
     const item =
       q.chapter === "*"
         ? q.book.toUpperCase()
@@ -389,6 +391,7 @@ async function withHelps<T>(
     if (
       !isVerified(c.lang, resource.key, resource.release, kind, item, {
         releaseOf,
+        index: q.indexMode,
       })
     ) {
       warnOnce(params.language, "unverified-resource");

@@ -214,4 +214,54 @@ describe("matches what the sweep writes", () => {
     expect(notes("TIT front")).toBe(true);
     expect(notes("TIT 2")).toBe(false);
   });
+
+  it("the index shape is served only from its own lists and index: exceptions", () => {
+    const idx = (item?: string) => notes(item, { index: true });
+    use(
+      NOTES,
+      entry({
+        indexChapters: { TIT: [1, 2] },
+        indexWholeBooks: ["TIT"],
+        exceptions: ["index:TIT 2", "TIT 1"],
+      }),
+    );
+    expect(idx("TIT 1")).toBe(true);
+    expect(idx("TIT 2")).toBe(false);
+    expect(idx("TIT")).toBe(true);
+    expect(idx("TIT 0")).toBe(false);
+    // the default shape never reads the index lists or index exceptions
+    expect(notes("TIT 2")).toBe(true);
+    expect(notes("TIT 1")).toBe(false);
+    // an entry without index lists proves no index item
+    use(NOTES, entry());
+    expect(idx("TIT 1")).toBe(false);
+    expect(idx("TIT")).toBe(false);
+  });
+
+  it("fails closed, without throwing, on prototype keys and malformed entries", () => {
+    use(NOTES, entry());
+    expect(notes("constructor 1")).toBe(false);
+    expect(notes("__proto__ 1")).toBe(false);
+    expect(notes("toString")).toBe(false);
+    const bad = (e: unknown) => {
+      setVerifiedForTests({ [NOTES]: e as VerifiedEntry });
+      return [notes("TIT 1"), notes("TIT 1", { index: true }), notes()];
+    };
+    for (const e of [
+      { chapters: [1], exceptions: "TIT 1", skippedBooks: 3 },
+      { chapters: { TIT: 1 }, indexChapters: { TIT: "1" } },
+      { chapters: { TIT: [1] }, exceptions: {}, deps: 5 },
+      { chapters: null, indexChapters: null, wholeBooks: "TIT" },
+      null,
+      "x",
+    ]) {
+      expect(() => bad(e)).not.toThrow();
+    }
+    expect(bad({ chapters: { TIT: 1 } })[0]).toBe(false);
+    expect(bad({ chapters: [1] })[0]).toBe(false);
+    setVerifiedForTests({});
+    expect(notes("TIT 1")).toBe(false);
+    use("constructor", entry());
+    expect(isVerified("x", "y", "z", "notes", "TIT 1")).toBe(false);
+  });
 });
