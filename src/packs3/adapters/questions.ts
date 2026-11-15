@@ -19,7 +19,32 @@ import { warnOnce } from "../keys";
 import { withReader } from "../readers";
 import type { Packs3Params } from "../answer";
 import { isVerified, releaseOfCatalogs } from "../verified";
-import { LINKED, refOf } from "./helps";
+import { LINKED } from "./helps";
+
+const QREF = /^(\d+):(\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)$/;
+
+/**
+ * Chapter and verse text of a row: like the route, the verse is the reference tail as written, so a comma list
+ * ("9,11", "17,25-26") is kept; the packed range must agree with the first and last numbers of the list.
+ */
+export function questionRefOf(
+  row: Row,
+): { chapter: string; verse: string } | undefined {
+  const m = QREF.exec(row.ref);
+  if (!m) return undefined;
+  const nums = m[2].split(/[,-]/).map(Number);
+  const first = nums[0]!;
+  const last = nums[nums.length - 1]!;
+  if (
+    !Number.isInteger(row.from) ||
+    !Number.isInteger(row.to) ||
+    Math.floor(row.from / 1000) % 1000 !== Number(m[1]) ||
+    row.from % 1000 !== first ||
+    row.to % 1000 !== last
+  )
+    return undefined;
+  return { chapter: m[1], verse: m[2] };
+}
 
 export type QuestionsParams = {
   reference: string;
@@ -90,7 +115,7 @@ export async function questionsFromPacks3(
     }
     const questions: Array<Record<string, string>> = [];
     for (const row of table.rows) {
-      const at = refOf(row);
+      const at = questionRefOf(row);
       const { question, response } = row.cols;
       if (
         !at ||
@@ -112,8 +137,8 @@ export async function questionsFromPacks3(
         chapter: at.chapter,
         verse: at.verse,
         id: row.id,
-        question: question.trim(),
-        response: response.trim(),
+        question,
+        response,
       });
     }
     const source = sourceFromPackView(

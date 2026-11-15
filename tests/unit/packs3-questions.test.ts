@@ -8,7 +8,10 @@ import {
 } from "../../src/packs3/catalogs";
 import { resetReadersForTests } from "../../src/packs3/readers";
 import { resetWarnOnceForTests } from "../../src/packs3/keys";
-import { questionsFromPacks3 } from "../../src/packs3/adapters/questions";
+import {
+  questionsFromPacks3,
+  questionRefOf,
+} from "../../src/packs3/adapters/questions";
 import { injectFixtureProofs } from "./packs3-fixture-verified";
 import { setVerifiedForTests } from "../../src/packs3/verified";
 import { answerFromPacks3 } from "../../src/packs3/answer";
@@ -243,5 +246,24 @@ describe("questions", () => {
         "unverified-resource",
     );
     expect(warns.length).toBeGreaterThan(0);
+  });
+
+  it("a comma list reference keeps its tail like the route", () => {
+    const row = (ref: string, from: number, to: number) =>
+      ({ id: "x", ref, from, to, cols: {} }) as never;
+    expect(questionRefOf(row("6:9,11", 20006009, 20006011))).toEqual({
+      chapter: "6",
+      verse: "9,11",
+    });
+    expect(questionRefOf(row("18:17,25-26", 43018017, 43018026))).toEqual({
+      chapter: "18",
+      verse: "17,25-26",
+    });
+    expect(questionRefOf(row("1:2-3", 1001002, 1001003))).toEqual({
+      chapter: "1",
+      verse: "2-3",
+    });
+    expect(questionRefOf(row("6:9,11", 20006009, 20006012))).toBeUndefined();
+    expect(questionRefOf(row("6:intro", 20006001, 20006001))).toBeUndefined();
   });
 });
