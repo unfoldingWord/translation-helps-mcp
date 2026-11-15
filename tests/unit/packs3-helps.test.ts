@@ -14,6 +14,8 @@ import {
   notesFromPacks3,
   wordLinksFromPacks3,
   proofOfNoLink,
+  placeNotes,
+  restoreLinks,
 } from "../../src/packs3/adapters/helps";
 import { answerFromPacks3 } from "../../src/packs3/answer";
 import { setVerifiedForTests } from "../../src/packs3/verified";
@@ -276,39 +278,105 @@ describe("notes", () => {
     });
   });
 
-  it("a body is the route's exactly when it has no link markup; a body with links is flagged, never answered", async () => {
-    for (const [lang, l] of [
-      ["en", enTit],
-      ["es-419", esTit],
-    ] as const) {
-      for (let c = 1; c <= 3; c++) {
-        const built = await buildNotesAnswer(env(), {
-          reference: `Tit ${c}`,
-          language: lang,
-        });
-        const want = l.chapters[String(c)].notes;
-        if (want.some((r) => /^[A-Za-z]/.test(String(r.quote)))) {
-          expect(built, `${lang} ${c}`).toBeUndefined();
-          continue;
-        }
-        expect(built, `${lang} ${c}`).toBeDefined();
-        const rows = (built!.answer as { notes: (Row & { note: string })[] })
-          .notes;
-        expect(rows.map((r) => r.id)).toEqual(want.map((r) => r.id));
-        rows.forEach((r, i) => {
-          if (!want[i].noteLinks) {
-            expect(sha(r.note), `${lang} ${r.id}`).toBe(want[i].noteSha);
-          }
-        });
-        expect(built!.exact).toBe(!want.some((r) => r.noteLinks));
-      }
+  it("en TIT: every body, links included, is the route's (`../01/05.md`, `[[rc://*/ta/man/…]]` rebuilt)", async () => {
+    for (let c = 1; c <= 3; c++) {
+      const built = await buildNotesAnswer(env(), {
+        reference: `Tit ${c}`,
+        language: "en",
+      });
+      expect(built, `en ${c}`).toBeDefined();
+      const want = enTit.chapters[String(c)].notes;
+      const rows = (built!.answer as { notes: (Row & { note: string })[] })
+        .notes;
+      expect(rows.map((r) => r.id)).toEqual(want.map((r) => r.id));
+      rows.forEach((r, i) =>
+        expect(sha(r.note), `en ${r.id}`).toBe(want[i].noteSha),
+      );
+      expect(built!.exact).toBe(true);
     }
   });
 
-  it("the adapter gives undefined when a returned body has link markup (en TIT 1:1 has)", async () => {
+  it("rebuilds the links format 3 rewrote, and refuses a form it cannot rebuild", () => {
     expect(
-      await notesFromPacks3(env(), { reference: "Tit 1:1", language: "en" }),
-    ).toBeUndefined();
+      restoreLinks(
+        "in [1:5](ref:tit 1:5) and [Rom 3:23](ref:rom 3:23). (See: [[ta:translate/figs-you]] [[tw:kt/lord]])",
+        "TIT",
+      ),
+    ).toBe(
+      "in [1:5](../01/05.md) and [Rom 3:23](../../rom/03/23.md). (See: [[rc://*/ta/man/translate/figs-you]] [[rc://*/tw/dict/bible/kt/lord]])",
+    );
+    expect(restoreLinks("[Psalm 119](ref:psa 119:5)", "PSA")).toBe(
+      "[Psalm 119](../119/005.md)",
+    );
+    expect(restoreLinks("[x](ref:tit 1)", "TIT")).toBeUndefined();
+    expect(restoreLinks("[x](ta:translate/x)", "TIT")).toBeUndefined();
+    expect(restoreLinks("no links", "TIT")).toBe("no links");
+  });
+
+  it("the adapter answers en TIT 1:1 with the route's bodies", async () => {
+    const got = (await notesFromPacks3(env(), {
+      reference: "Tit 1:1",
+      language: "en",
+    })) as { notes: (Row & { note: string })[] };
+    const want = enTit.chapters["1"].notes.filter(
+      (r) => r.chapter === "front" || r.verse === "intro" || r.verse === "1",
+    );
+    expect(got.notes.map((r) => sha(r.note))).toEqual(
+      want.map((r) => r.noteSha),
+    );
+  });
+
+  it("placeNotes: one flagged row first in chapter 1 is the book introduction (3JN has no chapter introduction)", () => {
+    const row = (id: string, ref: string, isIntro: boolean) => {
+      const [c, v] = ref.split(":").map(Number);
+      return {
+        id,
+        ref,
+        from: 64000000 + c * 1000 + v,
+        to: 64000000 + c * 1000 + v,
+        cols: { note: "n", tags: "", quote: "", isIntro, occurrence: "0" },
+      };
+    };
+    const placed = placeNotes([row("a", "1:1", true), row("b", "1:1", false)]);
+    expect(placed?.map((p) => [p.chapter, p.verse, p.kind])).toEqual([
+      ["front", "intro", "front"],
+      ["1", "1", "verse"],
+    ]);
+  });
+
+  it("a row with words the builder could not place (quoteMissing) is read, and only that row's chapter falls back", () => {
+    const base = {
+      id: "q",
+      ref: "27:8",
+      from: 40027008,
+      to: 40027008,
+      cols: {
+        note: "n",
+        tags: "",
+        quote: "x",
+        isIntro: false,
+        occurrence: "1",
+      },
+    };
+    const placed = placeNotes([
+      {
+        ...base,
+        ref: "1:1",
+        from: 40001001,
+        to: 40001001,
+        cols: { ...base.cols, isIntro: true },
+      },
+      {
+        ...base,
+        ref: "1:1",
+        from: 40001001,
+        to: 40001001,
+        cols: { ...base.cols, isIntro: true },
+      },
+      { ...base, quoteMissing: [[0, 40027008, "Ἀγρὸς", 2]] },
+    ] as never);
+    expect(placed).toHaveLength(3);
+    expect(placed![2].quoteMissing).toBe(true);
   });
 
   it("en TIT whole book with fields=index: counts, the front:intro row and every row", async () => {
@@ -483,12 +551,32 @@ describe("registered adapters", () => {
       fields: "index",
     })) as { notes: unknown[] } | undefined;
     expect(n?.notes).toHaveLength(206);
-    expect(
-      await answerFromPacks3(env(), "/api/v1/notes", {
-        reference: "Tit 1:1",
-        language: "en",
-      }),
-    ).toBeUndefined();
+    // bodies with links are rebuilt (restoreLinks), so the default shape is answered too
+    const d = (await answerFromPacks3(env(), "/api/v1/notes", {
+      reference: "Tit 1:1",
+      language: "en",
+    })) as { notes: unknown[] } | undefined;
+    expect(d?.notes).toHaveLength(6);
+  });
+
+  it("a notes proof never serves word links: each kind is swept and proven on its own", async () => {
+    await injectFixtureProofs(env(), (t) => {
+      for (const k of Object.keys(t)) if (k.endsWith("|links")) delete t[k];
+    });
+    try {
+      resetReadersForTests();
+      expect(
+        await wordLinksFromPacks3(env(), {
+          reference: "Tit 1:1",
+          language: "en",
+        }),
+      ).toBeUndefined();
+      expect(
+        await notesFromPacks3(env(), { reference: "Tit 1:1", language: "en" }),
+      ).toBeDefined();
+    } finally {
+      setVerifiedForTests(undefined);
+    }
   });
 });
 
@@ -538,17 +626,19 @@ describe("fix round 1: shapes, quotes, books, references, texts", () => {
     expect(got).not.toHaveProperty("sources");
   });
 
-  it("a note whose quote the builder could not place (es-419 TIT 1:6 'Connecting Statement:') is never answered", async () => {
-    expect(
-      await buildNotesAnswer(env(), {
-        reference: "Tit 1:6",
-        language: "es-419",
-      }),
-    ).toBeUndefined();
-    // Chapter 1 of the route has it, with aligned "": the adapter does not guess that.
-    expect(
-      await buildNotesAnswer(env(), { reference: "Tit 1", language: "es-419" }),
-    ).toBeUndefined();
+  it("a note whose quote the builder could not place (es-419 TIT 1:6 'Connecting Statement:') has aligned \"\", as the route's", async () => {
+    // The route's matcher does not find such a quote either; the sweep proves it chapter by chapter.
+    const built = await buildNotesAnswer(env(), {
+      reference: "Tit 1",
+      language: "es-419",
+    });
+    const rows = (built!.answer as { notes: Row[] }).notes;
+    const want = esTit.chapters["1"].notes;
+    expect(rows.map(withoutBody)).toEqual(want.map(withoutBody));
+    expect(rows.find((r) => r.id === "wja4")?.gatewayQuote).toEqual({
+      original: "Connecting Statement:",
+      aligned: "",
+    });
   });
 
   it("only the chapters the sweep listed are answered; another book gives undefined and warns once", async () => {
@@ -654,6 +744,11 @@ describe("fix round 1: shapes, quotes, books, references, texts", () => {
     expect(proofOfNoLink(cols("(See: [[rc://*/ta/man/translate/x]])"))).toBe(
       false,
     );
+    // a body link format 3 rewrote is no dropped reference (en JHN 4:11 has supportReference "")
+    expect(
+      proofOfNoLink(cols("calls Jesus **Sir**. (See: [[tw:kt/lord]])")),
+    ).toBe(true);
+    expect(proofOfNoLink(cols("in [1:5](ref:tit 1:5)"))).toBe(true);
     expect(proofOfNoLink({ ...cols("a"), extra: "ta" })).toBe(false);
     expect(proofOfNoLink({ ...cols("a"), tags: "x" })).toBe(false);
   });

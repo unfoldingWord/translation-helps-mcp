@@ -2,9 +2,9 @@
  * `/api/v1/notes` and `/api/v1/word-links` from format 3 books. Like the scripture adapter, it answers only what the
  * routes would answer the same way and gives `undefined` for the rest (see the gaps in the Task 6 report):
  *
- * - A note body is not returned when it has links: format 3 rewrites `rc://` and relative links as ids and keeps no trace
- *   of the original form (`rc://*` or `rc://es-419`, `../01/05.md` or `./05.md`), so the route's text cannot be rebuilt.
- *   `fields=index` has no bodies and is answered.
+ * - Format 3 rewrites a note body's links as ids (`ref:tit 1:5`, `[[ta:…]]`, `[[tw:…]]`); `restoreLinks` gives them
+ *   back in the form the en and es-419 notes use (`../01/05.md`, `rc:` links with the `*` language). Another form could have been
+ *   written: the sweep proves each chapter, and a body with a form it cannot rebuild is not returned.
  * - The aligned words (`gatewayQuote.aligned`) are rebuilt from the verse's alignment for New Testament books only: on
  *   Hebrew books some rows of the route differ (its own quote matching), and which ones cannot be told from the data.
  * - Only the resources of the tables below, checked against the route's live answers (2026-11-12), are answered.
@@ -41,7 +41,11 @@ const REFERENCE_LIKE =
 export function proofOfNoLink(cols: Cols): boolean {
   if (Object.keys(cols).some((k) => !KNOWN_COLS.has(k))) return false;
   if (cols.tags !== undefined && cols.tags !== "") return false;
-  return typeof cols.note === "string" && !REFERENCE_LIKE.test(cols.note);
+  // A body link format 3 rewrote (`[[tw:kt/lord]]`, `](ref:…)`) is part of the text, not a dropped reference.
+  return (
+    typeof cols.note === "string" &&
+    !REFERENCE_LIKE.test(cols.note.replace(REWRITTEN_G, ""))
+  );
 }
 
 /** Whether the route would answer this chapter from v1 views (same bucket, same keys), which have another shape. */
@@ -129,8 +133,10 @@ function queryOf(params: HelpsParams): Query | undefined {
   }
 }
 
-type Placed = {
+export type Placed = {
   row: HelpRow;
+  /** The builder could not place some words of the quote (`quoteMissing`): its aligned words are not the route's. */
+  quoteMissing?: boolean;
   chapter: string;
   verse: string;
   kind: "front" | "chapter" | "verse";
@@ -143,8 +149,9 @@ type Placed = {
  * of a reader method), so it is read as the one field of the row besides the known ones.
  */
 function linkOf(row: HelpRow): string | undefined | null {
-  const { id, ref, from, to, cols, quote, ...rest } = row;
-  void [id, ref, from, to, cols, quote];
+  const { id, ref, from, to, cols, quote, quoteMissing, ...rest } =
+    row as HelpRow & { quoteMissing?: unknown };
+  void [id, ref, from, to, cols, quote, quoteMissing];
   const values = Object.values(rest);
   if (values.length === 0) return undefined;
   // More than one extra field, or one that is not text: it cannot be told which is the link.
@@ -176,10 +183,12 @@ export function refOf(
 
 /**
  * The route's rows of the TSV: the book introduction (`front:intro`) and the chapter introductions are kept in format 3
- * as rows flagged `isIntro` at `c:1`. The book introduction is the first of the two flagged rows of chapter 1 and the
- * first row of the book; any other arrangement cannot be told apart, so it gives `undefined`.
+ * as rows flagged `isIntro` at `c:1`. The book introduction is the first flagged row of chapter 1 and the first row of
+ * the book (a book such as 3JN has no chapter introduction, so one flagged row there is the book's); the sweep proves it.
  */
-function placeNotes(rows: HelpRow[]): Placed[] | undefined {
+export function placeNotes(rows: HelpRow[]): Placed[] | undefined {
+  const missing = (row: HelpRow) =>
+    (row as { quoteMissing?: unknown }).quoteMissing !== undefined;
   const placed: Placed[] = [];
   const introsOf = new Map<string, number>();
   for (const [i, row] of rows.entries()) {
@@ -198,6 +207,7 @@ function placeNotes(rows: HelpRow[]): Placed[] | undefined {
           verse: "intro",
           kind: "front",
           link: linkOf(row) ?? undefined,
+          quoteMissing: missing(row),
         });
       } else if (n === 1 || (at.chapter === "1" && n === 2)) {
         placed.push({
@@ -206,6 +216,7 @@ function placeNotes(rows: HelpRow[]): Placed[] | undefined {
           verse: "intro",
           kind: "chapter",
           link: linkOf(row) ?? undefined,
+          quoteMissing: missing(row),
         });
       } else return undefined;
     } else if (row.cols.isIntro === false || row.cols.isIntro === undefined) {
@@ -215,11 +226,10 @@ function placeNotes(rows: HelpRow[]): Placed[] | undefined {
         verse: at.verse,
         kind: "verse",
         link: linkOf(row) ?? undefined,
+        quoteMissing: missing(row),
       });
     } else return undefined;
   }
-  // One flagged row in chapter 1 could be either introduction.
-  if (introsOf.get("1") === 1) return undefined;
   return placed;
 }
 
@@ -292,7 +302,12 @@ async function titlesOf(
 function alignedOf(
   unit: TextUnit | undefined,
 ):
-  | ((chapter: string, verse: string, pos: number[]) => string | undefined)
+  | ((
+      chapter: string,
+      verse: string,
+      pos: number[],
+      all?: boolean,
+    ) => string | undefined)
   | undefined {
   const { pieces, events, align } = unit ?? {};
   if (!pieces || !events || !align) return undefined;
@@ -320,11 +335,15 @@ function alignedOf(
     if (list) list.push(w);
     else byVerse.set(v, [w]);
   });
-  return (chapter, verse, pos) => {
+  return (chapter, verse, pos, all = false) => {
     const set = new Set(pos);
-    const hit = (byVerse.get(`${chapter}:${verse}`) ?? []).filter((w) =>
-      align[w].some((x) => set.has(x)),
-    );
+    const inVerse = byVerse.get(`${chapter}:${verse}`) ?? [];
+    // `all`: the route looks for the quote in this verse only; a quote with words outside it is not found ("").
+    if (all) {
+      const covered = new Set(inVerse.flatMap((w) => align[w]));
+      if (!pos.every((x) => covered.has(x))) return "";
+    }
+    const hit = inVerse.filter((w) => align[w].some((x) => set.has(x)));
     if (hit.length === 0) return undefined;
     const parts: string[] = [];
     hit.forEach((w, i) => {
@@ -419,8 +438,32 @@ async function withHelps<T>(
   return answer ?? undefined;
 }
 
-/** A body that has links in a form format 3 rewrites (and cannot give back as it was). */
+/** A body that has links in a form format 3 rewrites. */
 export const LINKED = /\[\[(?:ta|tw):|\]\(ref:|rc:\/\//;
+/** The links format 3 wrote (`[[ta:…]]`, `[[tw:…]]`, `](ref:…)`, and an id link such as `](ta:…)`). */
+const REWRITTEN = /\[\[(?:ta|tw):|\]\((?:ref|ta|tw):/;
+const REWRITTEN_G = /\[\[(?:ta|tw):[^\]]*\]\]|\]\((?:ref|ta|tw):[^)]*\)/g;
+
+/**
+ * A note body with the links format 3 rewrote given back in the notes' form: `](ref:rom 3:23)` is `](../03/23.md)` in
+ * the same book and `](../../rom/03/23.md)` in another (Psalms: three digits); `[[ta:x]]` and `[[tw:x]]` are the `rc:`
+ * links of language `*` (`ta/man/x`, `tw/dict/bible/x`). `undefined` when a rewritten link has another form.
+ */
+export function restoreLinks(text: string, book: string): string | undefined {
+  const own = book.toLowerCase();
+  const pad = (b: string, n: string) => n.padStart(b === "psa" ? 3 : 2, "0");
+  const out = text
+    .replace(
+      /\]\(ref:([a-z0-9]{3}) (\d+):(\d+)\)/g,
+      (_m, b: string, c: string, v: string) =>
+        b === own
+          ? `](../${pad(b, c)}/${pad(b, v)}.md)`
+          : `](../../${b}/${pad(b, c)}/${pad(b, v)}.md)`,
+    )
+    .replace(/\[\[ta:([^\]\s]+)\]\]/g, "[[rc://*/ta/man/$1]]")
+    .replace(/\[\[tw:([^\]\s]+)\]\]/g, "[[rc://*/tw/dict/bible/$1]]");
+  return REWRITTEN.test(out) ? undefined : out;
+}
 
 /** Rows and aligned-word machinery shared by both routes. */
 async function prepare(
@@ -493,12 +536,19 @@ function gatewayAligned(
   aligned: NonNullable<ReturnType<typeof alignedOf>>,
 ): string | undefined {
   if (p.verse === "intro" || quote.trim() === "") return "";
-  if (!/^\d+$/.test(p.verse)) return undefined;
+  // Some words placed and some not: the route may find them all, so its words cannot be told.
+  if (p.quoteMissing) return undefined;
+  const range = /^(\d+)-\d+$/.exec(p.verse);
+  if (!range && !/^\d+$/.test(p.verse)) return undefined;
   const pos = positionsOf(p.row);
   if (!pos) return undefined;
-  // The route finds its own words with its own matcher: a quote the builder could not place says nothing about it.
-  if (pos.length === 0) return undefined;
-  return aligned(p.chapter, p.verse, pos);
+  // A quote the builder could not place at all (`Connecting Statement:`): the route's matcher finds none either ("").
+  // The sweep proves it chapter by chapter.
+  if (pos.length === 0) return "";
+  // A range row (`6-7`): the route matches the quote in its first verse only.
+  return range
+    ? aligned(p.chapter, range[1]!, pos, true)
+    : aligned(p.chapter, p.verse, pos);
 }
 
 export async function buildNotesAnswer(
@@ -522,9 +572,11 @@ export async function buildNotesAnswer(
       const supportReferenceTitle = p.link
         ? (titles.get(p.link) ?? null)
         : null;
+      const body = restoreLinks(note, ctx.book);
       if (ctx.q.indexMode) {
-        const heading = p.verse === "intro" ? markdownHeading(note) : "";
-        if (LINKED.test(heading)) return undefined;
+        const heading =
+          p.verse === "intro" ? markdownHeading(body ?? note) : "";
+        if (body === undefined && LINKED.test(heading)) return undefined;
         notes.push({
           book: "",
           chapter: p.chapter,
@@ -538,7 +590,7 @@ export async function buildNotesAnswer(
         });
         continue;
       }
-      if (LINKED.test(note)) exact = false;
+      if (body === undefined) exact = false;
       const at = gatewayAligned(p, quote, aligned!);
       if (at === undefined) return undefined;
       notes.push({
@@ -549,7 +601,7 @@ export async function buildNotesAnswer(
         supportReference,
         quote,
         occurrence,
-        note,
+        note: body ?? note,
         supportReferenceTitle,
         gatewayQuote: {
           original: quote ? formatQuoteDisplay(quote) : quote,
