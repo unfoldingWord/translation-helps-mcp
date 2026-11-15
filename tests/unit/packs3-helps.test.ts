@@ -960,7 +960,7 @@ describe("fix round 1: shapes, quotes, books, references, texts", () => {
     resetReadersForTests();
     expect(await wordLinksFromPacks3(env(), args)).toBeDefined();
     expect(await notesFromPacks3(env(), args)).toBeDefined();
-  });
+  }, 20_000); // each loop pass re-injects the 182 KB proof table and rebuilds the catalogs: slow under a full run
 
   it("a row without an article link is accepted only when nothing in it looks like a dropped reference", () => {
     const cols = (note: string) => ({

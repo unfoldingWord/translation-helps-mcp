@@ -133,6 +133,7 @@ describe("verseText: a range is the join of its own single verses", () => {
       });
       expect(counts!.answered).toBeGreaterThan(0);
     },
+    20_000, // reads every verse window of three books: slow under a full parallel run
   );
 });
 

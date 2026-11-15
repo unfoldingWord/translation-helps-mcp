@@ -396,7 +396,7 @@ describe("articles by term and title (sweep `terms`)", () => {
       expect(await words("callspeakloudly")).toBeUndefined();
       expect(await words("bible/kt/call-speakloudly")).toBeUndefined();
     }
-  });
+  }, 20_000); // each loop pass re-injects the 182 KB proof table and rebuilds the catalogs: slow under a full run
 });
 
 /**
@@ -579,7 +579,7 @@ describe("the miss side of a term lookup (sweep `misses`)", () => {
       expect((await miss("tw", "zzznoword")).hit).toBe(false);
       expect(await words("bible/kt/call-speakloudly")).toBeUndefined();
     }
-  });
+  }, 20_000); // each loop pass re-injects the 182 KB proof table and rebuilds the catalogs: slow under a full run
 });
 
 describe("bodyOf: Bible links", () => {

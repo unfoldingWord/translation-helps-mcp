@@ -396,12 +396,12 @@ describe("sweep-packs3 pure parts", () => {
     });
   });
 
-  // verified.json is bundled in the Worker: it stays small, and every passage exception is one verified.ts can read
+  // verified.json is bundled in the Worker: it stays small (ruling: ceiling 200 KB; it is 182 KB), and every passage exception is one verified.ts can read
   // (one it cannot read would make its whole entry unusable).
   it("ships a small verified.json whose passage exceptions are all readable", () => {
     const f = new URL("../../src/packs3/verified.json", import.meta.url);
     const text = readFileSync(f, "utf8");
-    expect(text.length).toBeLessThan(150_000);
+    expect(text.length).toBeLessThan(200_000);
     const table = JSON.parse(text) as Record<string, { exceptions?: string[] }>;
     for (const [k, e] of Object.entries(table)) {
       expect(k.split("|")).toHaveLength(4);

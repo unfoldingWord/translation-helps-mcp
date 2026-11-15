@@ -568,14 +568,20 @@ The MCP tools can answer from format 3 instead of calling the API Worker (`src/p
   (`v3/catalog/{lang}.seg`, `v3/catalog/common.seg`) whose signature no listed key verifies is not used. Production
   needs the production key here, with Abel's yes.
 - **Fallback.** Format 3 serves a call only when (lang, resource key, release, kind) is in the bundled `verified.json`
-  proof (written by `scripts/sweep-packs3.mjs`) and the item is not an exception. A new release, or a shape the sweep did
-  not cover (passage ranges, an article by term or title, searches outside the 40 swept queries), falls back to the API
-  Worker. The reasons are logged once per isolate and language as `packs3 fallback { lang, reason }`, and under
+  proof (written by `scripts/sweep-packs3.mjs`) and the item is not an exception. Proof kinds: `passage` (with join
+  windows), `notes`, `links`, `questions`, `articles` (with `terms` and `misses`), `search` (40 queries) and
+  `searchCatalog` (`equal` or `equalExcept`); an entry may say `exceptionsSameAs` another. `verified.json` is 182 KB
+  (ceiling 200 KB, asserted by tests/unit/packs3-sweep.test.ts); the `ta` catalog proof is `equalExcept` case-only ids.
+  A new release, or a shape the sweep did not cover (a search outside the 40 swept queries, an article by a title or
+  term that is not in `terms`), falls back to the API Worker. Still falling back after S0 (the builder and publish
+  step, Task 11): builder whitespace in poetry and Hebrew line breaks (passage exceptions), the intro occurrence
+  (`''` -> `1`: AMO, DAN, HOS, LAM, ZEC), PSA front rows, and the published `rc://*` host of the es-419 tW/tA
+  articles. The reasons are logged once per isolate and language as `packs3 fallback { lang, reason }`, and under
   `PACKS_V3_DEBUG` each answer carries them in `result._meta._packs3`: `v3-off`/`mode-off`, `no-keys`, `no-packs`,
   `no-adapter` (no format 3 adapter for that API path: OBS, `th_list_resources`), `adapter-undefined` (the adapter
-  declined: no sweep entry for the release or item, Old Testament text, a whole chapter, `format: "usfm"`, a note that
-  links an article, lost whitespace), `adapter-exception`, `readers-busy`, plus finer ones (`no-catalog`,
-  `unverified-resource`, `note-links`). The local wrangler route used for the index sweep may differ from the deployed
+  declined: no sweep entry for the release or item, an exception, `format: "usfm"`, a book the pack lacks),
+  `adapter-exception`, `readers-busy`, plus finer ones (`no-catalog`, `unverified-resource`, `note-links`; the mark
+  itself says only `adapter-undefined`). The local wrangler route used for the index sweep may differ from the deployed
   API Worker commit; record it when sweeping (the sweep run's code commit is not known today).
 - **Budget.** A reader keeps at most **1 MB** of compressed segments; at most **2 readers** per isolate, live and
   retired together; a third concurrent call falls back with reason `readers-busy`. The decoded segment LRU holds at
@@ -590,6 +596,12 @@ The MCP tools can answer from format 3 instead of calling the API Worker (`src/p
   local R2 persist folder (`getPlatformProxy` with `persist: { path: "<persist>/v3" }`), then
   `npx wrangler dev --port 8811 --persist-to <persist> --var API_BASE_URL:https://translation-helps-api-v2.unfoldingword.workers.dev --var RATE_LIMIT_RPM:100000`
   (the default 90 rpm limit cuts a run short; the script reports `RATE_LIMITED` calls as failures).
+  Run after the sweeps (72 calls, 0 failed): 26 served and equal; 46 fell back as expected: 21 planned (OBS 5, `format:
+"usfm"` 1, `th_list_resources` 5, `fr` 1, es-419 books the pack lacks 9), 13 swept exceptions (items listed in
+  `verified.json`: en PSA 23, PSA 119, MAT 5, JON 1, ROM 8 text and index, es RUT 1 and TIT 1 / JON 1 notes), 12 other
+  (3 en and 3 es searches outside the 40 swept queries, en "covenant" by title, 5 es-419 articles that wait on S0).
+  The "off" side needs the local API Worker on 8788 for the index shape (`--var API_BASE_URL:http://localhost:8788`):
+  the deployed one answers index calls differently. docs/packs3-comparison.md is that run's generated output.
 
 ## Rotation
 
