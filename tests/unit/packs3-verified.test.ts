@@ -171,11 +171,11 @@ describe("isVerified", () => {
 });
 
 describe("verse and range samples (notes, links, questions)", () => {
-  // TIT 1 and 2 sampled (`1-2`), TIT 3 listed but not sampled
+  // TIT 1 (last verse 16) and 2 (last verse 15) sampled, TIT 3 listed but not sampled
   const sampled = (extra: VerifiedEntry = {}) =>
     entry({
       chapters: { TIT: [0, 1, 2, 3, "front"] },
-      samples: { TIT: "1-2" },
+      samples: { TIT: "1:16,2:15" },
       ...extra,
     });
 
@@ -251,6 +251,11 @@ describe("verse and range samples (notes, links, questions)", () => {
       { TIT: "2-1" },
       { TIT: "" },
       { TIT: "1;2" },
+      { TIT: "1-2" },
+      { TIT: "1:0" },
+      { TIT: "1:201" },
+      { TIT: "2-1:15" },
+      { TIT: "1:16:2" },
     ]) {
       use(NOTES, sampled({ samples: bad as never }));
       expect(notes("TIT 1")).toBe(false);
@@ -262,10 +267,75 @@ describe("verse and range samples (notes, links, questions)", () => {
     expect(sweep.entryWellFormed(sampled())).toBe(true);
   });
 
-  it("the index shape is unchanged: it reads its chapter item only", () => {
-    use(NOTES, sampled({ indexChapters: { TIT: [1] } }));
+  it("a run of chapters shares one last verse (`A-B:L`)", () => {
+    use(NOTES, sampled({ samples: { TIT: "1-2:15" } }));
+    expect(notes("TIT 1:15")).toBe(true);
+    expect(notes("TIT 2:14-15")).toBe(true);
+    expect(notes("TIT 1:16")).toBe(false);
+  });
+
+  it("a verse or range past the chapter's last verse falls back, as does any range of a 1-verse chapter", () => {
+    use(NOTES, sampled({ samples: { TIT: "1:16,2:1" } }));
+    expect(notes("TIT 1:16")).toBe(true);
+    expect(notes("TIT 1:15-16")).toBe(true);
+    expect(notes("TIT 1:17")).toBe(false);
+    expect(notes("TIT 1:15-17")).toBe(false);
+    expect(notes("TIT 1:16-20")).toBe(false);
+    expect(notes("TIT 2:1")).toBe(true);
+    expect(notes("TIT 2:1-1")).toBe(false);
+    expect(notes("TIT 2:1-2")).toBe(false);
+  });
+
+  it("the index shape: its chapter item alone serves the chapter, a verse or range needs the index samples", () => {
+    // no index sample data: the chapter serves, a verse or range falls back
+    use(NOTES, sampled({ indexChapters: { TIT: [1, 2] } }));
     expect(notes("TIT 1", { index: true })).toBe(true);
     expect(notes("TIT 1:1", { index: true })).toBe(false);
+    expect(notes("TIT 1:1-2", { index: true })).toBe(false);
+    // clean index samples: served on the index chapter's proof and the shared samples
+    const idx = (extra: VerifiedEntry = {}) =>
+      sampled({
+        indexChapters: { TIT: [1, 2] },
+        indexSamples: true,
+        ...extra,
+      });
+    use(NOTES, idx());
+    expect(notes("TIT 1:1", { index: true })).toBe(true);
+    expect(notes("TIT 1:4-6", { index: true })).toBe(true);
+    expect(notes("TIT 1:17", { index: true })).toBe(false);
+    expect(notes("TIT 3:1", { index: true })).toBe(false); // not sampled
+    // the index chapter must be listed and clean
+    use(NOTES, idx({ indexChapters: { TIT: [2] } }));
+    expect(notes("TIT 1:1", { index: true })).toBe(false);
+    use(NOTES, idx({ exceptions: ["index:TIT 1"] }));
+    expect(notes("TIT 1:1", { index: true })).toBe(false);
+    expect(notes("TIT 1:1")).toBe(true);
+    // one index sample exception falls back for the index shape only; a default one for the default shape only
+    use(NOTES, idx({ exceptions: ["index:TIT 1:7-9"] }));
+    expect(notes("TIT 1:1", { index: true })).toBe(false);
+    expect(notes("TIT 2:1", { index: true })).toBe(true);
+    expect(notes("TIT 1:1")).toBe(true);
+    use(NOTES, idx({ exceptions: ["TIT 1:8"] }));
+    expect(notes("TIT 1:1", { index: true })).toBe(true);
+    expect(notes("TIT 1:1")).toBe(false);
+  });
+
+  it("a malformed `indexSamples` makes the whole entry unusable", () => {
+    for (const bad of [false, 1, "true", { TIT: "1:16" }, []]) {
+      const e = sampled({
+        indexChapters: { TIT: [1] },
+        indexSamples: bad as never,
+      });
+      use(NOTES, e);
+      expect(notes("TIT 1")).toBe(false);
+      expect(notes("TIT 1", { index: true })).toBe(false);
+      expect(sweep.entryWellFormed(e)).toBe(false);
+    }
+    expect(
+      sweep.entryWellFormed(
+        sampled({ indexChapters: { TIT: [1] }, indexSamples: true }),
+      ),
+    ).toBe(true);
   });
 });
 

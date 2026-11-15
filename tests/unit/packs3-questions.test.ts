@@ -254,7 +254,7 @@ describe("questions", () => {
     // no sample data for the chapter (or an old entry without the field): verses and ranges fall back
     await injectFixtureProofs(env(), (t) => {
       for (const [k, e] of Object.entries(t))
-        if (k.includes("/en/tq|")) e.samples = { TIT: "2-3" };
+        if (k.includes("/en/tq|")) e.samples = { TIT: "2-3:15" };
     });
     expect(await ask("Tit 1:2", "en")).toBeUndefined();
     expect(await ask("Tit 1:1-3", "en")).toBeUndefined();

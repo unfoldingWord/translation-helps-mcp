@@ -763,7 +763,7 @@ describe("fallbacks", () => {
           if (/\|(notes|links)$/.test(k)) f(e as Record<string, unknown>);
       });
     // chapter 1 has no sample data
-    await edit((e) => (e.samples = { TIT: "2-3" }));
+    await edit((e) => (e.samples = { TIT: "2-3:15" }));
     for (const r of ["Tit 1:1", "Tit 1:1-2"])
       for (const a of await both(r)) expect(a).toBeUndefined();
     for (const a of await both("Tit 1")) expect(a).toBeDefined();
@@ -775,10 +775,34 @@ describe("fallbacks", () => {
     for (const r of ["Tit 1:1", "Tit 1:1-2"])
       for (const a of await both(r)) expect(a).toBeUndefined();
     for (const a of await both("Tit 1")) expect(a).toBeDefined();
-    // the index shape is unchanged
-    expect(
-      await notesFromPacks3(env(), { ...at("Tit 1:1"), fields: "index" }),
-    ).toBeDefined();
+    // the index shape reads its own samples: a default sample exception does not touch it
+    const idx = async (reference: string) => [
+      await notesFromPacks3(env(), { ...at(reference), fields: "index" }),
+      await wordLinksFromPacks3(env(), { ...at(reference), fields: "index" }),
+    ];
+    for (const r of ["Tit 1:1", "Tit 1:1-2", "Tit 1"])
+      for (const a of await idx(r)) expect(a).toBeDefined();
+    // a verse or range past the chapter's last verse (TIT 1 has 16) falls back, in both shapes
+    for (const a of [
+      ...(await both("Tit 1:15-17")),
+      ...(await idx("Tit 1:15-17")),
+    ])
+      expect(a).toBeUndefined();
+    // without index sample data (`indexSamples`) index verses and ranges fall back; the index chapter still serves
+    await edit((e) => delete e.indexSamples);
+    for (const r of ["Tit 1:1", "Tit 1:1-2"])
+      for (const a of await idx(r)) expect(a).toBeUndefined();
+    for (const a of await idx("Tit 1")) expect(a).toBeDefined();
+    for (const a of await both("Tit 1:1")) expect(a).toBeDefined();
+    // without `samples` at all
+    await edit((e) => delete e.samples);
+    for (const a of await idx("Tit 1:1")) expect(a).toBeUndefined();
+    // one index sample exception in chapter 1: index verses fall back, the default shape serves
+    await edit((e) => (e.exceptions = ["index:TIT 1:16"]));
+    for (const r of ["Tit 1:1", "Tit 1:1-2"])
+      for (const a of await idx(r)) expect(a).toBeUndefined();
+    for (const a of await idx("Tit 1")) expect(a).toBeDefined();
+    for (const a of await both("Tit 1:1")) expect(a).toBeDefined();
   }, 60_000);
 
   it("notes: undefined, warning once, when the notes resource has no proof", async () => {

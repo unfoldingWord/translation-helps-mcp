@@ -10,10 +10,13 @@
  *   a swept 2-3 verse window proved (see `isVerified`).
  * - notes, links: `BOOK C` (`chapters`) for the default shape; `fields=index` items (whole book and chapter) are
  *   `indexWholeBooks` / `indexChapters`, their exceptions `index:BOOK C`. questions: items `BOOK` (`wholeBooks`) and `BOOK C` (`chapters`, "front" and 0 included).
- *   notes, links, questions (default shape): `samples: { BOOK: "1-3,5" }`, the chapters whose verse and range sample items
- *   (`BOOK C:V`, `BOOK C:V-W`: first, middle and last verse and a range around the middle) were swept; their exceptions are
- *   in `exceptions`. A verse or range request is served only on a listed, clean chapter whose samples were swept and
- *   all equal (sampled evidence, not every verse). An entry without `samples` serves no verse or range.
+ *   notes, links, questions (default shape): `samples: { BOOK: "1:16,2-3:15" }`, the chapters whose verse and range
+ *   sample items (`BOOK C:V`, `BOOK C:V-W`: first, middle and last verse and a range around the middle) were swept, each
+ *   with its last verse (`A-B:L`: chapters A to B, each ending at verse L); their exceptions are in `exceptions`. A verse
+ *   or range request is served only on a listed, clean chapter whose samples were swept and all equal, and only within
+ *   the chapter (no verse past L; no range in a 1-verse chapter): sampled evidence, not every verse. An entry without
+ *   `samples` serves no verse or range. notes, links `fields=index`: `indexSamples: true` when the same sample items
+ *   were swept in the index shape too (their exceptions `index:BOOK C:V`); without it no index verse or range serves.
  * - the search kind: the exact item in `ids`. The search catalog kind (`SEARCH_CATALOG_KIND`, no item): `catalog: "equal"`
  *   and no `differs` (the ids that differed) when the article catalog format 3 ranks over equals the route's, so any
  *   query ranks the same (adapters/search.ts); `catalog: "equalExcept"` with `except` (lowercase ids) when the only
@@ -69,6 +72,11 @@ export type VerifiedEntry = {
    * A verse or range request is served only in such a chapter with no sample exception (see `isVerified`).
    */
   samples?: Record<string, string>;
+  /**
+   * notes, links: `true` when the `samples` items were swept in the `fields=index` shape too (their exceptions are
+   * `index:BOOK C:V`, `index:BOOK C:V-W`). Without it an index-shape verse or range request is never served.
+   */
+  indexSamples?: boolean;
   /**
    * Search catalog: `"equal"` when the catalog the ranking reads was equal to the route's, `"equalExcept"` when it was
    * equal but for ids that differ only in case (`except`), else `"differs"`.
@@ -140,21 +148,26 @@ const MISS_TERM = /^[^/:|,=A-Z]+$/;
 /** One article of a `terms` line: `name:term|term` (no separators inside a name or a term). */
 const TERMS_PART = /^[^:|,]+:[^:|,]+(?:\|[^:|,]+)*$/;
 const JOINS_CHAPTER = /^(\d+):(\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)$/;
-/** One book's `samples` string: chapter runs `1-3,5` (each run ascending, at most 1000 wide). */
-const SAMPLE_RUNS = /^\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*$/;
+/** One book's `samples` string: chapter runs with their last verse, `1:16,2-3:15` (runs ascending, at most 1000 wide). */
+const SAMPLE_RUNS = /^\d+(?:-\d+)?:\d+(?:,\d+(?:-\d+)?:\d+)*$/;
 /** A notes, links or questions verse or range item, `BOOK C:V` or `BOOK C:V-W`. */
 const CHAPTER_VERSE = /^(\S+) (\d+):(\d+)(?:-(\d+))?$/;
-/** A sample exception of such an entry: its `BOOK C` (an `index:` or chapter exception never matches). */
+/**
+ * A sample exception of such an entry: its `BOOK C`, or `index:BOOK C` for an index-shape one (a chapter exception
+ * never matches).
+ */
 const SAMPLE_EXCEPTION = /^(\S+ \d+):\d+(?:-\d+)?$/;
 
-/** The chapters of a `samples` string, or `undefined` when it does not parse. */
-function sampleRuns(line: string): Set<number> | undefined {
+/** The chapters of a `samples` string with their last verse (1 to 200), or `undefined` when it does not parse. */
+function sampleRuns(line: string): Map<number, number> | undefined {
   if (!SAMPLE_RUNS.test(line)) return undefined;
-  const out = new Set<number>();
-  for (const run of line.split(",")) {
-    const [x, y = x] = run.split("-").map(Number);
-    if (y! < x! || y! - x! > 1000) return undefined;
-    for (let c = x!; c <= y!; c++) out.add(c);
+  const out = new Map<number, number>();
+  for (const part of line.split(",")) {
+    const [run, lastText] = part.split(":");
+    const last = Number(lastText);
+    const [x, y = x] = run!.split("-").map(Number);
+    if (y! < x! || y! - x! > 1000 || last < 1 || last > 200) return undefined;
+    for (let c = x!; c <= y!; c++) out.set(c, last);
   }
   return out;
 }
@@ -292,6 +305,8 @@ function wellFormed(e: VerifiedEntry): boolean {
     if (typeof o.misses !== "string") return false;
     if (!o.misses.split(",").every((t) => MISS_TERM.test(t))) return false;
   }
+  // `indexSamples`: `true` or absent, anything else makes the entry unusable
+  if (o.indexSamples !== undefined && o.indexSamples !== true) return false;
   if (o.catalog !== undefined && typeof o.catalog !== "string") return false;
   // `except`: present exactly under `equalExcept`, a non-empty list of lowercase safe ids, or the entry is unusable
   if ((o.except !== undefined) !== (o.catalog === "equalExcept")) return false;
@@ -339,9 +354,9 @@ type Parsed = {
   misses?: Set<string>;
   ids?: Set<string>;
   idDirs?: Map<string, Set<string>>;
-  /** `samples` per book, the sampled chapters. */
-  samples?: Map<string, Set<number>>;
-  /** Of its exceptions owner: the `BOOK C` of every sample exception. */
+  /** `samples` per book, the sampled chapters and their last verse. */
+  samples?: Map<string, Map<number, number>>;
+  /** Of its exceptions owner: the `BOOK C` (default shape) or `index:BOOK C` of every sample exception. */
   sampleExcepted?: Set<string>;
 };
 /** A usable entry (`entryAt`): `e` as before, `own` the parse of its raw object, `ex` that of its exceptions' owner. */
@@ -580,38 +595,50 @@ export function isVerified(
   }
   const m = /^(\S+)/.exec(item);
   if (m && strings(e.skippedBooks).includes(m[1]!)) return false;
-  const v = index ? null : CHAPTER_VERSE.exec(item);
-  if (v && CHAPTER_KINDS.has(kind)) return sampleServes(u, exceptions, v);
+  const v = CHAPTER_VERSE.exec(item);
+  if (v && CHAPTER_KINDS.has(kind))
+    return sampleServes(u, exceptions, v, index);
   return itemListed(u, kind, item, index);
 }
 
 /**
- * A notes, links or questions verse or range (default shape): the route builds its answer for the verses asked (the
- * aligned words of notes and links too), so the chapter's proof alone does not prove it. It is served only when the
- * chapter item is listed and clean, the chapter's verse and range samples were swept (`samples`) and none of them is
- * an exception. Sampled evidence: the verses between the samples are not each proven.
+ * A notes, links or questions verse or range: the route builds its answer for the verses asked (the aligned words of
+ * notes and links too, and the verse filter of the `fields=index` shape), so the chapter's proof alone does not prove
+ * it. It is served only when the chapter item of its shape is listed and clean (`chapters`, or `indexChapters` and no
+ * `index:BOOK C`), the chapter's verse and range samples were swept (`samples`; for the index shape `indexSamples` too)
+ * and none of them is an exception of that shape, and the request stays within the chapter: no verse past its last
+ * verse, no range in a 1-verse chapter (no sample covers such a request). Sampled evidence: the verses between the
+ * samples are not each proven.
  */
 function sampleServes(
   u: Usable,
   exceptions: Set<string>,
   m: RegExpExecArray,
+  index: boolean,
 ): boolean {
   const [, book, chapter, a, b] = m;
   if (Number(a) < 1) return false;
   if (b !== undefined && (Number(b) < Number(a) || Number(b) > 200))
     return false;
-  const at = `${book} ${chapter}`;
-  if (exceptions.has(at) || !chapterListed(u.e.chapters, book!, chapter!))
+  const at = `${index ? "index:" : ""}${book} ${chapter}`;
+  if (
+    exceptions.has(at) ||
+    !chapterListed(index ? u.e.indexChapters : u.e.chapters, book!, chapter!)
+  )
     return false;
+  if (index && u.e.indexSamples !== true) return false;
   const samples = u.e.samples;
   if (!isPlain(samples) || !Object.hasOwn(samples, book!)) return false;
   u.own.samples ??= new Map();
   let chapters = u.own.samples.get(book!);
   if (!chapters) {
-    chapters = sampleRuns(String(samples[book!])) ?? new Set();
+    chapters = sampleRuns(String(samples[book!])) ?? new Map();
     u.own.samples.set(book!, chapters);
   }
-  if (!chapters.has(Number(chapter))) return false;
+  const last = chapters.get(Number(chapter));
+  if (last === undefined) return false;
+  if (Number(b ?? a) > last) return false;
+  if (b !== undefined && last === 1) return false;
   if (!u.ex.sampleExcepted) {
     const out = new Set<string>();
     for (const x of exceptions) {

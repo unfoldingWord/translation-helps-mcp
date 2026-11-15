@@ -434,14 +434,15 @@ async function withHelps<T>(
       );
       if (!resource) return undefined;
       const releaseOf = releaseOfCatalogs(c.catalogs);
-      // The sweep's items: the whole book (`*`) or one chapter; a default-shape verse or range (`BOOK C:V`,
-      // `BOOK C:V-W`) is served only on its chapter's swept verse/range samples (verified.ts `isVerified`).
-      // The default shape of a whole book is not a route answer: only `fields=index` has one.
+      // The sweep's items: the whole book (`*`) or one chapter; a verse or range (`BOOK C:V`, `BOOK C:V-W`) of
+      // either shape is served only on its chapter's swept verse/range samples of that shape (verified.ts
+      // `isVerified`): the route filters the index shape by verse too. The default shape of a whole book is not a
+      // route answer: only `fields=index` has one.
       if (q.chapter === "*" && !q.indexMode) return undefined;
       const item =
         q.chapter === "*"
           ? q.book.toUpperCase()
-          : q.indexMode || !q.verseStart
+          : !q.verseStart
             ? `${q.book.toUpperCase()} ${q.chapter}`
             : verseItem(q.book, q.chapter, q.verseStart, q.verseEnd);
       if (

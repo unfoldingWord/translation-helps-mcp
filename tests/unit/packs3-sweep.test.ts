@@ -1114,20 +1114,115 @@ describe("verse and range samples (notes, links, questions)", () => {
     expect(s.verseSampleItems("X", 1, undefined)).toEqual([]);
   });
 
-  it("`samples` lists the sampled chapters per book as runs; coverage ignores sample items", () => {
+  it("`samples` lists the sampled chapters per book with each one's last verse; coverage ignores sample items", () => {
     const items = [
       { item: "TIT 1", book: "TIT", chapter: 1 },
-      { item: "TIT 1:1", book: "TIT", chapter: 1, sample: true },
-      { item: "TIT 2:1", book: "TIT", chapter: 2, sample: true },
-      { item: "TIT 3:1-2", book: "TIT", chapter: 3, sample: true },
-      { item: "TIT 5:1", book: "TIT", chapter: 5, sample: true },
-      { item: "RUT 1:1", book: "RUT", chapter: 1, sample: true },
+      { item: "TIT 1:1", book: "TIT", chapter: 1, sample: true, last: 16 },
+      { item: "TIT 2:1", book: "TIT", chapter: 2, sample: true, last: 15 },
+      { item: "TIT 3:1-2", book: "TIT", chapter: 3, sample: true, last: 15 },
+      { item: "TIT 5:1", book: "TIT", chapter: 5, sample: true, last: 15 },
+      { item: "TIT 6:1", book: "TIT", chapter: 6, sample: true, last: 15 },
+      { item: "RUT 1:1", book: "RUT", chapter: 1, sample: true, last: 22 },
+      // index-shape samples are not `samples` (they set `indexSamples`)
+      {
+        item: "index:RUT 2:1",
+        book: "RUT",
+        chapter: 2,
+        sample: true,
+        last: 23,
+        index: true,
+      },
     ];
-    expect(s.samplesOf(items)).toEqual({ RUT: "1", TIT: "1-3,5" });
+    expect(s.samplesOf(items)).toEqual({
+      RUT: "1:22",
+      TIT: "1:16,2-3:15,5-6:15",
+    });
     expect(s.samplesOf([{ item: "TIT 1", book: "TIT", chapter: 1 }])).toEqual(
       {},
     );
     expect(s.coverageOf(items)).toEqual({ chapters: { TIT: [1] } });
+  });
+
+  it("chapterSampleItems: the default-shape samples with the chapter's last verse, and their index twins for notes and links", () => {
+    const vs = range(1, 4);
+    const plain = s.chapterSampleItems("questions", "TIT", 2, vs, ["r"], {
+      index: false,
+    });
+    expect(plain.map((i: { item: string }) => i.item)).toEqual([
+      "TIT 2:1",
+      "TIT 2:2",
+      "TIT 2:4",
+      "TIT 2:1-3",
+    ]);
+    expect(
+      plain.every(
+        (i: { sample: boolean; last: number; index?: boolean }) =>
+          i.sample && i.last === 4 && !i.index,
+      ),
+    ).toBe(true);
+    const both = s.chapterSampleItems("notes", "TIT", 2, vs, ["r"], {
+      index: true,
+    });
+    const idx = both.filter((i: { index?: boolean }) => i.index);
+    expect(
+      idx.map((i: { item: string; bare: string }) => [i.item, i.bare]),
+    ).toEqual([
+      ["index:TIT 2:1", "TIT 2:1"],
+      ["index:TIT 2:2", "TIT 2:2"],
+      ["index:TIT 2:4", "TIT 2:4"],
+      ["index:TIT 2:1-3", "TIT 2:1-3"],
+    ]);
+    expect(
+      s.requestOf("notes", "en", idx[3].bare, { index: true }).params,
+    ).toEqual({
+      reference: "TIT 2:1-3",
+      language: "en",
+      fields: "index",
+    });
+    expect(
+      s.chapterSampleItems("notes", "TIT", 2, [], ["r"], { index: true }),
+    ).toEqual([]);
+  });
+
+  it("sampleFieldsOf: `indexSamples: true` only when index samples were swept", () => {
+    const d = s.chapterSampleItems("notes", "TIT", 1, range(1, 16), ["r"], {
+      index: false,
+    });
+    const both = s.chapterSampleItems("notes", "TIT", 1, range(1, 16), ["r"], {
+      index: true,
+    });
+    expect(s.sampleFieldsOf(d)).toEqual({ samples: { TIT: "1:16" } });
+    expect(s.sampleFieldsOf(both)).toEqual({
+      samples: { TIT: "1:16" },
+      indexSamples: true,
+    });
+  });
+
+  it("sampleCoverage counts the sampled chapters and names the books with none", () => {
+    const own = [
+      { item: "TIT 1", book: "TIT", chapter: 1 },
+      { item: "TIT 2", book: "TIT", chapter: 2 },
+      { item: "TIT front", book: "TIT", chapter: "front" },
+      ...s.chapterSampleItems("questions", "TIT", 1, range(1, 16), ["r"], {
+        index: false,
+      }),
+      ...s.chapterSampleItems("questions", "TIT", 2, range(1, 15), ["r"], {
+        index: false,
+      }),
+      { item: "PHM 1", book: "PHM", chapter: 1 },
+      { item: "index:JUD", book: "JUD", index: true, bare: "JUD" },
+      { item: "JUD 1", book: "JUD", chapter: 1 },
+    ];
+    expect(s.sampleCoverage(own)).toEqual({
+      chapters: 2,
+      booksWithout: ["JUD", "PHM"],
+    });
+    expect(s.sampleCoverageLine(s.sampleCoverage(own))).toBe(
+      "Samples: 2 chapters; books without samples: JUD, PHM",
+    );
+    expect(s.sampleCoverageLine({ chapters: 3, booksWithout: [] })).toBe(
+      "Samples: 3 chapters; books without samples: none",
+    );
   });
 
   it("the written entry is read back: clean samples serve, an exception falls back", () => {
@@ -1135,39 +1230,55 @@ describe("verse and range samples (notes, links, questions)", () => {
     const own = [
       { item: "TIT 1", book: "TIT", chapter: 1, res: ["u/en/tn"] },
       { item: "TIT 2", book: "TIT", chapter: 2, res: ["u/en/tn"] },
-      ...s
-        .verseSampleItems("TIT", 1, range(1, 16))
-        .map((item: string) => ({
-          item,
-          book: "TIT",
-          chapter: 1,
-          sample: true,
-        })),
-      ...s
-        .verseSampleItems("TIT", 2, range(1, 15))
-        .map((item: string) => ({
-          item,
-          book: "TIT",
-          chapter: 2,
-          sample: true,
-        })),
+      {
+        item: "index:TIT 1",
+        book: "TIT",
+        chapter: 1,
+        res: ["u/en/tn"],
+        index: true,
+        bare: "TIT 1",
+      },
+      {
+        item: "index:TIT 2",
+        book: "TIT",
+        chapter: 2,
+        res: ["u/en/tn"],
+        index: true,
+        bare: "TIT 2",
+      },
+      ...s.chapterSampleItems("notes", "TIT", 1, range(1, 16), ["u/en/tn"], {
+        index: true,
+      }),
+      ...s.chapterSampleItems("notes", "TIT", 2, range(1, 15), ["u/en/tn"], {
+        index: true,
+      }),
     ];
     const results = own.map((i) => ({
       ...i,
-      status: i.item === "TIT 2:7-9" ? "differs" : "equal",
+      status:
+        i.item === "TIT 2:7-9" || i.item === "index:TIT 1:16"
+          ? "differs"
+          : "equal",
     }));
     const e = s.buildEntry(results, "now", {
       ...s.coverageOf(own),
-      samples: s.samplesOf(own),
+      ...s.sampleFieldsOf(own),
     });
+    e.exceptions = s.compactSampleExceptions(e.exceptions);
+    expect(s.entryWellFormed(e)).toBe(true);
     setVerifiedForTests({ [K]: e });
+    const at = (item: string, index = false) =>
+      isVerified("en", "u/en/tn", "v9", "notes", item, { index });
     try {
-      expect(isVerified("en", "u/en/tn", "v9", "notes", "TIT 1:5")).toBe(true);
-      expect(isVerified("en", "u/en/tn", "v9", "notes", "TIT 1:2-3")).toBe(
-        true,
-      );
-      expect(isVerified("en", "u/en/tn", "v9", "notes", "TIT 2:1")).toBe(false);
-      expect(isVerified("en", "u/en/tn", "v9", "notes", "TIT 2")).toBe(true);
+      expect(at("TIT 1:5")).toBe(true);
+      expect(at("TIT 1:2-3")).toBe(true);
+      expect(at("TIT 1:15-17")).toBe(false); // past the last verse
+      expect(at("TIT 2:1")).toBe(false);
+      expect(at("TIT 2")).toBe(true);
+      expect(at("TIT 1:5", true)).toBe(false); // an index sample exception in chapter 1
+      expect(at("TIT 2:1", true)).toBe(true);
+      expect(at("TIT 2:3-5", true)).toBe(true);
+      expect(at("TIT 1", true)).toBe(true);
     } finally {
       setVerifiedForTests(undefined);
     }
@@ -1186,8 +1297,21 @@ describe("verse and range samples (notes, links, questions)", () => {
     ];
     const kept = s.compactSampleExceptions(full);
     expect(kept).toEqual(["TIT 1", "TIT 2:1", "TIT 3:15", "index:TIT 2"]);
+    // index sample exceptions are compacted the same way, per shape
+    expect(
+      s.compactSampleExceptions([
+        "index:TIT 2",
+        "index:TIT 2:1",
+        "index:TIT 3:1",
+        "index:TIT 3:4-6",
+        "TIT 3:1",
+      ]),
+    ).toEqual(["index:TIT 2", "index:TIT 3:1", "TIT 3:1"]);
     const K = "en|u/en/tn|v9|notes";
-    const base = { chapters: { TIT: [1, 2, 3, 4] }, samples: { TIT: "1-4" } };
+    const base = {
+      chapters: { TIT: [1, 2, 3, 4] },
+      samples: { TIT: "1-4:15" },
+    };
     const items = [
       "TIT 1",
       "TIT 1:2",
@@ -1208,7 +1332,7 @@ describe("verse and range samples (notes, links, questions)", () => {
     expect(served(kept)).toEqual([false, false, false, false, true, true]);
   });
 
-  it("compactVerified keeps `samples` and does not widen a malformed one", () => {
+  it("compactVerified keeps `samples` and `indexSamples` and does not widen a malformed one", () => {
     const A = "en|u/en/tn|v9|notes";
     const B = "en|u/en/tw|v9|notes";
     const ex = ["TIT 1:8", "TIT 2:1"];
@@ -1216,13 +1340,17 @@ describe("verse and range samples (notes, links, questions)", () => {
       items: 2,
       exceptions: [...ex],
       chapters: { TIT: [1, 2] },
-      samples: { TIT: "1-2" },
+      samples: { TIT: "1-2:15" },
+      indexChapters: { TIT: [1, 2] },
+      indexSamples: true,
     };
     const bad = {
       items: 2,
       exceptions: [...ex],
       chapters: { TIT: [1, 2] },
-      samples: { TIT: "2-1" },
+      samples: { TIT: "1-2:15" },
+      indexChapters: { TIT: [1, 2] },
+      indexSamples: "yes",
     };
     expect(s.compactVerified({ [A]: good })).toEqual({ [A]: good });
     // the malformed entry is kept exactly and never holds the list for the good one
@@ -1230,7 +1358,8 @@ describe("verse and range samples (notes, links, questions)", () => {
     expect(out[A]).toEqual(bad);
     expect(out[B]).toEqual(good);
     const out2 = s.compactVerified({ [A]: good, [B]: { ...good } });
-    expect(out2[B].samples).toEqual({ TIT: "1-2" });
+    expect(out2[B].samples).toEqual({ TIT: "1-2:15" });
+    expect(out2[B].indexSamples).toBe(true);
     expect(s.expandVerified(out2)).toEqual({ [A]: good, [B]: good });
   });
 });
