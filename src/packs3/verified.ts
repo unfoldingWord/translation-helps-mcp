@@ -187,9 +187,15 @@ export function isVerified(
     const [, book, chapter, a, b] = m;
     if (strings(e.skippedBooks).includes(book!)) return false;
     if (!chapterListed(e.chapters, book!, chapter!)) return false;
-    // A verse is served when its chapter is listed and it is no exception. A range: its exact item was swept (only
-    // `C:1-N` is) and every verse in it is clean, so a range never rests on an item nobody compared.
+    // A verse is served when its chapter is listed and it is no exception. The sweep compares only one range per
+    // chapter, the whole chapter `C:1-N`: a range is served when that comparison held (the chapter has no range
+    // exception) and every verse in it is clean. Clean verses alone do not prove a range: the route may join them
+    // differently (es-419 TIT 1:4-5 keeps a line break the verses do not show).
     if (b === undefined) return true;
+    const prefix = `${book} ${chapter}:`;
+    for (const x of excepted) {
+      if (x.startsWith(prefix) && x.includes("-", prefix.length)) return false;
+    }
     for (let v = Number(a); v <= Number(b); v++) {
       if (excepted.has(`${book} ${chapter}:${v}`)) return false;
     }

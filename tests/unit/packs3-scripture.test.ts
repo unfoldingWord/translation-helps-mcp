@@ -259,6 +259,32 @@ describe("verified resources", () => {
     }
   });
 
+  // The sweep compares an OT chapter's range `C:1-N`; where the route's Hebrew keeps a USFM blank line (a newline and
+  // a space) that range differs, so no sub-range of the chapter is proven, even of verses that are each clean.
+  it("falls back on an Old Testament range in a chapter whose range is an exception", async () => {
+    const rut34 = () =>
+      scriptureFromPacks3(env(), {
+        reference: "Rut 1:3-4",
+        language: "es-419",
+      });
+    expect(await rut34()).toBeDefined();
+    await injectFixtureProofs(env(), (t) => {
+      for (const k of Object.keys(t))
+        if (k.includes("/es-419/glt|")) t[k]!.exceptions = ["RUT 1:1,1-22"];
+    });
+    try {
+      expect(await rut34()).toBeUndefined();
+      expect(
+        await scriptureFromPacks3(env(), {
+          reference: "Rut 1:3",
+          language: "es-419",
+        }),
+      ).toBeDefined();
+    } finally {
+      setVerifiedForTests(undefined);
+    }
+  });
+
   it("uses the table abbreviation where it differs from the resource id", async () => {
     const got = await scriptureFromPacks3(env(), {
       reference: "Tit 1:1",
@@ -339,6 +365,30 @@ describe("verseText", () => {
     };
     expect(verseText(clean, "5", 4, 4)).toBe("4 a b.");
     expect(verseText(clean, "5", 4, 5)).toBeUndefined();
+  });
+});
+
+describe("verseText fails closed", () => {
+  const unit = (...verses: string[]) => ({
+    pieces: verses.map((v) => [`${v} text.`, false] as [string, boolean]),
+    events: [
+      [0, "chapter", "3"],
+      ...verses.map((v, i) => [i, "verse", v] as [number, string, string]),
+    ] as Array<[number, string, string]>,
+  });
+  it("returns every verse of a range it has", () => {
+    expect(verseText(unit("14", "15"), "3", 14, 15)).toBe(
+      "14 14 text. 15 15 text.",
+    );
+  });
+  it("falls back when the range runs past the chapter's last verse (TIT 3:14-20)", () => {
+    expect(verseText(unit("14", "15"), "3", 14, 20)).toBeUndefined();
+  });
+  it("falls back when a verse inside the range is missing", () => {
+    expect(verseText(unit("14", "16"), "3", 14, 16)).toBeUndefined();
+  });
+  it("falls back when the first verse of the range is missing", () => {
+    expect(verseText(unit("15", "16"), "3", 14, 16)).toBeUndefined();
   });
 });
 

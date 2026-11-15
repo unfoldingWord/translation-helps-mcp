@@ -131,20 +131,33 @@ describe("passage rules", () => {
     expect(p("TIT 2:1")).toBe(false);
   });
 
-  it("a range needs its exact item and each verse clean", () => {
+  // The sweep compares only the whole chapter `C:1-N` as a range. A range exception there means the joined verses
+  // differ from the route (es-419 TIT 1:4-5: the route keeps a newline and a space at a paragraph break), so no range in that
+  // chapter is proven, even one whose verses are each clean. A single verse stays on its own proof.
+  it("a range is served only when its chapter has no range exception", () => {
     use(
       KEY,
       entry({
-        chapters: { TIT: [1] },
+        chapters: { TIT: [1, 2] },
         exceptions: ["TIT 1:3", "TIT 1:1-16"],
       }),
     );
-    expect(p("TIT 1:1-2")).toBe(true); // composed from clean verses
+    expect(p("TIT 1:1-2")).toBe(false); // clean verses, but the chapter's range differs
     expect(p("TIT 1:2-4")).toBe(false); // contains an exception
     expect(p("TIT 1:1-16")).toBe(false); // the exact item itself differs
-    expect(isVerifiedRange("en", "u/en/ult", "v1", "TIT", 1, 1, 2)).toBe(true);
+    expect(p("TIT 1:1")).toBe(true); // a single verse rests on its own proof
+    expect(p("TIT 2:1-3")).toBe(true); // chapter 2's whole range was proven
+    expect(isVerifiedRange("en", "u/en/ult", "v1", "TIT", 1, 1, 2)).toBe(false);
     expect(isVerifiedRange("en", "u/en/ult", "v1", "TIT", 1, 3, 3)).toBe(false);
     expect(isVerifiedRange("en", "u/en/ult", "v1", "TIT", 1, 2, 5)).toBe(false);
+    expect(isVerifiedRange("en", "u/en/ult", "v1", "TIT", 2, 1, 2)).toBe(true);
+  });
+
+  it("a range exception alone closes every range of its chapter, not its verses", () => {
+    use(KEY, entry({ chapters: { TIT: [1] }, exceptions: ["TIT 1:1-16"] }));
+    expect(p("TIT 1:4-5")).toBe(false);
+    expect(p("TIT 1:4")).toBe(true);
+    expect(p("TIT 1:5")).toBe(true);
   });
 
   // The sweep groups a chapter's exceptions in one string (verified.json is bundled in the Worker): same meaning.
@@ -157,9 +170,10 @@ describe("passage rules", () => {
     expect(p("TIT 1:3")).toBe(false);
     expect(p("TIT 1:10")).toBe(false);
     expect(p("TIT 1:1-16")).toBe(false);
-    expect(p("TIT 1:1-2")).toBe(true);
+    expect(p("TIT 1:1-2")).toBe(false); // the chapter's range is an exception
     expect(p("TIT 1:2-4")).toBe(false);
     expect(p("TIT 2:3")).toBe(true);
+    expect(p("TIT 2:3-4")).toBe(true);
   });
 
   it("a passage exception it cannot read makes the whole entry unusable", () => {

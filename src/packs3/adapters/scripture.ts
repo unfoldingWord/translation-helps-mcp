@@ -66,7 +66,7 @@ const LOST_SPACE = /[\p{L}\p{N}]\{\p{L}{3,}\}|\}[\p{L}\p{N}]|[.,;:!?][\p{L}{]/u;
 /**
  * The verses `start`..`end` of `chapter`, each with its number in front, joined by a space, or `undefined` when the
  * unit has something the route would show differently (notes, headings, bridges, a `\ts\*` between two verses of the
- * range, where the route keeps a blank line, lost whitespace) or lacks the passage.
+ * range, where the route keeps a blank line, lost whitespace) or lacks any verse of the passage.
  */
 export function verseText(
   unit: TextUnit,
@@ -79,6 +79,7 @@ export function verseText(
   let inChapter = false;
   let chapterSeen = false;
   const found: string[] = [];
+  const seen: number[] = [];
   let open: { n: number; from: number; breaks: Set<number> } | undefined;
   let tsInRange = false;
   const close = (to: number) => {
@@ -92,6 +93,7 @@ export function verseText(
       .replace(/[ \t]{2,}/g, " ")
       .trim();
     found.push(`${open.n} ${text}`);
+    seen.push(open.n);
     open = undefined;
   };
   for (const [at, kind, value] of events) {
@@ -122,7 +124,9 @@ export function verseText(
     return undefined;
   }
   close(pieces.length);
-  if (!chapterSeen || found.length === 0) return undefined;
+  // Every verse start..end, in order, or nothing: a range past the chapter's end or with a gap is not the route's.
+  if (!chapterSeen || found.length !== end - start + 1) return undefined;
+  if (seen.some((n, i) => n !== start + i)) return undefined;
   const text = found.join(" ");
   return LOST_SPACE.test(text) ? undefined : text;
 }
