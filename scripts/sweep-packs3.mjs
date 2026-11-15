@@ -7,10 +7,12 @@
  *
  * Usage (the adapters are TypeScript, so run it with tsx, which the repo already has):
  *   npx tsx scripts/sweep-packs3.mjs --lang en|es-419 --kind passage|notes|links|questions|articles|search \
- *     --bucket <dir> --api <url> [--books tit,rut] [--resume] [--max-age-hours 24] [--out-dir <dir>] [--cache <dir>] [--keys <id:hex>]
+ *     --bucket <dir> --api <url> [--api-index <local url>] [--books tit,rut] [--resume] [--max-age-hours 24] [--out-dir <dir>] [--cache <dir>] [--keys <id:hex>]
  *
  * - `--bucket` is a local copy of the staging bucket (a folder with `v3/catalog`, `v3/seg`); catalogs are verified with
  *   the trusted key as the Worker does (`--keys`, default the staging key of wrangler.toml).
+ * - `--api-index`: notes/links `fields=index` items are asked there with the internal header (a local
+ *   `npm run dev:api`, since the public API drops that shape); the default shape still goes to `--api`.
  * - The API Worker is only read (GET): concurrency 4, retries with backoff on 429 and 5xx. Answers are cached in
  *   `<out-dir>/sweep-cache` (git-ignored) with the fetch time and the catalog key; `--resume` reads that cache instead
  *   of asking again, but refetches an answer of another catalog key or older than `--max-age-hours` (24).
@@ -29,6 +31,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { diffPaths, normalize } from "./compare-packs3.mjs";
+import { INTERNAL_INDEX_HEADER, INTERNAL_INDEX_VALUE, isTrustedIndexHost } from "../src/core/internalIndex.ts";
 
 export const KINDS = ["passage", "notes", "links", "questions", "articles", "search"];
 
@@ -343,6 +346,21 @@ export function requestOf(kind, language, item, { index = false } = {}) {
   }
 }
 
+/**
+ * Where an item's request goes. The public API drops `fields=index` (src/core/internalIndex.ts): only a trusted host
+ * (localhost, loopback) with the internal header answers the index shape. So with `apiIndex` (`--api-index`, the API
+ * Worker under `wrangler dev`) index items go there with the header; default-shape items always go to `api`.
+ * Without `apiIndex` nothing changes (index items go to `api` as before and stay exceptions).
+ */
+export function apiTarget(item, { api, apiIndex } = {}) {
+  const headers = { accept: "application/json" };
+  if (!item.index || !apiIndex) return { base: api, headers };
+  if (!isTrustedIndexHost(new URL(apiIndex).hostname)) {
+    throw new Error(`--api-index ${apiIndex}: not a trusted index host (localhost); the API would drop fields=index`);
+  }
+  return { base: apiIndex, headers: { ...headers, [INTERNAL_INDEX_HEADER]: INTERNAL_INDEX_VALUE } };
+}
+
 // ---- running part ----
 
 function arg(name) {
@@ -366,7 +384,7 @@ async function localBucket(dir) {
 }
 
 /** GET with retries (429 and 5xx back off, 4 tries after the first); `undefined` for any other non-2xx. Cached on disk. */
-async function apiGet(base, req, cache) {
+async function apiGet({ base, headers }, req, cache) {
   const qs = new URLSearchParams(req.params).toString();
   const url = `${base.replace(/\/$/, "")}${req.path}?${qs}`;
   const file = join(cache.dir, createHash("sha1").update(url).digest("hex") + ".json");
@@ -378,7 +396,7 @@ async function apiGet(base, req, cache) {
   for (let attempt = 0; attempt < 5; attempt++) {
     let res;
     try {
-      res = await fetch(url, { headers: { accept: "application/json" } });
+      res = await fetch(url, { headers });
     } catch {
       await sleep(500 * 2 ** attempt);
       continue;
@@ -418,6 +436,8 @@ async function main() {
   const kind = arg("kind");
   const bucketDir = arg("bucket");
   const api = arg("api");
+  const apiIndex = arg("api-index");
+  if (apiIndex) apiTarget({ index: true }, { api, apiIndex }); // fail now on an untrusted host, not mid-run
   if (!lang || !KINDS.includes(kind) || !bucketDir || !api) {
     console.error("Usage: sweep-packs3.mjs --lang en|es-419 --kind <kind> --bucket <dir> --api <url> [--books a,b] [--resume]");
     process.exit(2);
@@ -518,7 +538,7 @@ async function main() {
   const cache = { dir: cacheDir, resume: flag("resume"), catalogKey: cats.key, maxAgeHours };
   const results = await pool(items, 4, async (it) => {
     const req = requestOf(it.sub, lang, it.index ? it.bare : it.item, { index: !!it.index });
-    const body = await apiGet(api, req, cache);
+    const body = await apiGet(apiTarget(it, { api, apiIndex }), req, cache);
     const attempt = await runAdapter(req.path, req.params);
     const used = kind === "passage" && attempt.hit ? keysFromVersions(attempt.value?.versions) : undefined;
     const r = { ...it, ...classifyItem(attempt, body), ...(used ? { used } : {}) };
@@ -528,7 +548,7 @@ async function main() {
 
   const swept = new Date().toISOString();
   const entries = {};
-  const lines = [`# Sweep differences: ${lang} ${kind}`, "", `Swept ${swept}, API ${api}, catalog ${cats.key}.`, ""];
+  const lines = [`# Sweep differences: ${lang} ${kind}`, "", `Swept ${swept}, API ${api}${apiIndex ? `, index shape from ${apiIndex}` : ""}, catalog ${cats.key}.`, ""];
   const alignedKey = helps.ALIGNED_TEXT.get(lang);
   for (const r of resources) {
     const mine = resultsForResource(r.key, results);

@@ -316,6 +316,34 @@ describe("sweep-packs3 pure parts", () => {
     ).toEqual({ ids: ["a/y", "b/x"] });
   });
 
+  // The public API drops `fields=index`; only a trusted host (localhost) with the internal header answers that shape.
+  it("sends index items to --api-index with the internal header, the rest to --api", () => {
+    const api = "https://api.example.org";
+    const apiIndex = "http://localhost:8788";
+    const idx = { item: "index:TIT 1", index: true };
+    const plain = { item: "TIT 1" };
+    expect(s.apiTarget(idx, { api, apiIndex })).toEqual({
+      base: apiIndex,
+      headers: { accept: "application/json", "x-th-internal": "index" },
+    });
+    expect(s.apiTarget(plain, { api, apiIndex })).toEqual({
+      base: api,
+      headers: { accept: "application/json" },
+    });
+    // The old behaviour stays the default: no --api-index, everything to --api with no header.
+    expect(s.apiTarget(idx, { api })).toEqual({
+      base: api,
+      headers: { accept: "application/json" },
+    });
+    // A host the API would not trust would strip the shape: refuse it rather than compare the wrong shape.
+    expect(() =>
+      s.apiTarget(idx, { api, apiIndex: "https://api.example.org" }),
+    ).toThrow(/trusted/);
+    expect(
+      s.apiTarget(idx, { api, apiIndex: "http://127.0.0.1:8788/" }).base,
+    ).toBe("http://127.0.0.1:8788/");
+  });
+
   it("makes passage items: every verse and one range per chapter, from the union of verse events", () => {
     const ev1 = [
       [0, "chapter", "1"],

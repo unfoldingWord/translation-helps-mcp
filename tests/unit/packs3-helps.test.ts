@@ -15,6 +15,7 @@ import {
   wordLinksFromPacks3,
   proofOfNoLink,
   placeNotes,
+  chosenRows,
   restoreLinks,
 } from "../../src/packs3/adapters/helps";
 import { answerFromPacks3 } from "../../src/packs3/answer";
@@ -341,6 +342,73 @@ describe("notes", () => {
     expect(placed?.map((p) => [p.chapter, p.verse, p.kind])).toEqual([
       ["front", "intro", "front"],
       ["1", "1", "verse"],
+    ]);
+  });
+
+  // en PSA: one row has the reference `5:1,3,8,12` (a verse list); it used to make every Psalm unanswerable.
+  it("placeNotes: a row whose reference is not c:v or c:a-b blocks only its chapter and the whole book", () => {
+    const row = (id: string, ref: string, from: number, to: number) => ({
+      id,
+      ref,
+      from,
+      to,
+      cols: {
+        note: "n",
+        tags: "",
+        quote: "x",
+        isIntro: false,
+        occurrence: "1",
+      },
+    });
+    const placed = placeNotes([
+      row("a", "4:1", 19004001, 19004001),
+      row("b", "5:1,3,8,12", 19005001, 19005012),
+      row("c", "5:2", 19005002, 19005002),
+    ] as never);
+    expect(placed?.map((p) => [p.chapter, p.verse, !!p.unplaced])).toEqual([
+      ["4", "1", false],
+      ["5", "1,3,8,12", true],
+      ["5", "2", false],
+    ]);
+    const q = (chapter: string, verseStart?: number) =>
+      ({ chapter, verseStart, verseEnd: verseStart }) as never;
+    expect(chosenRows(placed!, q("4"), true)?.map((p) => p.row.id)).toEqual([
+      "a",
+    ]);
+    expect(chosenRows(placed!, q("5"), true)).toBeUndefined();
+    expect(chosenRows(placed!, q("5", 2), true)).toBeUndefined();
+    expect(chosenRows(placed!, q("*"), true)).toBeUndefined();
+    // A row with no usable verse numbers still refuses the whole book.
+    expect(
+      placeNotes([row("d", "5:x", Number.NaN, Number.NaN)] as never),
+    ).toBeUndefined();
+  });
+
+  // en ZEC 6 has two flagged rows ("Introduction" and "General Notes"); the route lists both as `6:intro`.
+  it("placeNotes: a chapter may have more than one introduction row", () => {
+    const row = (id: string, ref: string, isIntro: boolean) => {
+      const [c, v] = ref.split(":").map(Number);
+      return {
+        id,
+        ref,
+        from: 38000000 + c * 1000 + v,
+        to: 38000000 + c * 1000 + v,
+        cols: { note: "n", tags: "", quote: "", isIntro, occurrence: "0" },
+      };
+    };
+    const placed = placeNotes([
+      row("a", "1:1", true),
+      row("b", "1:1", true),
+      row("c", "6:1", true),
+      row("d", "6:1", true),
+      row("e", "6:1", false),
+    ]);
+    expect(placed?.map((p) => [p.row.id, p.chapter, p.verse, p.kind])).toEqual([
+      ["a", "front", "intro", "front"],
+      ["b", "1", "intro", "chapter"],
+      ["c", "6", "intro", "chapter"],
+      ["d", "6", "intro", "chapter"],
+      ["e", "6", "1", "verse"],
     ]);
   });
 

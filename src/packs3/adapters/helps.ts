@@ -142,6 +142,8 @@ export type Placed = {
   kind: "front" | "chapter" | "verse";
   /** The article the row points to (`ta:translate/figs-metaphor`, `tw:kt/god`), if any. */
   link?: string | undefined;
+  /** The reference is not a single `c:v` or `c:a-b` (en PSA `5:1,3,8,12`): its chapter and the whole book give no answer. */
+  unplaced?: boolean;
 };
 
 /**
@@ -193,8 +195,29 @@ export function placeNotes(rows: HelpRow[]): Placed[] | undefined {
   const introsOf = new Map<string, number>();
   for (const [i, row] of rows.entries()) {
     const at = refOf(row);
-    if (!at || linkOf(row) === null) return undefined;
+    if (linkOf(row) === null) return undefined;
     if (row.cols.supportReference !== undefined) return undefined;
+    if (!at) {
+      // Only that row's chapter is unanswerable, when its verse numbers name one chapter.
+      const chapter = Math.floor(row.from / 1000) % 1000;
+      if (
+        !Number.isInteger(row.from) ||
+        !Number.isInteger(row.to) ||
+        Math.floor(row.to / 1000) % 1000 !== chapter ||
+        !row.ref.startsWith(`${chapter}:`)
+      )
+        return undefined;
+      placed.push({
+        row,
+        chapter: String(chapter),
+        verse: row.ref.slice(String(chapter).length + 1),
+        kind: "verse",
+        link: linkOf(row) ?? undefined,
+        quoteMissing: missing(row),
+        unplaced: true,
+      });
+      continue;
+    }
     if (row.cols.isIntro === true) {
       if (row.ref !== `${at.chapter}:1`) return undefined;
       const n = (introsOf.get(at.chapter) ?? 0) + 1;
@@ -209,7 +232,8 @@ export function placeNotes(rows: HelpRow[]): Placed[] | undefined {
           link: linkOf(row) ?? undefined,
           quoteMissing: missing(row),
         });
-      } else if (n === 1 || (at.chapter === "1" && n === 2)) {
+      } else {
+        // A chapter may have several (en ZEC 6: "Introduction" and "General Notes"); the route lists each as `c:intro`.
         placed.push({
           row,
           chapter: at.chapter,
@@ -218,7 +242,7 @@ export function placeNotes(rows: HelpRow[]): Placed[] | undefined {
           link: linkOf(row) ?? undefined,
           quoteMissing: missing(row),
         });
-      } else return undefined;
+      }
     } else if (row.cols.isIntro === false || row.cols.isIntro === undefined) {
       placed.push({
         row,
@@ -251,8 +275,30 @@ function placeLinks(rows: HelpRow[]): Placed[] | undefined {
   return placed;
 }
 
+/**
+ * The rows of a query, or `undefined` when one of them is `unplaced` (a whole-book query, or a query in its chapter:
+ * its place among the verses is not known).
+ */
+export function chosenRows(
+  placed: Placed[],
+  q: Pick<Query, "chapter" | "verseStart" | "verseEnd">,
+  notes: boolean,
+): Placed[] | undefined {
+  if (
+    placed.some(
+      (p) => p.unplaced && (q.chapter === "*" || p.chapter === q.chapter),
+    )
+  )
+    return undefined;
+  return placed.filter((p) => inQuery(p, q, notes));
+}
+
 /** The route's `parseTranslationNotesTsv` filter, in the order of the TSV. */
-function inQuery(p: Placed, q: Query, notes: boolean): boolean {
+function inQuery(
+  p: Placed,
+  q: Pick<Query, "chapter" | "verseStart" | "verseEnd">,
+  notes: boolean,
+): boolean {
   if (q.chapter === "*") return true;
   if (notes && p.kind === "front") return true;
   if (p.chapter !== q.chapter) return false;
@@ -477,7 +523,8 @@ async function prepare(
     }
   | undefined
 > {
-  const chosen = ctx.placed.filter((p) => inQuery(p, ctx.q, notes));
+  const chosen = chosenRows(ctx.placed, ctx.q, notes);
+  if (!chosen) return undefined;
   const concepts: string[] = [];
   for (const { link, row, kind } of chosen) {
     if (link === undefined) {
