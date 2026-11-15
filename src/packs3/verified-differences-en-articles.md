@@ -1,6 +1,6 @@
 # Sweep differences: en articles
 
-Swept 2026-11-15T16:09:59.721Z, API https://translation-helps-api-v2.unfoldingword.workers.dev, catalog a514d7f324502561dea5aa36510970b9abca21e8b367ed8d2548e866065c7e8c+e47a3e63650cd4fb394034bfb71e5bf52806df055d83dd581f00ad147082f196.
+Swept 2026-11-15T17:25:06.889Z, API https://translation-helps-api-v2.unfoldingword.workers.dev, catalog a514d7f324502561dea5aa36510970b9abca21e8b367ed8d2548e866065c7e8c+e47a3e63650cd4fb394034bfb71e5bf52806df055d83dd581f00ad147082f196.
 
 ## en|unfoldingWord/en/ta|v91|articles
 
@@ -90,7 +90,7 @@ Items 2295, exceptions 54 (differs 26, ambiguous 28)
 
 ## en|unfoldingWord/en/tw|v91|articles
 
-Items 3006, exceptions 481 (differs 436, api-error 3, ambiguous 42)
+Items 3006, exceptions 478 (differs 436, ambiguous 42)
 
 - bible/kt/adoption: differs
   - $.article: today `"# adoption, adopt, adopted\n\n## Definition:\n\nThe terms “adopt” and “adoption” refer to the process of someone legally becoming the child` format 3 `"# adoption, adopt, adopted\n\n## Definition:\n\nThe terms “adopt” and “adoption” refer to the process of someone legally becoming the child`
@@ -336,7 +336,6 @@ Items 3006, exceptions 481 (differs 436, api-error 3, ambiguous 42)
   - $.article: today `"# praise, praised, praiseworthy\n\n## Definition:\n\nTo praise someone is to express admiration and honor for that person.\n\n* People prai` format 3 `"# praise, praised, praiseworthy\n\n## Definition:\n\nTo praise someone is to express admiration and honor for that person.\n\n* People prai`
 - bible/other/prosper: differs
   - $.article: today `"# prosper, prosperity, prosperous\n\n## Definition:\n\nThe term “prosper” generally refers to living well, whether it be physically, morall` format 3 `"# prosper, prosperity, prosperous\n\n## Definition:\n\nThe term “prosper” generally refers to living well, whether it be physically, morall`
-- bible/other/prostrate: api-error
 - bible/other/purple: differs
   - $.article: today `"# purple\n\n## Definition:\n\nThe term “purple” is the name of a color that is a mixture of blue and red.\n\n* In ancient times, purple was` format 3 `"# purple\n\n## Definition:\n\nThe term “purple” is the name of a color that is a mixture of blue and red.\n\n* In ancient times, purple was`
 - bible/other/receive: differs
@@ -470,7 +469,6 @@ Items 3006, exceptions 481 (differs 436, api-error 3, ambiguous 42)
 - term:called: ambiguous
 - term:capernaum: differs
   - $.article: today `"# Capernaum\n\n## Definition:\n\nCapernaum was a fishing village on the northwest shore of the Sea of Galilee.\n\n* Jesus lived in Capernau` format 3 `"# Capernaum\n\n## Definition:\n\nCapernaum was a fishing village on the northwest shore of the Sea of Galilee.\n\n* Jesus lived in Capernau`
-- term:capture: api-error
 - term:carriedout: differs
   - $.article: today `"# fulfill, fulfilled, carried out\n\n## Definition:\n\nThe term “fulfill” means to complete or accomplish something that was expected.\n\n*` format 3 `"# fulfill, fulfilled, carried out\n\n## Definition:\n\nThe term “fulfill” means to complete or accomplish something that was expected.\n\n*`
 - term:castinglots: differs
@@ -479,4 +477,7 @@ Items 3006, exceptions 481 (differs 436, api-error 3, ambiguous 42)
   - $.article: today `"# cow, bull, calf, cattle, heifer, ox\n\n## Definition:\n\nThe terms “cow,” “bull,” “heifer,” “ox,” and “cattle” all refer to a kind of lar` format 3 `"# cow, bull, calf, cattle, heifer, ox\n\n## Definition:\n\nThe terms “cow,” “bull,” “heifer,” “ox,” and “cattle” all refer to a kind of lar`
 - term:chief: differs
   - $.article: today `"# chief, leader\n\n## Definition:\n\nThe term “chief” refers to the most powerful or most important leader of a particular group.\n\n* Exam` format 3 `"# chief, leader\n\n## Definition:\n\nThe term “chief” refers to the most powerful or most important leader of a particular group.\n\n* Exam`
+- term:childrenofgod: differs
+  - $.article: today `"# sons of God, children of God\n\n## Definition:\n\nThe term “sons of God” is a figurative expression that has several possible meanings.\n` format 3 `"# sons of God, children of God\n\n## Definition:\n\nThe term “sons of God” is a figurative expression that has several possible meanings.\n`
+- term:cistern: ambiguous
 - and more (see the counts above)
