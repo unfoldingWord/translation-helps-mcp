@@ -27,7 +27,8 @@ const ID_PLACEHOLDER = "__FROM_INDEX__";
  *  - requestId: new on every call.
  *  - meta.timings: wall-clock milliseconds.
  *  - meta.cache, meta.cacheStatus: whether a cache answered differs between `off` and `only` by design.
- *  - the text summary's trailing [cache...] tag: the same cache note, in prose.
+ *  - the text summary's trailing [cache...] tag, or a [kv], [pack], [memory], [mixed] or [network] tag (the
+ *    meta.cache value in prose, as in `3 scripture version(s) for JHN 3:16 [kv]`): the same cache note, in prose.
  *  - _meta._packs3: the debug mark of the path taken, read separately. */
 export function normalize(value) {
   if (typeof value === "string") {
@@ -39,7 +40,9 @@ export function normalize(value) {
         /* not JSON */
       }
     }
-    return value.replace(/[ \t]*\[cache[^\]]*\](?=\s*$)/gi, "");
+    return value
+      .replace(/[ \t]*\[cache[^\]]*\](?=\s*$)/gi, "")
+      .replace(/(\S)[ \t]*\[(?:kv|pack|memory|mixed|network)\](?=\s*$|\s*\n)/g, "$1");
   }
   if (Array.isArray(value)) return value.map((v) => normalize(v));
   if (value && typeof value === "object") {
@@ -87,6 +90,16 @@ export function diffPaths(a, b, path = "$") {
     else out.push(...diffPaths(a[k], b[k], `${path}.${k}`));
   }
   return out;
+}
+
+/** normalize for a whole tool result: the result's own top-level `cacheStatus` (hit, miss, ...) also differs with how
+ *  warm each side's cache is, like meta.cacheStatus; nested fields of that name stay (see normalize). */
+export function normalizeResult(result) {
+  if (result && typeof result === "object" && !Array.isArray(result) && "cacheStatus" in result) {
+    const { cacheStatus: _c, ...rest } = result;
+    return normalize(rest);
+  }
+  return normalize(result);
 }
 
 const sameJson = (x, y) => JSON.stringify(x) === JSON.stringify(y);
@@ -293,10 +306,11 @@ async function main() {
       console.log(`FAIL ${call.tool} ${JSON.stringify(call.args)} rate limited`);
       continue;
     }
-    const em = errorMismatch(a.result, b.result);
+    const st = baseB ? null : packs3Status(b.result);
+    // Under `only` a call format 3 cannot answer is an error by design (the fallback reason), so it is not an error mismatch.
+    const em = st?.kind === "fallback" ? null : errorMismatch(a.result, b.result);
     if (em) row.problems.push(em);
     if (!baseB) {
-      const st = packs3Status(b.result);
       row.status = st.kind;
       row.fallback = st.kind === "fallback" ? st.reason : null;
       if (st.kind === "unmarked") {
@@ -308,7 +322,7 @@ async function main() {
       }
     }
     if ((call.expect === "pack" && row.status === "served") || baseB) {
-      Object.assign(row, classify(dropMirroredText(diffPaths(normalize(a.result), normalize(b.result))), call, known));
+      Object.assign(row, classify(dropMirroredText(diffPaths(normalizeResult(a.result), normalizeResult(b.result))), call, known));
     }
     rows.push(row);
     const bad = row.problems.length + row.failing.length;

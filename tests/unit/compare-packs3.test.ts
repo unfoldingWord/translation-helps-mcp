@@ -88,6 +88,31 @@ describe("compare-packs3 pure parts", () => {
     expect(s.normalize({ text: "a [hit]" })).toEqual({ text: "a [hit]" });
   });
 
+  it("normalizeResult also drops the result's top-level cacheStatus, nothing nested", () => {
+    expect(
+      s.normalizeResult({
+        cacheStatus: "miss",
+        meta: { cacheStatus: "hit" },
+        sc: { cacheStatus: "hit" },
+      }),
+    ).toEqual({ sc: { cacheStatus: "hit" } });
+  });
+
+  it("strips the meta.cache source tag from the prose summary, which differs by design", () => {
+    const head = "3 scripture version(s) for JHN 3:16";
+    expect(s.normalize({ text: `${head} [kv]` })).toEqual({ text: head });
+    expect(
+      s.normalize({
+        text: `${head} [pack]
+more [kv] inside`,
+      }),
+    ).toEqual({
+      text: `${head}
+more [kv] inside`,
+    });
+    expect(s.normalize({ text: "a [kvx]" })).toEqual({ text: "a [kvx]" });
+  });
+
   it("two errors must be the same error class", () => {
     const e1 = { isError: true, structuredContent: { code: "NOT_FOUND" } };
     const e2 = { isError: true, structuredContent: { code: "INTERNAL" } };
