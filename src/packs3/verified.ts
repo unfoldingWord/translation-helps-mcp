@@ -94,10 +94,7 @@ function passageExceptions(list: string[]): Set<string> | undefined {
 }
 const JOINS_CHAPTER = /^(\d+):(\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)$/;
 
-/**
- * The proven boundaries of `chapter` (`v` is the boundary between verses v and v+1) from a passage entry's `joins`
- * (`{ "TIT": "1:1-4,6;3:4" }`), or `undefined` when there are none or the book's string cannot be read (fail closed).
- */
+/** Whether every part of a book's `joins` string (`1:1-4,6;3:4`) parses: one that does not makes the entry unusable. */
 function joinsParses(line: string): boolean {
   return line.split(";").every((p) => JOINS_CHAPTER.test(p) && joinRunsOk(p));
 }
@@ -110,6 +107,10 @@ function joinRunsOk(part: string): boolean {
   });
 }
 
+/**
+ * The proven boundaries of `chapter` (`v` is the boundary between verses v and v+1) from a passage entry's `joins`
+ * (`{ "TIT": "1:1-4,6;3:4" }`), or `undefined` when there are none or the book's string cannot be read (fail closed).
+ */
 function joinsOf(
   joins: unknown,
   book: string,

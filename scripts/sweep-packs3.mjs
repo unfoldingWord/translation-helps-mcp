@@ -235,11 +235,13 @@ export function verseMap(eventLists) {
  * Passage items of a book: `BOOK C:V` for every verse and one `BOOK C:1-N` range per chapter (N > 1). With
  * `windows` (`--range-windows N`), also the first N range windows of each chapter (`rangeWindows`), marked `window`.
  */
-export function passageItems(book, verses, { windows = 0 } = {}) {
+export function passageItems(book, verses, { windows = 0, windowChapters } = {}) {
   const out = [];
   for (const [c, vs] of Object.entries(verses)) {
     for (const v of vs) out.push({ item: `${book} ${c}:${v}`, book, chapter: Number(c) });
     if (vs.length > 1) out.push({ item: `${book} ${c}:1-${vs[vs.length - 1]}`, book, chapter: Number(c) });
+    // windows only where the caller lists the chapter (undefined = every chapter)
+    if (windowChapters && !windowChapters.has(Number(c))) continue;
     for (const [a, b] of rangeWindows(vs, windows)) {
       out.push({ item: `${book} ${c}:${a}-${b}`, book, chapter: Number(c), window: true });
     }
@@ -247,17 +249,44 @@ export function passageItems(book, verses, { windows = 0 } = {}) {
   return out;
 }
 
-/**
- * The range windows of a chapter's verses (ascending): 3-verse windows from the first verse that share their ends
- * (1-3, 3-5, 5-7, …; the last may hold 2 verses), the first `n`. Each equal window proves the boundaries inside it,
- * so the windows cover every boundary of the chapter; a cap `n` keeps the first n (the first 2n boundaries), Infinity none.
- */
 /** `--range-windows` value: absent = 0, "all" = no cap, else a whole number (NaN when not). */
 export function parseRangeWindows(v) {
   if (v === undefined) return 0;
   return v === "all" ? Infinity : Number(v);
 }
 
+/**
+ * The chapters a previous proof lists as a whole-chapter range exception: `Map<BOOK, Set<chapter>>` (the only chapters
+ * where windows matter, see `pruneJoins`).
+ */
+export function rangeExceptionChapters(entry) {
+  const out = new Map();
+  for (const x of entry?.exceptions ?? []) {
+    const m = /^(\S+) (\d+):(.*)$/.exec(x);
+    if (!m || !m[3].includes("-")) continue;
+    if (!out.has(m[1])) out.set(m[1], new Set());
+    out.get(m[1]).add(Number(m[2]));
+  }
+  return out;
+}
+
+/** The previous proof (`--windows-from`): fails closed (throws) when the file cannot be read or is not an object. */
+export function readWindowsFrom(path) {
+  let v;
+  try {
+    v = JSON.parse(readFileSync(path, "utf8"));
+  } catch (e) {
+    throw new Error(`--windows-from ${path} cannot be read: ${e.message}`);
+  }
+  if (!v || typeof v !== "object" || Array.isArray(v)) throw new Error(`--windows-from ${path} is not a verified.json object`);
+  return v;
+}
+
+/**
+ * The range windows of a chapter's verses (ascending): 3-verse windows from the first verse that share their ends
+ * (1-3, 3-5, 5-7, …; the last may hold 2 verses), the first `n`. Each equal window proves the boundaries inside it,
+ * so the windows cover every boundary of the chapter; a cap `n` keeps the first n (the first 2n boundaries), Infinity none.
+ */
 export function rangeWindows(verses, n) {
   const out = [];
   for (let i = 0; i + 1 < verses.length && out.length < n; i += 2) {
@@ -584,6 +613,11 @@ async function main() {
     process.exit(2);
   }
 
+  // Windows only where the previous proof lists the chapter's whole-chapter range as an exception.
+  const previousProof = rangeWindowCount
+    ? readWindowsFrom(resolve(arg("windows-from") ?? join(dirname(fileURLToPath(import.meta.url)), "..", "src", "packs3", "verified.json")))
+    : undefined;
+
   const { getCatalogs } = await import("../src/packs3/catalogs.ts");
   const { withReader } = await import("../src/packs3/readers.ts");
   const { attemptPacks3 } = await import("../src/packs3/answer.ts");
@@ -605,6 +639,8 @@ async function main() {
   const catList = [own, ...cats.catalogs.filter((c) => c !== own)].map((c) => ({ name: c.name, resources: c.catalog.resources ?? [] }));
   const resources = resourcesOfKind(kind, own.catalog.resources ?? []);
   if (!resources.length) throw new Error(`the ${lang} catalog has no resource for ${kind}`);
+  const noProof = previousProof ? resources.filter((r) => !previousProof[sweepKey(lang, r.key, r.release, kind)]).map((r) => r.key) : [];
+  if (noProof.length) console.log(`--range-windows: no previous proof for ${noProof.join(", ")}: no windows for them`);
 
   // Items: { res (resource keys they count for), sub (request kind), item, book?, chapter? }.
   const items = [];
@@ -646,7 +682,14 @@ async function main() {
         return { chapters: unionChapters(lists), verses: verseMap(textEvents) };
       });
       if (kind === "passage") {
-        for (const p of passageItems(B, found?.verses ?? {}, { windows: rangeWindowCount })) items.push({ ...p, sub: kind, res });
+        let windowChapters; // undefined = every chapter (no --range-windows: no windows at all)
+        if (previousProof) {
+          windowChapters = new Set();
+          for (const r of listing) {
+            for (const c of rangeExceptionChapters(previousProof[sweepKey(lang, r.key, r.release, kind)]).get(B) ?? []) windowChapters.add(c);
+          }
+        }
+        for (const p of passageItems(B, found?.verses ?? {}, { windows: rangeWindowCount, windowChapters })) items.push({ ...p, sub: kind, res });
       } else {
         // notes/links: the default whole-book request is not valid on the route, so a whole book is an index item only.
         if (withBook) items.push({ sub: kind, item: indexItem(B), book: B, res, index: true, bare: B });
@@ -725,7 +768,8 @@ async function main() {
       (writeVerified ? "" : " (narrowed run: not written to verified.json)"), "");
     if (rangeWindowCount) {
       const w = all.filter((x) => x.window);
-      lines.push(`Range windows ${w.length}, equal ${w.filter((x) => x.status === "equal").length}`, "");
+      lines.push(`Range windows ${w.length}, equal ${w.filter((x) => x.status === "equal").length}` +
+        (noProof.includes(r.key) ? " (no previous proof for this resource: no windows)" : ""), "");
     }
     let listed = 0;
     for (const x of bad) {

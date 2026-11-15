@@ -219,6 +219,38 @@ describe("sweep: range windows", () => {
     ]);
   });
 
+  it("adds windows only in the listed chapters", () => {
+    const verses = { 1: [1, 2, 3, 4], 2: [1, 2, 3, 4] };
+    const items = s.passageItems("TIT", verses, {
+      windows: Infinity,
+      windowChapters: new Set([2]),
+    });
+    expect(items.filter((i: any) => i.window).map((i: any) => i.item)).toEqual([
+      "TIT 2:1-3",
+      "TIT 2:3-4",
+    ]);
+    // the plain items are all still there
+    expect(items.filter((i: any) => !i.window)).toHaveLength(10);
+    const none = s.passageItems("TIT", verses, {
+      windows: Infinity,
+      windowChapters: new Set(),
+    });
+    expect(none.some((i: any) => i.window)).toBe(false);
+  });
+
+  it("finds the chapters whose whole-chapter range is an exception", () => {
+    const m = s.rangeExceptionChapters({
+      exceptions: ["TIT 1:2,1-3", "TIT 2:4", "REV 3:1-9"],
+    });
+    expect([...m.get("TIT")]).toEqual([1]);
+    expect([...m.get("REV")]).toEqual([3]);
+    expect(m.has("MAT")).toBe(false);
+  });
+
+  it("reads the previous proof and fails closed", () => {
+    expect(() => s.readWindowsFrom("/no/such/verified.json")).toThrow();
+  });
+
   it("splits a 3-verse window into its two 2-verse windows", () => {
     expect(
       s
