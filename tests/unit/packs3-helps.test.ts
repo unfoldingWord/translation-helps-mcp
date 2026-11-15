@@ -15,6 +15,7 @@ import {
   wordLinksFromPacks3,
   proofOfNoLink,
   placeNotes,
+  placeLinks,
   chosenRows,
   restoreLinks,
   helpsNeed,
@@ -208,13 +209,53 @@ describe("word links", () => {
     });
   });
 
-  it("an Old Testament book gives undefined without fields=index: its aligned words differ from the route's in some rows", async () => {
-    expect(
-      await wordLinksFromPacks3(env(), {
-        reference: "Rut 1:1",
+  it("an Old Testament book (Hebrew original): every chapter of es-419 RUT equals the live rows, aligned words included", async () => {
+    for (const ch of ["1", "2", "3", "4"]) {
+      const got = (await wordLinksFromPacks3(env(), {
+        reference: `Rut ${ch}`,
         language: "es-419",
-      }),
-    ).toBeUndefined();
+      })) as { wordLinks: Row[] } | undefined;
+      expect(got, `RUT ${ch}`).toBeDefined();
+      // The fixture's rows were read without aligned words; those are pinned below for RUT 3:1-2.
+      const withoutQuote = ({ gatewayQuote, ...r }: Row) => {
+        expect((gatewayQuote as Row).original).toBe(
+          formatQuoteDisplay(String(r.origWords)),
+        );
+        return r;
+      };
+      expect(got!.wordLinks.map(withoutQuote), `RUT ${ch}`).toEqual(
+        liveLinks(esRut, ch),
+      );
+    }
+    // GET /api/v1/word-links?reference=RUT+3&language=es-419, read 2026-11-15.
+    const got = (await wordLinksFromPacks3(env(), {
+      reference: "Rut 3:1-2",
+      language: "es-419",
+    })) as { wordLinks: Row[] };
+    expect(
+      got.wordLinks.map((r) => [
+        r.twId,
+        r.verse,
+        (r.gatewayQuote as { aligned: string }).aligned,
+      ]),
+    ).toEqual([
+      ["uy3u", "1", "un lugar de descanso"],
+      ["h2my", "2", "es Booz"],
+      ["rys6", "2", "jóvenes trabajadoras"],
+      ["z6m7", "2", "estará aventando"],
+      ["u6ct", "2", "en el patio de trillar"],
+      ["dass", "2", "la cebada"],
+    ]);
+  });
+
+  it("word links build the route's tokens only for the verses asked", async () => {
+    tokenisedForTests();
+    const got = await wordLinksFromPacks3(env(), {
+      reference: "Rut 3:1",
+      language: "es-419",
+    });
+    expect(got).toBeDefined();
+    expect(tokenisedForTests().sort()).toEqual(["orig 3:1", "text 3:1"]);
   });
 
   it("an Old Testament book answers fields=index (no aligned words in it)", async () => {
@@ -385,6 +426,32 @@ describe("notes", () => {
     expect(
       placeNotes([row("d", "5:x", Number.NaN, Number.NaN)] as never),
     ).toBeUndefined();
+  });
+
+  // en PSA word links: a superscription row is `3:front` (verse 0 in format 3); the route lists it as verse "front",
+  // in its chapter and in the whole book, never in a verse query, with aligned words "" (parseInt gives no verse).
+  it("placeLinks: a `c:front` row (Psalms superscription) is placed at verse front; a malformed one refuses the book", () => {
+    const row = (id: string, ref: string, verse: number) => ({
+      id,
+      ref,
+      from: 19003000 + verse,
+      to: 19003000 + verse,
+      cols: { origWords: "w", occurrence: "1", articlePath: "bible/kt/psalm" },
+      concept: "tw:kt/psalm",
+    });
+    const placed = placeLinks([row("a", "3:front", 0), row("b", "3:1", 1)]);
+    expect(placed?.map((p) => [p.row.id, p.chapter, p.verse])).toEqual([
+      ["a", "3", "front"],
+      ["b", "3", "1"],
+    ]);
+    expect(chosenRows(placed!, { chapter: "3" }, false)).toHaveLength(2);
+    expect(
+      chosenRows(placed!, { chapter: "3", verseStart: "1" }, false)?.map(
+        (p) => p.row.id,
+      ),
+    ).toEqual(["b"]);
+    expect(placeLinks([row("a", "3:front", 1)])).toBeUndefined();
+    expect(placeLinks([{ ...row("a", "4:front", 0) }])).toBeUndefined();
   });
 
   // en ZEC 6 has two flagged rows ("Introduction" and "General Notes"); the route lists both as `6:intro`.
@@ -600,23 +667,11 @@ describe("notes", () => {
     const rut = probe({ "book:rut": 900000, "orig:rut": 200000 });
     expect(helpsNeed(rut, "rut", true)).toBeLessThan(READER_BYTE_BUDGET);
     expect(helpsNeed(rut, "rut", false)).toBeGreaterThan(READER_BYTE_BUDGET);
-    // Old Testament word links always fall back (never swept with aligned words): nothing to open.
-    expect(helpsNeed(psa, "psa", false, "links")).toBe(0);
+    // Word links build aligned words as notes do, Old Testament too: the book and its original.
+    expect(helpsNeed(psa, "psa", false, "links")).toBe(1097745 + 418898);
     expect(helpsNeed(psa, "psa", true, "links")).toBe(1097745);
     const tit = probe({ "book:tit": 1000, "orig:tit": 500 });
     expect(helpsNeed(tit, "tit", false, "links")).toBe(1500);
-  });
-
-  it("Old Testament word links without fields=index give undefined before reading the bucket (no exclusive reader)", async () => {
-    const e = env();
-    const get = vi.spyOn(
-      e.LANGUAGE_PACKS as unknown as { get: () => unknown },
-      "get",
-    );
-    expect(
-      await wordLinksFromPacks3(e, { reference: "Rut 3", language: "es-419" }),
-    ).toBeUndefined();
-    expect(get).not.toHaveBeenCalled();
   });
 
   it("notes build the route's tokens only for the verses asked, not the whole book", async () => {
@@ -641,15 +696,6 @@ describe("notes", () => {
     const seen = tokenisedForTests();
     expect(seen.every((k) => / 3:\d+$/.test(k))).toBe(true);
     expect(seen.length).toBeLessThanOrEqual(2 * 18);
-  });
-
-  it("word links of an Old Testament book stay New Testament only (not swept)", async () => {
-    expect(
-      await wordLinksFromPacks3(env(), {
-        reference: "Rut 3:1",
-        language: "es-419",
-      }),
-    ).toBeUndefined();
   });
 
   it("es-419 TIT 1:1: every verse row, aligned words included, equals the route's", async () => {

@@ -5,9 +5,9 @@
  * - Format 3 rewrites a note body's links as ids (`ref:tit 1:5`, `[[ta:…]]`, `[[tw:…]]`); `restoreLinks` gives them
  *   back in the form the en and es-419 notes use (`../01/05.md`, `rc:` links with the `*` language). Another form could have been
  *   written: the sweep proves each chapter, and a body with a form it cannot rebuild is not returned.
- * - The aligned words (`gatewayQuote.aligned`) are rebuilt from the verse's alignment (notes: every book; word links:
- *   New Testament only). Where the route's own quote matching answers otherwise (repeated words, Hebrew rows), the
- *   sweep keeps the chapter as an exception.
+ * - The aligned words (`gatewayQuote.aligned`) of notes and word links, every book, come from the route's own quote
+ *   matcher over the verse's words and alignment. Where the route answers otherwise, the sweep keeps the chapter as an
+ *   exception.
  * - Only the resources of the tables below, checked against the route's live answers (2026-11-12), are answered.
  */
 import {
@@ -30,7 +30,7 @@ import { warnOnce } from "../keys";
 import { withReader, type SizeProbe } from "../readers";
 import type { Packs3Params } from "../answer";
 import { depsCover, isVerified, releaseOfCatalogs } from "../verified";
-import { BOOKS, bookBytes, FIRST_NT } from "./scripture";
+import { bookBytes } from "./scripture";
 
 /**
  * The route's `supportReference` of a row with no article link in format 3 is "" only if the builder did not drop an
@@ -260,10 +260,27 @@ export function placeNotes(rows: HelpRow[]): Placed[] | undefined {
   return placed;
 }
 
-function placeLinks(rows: HelpRow[]): Placed[] | undefined {
+/**
+ * A `c:front` row (en Psalms superscriptions in word links): format 3 keeps it at verse 0 of its chapter. The route lists
+ * it as verse "front" (in its chapter and the whole book, never in a verse query; its aligned words are "").
+ */
+function frontOf(row: HelpRow): { chapter: string; verse: string } | undefined {
+  const m = /^(\d+):front$/.exec(row.ref);
+  if (
+    !m ||
+    !Number.isInteger(row.from) ||
+    row.to !== row.from ||
+    row.from % 1000 !== 0 ||
+    Math.floor(row.from / 1000) % 1000 !== Number(m[1])
+  )
+    return undefined;
+  return { chapter: m[1], verse: "front" };
+}
+
+export function placeLinks(rows: HelpRow[]): Placed[] | undefined {
   const placed: Placed[] = [];
   for (const row of rows) {
-    const at = refOf(row);
+    const at = refOf(row) ?? frontOf(row);
     if (!at || linkOf(row) === null) return undefined;
     if (row.cols.isIntro === true || row.cols.twLink !== undefined)
       return undefined;
@@ -344,75 +361,8 @@ async function titlesOf(
   return concepts.every((c) => titles.has(c)) ? titles : undefined;
 }
 
-/**
- * The words of the aligned text that translate the original words at `positions`, in the order of the text, with `…` at a
- * gap, as the route's `joinAlignedTokens` gives them. Built once per call for the verses asked.
- */
-function alignedOf(
-  unit: TextUnit | undefined,
-):
-  | ((
-      chapter: string,
-      verse: string,
-      pos: number[],
-      all?: boolean,
-    ) => string | undefined)
-  | undefined {
-  const { pieces, events, align } = unit ?? {};
-  if (!pieces || !events || !align) return undefined;
-  const words: string[] = [];
-  const verseOf: string[] = [];
-  let ch = "";
-  let vs = "";
-  let e = 0;
-  pieces.forEach((piece, p) => {
-    while (e < events.length && events[e][0] <= p) {
-      if (events[e][1] === "chapter") {
-        ch = events[e][2];
-        vs = "";
-      } else if (events[e][1] === "verse") vs = events[e][2];
-      e++;
-    }
-    if (!piece[1]) return;
-    words.push(piece[0]);
-    verseOf.push(`${ch}:${vs}`);
-  });
-  if (words.length !== align.length) return undefined;
-  const byVerse = new Map<string, number[]>();
-  verseOf.forEach((v, w) => {
-    const list = byVerse.get(v);
-    if (list) list.push(w);
-    else byVerse.set(v, [w]);
-  });
-  return (chapter, verse, pos, all = false) => {
-    const set = new Set(pos);
-    const inVerse = byVerse.get(`${chapter}:${verse}`) ?? [];
-    // `all`: the route looks for the quote in this verse only; a quote with words outside it is not found ("").
-    if (all) {
-      const covered = new Set(inVerse.flatMap((w) => align[w]));
-      if (!pos.every((x) => covered.has(x))) return "";
-    }
-    const hit = inVerse.filter((w) => align[w].some((x) => set.has(x)));
-    if (hit.length === 0) return undefined;
-    const parts: string[] = [];
-    hit.forEach((w, i) => {
-      if (i > 0 && w - hit[i - 1] > 1) parts.push("…");
-      parts.push(words[w]);
-    });
-    return parts.join(" ");
-  };
-}
-
 const str = (v: unknown): string | undefined =>
   typeof v === "string" ? v : undefined;
-
-/** Positions of a row's quote in the original, or `undefined` for anything that is not a plain list of words. */
-function positionsOf(row: HelpRow): number[] | undefined {
-  const q = row.quote ?? [];
-  return q.every((x) => Number.isInteger(x) && (x as number) >= 0)
-    ? (q as number[])
-    : undefined;
-}
 
 type Ctx = {
   q: Query;
@@ -427,14 +377,10 @@ type Ctx = {
   releases: Map<string, string>;
 };
 
-/** Old Testament word links have no aligned words proven: only `fields=index` can answer them. */
-const otLinks = (code: string, kind: "notes" | "links", indexMode: boolean) =>
-  kind === "links" && !indexMode && BOOKS.indexOf(code) < FIRST_NT;
-
 /**
  * The compressed bytes a helps call opens: the book, plus its originals when aligned words are built (default shape).
  * Over READER_BYTE_BUDGET (en Psalms, Genesis…) the call runs in an exclusive reader; over its cap it gives `null`.
- * Old Testament word links without `fields=index` open nothing (they always fall back).
+ * Notes and word links alike.
  */
 export function helpsNeed(
   reader: SizeProbe,
@@ -442,7 +388,7 @@ export function helpsNeed(
   indexMode: boolean,
   kind: "notes" | "links" = "notes",
 ): number {
-  if (otLinks(code, kind, indexMode)) return 0;
+  void kind;
   if (!indexMode) return bookBytes(reader, code);
   const unit = reader.unitOf("book", code);
   return unit ? reader.size(unit) : 0;
@@ -457,8 +403,6 @@ async function withHelps<T>(
   const q = queryOf(params);
   if (!q) return undefined;
   const code = q.book.toLowerCase();
-  // Word links of the Old Testament: never swept with aligned words, so the route answers; no reader is opened.
-  if (otLinks(code, kind, q.indexMode)) return undefined;
   // The route answers from views, with another shape (reference, tags, sources, simple), when they have the chapter.
   if (await viewsExist(env, q, params.language, kind)) return undefined;
   const subject =
@@ -550,9 +494,7 @@ async function prepare(
   | {
       chosen: Placed[];
       titles: Titles;
-      /** Word links: from the builder's placement of the words. */
-      aligned?: ReturnType<typeof alignedOf>;
-      /** Notes: by the route's own quote matcher. */
+      /** By the route's own quote matcher (notes and word links). */
       matched?: ReturnType<typeof routeMatcherOf>;
     }
   | undefined
@@ -586,11 +528,8 @@ async function prepare(
     return undefined;
   }
   if (ctx.q.indexMode) return { chosen, titles };
-  // Aligned words, from the verified text. Notes: every book (the Hebrew original too; the sweep proves each chapter,
-  // and a chapter where the route's matcher answers otherwise is an exception). Word links: New Testament only (their
-  // Old Testament chapters were never swept with aligned words).
-  if (!notes && BOOKS.indexOf(ctx.book.toLowerCase()) < FIRST_NT)
-    return undefined;
+  // Aligned words, from the verified text, every book (the Hebrew original too; the sweep proves each chapter, and a
+  // chapter where the route's matcher answers otherwise is an exception).
   const res = ALIGNED_TEXT.get(ctx.lang);
   // The aligned text must have been swept as passages (the same release the notes were swept with), and the original
   // is one of the entry's `deps`, so a changed release of it has no proof.
@@ -608,13 +547,8 @@ async function prepare(
     | undefined;
   if (!orig?.key) return undefined;
   const unit = res ? ctx.data.texts?.find((t) => t.res === res) : undefined;
-  if (notes) {
-    const matched = routeMatcherOf(ctx.book, orig, unit, versesOf(chosen));
-    return matched ? { chosen, titles, matched } : undefined;
-  }
-  const aligned = alignedOf(unit);
-  if (!aligned) return undefined;
-  return { chosen, titles, aligned };
+  const matched = routeMatcherOf(ctx.book, orig, unit, versesOf(chosen));
+  return matched ? { chosen, titles, matched } : undefined;
 }
 
 /** The verses (`c:v`, as the route's `parseInt` reads them) whose words the rows' aligned words come from. */
@@ -774,28 +708,6 @@ export function routeMatcherOf(
   };
 }
 
-/** Today's `gatewayQuote.aligned` of a row, or `undefined` when it cannot be given the same. */
-function gatewayAligned(
-  p: Placed,
-  quote: string,
-  aligned: NonNullable<ReturnType<typeof alignedOf>>,
-): string | undefined {
-  if (p.verse === "intro" || quote.trim() === "") return "";
-  // Some words placed and some not: the route may find them all, so its words cannot be told.
-  if (p.quoteMissing) return undefined;
-  const range = /^(\d+)-\d+$/.exec(p.verse);
-  if (!range && !/^\d+$/.test(p.verse)) return undefined;
-  const pos = positionsOf(p.row);
-  if (!pos) return undefined;
-  // A quote the builder could not place at all (`Connecting Statement:`): the route's matcher finds none either ("").
-  // The sweep proves it chapter by chapter.
-  if (pos.length === 0) return "";
-  // A range row (`6-7`): the route matches the quote in its first verse only.
-  return range
-    ? aligned(p.chapter, range[1]!, pos, true)
-    : aligned(p.chapter, p.verse, pos);
-}
-
 export async function buildNotesAnswer(
   env: Packs3Env,
   params: HelpsParams,
@@ -901,7 +813,7 @@ export async function wordLinksFromPacks3(
   return withHelps(env, params, "links", async (ctx) => {
     const prep = await prepare(ctx, false);
     if (!prep) return undefined;
-    const { chosen, titles, aligned } = prep;
+    const { chosen, titles, matched } = prep;
     const wordLinks: Array<Record<string, unknown>> = [];
     for (const p of chosen) {
       const { row } = p;
@@ -937,7 +849,7 @@ export async function wordLinksFromPacks3(
         wordLinks.push(base);
         continue;
       }
-      const at = gatewayAligned(p, origWords, aligned!);
+      const at = matched!(p.chapter, p.verse, origWords, occurrence);
       if (at === undefined) return undefined;
       wordLinks.push({
         ...base,
