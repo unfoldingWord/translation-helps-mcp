@@ -57,6 +57,8 @@ export async function searchFromPacks3(
   if (params.limit !== undefined && String(params.limit) !== "5")
     return undefined;
   if (q !== normalizeSearchQuery(q)) return undefined;
+  // `|` is the separator of the proof keys (`ta|q`, `ta,tw|q`): a query holding one could name another set's item.
+  if (q.includes("|")) return undefined;
 
   // Every resource the answer needs must have a search proof for this type set; candidates are ordered ta then tw.
   const candidates: Candidate[] = [];

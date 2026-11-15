@@ -13,6 +13,38 @@ import { answerFromPacks3 } from "../../src/packs3/answer";
 import { injectFixtureProofs } from "./packs3-fixture-verified";
 import { setVerifiedForTests } from "../../src/packs3/verified";
 
+const taStub = vi.hoisted(() => ({ on: false, items: [] as string[] }));
+vi.mock("../../src/packs3/adapters/articles", async (orig) => {
+  const real =
+    await orig<typeof import("../../src/packs3/adapters/articles")>();
+  return {
+    ...real,
+    articleCatalogFromPacks3: async (
+      env: unknown,
+      lang: string,
+      kind: string,
+      proof?: { kind: string; item: string },
+    ) => {
+      if (taStub.on && kind === "ta") {
+        taStub.items.push(proof?.item ?? "");
+        return {
+          language: lang,
+          zipUrl: "",
+          articles: [
+            {
+              path: "translate/figs-metaphor",
+              title: "Metaphor",
+              category: "translate",
+            },
+          ],
+          source: {},
+        };
+      }
+      return (real.articleCatalogFromPacks3 as any)(env, lang, kind, proof);
+    },
+  };
+});
+
 const STAGING =
   "78d2e6299a2de4d0:c2057cec32b948452849e7fcba6af323961a091ea82645eb297bb368e1c8d911";
 const DIR = join(__dirname, "..", "fixtures", "packs3");
@@ -51,6 +83,8 @@ beforeEach(async () => {
   resetPacks3CachesForTests();
   resetReadersForTests();
   resetWarnOnceForTests();
+  taStub.on = false;
+  taStub.items = [];
   await injectFixtureProofs(env(), undefined, { search: ["covenant"] });
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
@@ -147,13 +181,28 @@ describe("search from format 3", () => {
     // a ta,tw proof alone (no ta catalog in the fixture to answer from) never makes a partial answer
     await injectFixtureProofs(env(), undefined, { search: ["ta,tw|covenant"] });
     expect(await search("covenant", "en")).toBeUndefined();
-    const r = await search("covenant", "en", { types: "ta,tw" });
-    if (r !== undefined) {
-      const res = (r as { results: Array<{ resourceType: string }> }).results;
-      expect(res.every((x) => ["ta", "tw"].includes(x.resourceType))).toBe(
-        true,
-      );
-    }
+    expect(await search("covenant", "en", { types: "ta,tw" })).toBeUndefined();
+  });
+  it("types=ta alone is served with a ta proof, asked for the item `ta|q`", async () => {
+    // The fixtures hold no whole tA catalog: the ta catalog is stood in, the proof item the adapter asks for is recorded.
+    taStub.on = true;
+    const r = (await search("metaphor", "en", { types: "ta" })) as {
+      results: Array<{ path: string; resourceType: string }>;
+    };
+    expect(taStub.items).toEqual(["ta|metaphor"]);
+    expect(r.results.map((x) => [x.path, x.resourceType])).toEqual([
+      ["translate/figs-metaphor", "ta"],
+    ]);
+  });
+  it("a tw call cannot forge a ta or ta,tw proof key through the query", async () => {
+    await injectFixtureProofs(env(), undefined, {
+      search: ["covenant", "ta|covenant", "ta,tw|covenant"],
+    });
+    expect(await search("ta,tw|covenant", "en")).toBeUndefined();
+    expect(await search("ta|covenant", "en")).toBeUndefined();
+    for (const types of ["ta", "ta,tw", "tw"])
+      for (const q of ["ta,tw|covenant", "ta|covenant"])
+        expect(await search(q, "en", { types })).toBeUndefined();
   });
   it("falls back for limit, other types, other languages, a q not normalized", async () => {
     expect(await search("covenant", "en", { limit: 3 })).toBeUndefined();
