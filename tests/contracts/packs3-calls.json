@@ -109,8 +109,8 @@
       "reference": "PSA 23",
       "language": "en"
     },
-    "expect": "fallback",
-    "why": "race: notes and word-links run in parallel; notes takes the exclusive reader for Psalms and word-links meets it (detail readers-busy); each side alone serves. Timing-dependent (served in 15d), readers.ts unchanged since"
+    "expect": "either",
+    "why": "getPassageIndex runs notes and word-links in parallel and en Psalms notes needs the exclusive reader (readers.ts), so when word-links asks for a reader while notes holds it, links gets readers-busy and the composite falls back (detail readers-busy); when the two calls do not overlap it is served and equal. The same code and bucket gave both outcomes across runs, so neither is asserted"
   },
   {
     "tool": "th_get_passage_index",

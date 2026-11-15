@@ -571,18 +571,28 @@ The MCP tools can answer from format 3 instead of calling the API Worker (`src/p
   proof (written by `scripts/sweep-packs3.mjs`) and the item is not an exception. Proof kinds: `passage` (with join
   windows), `notes`, `links`, `questions`, `articles` (with `terms` and `misses`), `search` (40 queries) and
   `searchCatalog` (`equal` or `equalExcept`); an entry may say `exceptionsSameAs` another. `verified.json` is 182 KB
-  (ceiling 200 KB, asserted by tests/unit/packs3-sweep.test.ts); the `ta` catalog proof is `equalExcept` case-only ids.
-  A new release, or a shape the sweep did not cover (a search outside the 40 swept queries, an article by a title or
-  term that is not in `terms`), falls back to the API Worker. Still falling back after S0 (the builder and publish
-  step, Task 11): builder whitespace in poetry and Hebrew line breaks (passage exceptions), the intro occurrence
-  (`''` -> `1`: AMO, DAN, HOS, LAM, ZEC), PSA front rows, and the published `rc://*` host of the es-419 tW/tA
-  articles. The reasons are logged once per isolate and language as `packs3 fallback { lang, reason }`, and under
-  `PACKS_V3_DEBUG` each answer carries them in `result._meta._packs3`: `v3-off`/`mode-off`, `no-keys`, `no-packs`,
-  `no-adapter` (no format 3 adapter for that API path: OBS, `th_list_resources`), `adapter-undefined` (the adapter
-  declined: no sweep entry for the release or item, an exception, `format: "usfm"`, a book the pack lacks),
-  `adapter-exception`, `readers-busy`, plus finer ones (`no-catalog`, `unverified-resource`, `note-links`; the mark
-  itself says only `adapter-undefined`). The local wrangler route used for the index sweep may differ from the deployed
-  API Worker commit; record it when sweeping (the sweep run's code commit is not known today).
+  (ceiling 200 KB, asserted by tests/unit/packs3-sweep.test.ts).
+  Search: under the `searchCatalog` proof any query is served when `limit` is absent or a plain number
+  (`^[1-9][0-9]{0,2}$`); the 40 swept queries are no longer a limit. The `tw` catalog is `equal`; the `ta` catalog
+  is `equalExcept` the case-only ids `figs-orderGrk` and `figs-orderHeb`, so a result list containing either falls
+  back. A new release, an article by a title or term that is not in `terms`, or a `limit` that is not a plain number
+  falls back to the API Worker. Still falling back after S0 (the builder and publish step, Task 11): builder
+  whitespace in poetry and Hebrew line breaks (passage exceptions), the intro occurrence (`''` -> `1`: AMO, DAN, HOS,
+  LAM, ZEC), PSA front rows, and the published `rc://*` host of the es-419 tW/tA articles. The en article "covenant"
+  and the es-419 articles are swept exceptions with that S0 data as their reason; this run did not verify them again.
+  The reasons are logged once per isolate and language as `packs3 fallback { lang, reason }`, and under
+  `PACKS_V3_DEBUG` each answer carries a mark in `result._meta._packs3`: `{ served: true }` or
+  `{ fallback: <reason>, detail? }`. The reasons are `v3-off`/`mode-off`, `no-keys`, `no-packs`, `no-adapter` (no
+  format 3 adapter for that API path: OBS, `th_list_resources`), `adapter-undefined` (the adapter declined: no sweep
+  entry for the release or item, an exception, `format: "usfm"`, a book the pack lacks), `adapter-exception`,
+  `readers-busy`. `detail` is the inner reason of an `adapter-undefined` (`unverified-resource`, `note-links`,
+  `readers-busy`, ...), taken from the log line of the call; it is approximate when calls overlap. The en PSA 23
+  index is not asserted either way (`either` in `packs3-calls.json`): `getPassageIndex` runs notes and word-links in
+  parallel, en Psalms notes needs the exclusive reader, and when word-links asks for a reader while notes holds it
+  links gets `readers-busy` and the composite goes to the API; when the calls do not overlap it is served and equal.
+  Across runs of the same code and bucket both outcomes occurred. The local wrangler route used for the index sweep
+  may differ from the deployed API Worker commit; record it when sweeping (the sweep run's code commit is not known
+  today).
 - **Budget.** A reader keeps at most **1 MB** of compressed segments; at most **2 readers** per isolate, live and
   retired together; a third concurrent call falls back with reason `readers-busy`. The decoded segment LRU holds at
   most **8 MB** (`SEGMENT_CACHE_MAX_BYTES`). Why: about 41 MB of heap per compressed MB was measured, inside a 128 MB
@@ -595,11 +605,14 @@ The MCP tools can answer from format 3 instead of calling the API Worker (`src/p
   `node scripts/fetch-packs3-fixtures.mjs --all --out <folder>` (the staging bucket's `v3/` keys), put them into a
   local R2 persist folder (`getPlatformProxy` with `persist: { path: "<persist>/v3" }`), then
   `npx wrangler dev --port 8811 --persist-to <persist> --var API_BASE_URL:https://translation-helps-api-v2.unfoldingword.workers.dev --var RATE_LIMIT_RPM:100000`
-  (the default 90 rpm limit cuts a run short; the script reports `RATE_LIMITED` calls as failures).
-  Run after the sweeps (72 calls, 0 failed): 26 served and equal; 46 fell back as expected: 21 planned (OBS 5, `format:
-"usfm"` 1, `th_list_resources` 5, `fr` 1, es-419 books the pack lacks 9), 13 swept exceptions (items listed in
-  `verified.json`: en PSA 23, PSA 119, MAT 5, JON 1, ROM 8 text and index, es RUT 1 and TIT 1 / JON 1 notes), 12 other
-  (3 en and 3 es searches outside the 40 swept queries, en "covenant" by title, 5 es-419 articles that wait on S0).
+  (the default 90 rpm limit cuts a run short; the script reports `RATE_LIMITED` calls as failures). The local API
+  Worker needs `--var RATE_LIMIT_RPM:100000` too, or the `off` side of the later calls fails.
+  Final run (72 calls, 0 failed): 33 served and equal (including the 6 searches, each equal to the live route, and
+  the en PSA 23 index this time); 21 planned fallbacks (OBS 5, `format: "usfm"` 1, `th_list_resources` 5, `fr` 1,
+  es-419 books the pack lacks 9); 18 swept exceptions (en PSA 23, PSA 119, MAT 5, JON 1:1-3, ROM 8:28 passages and
+  the ROM 8 index; es-419 RUT 1:1, TIT 1 and RUT 1 indexes, JON 1:3 notes with and without ids, TIT 1:1 "siervo"
+  notes; en article "covenant" and the 5 es-419 articles, whose reason is S0 data, not re-verified here); 0 other
+  fallbacks. 33 + 21 + 18 = 72.
   The "off" side needs the local API Worker on 8788 for the index shape (`--var API_BASE_URL:http://localhost:8788`):
   the deployed one answers index calls differently. docs/packs3-comparison.md is that run's generated output.
 

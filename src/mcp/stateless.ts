@@ -78,7 +78,7 @@ function withPacks3Debug(env: Env, request: Request): Env {
 
 /**
  * Debug only: the tools/call result gets `_meta._packs3` ({ served: true } or
- * { fallback: reason }) so scripts/compare-packs3.mjs reads the outcome instead
+ * { fallback: reason, detail? }) so scripts/compare-packs3.mjs reads the outcome instead
  * of guessing it from the answer text. `_meta` is the MCP result's own
  * extension field, so no tool schema changes. Without a trace (debug off) or
  * with no format 3 outcome (nothing was read) the response is untouched.

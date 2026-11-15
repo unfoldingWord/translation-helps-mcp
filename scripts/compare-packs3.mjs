@@ -173,7 +173,7 @@ export function validateCalls(calls) {
     if (!c || typeof c !== "object") return errors.push(`#${i}: not an object`);
     if (!TOOLS.includes(c.tool)) errors.push(`#${i}: unknown tool ${c.tool}`);
     if (!c.args || typeof c.args !== "object" || Array.isArray(c.args)) errors.push(`#${i}: args must be an object`);
-    if (c.expect !== "pack" && c.expect !== "fallback") errors.push(`#${i}: expect must be pack or fallback`);
+    if (c.expect !== "pack" && c.expect !== "fallback" && c.expect !== "either") errors.push(`#${i}: expect must be pack, fallback or either`);
     if (c.args?.language === "en") en++;
     if (c.args?.language === "es-419") es++;
   });
@@ -321,7 +321,7 @@ async function main() {
         if (call.expect === "fallback" && st.kind === "served") row.problems.push("expected a fallback, got a format 3 answer");
       }
     }
-    if ((call.expect === "pack" && row.status === "served") || baseB) {
+    if ((call.expect !== "fallback" && row.status === "served") || baseB) {
       Object.assign(row, classify(dropMirroredText(diffPaths(normalizeResult(a.result), normalizeResult(b.result))), call, known));
     }
     rows.push(row);
