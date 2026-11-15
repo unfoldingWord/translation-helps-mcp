@@ -36,7 +36,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { diffPaths, normalize } from "./compare-packs3.mjs";
 import { INTERNAL_INDEX_HEADER, INTERNAL_INDEX_VALUE, isTrustedIndexHost } from "../src/core/internalIndex.ts";
 
-export const KINDS = ["passage", "notes", "links", "questions", "articles", "search"];
+export const KINDS = ["passage", "notes", "links", "questions", "articles", "search", "searchCatalog"];
 
 const SUBJECTS = {
   passage: ["Aligned Bible", "Bible"],
@@ -50,6 +50,78 @@ const SUBJECTS = {
 // `searchItem`): an entry only claims the type sets its items name.
 SUBJECTS.articles = [...SUBJECTS.ta, ...SUBJECTS.tw];
 SUBJECTS.search = [...SUBJECTS.ta, ...SUBJECTS.tw];
+SUBJECTS.searchCatalog = [...SUBJECTS.ta, ...SUBJECTS.tw];
+
+/**
+ * The search catalog proof (`--kind searchCatalog`, one verdict per tA/tW release; src/packs3/adapters/search.ts).
+ * The route's ranking reads only each candidate's path, title, category and resource type, so an equal catalog ranks
+ * every query the same. The route does not publish its catalog; the probe query `/` lists it: every catalog path
+ * holds a `/`, so every article matches (tier 2 or better) and the answer is the whole catalog ranked, with titles.
+ * It is asked at two limits and compared with the route's own ranking (`rankCandidates`) over our catalog:
+ * - the catalog's own count: an unsafe path the route drops after ranking would show as a missing article;
+ * - `SEARCH_CATALOG_ALL`: an extra article of the route would show.
+ * What the probe cannot show is checked on our side (`searchCatalogShapeProblems`): every path safe and holding a `/`,
+ * and the category the route derives from the path. Left unseen: an unsafe route path sorting after our last one.
+ */
+export const SEARCH_CATALOG_PROBE = "/";
+export const SEARCH_CATALOG_ALL = 100000;
+export function searchCatalogRequest(type, language, limit) {
+  return { path: "/api/v1/search", params: { q: SEARCH_CATALOG_PROBE, language, types: type, limit: String(limit) } };
+}
+export function searchCatalogLimits(count) {
+  return [count, SEARCH_CATALOG_ALL];
+}
+
+/** The route's category of a path (door43 catalogParsers): tA its first segment, tW the segment after `bible`. */
+function routeCategory(type, path) {
+  const parts = path.split("/");
+  if (type === "ta") return parts[0];
+  const i = parts.indexOf("bible");
+  return i < 0 ? undefined : parts[i + 1];
+}
+
+/** Paths of our catalog the probe cannot prove: unsafe (`isSafe`), without `/`, or another category than the route's. */
+export function searchCatalogShapeProblems(type, articles, isSafe) {
+  const bad = articles.filter(
+    (a) => !isSafe(a.path) || !a.path.includes("/") || a.category !== routeCategory(type, a.path),
+  );
+  return [...new Set(bad.map((a) => a.path))].sort();
+}
+
+const CATALOG_DIFFERS_MAX = 50;
+
+/**
+ * The verified.json entry of one resource: `catalog: "equal"`, or `"differs"` with the differing ids (paths missing,
+ * extra, or with another title, type or score; `(order)`, `(language x)`, `(api-error)`), at most 50 then a count.
+ * `probes`: `[{ expected: rankCandidates(our catalog, "/", limit), api: the route's answer }]`.
+ */
+export function searchCatalogEntry({ lang, problems, probes, swept }) {
+  const ids = new Set(problems);
+  for (const { expected, api } of probes) {
+    if (!api || !Array.isArray(api.results)) {
+      ids.add("(api-error)");
+      continue;
+    }
+    if (api.language !== lang) ids.add(`(language ${api.language})`);
+    const ours = new Map(expected.map((r) => [r.path, JSON.stringify([r.title, r.resourceType, r.score])]));
+    const theirs = new Map(api.results.map((r) => [r.path, JSON.stringify([r.title, r.resourceType, r.score])]));
+    let same = ours.size === theirs.size && expected.length === api.results.length;
+    for (const [p, v] of ours) if (theirs.get(p) !== v) (ids.add(p), (same = false));
+    for (const p of theirs.keys()) if (!ours.has(p)) (ids.add(p), (same = false));
+    if (same && expected.some((r, i) => r.path !== api.results[i].path)) ids.add("(order)");
+  }
+  const list = [...ids].sort();
+  const differs = list.length > CATALOG_DIFFERS_MAX
+    ? [...list.slice(0, CATALOG_DIFFERS_MAX), `(and ${list.length - CATALOG_DIFFERS_MAX} more)`]
+    : list;
+  return {
+    items: probes.length,
+    exceptions: [],
+    swept,
+    catalog: differs.length ? "differs" : "equal",
+    ...(differs.length ? { differs } : {}),
+  };
+}
 
 /** The swept types sets. `tw` keeps the plain query as its item; the others are `"<types>|<query>"`. */
 export const SEARCH_TYPES = ["tw", "ta", "ta,tw"];
@@ -639,6 +711,10 @@ async function main() {
   const catList = [own, ...cats.catalogs.filter((c) => c !== own)].map((c) => ({ name: c.name, resources: c.catalog.resources ?? [] }));
   const resources = resourcesOfKind(kind, own.catalog.resources ?? []);
   if (!resources.length) throw new Error(`the ${lang} catalog has no resource for ${kind}`);
+  if (kind === "searchCatalog") {
+    await sweepSearchCatalog({ env, lang, api, cats, resources, outDir, writeVerified, cache: { dir: cacheDir, resume: flag("resume"), catalogKey: cats.key, maxAgeHours } });
+    return;
+  }
   const noProof = previousProof ? resources.filter((r) => !previousProof[sweepKey(lang, r.key, r.release, kind)]).map((r) => r.key) : [];
   if (noProof.length) console.log(`--range-windows: no previous proof for ${noProof.join(", ")}: no windows for them`);
 
@@ -810,6 +886,46 @@ async function main() {
       ? `wrote ${vfile} and ${rfile}`
       : `narrowed run (--books): verified.json NOT written; wrote ${pfile} and ${rfile}`,
   );
+}
+
+/** `--kind searchCatalog`: per tA/tW resource, the probe answers against the route's ranking over our catalog. */
+async function sweepSearchCatalog({ env, lang, api, cats, resources, outDir, writeVerified, cache }) {
+  const { articleCatalogFromPacks3 } = await import("../src/packs3/adapters/articles.ts");
+  const { rankCandidates } = await import("../src/packs3/adapters/search.ts");
+  const { isSafeArticlePath } = await import("../src/core/articlePath.ts");
+  const swept = new Date().toISOString();
+  const entries = {};
+  const lines = [`# Sweep differences: ${lang} searchCatalog`, "", `Swept ${swept}, API ${api}, catalog ${cats.key}.`, ""];
+  for (const r of resources) {
+    const type = SUBJECTS.ta.includes(r.subject) ? "ta" : "tw";
+    const cat = await articleCatalogFromPacks3(env, lang, type, { kind: "searchCatalog" });
+    const key = sweepKey(lang, r.key, r.release, "searchCatalog");
+    // The adapter reads the one resource of its type at the catalog's release (`cats`, the same catalog): two of a type
+    // would leave it unclear which one the catalog came from.
+    const sameType = resources.filter((x) => SUBJECTS[type].includes(x.subject));
+    if (!cat || !cat.articles.length || sameType.length !== 1) {
+      console.error(`${key}: format 3 has no single catalog for this resource; not written`);
+      continue;
+    }
+    const candidates = cat.articles.map((a) => ({ path: a.path, title: a.title, category: a.category, resourceType: type }));
+    const probes = [];
+    for (const limit of searchCatalogLimits(candidates.length)) {
+      const body = await apiGet({ base: api, headers: { accept: "application/json" } }, searchCatalogRequest(type, lang, limit), cache);
+      probes.push({ expected: rankCandidates(candidates, SEARCH_CATALOG_PROBE, limit), api: body });
+    }
+    const problems = searchCatalogShapeProblems(type, cat.articles, isSafeArticlePath);
+    entries[key] = searchCatalogEntry({ lang, problems, probes, swept });
+    lines.push(`## ${key}`, "", `Articles ${candidates.length}, catalog ${entries[key].catalog}`, "");
+    for (const id of entries[key].differs ?? []) lines.push(`- ${id}`);
+    lines.push("");
+    console.log(`${key}: ${entries[key].catalog}`);
+  }
+  const vfile = join(outDir, "verified.json");
+  if (writeVerified && Object.keys(entries).length) {
+    const existing = existsSync(vfile) ? JSON.parse(readFileSync(vfile, "utf8")) : {};
+    writeFileSync(vfile, formatVerified(mergeVerified(existing, entries)));
+  }
+  writeFileSync(join(outDir, `verified-differences-${lang}-searchCatalog.md`), lines.join("\n") + "\n");
 }
 
 const self = process.argv[1] ? process.argv[1].replace(/\\/g, "/") : "";

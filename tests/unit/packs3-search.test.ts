@@ -13,7 +13,11 @@ import { answerFromPacks3 } from "../../src/packs3/answer";
 import { injectFixtureProofs } from "./packs3-fixture-verified";
 import { setVerifiedForTests } from "../../src/packs3/verified";
 
-const taStub = vi.hoisted(() => ({ on: false, items: [] as string[] }));
+const taStub = vi.hoisted(() => ({
+  on: false,
+  catalog: false,
+  items: [] as string[],
+}));
 vi.mock("../../src/packs3/adapters/articles", async (orig) => {
   const real =
     await orig<typeof import("../../src/packs3/adapters/articles")>();
@@ -23,9 +27,12 @@ vi.mock("../../src/packs3/adapters/articles", async (orig) => {
       env: unknown,
       lang: string,
       kind: string,
-      proof?: { kind: string; item: string },
+      proof?: { kind: string; item?: string },
     ) => {
       if (taStub.on && kind === "ta") {
+        // the catalog proof of tA stands in only when the test says it exists
+        if (proof?.kind.endsWith("Catalog") && !taStub.catalog)
+          return undefined;
         taStub.items.push(proof?.item ?? "");
         return {
           language: lang,
@@ -84,6 +91,7 @@ beforeEach(async () => {
   resetReadersForTests();
   resetWarnOnceForTests();
   taStub.on = false;
+  taStub.catalog = false;
   taStub.items = [];
   await injectFixtureProofs(env(), undefined, { search: ["covenant"] });
   vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -241,5 +249,115 @@ describe("search from format 3", () => {
       { search: ["covenant"] },
     );
     expect(await search("covenant", "en")).toBeUndefined();
+  });
+});
+
+const CATALOG_KIND = ["sea", "rch"].join("") + "Catalog";
+/** Adds a catalog proof (`edit` shapes it) for every tW resource of the fixtures, keyed as the sweep writes it. */
+const withCatalogProof = (
+  edit: (e: Record<string, unknown>) => void = () => {},
+  ids: string[] = [],
+) =>
+  injectFixtureProofs(
+    env(),
+    (t) => {
+      for (const k of Object.keys(t))
+        if (/\/tw\|[^|]*\|articles$/.test(k)) {
+          const e: Record<string, unknown> = {
+            items: 2,
+            exceptions: [],
+            catalog: "equal",
+          };
+          edit(e);
+          t[k.replace(/\|articles$/, "|" + CATALOG_KIND)] = e as never;
+        }
+    },
+    { search: ids },
+  );
+
+describe("search for any query by catalog proof", () => {
+  it("serves any normalized query when the tW catalog is proven, ranked as the route ranks", async () => {
+    await withCatalogProof();
+    // no query proofs at all: covenant is still served, and equal to the live answer
+    expect(await search("covenant", "en")).toEqual(LIVE_EN);
+    expect(await search("covenant", "es-419")).toEqual(LIVE_ES);
+    const faith = (await search("faith", "en")) as {
+      q: string;
+      results: Array<{ path: string }>;
+    };
+    expect(faith.q).toBe("faith");
+    expect(faith.results.length).toBeGreaterThan(0);
+    // `|` no longer matters: the proof key is not the query
+    expect(await search("covenant|x", "en")).toBeDefined();
+  });
+  it("guard: no catalog proof, an arbitrary query falls back", async () => {
+    expect(await search("faith", "en")).toBeUndefined();
+  });
+  it("guard: a catalog proof that differs falls back (and the 40-query rule still serves its items)", async () => {
+    await withCatalogProof(
+      (e) => {
+        e.catalog = "differs";
+        e.differs = ["bible/kt/faith"];
+      },
+      ["covenant"],
+    );
+    expect(await search("faith", "en")).toBeUndefined();
+    expect(await search("covenant", "en")).toEqual(LIVE_EN);
+    // an "equal" verdict with a differing id listed is not a proof either
+    await withCatalogProof((e) => {
+      e.differs = ["bible/kt/faith"];
+    });
+    expect(await search("faith", "en")).toBeUndefined();
+  });
+  it("guard: a malformed catalog proof fails closed", async () => {
+    for (const bad of [
+      (e: Record<string, unknown>) => (e.catalog = true),
+      (e: Record<string, unknown>) => delete e.catalog,
+      (e: Record<string, unknown>) => (e.differs = "bible/kt/faith"),
+      (e: Record<string, unknown>) => (e.deps = { "en|x": 1 }),
+    ]) {
+      await withCatalogProof(bad);
+      expect(await search("faith", "en")).toBeUndefined();
+    }
+  });
+  it("guard: a release bump of the catalog proof falls back", async () => {
+    await injectFixtureProofs(env(), (t) => {
+      for (const k of Object.keys(t))
+        if (/\/tw\|[^|]*\|articles$/.test(k))
+          t[k.replace(/\|[^|]*\|articles$/, "|v0-bumped|" + CATALOG_KIND)] = {
+            items: 2,
+            exceptions: [],
+            catalog: "equal",
+          } as never;
+    });
+    expect(await search("faith", "en")).toBeUndefined();
+  });
+  it("guard: forged query forms cannot reach another type set's proof", async () => {
+    // only tW has a catalog proof: ta and ta,tw need tA's too, whatever the query names
+    await withCatalogProof();
+    for (const types of ["ta", "ta,tw"])
+      for (const q of ["faith", "ta|faith", "ta,tw|faith", "tw|faith"])
+        expect(await search(q, "en", { types })).toBeUndefined();
+    expect(
+      await searchFromPacks3(env(), { q: "faith", language: "en" }),
+    ).toBeUndefined();
+  });
+  it("guard: limit, a q not normalized and another spelling of types still fall back", async () => {
+    await withCatalogProof();
+    expect(await search("faith", "en", { limit: 3 })).toBeUndefined();
+    expect(await search("Faith", "en")).toBeUndefined();
+    expect(await search("faith", "en", { types: "TW" })).toBeUndefined();
+    expect(await search("faith", "es")).toBeUndefined();
+  });
+  it("asks the ta catalog with the catalog proof, not a query item", async () => {
+    taStub.on = true;
+    taStub.catalog = true;
+    await withCatalogProof();
+    const r = (await search("ta|metaphor", "en", { types: "ta" })) as {
+      results: Array<{ path: string }>;
+    };
+    // the query's `ta|` is no proof key here: only the catalog proof was asked, and the query ranks as any other
+    expect(taStub.items).toEqual([""]);
+    expect(r.results.map((x) => x.path)).toEqual(["translate/figs-metaphor"]);
   });
 });

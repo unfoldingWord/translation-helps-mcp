@@ -10,7 +10,9 @@
  *   a swept 2-3 verse window proved (see `isVerified`).
  * - notes, links: `BOOK C` (`chapters`) for the default shape; `fields=index` items (whole book and chapter) are
  *   `indexWholeBooks` / `indexChapters`, their exceptions `index:BOOK C`. questions: items `BOOK` (`wholeBooks`) and `BOOK C` (`chapters`, "front" and 0 included).
- * - the search kind: the exact item in `ids`. articles: the exact item in `idDirs` (clean items only, per directory;
+ * - the search kind: the exact item in `ids`. The search catalog kind (`SEARCH_CATALOG_KIND`, no item): `catalog: "equal"`
+ *   and no `differs` (the ids that differed) when the article catalog format 3 ranks over equals the route's, so any
+ *   query ranks the same (adapters/search.ts). articles: the exact item in `idDirs` (clean items only, per directory;
  *   `ids` is read too), or in `ids` and not in `exceptions`.
  * `exceptions` lists the items whose answers did not equal today's; `deps` the other resources (`"<catalog>|<key>"`)
  * with the release the answers were made from; `skippedBooks` the books of a passage entry that were not swept.
@@ -38,6 +40,10 @@ export type VerifiedEntry = {
    * one space in the route's range). A range in a chapter with a range exception is served only over these.
    */
   joins?: Record<string, string>;
+  /** Search catalog: `"equal"` when the catalog the ranking reads was equal to the route's, else `"differs"`. */
+  catalog?: string;
+  /** Search catalog: the ids (article paths, or `(order)`, `(language …)`) that differed. */
+  differs?: string[];
 };
 
 export type VerifiedOpts = {
@@ -139,6 +145,8 @@ const CHAPTER_KINDS = new Set(["notes", "links", "questions"]);
 /** The search kind's name (built, see above), for the search adapter. */
 export const SEARCH_KIND = ["sea", "rch"].join("");
 const ID_KINDS = new Set(["articles", SEARCH_KIND]);
+/** The search catalog kind: one verdict per resource release, no items (see `isVerified`). */
+export const SEARCH_CATALOG_KIND = SEARCH_KIND + "Catalog";
 
 const strings = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
@@ -157,6 +165,7 @@ function wellFormed(e: VerifiedEntry): boolean {
     "wholeBooks",
     "indexWholeBooks",
     "ids",
+    "differs",
   ]) {
     if (o[f] !== undefined && !isStrings(o[f])) return false;
   }
@@ -178,6 +187,7 @@ function wellFormed(e: VerifiedEntry): boolean {
       if (!joinsParses(o.joins[book] as string)) return false;
     }
   }
+  if (o.catalog !== undefined && typeof o.catalog !== "string") return false;
   if (o.deps !== undefined) {
     if (!isPlain(o.deps)) return false;
     if (!Object.values(o.deps).every((d) => typeof d === "string"))
@@ -244,7 +254,12 @@ export function isVerified(
   opts: VerifiedOpts = {},
 ): boolean {
   if (open) return true;
-  if (!CHAPTER_KINDS.has(kind) && !ID_KINDS.has(kind) && kind !== "passage")
+  if (
+    !CHAPTER_KINDS.has(kind) &&
+    !ID_KINDS.has(kind) &&
+    kind !== "passage" &&
+    kind !== SEARCH_CATALOG_KIND
+  )
     return false;
   const k = `${lang}|${resourceKey}|${release}|${kind}`;
   const e = Object.hasOwn(table, k) ? table[k] : undefined;
@@ -255,6 +270,13 @@ export function isVerified(
     const have = opts.releaseOf?.(depKey);
     if (have === undefined || have !== depRelease) return false;
   }
+  // The catalog verdict has no items: it holds only as "equal" with nothing listed as differing.
+  if (kind === SEARCH_CATALOG_KIND)
+    return (
+      item === undefined &&
+      e.catalog === "equal" &&
+      (e.differs === undefined || e.differs.length === 0)
+    );
   if (item === undefined) return true;
   const index = opts.index === true && CHAPTER_KINDS.has(kind);
   const exceptions = strings(e.exceptions);

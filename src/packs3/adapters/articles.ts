@@ -132,8 +132,8 @@ export async function articleCatalogFromPacks3(
   env: Packs3Env,
   lang: string,
   kind: ArticleKind,
-  /** The sweep item that must be proven for the catalog's resource release (search: the query). */
-  proof?: { kind: string; item: string },
+  /** The sweep item that must be proven for the catalog's resource release (search: the query; the search catalog kind: none). */
+  proof?: { kind: string; item?: string },
 ): Promise<ArticleCatalog<WordArticle | AcademyArticle> | undefined> {
   const out = await withReader(env, lang, async (reader, c) => {
     if (c.lang !== lang) return undefined;

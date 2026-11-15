@@ -512,3 +512,146 @@ describe("formatVerified", () => {
     expect(text.endsWith("\n")).toBe(true);
   });
 });
+
+describe("search catalog proof", () => {
+  const art = (path: string, title: string, category: string) => ({
+    path,
+    title,
+    category,
+  });
+  const res = (
+    path: string,
+    title: string,
+    score = 0.5,
+    resourceType = "tw",
+  ) => ({ path, title, resourceType, score });
+
+  it("is a sweep kind over tA and tW, asked with the probe query `/` at a limit", () => {
+    expect(s.KINDS).toContain(["sea", "rch"].join("") + "Catalog");
+    expect(s.searchCatalogRequest("tw", "en", 7)).toEqual({
+      path: "/api/v1/search",
+      params: { q: "/", language: "en", types: "tw", limit: "7" },
+    });
+    // the catalog's own count (an unsafe path before the last would show as a missing one) and a limit above any catalog
+    expect(s.searchCatalogLimits(1200)).toEqual([1200, s.SEARCH_CATALOG_ALL]);
+    expect(s.SEARCH_CATALOG_ALL).toBeGreaterThan(100000 - 1);
+  });
+
+  it("shape problems: an unsafe path, a path the probe cannot see, a category the route would not derive", () => {
+    const safe = (p: string) => !p.includes("..");
+    expect(
+      s.searchCatalogShapeProblems(
+        "tw",
+        [
+          art("bible/kt/grace", "grace", "kt"),
+          art("bible/kt/../x", "x", "kt"),
+          art("plain", "plain", "plain"),
+          art("bible/names/adam", "Adam", "other"),
+        ],
+        safe,
+      ),
+    ).toEqual(["bible/kt/../x", "bible/names/adam", "plain"]);
+    expect(
+      s.searchCatalogShapeProblems(
+        "ta",
+        [
+          art("translate/figs-metaphor", "Metaphor", "translate"),
+          art("intro/ta-intro", "Intro", "translate"),
+        ],
+        safe,
+      ),
+    ).toEqual(["intro/ta-intro"]);
+  });
+
+  it("entry: equal when every probe answer is the ranking over our catalog and the language is ours", () => {
+    const expected = [res("bible/kt/a", "a"), res("bible/kt/b", "b")];
+    const api = {
+      q: "/",
+      language: "en",
+      requestedLanguage: "en",
+      results: expected,
+    };
+    const e = s.searchCatalogEntry({
+      lang: "en",
+      problems: [],
+      probes: [{ expected, api }],
+      swept: "T",
+    });
+    expect(e).toEqual({
+      items: 1,
+      exceptions: [],
+      swept: "T",
+      catalog: "equal",
+    });
+  });
+
+  it("entry: differs lists the ids that are missing, extra, retitled or rescored; order or language alone differ too", () => {
+    const expected = [
+      res("bible/kt/a", "a"),
+      res("bible/kt/b", "b"),
+      res("bible/kt/c", "c"),
+    ];
+    const api = {
+      language: "en",
+      results: [
+        res("bible/kt/a", "A"),
+        res("bible/kt/c", "c"),
+        res("bible/kt/d", "d"),
+      ],
+    };
+    const e = s.searchCatalogEntry({
+      lang: "en",
+      problems: ["bible/x"],
+      probes: [{ expected, api }],
+      swept: "T",
+    });
+    expect(e.catalog).toBe("differs");
+    expect(e.differs).toEqual([
+      "bible/kt/a",
+      "bible/kt/b",
+      "bible/kt/d",
+      "bible/x",
+    ]);
+    const swapped = s.searchCatalogEntry({
+      lang: "en",
+      problems: [],
+      probes: [
+        {
+          expected: expected.slice(0, 2),
+          api: { language: "en", results: [expected[1], expected[0]] },
+        },
+      ],
+      swept: "T",
+    });
+    expect(swapped.catalog).toBe("differs");
+    expect(swapped.differs).toEqual(["(order)"]);
+    const lang = s.searchCatalogEntry({
+      lang: "es",
+      problems: [],
+      probes: [{ expected, api: { language: "es-419", results: expected } }],
+      swept: "T",
+    });
+    expect(lang.differs).toEqual(["(language es-419)"]);
+    const none = s.searchCatalogEntry({
+      lang: "en",
+      problems: [],
+      probes: [{ expected, api: undefined }],
+      swept: "T",
+    });
+    expect(none.differs).toEqual(["(api-error)"]);
+  });
+
+  it("entry: keeps verified.json small (at most 50 differing ids, then a count)", () => {
+    const expected = Array.from({ length: 80 }, (_, i) =>
+      res(`bible/kt/a${String(i).padStart(2, "0")}`, "t"),
+    );
+    const e = s.searchCatalogEntry({
+      lang: "en",
+      problems: [],
+      probes: [{ expected, api: { language: "en", results: [] } }],
+      swept: "T",
+    });
+    expect(e.differs).toHaveLength(51);
+    expect(e.differs.at(-1)).toBe("(and 30 more)");
+  });
+});
