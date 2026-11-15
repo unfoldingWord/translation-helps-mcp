@@ -93,6 +93,7 @@ export function listExceptions(results) {
  *     wholeBooks: ["TIT"],                                  // questions: the whole-book item was swept
  *     indexChapters: { "TIT": [0, 1] }, indexWholeBooks: ["TIT"],  // notes/links: the `fields=index` items swept
  *                                                           // (their exceptions are listed as "index:TIT 1")
+ *                                                           // passage exceptions: one string per chapter, "TIT 1:3,10,1-16"
  *     ids: ["bible/kt/grace"],                              // articles and search: the exact items swept
  *     skippedBooks: ["GEN"] }                               // books listed but not swept (a sweep no longer writes it)
  * Task 13 serves an item only if it is in that list, is not an exception, and every `deps` release equals the catalog's.
@@ -244,7 +245,45 @@ export function compactPassage(entry, items) {
     const m = /^(\S+) (\d+):/.exec(x);
     return !(m && dead.has(`${m[1]} ${m[2]}`));
   });
-  return { ...entry, exceptions, chapters };
+  return { ...entry, exceptions: groupPassageExceptions(exceptions), chapters };
+}
+
+/**
+ * One string per chapter for passage exceptions: `BOOK C:v,v,a-b` (verses ascending, then ranges), which verified.ts
+ * reads as the items `BOOK C:v` and `BOOK C:a-b`. A lone `BOOK C:v` keeps its old form. Order: as the input's chapters.
+ */
+export function groupPassageExceptions(list) {
+  const byChapter = new Map();
+  for (const x of list) {
+    const m = /^(\S+ \d+):(.+)$/.exec(x);
+    if (!m) throw new Error(`not a passage item: ${x}`);
+    if (!byChapter.has(m[1])) byChapter.set(m[1], []);
+    byChapter.get(m[1]).push(m[2]);
+  }
+  const rank = (v) => (/^\d+$/.test(v) ? [0, Number(v)] : [1, Number(v.split("-")[0])]);
+  return [...byChapter].map(([chapter, vs]) => {
+    const sorted = [...new Set(vs)].sort((a, b) => {
+      const [ka, na] = rank(a);
+      const [kb, nb] = rank(b);
+      return ka - kb || na - nb;
+    });
+    return `${chapter}:${sorted.join(",")}`;
+  });
+}
+
+/** How many items an entry excepts (a passage exception string groups a chapter's items). */
+export function exceptionCount(entry, kind) {
+  const list = entry.exceptions ?? [];
+  return kind === "passage" ? list.reduce((n, x) => n + x.split(",").length, 0) : list.length;
+}
+
+/** verified.json text: one line per entry field, its value compact on that line (the file is bundled in the Worker). */
+export function formatVerified(table) {
+  const keys = Object.keys(table);
+  const entry = (e) =>
+    "{\n" + Object.entries(e).map(([f, v]) => `    ${JSON.stringify(f)}: ${JSON.stringify(v)}`).join(",\n") + "\n  }";
+  if (!keys.length) return "{}\n";
+  return "{\n" + keys.map((k) => `  ${JSON.stringify(k)}: ${entry(table[k])}`).join(",\n") + "\n}\n";
 }
 
 /** Existing entries plus new ones (a new entry replaces the same key); keys sorted; inputs untouched. */
@@ -508,7 +547,7 @@ async function main() {
       const why = x.status === "fallback" ? `fallback ${x.reason}` : x.status;
       by[why] = (by[why] ?? 0) + 1;
     }
-    lines.push(`## ${key}`, "", `Items ${entries[key].items}, exceptions ${entries[key].exceptions.length}` +
+    lines.push(`## ${key}`, "", `Items ${entries[key].items}, exceptions ${exceptionCount(entries[key], kind)}` +
       (bad.length ? ` (${Object.entries(by).map(([k, n]) => `${k} ${n}`).join(", ")})` : "") +
       (writeVerified ? "" : " (narrowed run: not written to verified.json)"), "");
     let listed = 0;
@@ -530,13 +569,21 @@ async function main() {
   const pfile = join(outDir, `sweep-partial-${lang}-${kind}.json`);
   if (writeVerified) {
     const existing = existsSync(vfile) ? JSON.parse(readFileSync(vfile, "utf8")) : {};
-    writeFileSync(vfile, JSON.stringify(mergeVerified(existing, entries), null, 2) + "\n");
+    writeFileSync(vfile, formatVerified(mergeVerified(existing, entries)));
   } else {
     writeFileSync(pfile, JSON.stringify(entries, null, 2) + "\n");
   }
   const rfile = join(outDir, `verified-differences-${lang}-${kind}.md`);
   writeFileSync(rfile, lines.join("\n") + "\n");
-  for (const [k, e] of Object.entries(entries)) console.log(`${k}: ${e.items} items, ${e.exceptions.length} exceptions`);
+  // `--dump <file>`: every item that was not equal, one JSON line each (for grouping the causes; never bundled).
+  const dump = arg("dump");
+  if (dump) {
+    const out = results
+      .filter((x) => x.status !== "equal")
+      .map((x) => JSON.stringify({ item: x.item, res: x.res, used: x.used, status: x.status, reason: x.reason, diffs: x.diffs?.slice(0, 3) }));
+    writeFileSync(resolve(dump), out.join("\n") + "\n");
+  }
+  for (const [k, e] of Object.entries(entries)) console.log(`${k}: ${e.items} items, ${exceptionCount(e, kind)} exceptions`);
   console.log(
     writeVerified
       ? `wrote ${vfile} and ${rfile}`

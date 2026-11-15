@@ -344,9 +344,19 @@ describe("sweep-packs3 pure parts", () => {
     });
   });
 
-  it("ships an empty verified.json", () => {
+  // verified.json is bundled in the Worker: it stays small, and every passage exception is one verified.ts can read
+  // (one it cannot read would make its whole entry unusable).
+  it("ships a small verified.json whose passage exceptions are all readable", () => {
     const f = new URL("../../src/packs3/verified.json", import.meta.url);
-    expect(JSON.parse(readFileSync(f, "utf8"))).toEqual({});
+    const text = readFileSync(f, "utf8");
+    expect(text.length).toBeLessThan(150_000);
+    const table = JSON.parse(text) as Record<string, { exceptions?: string[] }>;
+    for (const [k, e] of Object.entries(table)) {
+      expect(k.split("|")).toHaveLength(4);
+      if (!k.endsWith("|passage")) continue;
+      for (const x of e.exceptions ?? [])
+        expect(x, k).toMatch(/^\S+ \d+:\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*$/);
+    }
   });
 });
 
@@ -374,5 +384,55 @@ describe("compactPassage", () => {
       chapters: { PSA: [2] },
     });
     expect(entry.chapters.PSA).toEqual([1, 2]);
+  });
+
+  it("groups the exceptions of a chapter in one string: verses ascending, then ranges", () => {
+    const items = ["1", "3", "10", "1-16"]
+      .map((v) => ({ item: `TIT 1:${v}`, book: "TIT", chapter: 1 }))
+      .concat([
+        { item: "TIT 2:1", book: "TIT", chapter: 2 },
+        { item: "TIT 2:2", book: "TIT", chapter: 2 },
+      ]);
+    const entry = {
+      items: 6,
+      exceptions: ["TIT 1:1-16", "TIT 1:10", "TIT 1:3", "TIT 2:1"],
+      swept: "x",
+      chapters: { TIT: [1, 2] },
+    };
+    expect(s.compactPassage(entry, items).exceptions).toEqual([
+      "TIT 1:3,10,1-16",
+      "TIT 2:1",
+    ]);
+  });
+});
+
+describe("exceptionCount", () => {
+  it("counts each item of a grouped passage exception, other kinds by entry", () => {
+    expect(
+      s.exceptionCount(
+        { exceptions: ["TIT 1:3,10,1-16", "TIT 2:1"] },
+        "passage",
+      ),
+    ).toBe(4);
+    expect(
+      s.exceptionCount({ exceptions: ["TIT 1", "index:TIT 2"] }, "notes"),
+    ).toBe(2);
+    expect(s.exceptionCount({}, "passage")).toBe(0);
+  });
+});
+
+describe("formatVerified", () => {
+  it("writes one line per field, arrays and objects inside a field on that line, and reads back the same", () => {
+    const v = {
+      "a|b|v1|passage": {
+        items: 2,
+        exceptions: ["TIT 1:3"],
+        chapters: { TIT: [1, 2] },
+      },
+    };
+    const text = s.formatVerified(v);
+    expect(JSON.parse(text)).toEqual(v);
+    expect(text).toContain('    "chapters": {"TIT":[1,2]}');
+    expect(text.endsWith("\n")).toBe(true);
   });
 });

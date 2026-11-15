@@ -147,6 +147,34 @@ describe("passage rules", () => {
     expect(isVerifiedRange("en", "u/en/ult", "v1", "TIT", 1, 2, 5)).toBe(false);
   });
 
+  // The sweep groups a chapter's exceptions in one string (verified.json is bundled in the Worker): same meaning.
+  it("reads a chapter's exceptions grouped in one string (BOOK C:v,v,a-b)", () => {
+    use(
+      KEY,
+      entry({ chapters: { TIT: [1, 2] }, exceptions: ["TIT 1:3,10,1-16"] }),
+    );
+    expect(p("TIT 1:2")).toBe(true);
+    expect(p("TIT 1:3")).toBe(false);
+    expect(p("TIT 1:10")).toBe(false);
+    expect(p("TIT 1:1-16")).toBe(false);
+    expect(p("TIT 1:1-2")).toBe(true);
+    expect(p("TIT 1:2-4")).toBe(false);
+    expect(p("TIT 2:3")).toBe(true);
+  });
+
+  it("a passage exception it cannot read makes the whole entry unusable", () => {
+    for (const bad of [
+      "TIT 1:x",
+      "TIT 1:",
+      "TIT 1:3,,4",
+      "TIT 1",
+      "TIT 1:4-",
+    ]) {
+      use(KEY, entry({ chapters: { TIT: [1, 2] }, exceptions: [bad] }));
+      expect(p("TIT 2:1"), bad).toBe(false);
+    }
+  });
+
   it("is not an item it cannot parse", () => {
     use(KEY, entry({ chapters: { TIT: [1] } }));
     expect(p("TIT 1")).toBe(false);

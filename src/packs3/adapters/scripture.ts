@@ -79,13 +79,15 @@ export function verseText(
   let inChapter = false;
   let chapterSeen = false;
   const found: string[] = [];
-  let open: { n: number; from: number } | undefined;
+  let open: { n: number; from: number; breaks: Set<number> } | undefined;
   let tsInRange = false;
   const close = (to: number) => {
     if (!open) return;
+    const { from, breaks } = open;
+    // A paragraph that opens inside the verse is a line break in the USFM: a space in the route's text.
     const text = pieces
-      .slice(open.from, to)
-      .map((p) => p[0])
+      .slice(from, to)
+      .map((p, i) => (breaks.has(from + i) ? " " : "") + p[0])
       .join("")
       .replace(/[ \t]{2,}/g, " ")
       .trim();
@@ -106,14 +108,17 @@ export function verseText(
       const n = Number(value);
       if (n >= start && n <= end) {
         if (tsInRange && n > start) return undefined;
-        open = { n, from: at };
+        open = { n, from: at, breaks: new Set() };
       }
       continue;
     }
     if (!open) continue;
     if (kind === "close") continue;
     if (kind === "open" && value === "ms:ts") tsInRange = true;
-    if (kind === "open" && PLAIN_PARA.test(value)) continue;
+    if (kind === "open" && PLAIN_PARA.test(value)) {
+      if (value !== "ms:ts") open.breaks.add(at);
+      continue;
+    }
     return undefined;
   }
   close(pieces.length);
@@ -158,15 +163,23 @@ function hasBit(books: ArrayLike<number> | undefined, index: number): boolean {
   return !!books && ((books[index >> 3] ?? 0) & (1 << (index & 7))) !== 0;
 }
 
-function entryOf(res: Resource, index: number, code: string): CatalogEntry {
+/**
+ * The route's catalog entry of a resource. Its ingredients list every book the resource has, as the route's catalog
+ * does: an empty list would mean "may have every book" to the route's pick, so a resource that lacks the book would
+ * be picked instead of named in the note (es-419 GST and Esther). A resource with no book at all is refused before.
+ */
+export function catalogEntryOf(res: Resource): CatalogEntry {
   const [owner, lang, id] = res.key.split("/");
   const repo = `${lang}_${id}`;
+  const ingredients = BOOKS.flatMap((b, i) =>
+    hasBit(res.books, i) ? [{ identifier: b.toUpperCase() }] : [],
+  );
   return {
     owner,
     repo,
     name: repo,
     abbreviation: ABBREVIATIONS[res.key] ?? id,
-    ingredients: hasBit(res.books, index) ? [{ identifier: code }] : [],
+    ingredients,
   } as unknown as CatalogEntry;
 }
 
@@ -224,9 +237,7 @@ export async function scriptureFromPacks3(
       // A resource that lists no book at all would count as "may have it" in the route.
       if (resources.some((r) => Array.from(r.books ?? []).every((b) => !b)))
         return undefined;
-      const entries = resources.map((r) =>
-        entryOf(r, index, code.toUpperCase()),
-      );
+      const entries = resources.map((r) => catalogEntryOf(r));
       const pick = (list: CatalogEntry[]) =>
         scriptureVersionsForBook(list, book, language, () => undefined);
       const decision = pick(entries);

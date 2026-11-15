@@ -4,7 +4,9 @@
  * `"<lang>|<resource key>|<release>|<kind>"`; a changed release has no entry, so it serves nothing until re-swept.
  *
  * What the sweep writes per kind (and what `isVerified` reads):
- * - passage: items `BOOK C:V` for every verse and `BOOK C:1-N` per chapter; `chapters: { BOOK: [c, ...] }`.
+ * - passage: items `BOOK C:V` for every verse and `BOOK C:1-N` per chapter; `chapters: { BOOK: [c, ...] }`. Its
+ *   exceptions are grouped per chapter, `BOOK C:v,v,a-b` (the items `BOOK C:v` and `BOOK C:a-b`); one it cannot read
+ *   makes the whole entry unusable.
  * - notes, links: `BOOK C` (`chapters`) for the default shape; `fields=index` items (whole book and chapter) are
  *   `indexWholeBooks` / `indexChapters`, their exceptions `index:BOOK C`. questions: items `BOOK` (`wholeBooks`) and `BOOK C` (`chapters`, "front" and 0 included).
  * - articles and the search kind: the exact item in `ids`.
@@ -67,6 +69,18 @@ export function releaseOfCatalogs(
 }
 
 const PASSAGE = /^(\S+) (\d+):(\d+)(?:-(\d+))?$/;
+const PASSAGE_EXCEPTION = /^(\S+ \d+):(\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)$/;
+
+/** A passage entry's exceptions as single items (`BOOK C:v`, `BOOK C:a-b`), or `undefined` when one is unreadable. */
+function passageExceptions(list: string[]): Set<string> | undefined {
+  const out = new Set<string>();
+  for (const x of list) {
+    const m = PASSAGE_EXCEPTION.exec(x);
+    if (!m) return undefined;
+    for (const v of m[2]!.split(",")) out.add(`${m[1]}:${v}`);
+  }
+  return out;
+}
 const CHAPTER_KINDS = new Set(["notes", "links", "questions"]);
 // The kind's name is built, not written: tests/unit/packs3-allowed-calls.test.ts forbids that string literal in src/packs3.
 /** The search kind's name (built, see above), for the search adapter. */
@@ -168,6 +182,8 @@ export function isVerified(
   if (kind === "passage") {
     const m = PASSAGE.exec(item);
     if (!m) return false;
+    const excepted = passageExceptions(exceptions);
+    if (!excepted || excepted.has(item)) return false;
     const [, book, chapter, a, b] = m;
     if (strings(e.skippedBooks).includes(book!)) return false;
     if (!chapterListed(e.chapters, book!, chapter!)) return false;
@@ -175,7 +191,7 @@ export function isVerified(
     // `C:1-N` is) and every verse in it is clean, so a range never rests on an item nobody compared.
     if (b === undefined) return true;
     for (let v = Number(a); v <= Number(b); v++) {
-      if (exceptions.includes(`${book} ${chapter}:${v}`)) return false;
+      if (excepted.has(`${book} ${chapter}:${v}`)) return false;
     }
     return true;
   }

@@ -7,10 +7,13 @@ import {
 } from "../../src/packs3/catalogs";
 import { resetReadersForTests } from "../../src/packs3/readers";
 import {
+  BOOKS,
   bookTooLarge,
+  catalogEntryOf,
   scriptureFromPacks3,
   verseText,
 } from "../../src/packs3/adapters/scripture";
+import { scriptureVersionsForBook } from "../../src/api/routes/scripture";
 import { answerFromPacks3 } from "../../src/packs3/answer";
 import { setVerifiedForTests } from "../../src/packs3/verified";
 import { injectFixtureProofs } from "./packs3-fixture-verified";
@@ -361,6 +364,20 @@ describe("verseText whitespace", () => {
       "3 the bird{s} sing",
     );
   });
+  // en JHN 12:36 UGNT (API Worker, 2026-11-15): a `\p` inside the verse is a line break in the USFM, a space in
+  // today's text: "36 ὡς τὸ φῶς ἔχετε, ... γένησθε. ταῦτα ἐλάλησεν Ἰησοῦς, ...".
+  it("puts a space where a paragraph opens inside a verse", () => {
+    const u = {
+      pieces: [N("γένησθε."), N("ταῦτα ἐλάλησεν. ")],
+      events: [
+        [0, "chapter", "12"],
+        [0, "verse", "36"],
+        [1, "close", ""],
+        [1, "open", "para:p"],
+      ] as Array<[number, string, string]>,
+    };
+    expect(verseText(u, "12", 36, 36)).toBe("36 γένησθε. ταῦτα ἐλάλησεν.");
+  });
   it("trims the blank a verse slice starts or ends with", () => {
     expect(verseText(unit(" \n", "word ", "\n"), "5", 3, 3)).toBe("3 word");
   });
@@ -382,5 +399,42 @@ describe("bookTooLarge", () => {
     expect(
       bookTooLarge(reader({ "book:mat": 670385, "orig:mat": 242959 }), "mat"),
     ).toBe(false);
+  });
+});
+
+// es-419 EST 1:1 from the API Worker (2026-11-15): the GST lacks Esther, so the route picks the GLT alone and says why.
+// The route reads a resource's book list from its ingredients; an empty list means "may have every book".
+describe("catalogEntryOf", () => {
+  const bits = (...codes: string[]) => {
+    const b = new Uint8Array(9);
+    for (const c of codes) {
+      const i = BOOKS.indexOf(c);
+      b[i >> 3]! |= 1 << (i & 7);
+    }
+    return b;
+  };
+  const glt = {
+    key: "es-419_gl/es-419/glt",
+    subject: "Aligned Bible",
+    release: "v42",
+    books: bits("rut", "est", "tit"),
+  };
+  const gst = {
+    key: "es-419_gl/es-419/gst",
+    subject: "Aligned Bible",
+    release: "v40",
+    books: bits("rut", "tit"),
+  };
+  it("lists every book the resource has, so the route's pick sees a book it lacks", () => {
+    const d = scriptureVersionsForBook(
+      [catalogEntryOf(glt), catalogEntryOf(gst)],
+      "EST",
+      "es-419",
+      () => undefined,
+    );
+    expect(d.picked.map((e) => e.repo)).toEqual(["es-419_glt"]);
+    expect(d.versionsNote).toBe(
+      'The GST (simplified) does not include Esther yet, and no other "es-419" version has it.',
+    );
   });
 });
