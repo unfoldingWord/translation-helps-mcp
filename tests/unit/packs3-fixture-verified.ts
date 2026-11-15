@@ -11,6 +11,9 @@ const chaptersOf = (books: Record<string, number>) =>
       [...Array.from({ length: n + 1 }, (_, i) => i), "front"],
     ]),
   );
+/** The verse/range samples the sweep records for notes, links and questions: every numbered chapter (`1-N`). */
+const samplesOf = (books: Record<string, number>) =>
+  Object.fromEntries(Object.entries(books).map(([b, n]) => [b, `1-${n}`]));
 
 /**
  * What the adapter tests of Tasks 5 and 6 pinned, as the sweep would have recorded it for the fixture catalogs:
@@ -55,6 +58,7 @@ export async function injectFixtureProofs(
           exceptions: [],
           deps: {},
           chapters: chaptersOf(lang === "en" ? { TIT: 3 } : { TIT: 3, RUT: 4 }),
+          samples: samplesOf(lang === "en" ? { TIT: 3 } : { TIT: 3, RUT: 4 }),
         };
         continue;
       }
@@ -91,6 +95,7 @@ export async function injectFixtureProofs(
         ...(kind === "passage"
           ? {}
           : {
+              samples: samplesOf(books),
               indexChapters: chaptersOf(books),
               indexWholeBooks: Object.keys(books),
             }),

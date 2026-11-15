@@ -170,6 +170,105 @@ describe("isVerified", () => {
   });
 });
 
+describe("verse and range samples (notes, links, questions)", () => {
+  // TIT 1 and 2 sampled (`1-2`), TIT 3 listed but not sampled
+  const sampled = (extra: VerifiedEntry = {}) =>
+    entry({
+      chapters: { TIT: [0, 1, 2, 3, "front"] },
+      samples: { TIT: "1-2" },
+      ...extra,
+    });
+
+  it("a verse or range of a chapter without sample data falls back; the chapter still serves", () => {
+    use(NOTES, sampled());
+    expect(notes("TIT 3")).toBe(true);
+    expect(notes("TIT 3:1")).toBe(false);
+    expect(notes("TIT 3:1-2")).toBe(false);
+  });
+
+  it("a clean sample serves every verse and range of its chapter", () => {
+    use(NOTES, sampled());
+    expect(notes("TIT 1:1")).toBe(true);
+    expect(notes("TIT 1:7")).toBe(true);
+    expect(notes("TIT 1:4-6")).toBe(true);
+    expect(notes("TIT 2:15")).toBe(true);
+  });
+
+  it("one sampled exception (verse or range) makes the chapter's verses and ranges fall back, not the chapter", () => {
+    use(NOTES, sampled({ exceptions: ["TIT 1:8"] }));
+    expect(notes("TIT 1:1")).toBe(false);
+    expect(notes("TIT 1:2-3")).toBe(false);
+    expect(notes("TIT 1")).toBe(true);
+    expect(notes("TIT 2:1")).toBe(true);
+    use(NOTES, sampled({ exceptions: ["TIT 2:7-9"] }));
+    expect(notes("TIT 2:1")).toBe(false);
+    expect(notes("TIT 2:1-2")).toBe(false);
+    expect(notes("TIT 1:1-2")).toBe(true);
+  });
+
+  it("the chapter must be listed and clean too", () => {
+    use(NOTES, sampled({ chapters: { TIT: [2] } }));
+    expect(notes("TIT 1:1")).toBe(false);
+    use(NOTES, sampled({ exceptions: ["TIT 1"] }));
+    expect(notes("TIT 1:1")).toBe(false);
+    expect(notes("TIT 2:1")).toBe(true);
+  });
+
+  it("an old entry without `samples` serves no verse or range", () => {
+    use(NOTES, entry());
+    expect(notes("TIT 1")).toBe(true);
+    expect(notes("TIT 1:1")).toBe(false);
+    expect(notes("TIT 1:1-2")).toBe(false);
+  });
+
+  it("bad verse items never serve (zero, reversed, past 200, not numbers)", () => {
+    use(NOTES, sampled());
+    for (const item of [
+      "TIT 1:0",
+      "TIT 1:3-2",
+      "TIT 1:1-201",
+      "TIT 1:x",
+      "TIT 1:1-",
+      "TIT front:1",
+    ])
+      expect(notes(item)).toBe(false);
+  });
+
+  it("questions and links read the same samples", () => {
+    for (const kind of ["questions", "links"]) {
+      setVerifiedForTests({ [`en|u/en/x|v9|${kind}`]: sampled() });
+      expect(isVerified("en", "u/en/x", "v9", kind, "TIT 1:3")).toBe(true);
+      expect(isVerified("en", "u/en/x", "v9", kind, "TIT 3:3")).toBe(false);
+    }
+  });
+
+  it("a malformed `samples` makes the whole entry unusable", () => {
+    for (const bad of [
+      [],
+      "1-2",
+      { TIT: [1, 2] },
+      { TIT: "1-x" },
+      { TIT: "2-1" },
+      { TIT: "" },
+      { TIT: "1;2" },
+    ]) {
+      use(NOTES, sampled({ samples: bad as never }));
+      expect(notes("TIT 1")).toBe(false);
+      expect(notes("TIT 1:1")).toBe(false);
+      expect(sweep.entryWellFormed(sampled({ samples: bad as never }))).toBe(
+        false,
+      );
+    }
+    expect(sweep.entryWellFormed(sampled())).toBe(true);
+  });
+
+  it("the index shape is unchanged: it reads its chapter item only", () => {
+    use(NOTES, sampled({ indexChapters: { TIT: [1] } }));
+    expect(notes("TIT 1", { index: true })).toBe(true);
+    expect(notes("TIT 1:1", { index: true })).toBe(false);
+  });
+});
+
 describe("passage rules", () => {
   const KEY = "en|u/en/ult|v1|passage";
   const p = (item: string) =>

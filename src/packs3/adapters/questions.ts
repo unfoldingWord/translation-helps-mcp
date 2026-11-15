@@ -19,7 +19,7 @@ import { warnOnce } from "../keys";
 import { withReader } from "../readers";
 import type { Packs3Params } from "../answer";
 import { isVerified, releaseOfCatalogs } from "../verified";
-import { LINKED } from "./helps";
+import { LINKED, verseItem } from "./helps";
 
 const QREF = /^(\d+):(\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)$/;
 
@@ -106,7 +106,10 @@ export async function questionsFromPacks3(
         resource.key,
         resource.release,
         "questions",
-        `${q.book.toUpperCase()} ${q.chapter}`,
+        // a verse or range is served only on its chapter's swept samples (verified.ts `isVerified`)
+        q.verseStart
+          ? verseItem(q.book, q.chapter, q.verseStart, q.verseEnd)
+          : `${q.book.toUpperCase()} ${q.chapter}`,
         { releaseOf: releaseOfCatalogs(c.catalogs) },
       )
     ) {

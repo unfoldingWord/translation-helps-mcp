@@ -1078,6 +1078,163 @@ describe("search catalog proof", () => {
   });
 });
 
+describe("verse and range samples (notes, links, questions)", () => {
+  const range = (a: number, b: number) =>
+    Array.from({ length: b - a + 1 }, (_, i) => a + i);
+
+  it("samples the first, middle and last verse and a 3-verse range around the middle", () => {
+    expect(s.verseSampleItems("TIT", 1, range(1, 16))).toEqual([
+      "TIT 1:1",
+      "TIT 1:8",
+      "TIT 1:16",
+      "TIT 1:7-9",
+    ]);
+    expect(s.verseSampleItems("TIT", 2, range(1, 4))).toEqual([
+      "TIT 2:1",
+      "TIT 2:2",
+      "TIT 2:4",
+      "TIT 2:1-3",
+    ]);
+  });
+
+  it("a chapter of 1-3 verses: every verse and the whole-chapter range; none without verses", () => {
+    expect(s.verseSampleItems("OBA", 1, [1])).toEqual(["OBA 1:1"]);
+    expect(s.verseSampleItems("X", 1, [1, 2])).toEqual([
+      "X 1:1",
+      "X 1:2",
+      "X 1:1-2",
+    ]);
+    expect(s.verseSampleItems("X", 1, [1, 2, 3])).toEqual([
+      "X 1:1",
+      "X 1:2",
+      "X 1:3",
+      "X 1:1-3",
+    ]);
+    expect(s.verseSampleItems("X", 1, [])).toEqual([]);
+    expect(s.verseSampleItems("X", 1, undefined)).toEqual([]);
+  });
+
+  it("`samples` lists the sampled chapters per book as runs; coverage ignores sample items", () => {
+    const items = [
+      { item: "TIT 1", book: "TIT", chapter: 1 },
+      { item: "TIT 1:1", book: "TIT", chapter: 1, sample: true },
+      { item: "TIT 2:1", book: "TIT", chapter: 2, sample: true },
+      { item: "TIT 3:1-2", book: "TIT", chapter: 3, sample: true },
+      { item: "TIT 5:1", book: "TIT", chapter: 5, sample: true },
+      { item: "RUT 1:1", book: "RUT", chapter: 1, sample: true },
+    ];
+    expect(s.samplesOf(items)).toEqual({ RUT: "1", TIT: "1-3,5" });
+    expect(s.samplesOf([{ item: "TIT 1", book: "TIT", chapter: 1 }])).toEqual(
+      {},
+    );
+    expect(s.coverageOf(items)).toEqual({ chapters: { TIT: [1] } });
+  });
+
+  it("the written entry is read back: clean samples serve, an exception falls back", () => {
+    const K = "en|u/en/tn|v9|notes";
+    const own = [
+      { item: "TIT 1", book: "TIT", chapter: 1, res: ["u/en/tn"] },
+      { item: "TIT 2", book: "TIT", chapter: 2, res: ["u/en/tn"] },
+      ...s
+        .verseSampleItems("TIT", 1, range(1, 16))
+        .map((item: string) => ({
+          item,
+          book: "TIT",
+          chapter: 1,
+          sample: true,
+        })),
+      ...s
+        .verseSampleItems("TIT", 2, range(1, 15))
+        .map((item: string) => ({
+          item,
+          book: "TIT",
+          chapter: 2,
+          sample: true,
+        })),
+    ];
+    const results = own.map((i) => ({
+      ...i,
+      status: i.item === "TIT 2:7-9" ? "differs" : "equal",
+    }));
+    const e = s.buildEntry(results, "now", {
+      ...s.coverageOf(own),
+      samples: s.samplesOf(own),
+    });
+    setVerifiedForTests({ [K]: e });
+    try {
+      expect(isVerified("en", "u/en/tn", "v9", "notes", "TIT 1:5")).toBe(true);
+      expect(isVerified("en", "u/en/tn", "v9", "notes", "TIT 1:2-3")).toBe(
+        true,
+      );
+      expect(isVerified("en", "u/en/tn", "v9", "notes", "TIT 2:1")).toBe(false);
+      expect(isVerified("en", "u/en/tn", "v9", "notes", "TIT 2")).toBe(true);
+    } finally {
+      setVerifiedForTests(undefined);
+    }
+  });
+
+  it("keeps one sample exception per clean chapter, none where the chapter item is an exception; serves the same", () => {
+    const full = [
+      "TIT 1",
+      "TIT 1:1",
+      "TIT 1:7-9",
+      "TIT 2:1",
+      "TIT 2:8",
+      "TIT 2:7-9",
+      "TIT 3:15",
+      "index:TIT 2",
+    ];
+    const kept = s.compactSampleExceptions(full);
+    expect(kept).toEqual(["TIT 1", "TIT 2:1", "TIT 3:15", "index:TIT 2"]);
+    const K = "en|u/en/tn|v9|notes";
+    const base = { chapters: { TIT: [1, 2, 3, 4] }, samples: { TIT: "1-4" } };
+    const items = [
+      "TIT 1",
+      "TIT 1:2",
+      "TIT 2:3-4",
+      "TIT 3:1",
+      "TIT 4:1",
+      "TIT 4:2-3",
+    ];
+    const served = (exceptions: string[]) => {
+      setVerifiedForTests({ [K]: { ...base, exceptions } });
+      try {
+        return items.map((i) => isVerified("en", "u/en/tn", "v9", "notes", i));
+      } finally {
+        setVerifiedForTests(undefined);
+      }
+    };
+    expect(served(kept)).toEqual(served(full));
+    expect(served(kept)).toEqual([false, false, false, false, true, true]);
+  });
+
+  it("compactVerified keeps `samples` and does not widen a malformed one", () => {
+    const A = "en|u/en/tn|v9|notes";
+    const B = "en|u/en/tw|v9|notes";
+    const ex = ["TIT 1:8", "TIT 2:1"];
+    const good = {
+      items: 2,
+      exceptions: [...ex],
+      chapters: { TIT: [1, 2] },
+      samples: { TIT: "1-2" },
+    };
+    const bad = {
+      items: 2,
+      exceptions: [...ex],
+      chapters: { TIT: [1, 2] },
+      samples: { TIT: "2-1" },
+    };
+    expect(s.compactVerified({ [A]: good })).toEqual({ [A]: good });
+    // the malformed entry is kept exactly and never holds the list for the good one
+    const out = s.compactVerified({ [A]: bad, [B]: good });
+    expect(out[A]).toEqual(bad);
+    expect(out[B]).toEqual(good);
+    const out2 = s.compactVerified({ [A]: good, [B]: { ...good } });
+    expect(out2[B].samples).toEqual({ TIT: "1-2" });
+    expect(s.expandVerified(out2)).toEqual({ [A]: good, [B]: good });
+  });
+});
+
 describe("compactVerified / expandVerified / nextVerified", () => {
   const ULT = "en|u/en/ult|v9|passage";
   const UST = "en|u/en/ust|v9|passage";

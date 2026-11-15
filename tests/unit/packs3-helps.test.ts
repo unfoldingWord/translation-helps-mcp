@@ -749,6 +749,38 @@ describe("fallbacks", () => {
     expect(await notesFromPacks3(env(), params)).toBeUndefined();
   });
 
+  it("a verse or range needs its chapter's swept samples; a sampled exception falls back (notes, links)", async () => {
+    const at = (reference: string) => ({ reference, language: "en" });
+    const both = async (reference: string) => [
+      await notesFromPacks3(env(), at(reference)),
+      await wordLinksFromPacks3(env(), at(reference)),
+    ];
+    for (const r of ["Tit 1:1", "Tit 1:1-2", "Tit 1"])
+      for (const a of await both(r)) expect(a).toBeDefined();
+    const edit = (f: (e: Record<string, unknown>) => void) =>
+      injectFixtureProofs(env(), (t) => {
+        for (const [k, e] of Object.entries(t))
+          if (/\|(notes|links)$/.test(k)) f(e as Record<string, unknown>);
+      });
+    // chapter 1 has no sample data
+    await edit((e) => (e.samples = { TIT: "2-3" }));
+    for (const r of ["Tit 1:1", "Tit 1:1-2"])
+      for (const a of await both(r)) expect(a).toBeUndefined();
+    for (const a of await both("Tit 1")) expect(a).toBeDefined();
+    // an old entry without the field
+    await edit((e) => delete e.samples);
+    for (const a of await both("Tit 1:1")) expect(a).toBeUndefined();
+    // one sampled exception (a range) in chapter 1
+    await edit((e) => (e.exceptions = ["TIT 1:7-9"]));
+    for (const r of ["Tit 1:1", "Tit 1:1-2"])
+      for (const a of await both(r)) expect(a).toBeUndefined();
+    for (const a of await both("Tit 1")) expect(a).toBeDefined();
+    // the index shape is unchanged
+    expect(
+      await notesFromPacks3(env(), { ...at("Tit 1:1"), fields: "index" }),
+    ).toBeDefined();
+  }, 60_000);
+
   it("notes: undefined, warning once, when the notes resource has no proof", async () => {
     await injectFixtureProofs(env(), (t) => {
       for (const k of Object.keys(t)) if (k.includes("/en/tn|")) delete t[k];

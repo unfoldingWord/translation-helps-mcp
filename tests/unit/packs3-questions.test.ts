@@ -248,6 +248,33 @@ describe("questions", () => {
     expect(warns.length).toBeGreaterThan(0);
   });
 
+  it("a verse or range needs its chapter's swept samples; a sampled exception falls back", async () => {
+    expect(await ask("Tit 1:2", "en")).toBeDefined();
+    expect(await ask("Tit 1:1-3", "en")).toBeDefined();
+    // no sample data for the chapter (or an old entry without the field): verses and ranges fall back
+    await injectFixtureProofs(env(), (t) => {
+      for (const [k, e] of Object.entries(t))
+        if (k.includes("/en/tq|")) e.samples = { TIT: "2-3" };
+    });
+    expect(await ask("Tit 1:2", "en")).toBeUndefined();
+    expect(await ask("Tit 1:1-3", "en")).toBeUndefined();
+    expect(await ask("Tit 1", "en")).toBeDefined();
+    await injectFixtureProofs(env(), (t) => {
+      for (const [k, e] of Object.entries(t))
+        if (k.includes("/en/tq|")) delete e.samples;
+    });
+    expect(await ask("Tit 1:2", "en")).toBeUndefined();
+    // a sampled exception in the chapter
+    await injectFixtureProofs(env(), (t) => {
+      for (const [k, e] of Object.entries(t))
+        if (k.includes("/en/tq|")) e.exceptions = ["TIT 1:8"];
+    });
+    expect(await ask("Tit 1:2", "en")).toBeUndefined();
+    expect(await ask("Tit 1:1-3", "en")).toBeUndefined();
+    expect(await ask("Tit 1", "en")).toBeDefined();
+    expect(await ask("Tit 2:1", "en")).toBeDefined();
+  });
+
   it("a comma list reference keeps its tail like the route", () => {
     const row = (ref: string, from: number, to: number) =>
       ({ id: "x", ref, from, to, cols: {} }) as never;

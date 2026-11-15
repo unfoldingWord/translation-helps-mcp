@@ -112,6 +112,17 @@ type Query = {
   indexMode: boolean;
 };
 
+/** The proof item of a verse or range request: `BOOK C:V`, or `BOOK C:V-W` when the end differs. */
+export function verseItem(
+  book: string,
+  chapter: string,
+  verseStart: string,
+  verseEnd?: string,
+): string {
+  const at = `${book.toUpperCase()} ${chapter}:${verseStart}`;
+  return verseEnd && verseEnd !== verseStart ? `${at}-${verseEnd}` : at;
+}
+
 function queryOf(params: HelpsParams): Query | undefined {
   try {
     const url = new URL("https://packs3.invalid/api/v1/notes");
@@ -423,13 +434,16 @@ async function withHelps<T>(
       );
       if (!resource) return undefined;
       const releaseOf = releaseOfCatalogs(c.catalogs);
-      // The sweep's items: the whole book (`*`) or one chapter; a verse or a range is served from its chapter's proof.
+      // The sweep's items: the whole book (`*`) or one chapter; a default-shape verse or range (`BOOK C:V`,
+      // `BOOK C:V-W`) is served only on its chapter's swept verse/range samples (verified.ts `isVerified`).
       // The default shape of a whole book is not a route answer: only `fields=index` has one.
       if (q.chapter === "*" && !q.indexMode) return undefined;
       const item =
         q.chapter === "*"
           ? q.book.toUpperCase()
-          : `${q.book.toUpperCase()} ${q.chapter}`;
+          : q.indexMode || !q.verseStart
+            ? `${q.book.toUpperCase()} ${q.chapter}`
+            : verseItem(q.book, q.chapter, q.verseStart, q.verseEnd);
       if (
         !isVerified(c.lang, resource.key, resource.release, kind, item, {
           releaseOf,

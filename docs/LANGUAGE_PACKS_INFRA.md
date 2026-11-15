@@ -616,6 +616,17 @@ The MCP tools can answer from format 3 instead of calling the API Worker (`src/p
   The "off" side needs the local API Worker on 8788 for the index shape (`--var API_BASE_URL:http://localhost:8788`):
   the deployed one answers index calls differently. docs/packs3-comparison.md is that run's generated output.
 
+- **Verse and range samples (notes, links, questions).** The route builds a verse or range answer for the verses asked
+  (for notes and links, the aligned words too), so a chapter proof does not prove it. The sweep therefore also compares,
+  per chapter, a fixed sample: the first verse, the middle verse (`verses[floor((n-1)/2)]`), the last verse and the
+  3-verse range around the middle (a chapter of 1-3 verses: every verse and the whole-chapter range). The entry's
+  `samples` (`{ "TIT": "1-3" }`) lists the chapters that were sampled and their failures are `exceptions`
+  (`TIT 1:8`, `TIT 1:7-9`; only the first per chapter is written, and none for a chapter that is itself an exception,
+  since one already blocks its verses). A default-shape verse or range request is served only when its chapter is listed and clean,
+  was sampled, and none of its samples is an exception; otherwise it falls back. Say it plainly: this is sampled
+  evidence, not exhaustive. The verses between the samples are not each compared, so a difference only in an unsampled
+  verse would be served. An entry swept before this change has no `samples`, so its verse and range requests fall back
+  until the resource is swept again. `fields=index` and whole-book requests are unchanged.
 - **Staging and preview run with `PACKS_V3_DEBUG = "on"`.** Every staging or preview `tools/call` result carries
   `_meta._packs3`, and any caller may send `x-th-packs3: only` (its fallbacks then become `PACKS3_FALLBACK` 404s for
   that caller). Production is unaffected: debug is not set and `PACKS_V3` is off. Staging consumers must not rely on
@@ -623,7 +634,8 @@ The MCP tools can answer from format 3 instead of calling the API Worker (`src/p
 - **The S0 republish must be a FULL rebuild.** The whitespace fix changes the output for `inputs` hashes that did not
   change, so an incremental publish would keep the old bytes for unchanged inputs.
 - **Known residuals.**
-  - Notes, links and questions verse and range requests are served on the chapter proof (not swept per verse).
+  - Notes, links and questions verse and range requests are served on SAMPLED evidence, not exhaustive (see
+    "Verse and range samples" below).
   - The scripture `versionsNote` depends on Bible resources that are not in the entry's `deps`.
   - en ult/ust JON chapter 2 is not in the proof (the call falls back).
   - The es-419 RUT 1 and TIT 1 index fallback cause is not traced.

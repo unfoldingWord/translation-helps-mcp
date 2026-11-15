@@ -29,6 +29,12 @@
  * - `--range-windows N` (passage): also sweeps the first N range windows of every chapter (1-3, 3-5, …; a window that
  *   is not equal is swept again as its two 2-verse windows). The equal ones are written as the entry's `joins` (the
  *   verse boundaries they prove, verified.ts); windows are not items and never exceptions. 0 (default) sweeps none.
+ * - notes, links, questions: every chapter also gets verse and range sample items (`verseSampleItems`, deterministic):
+ *   its first, middle (`verses[floor((n-1)/2)]`) and last verse and the 3-verse range around the middle; a chapter of
+ *   1-3 verses gets every verse and the whole-chapter range (none for 1 verse). They are compared with the route like the
+ *   chapter items; the entry's `samples` (`{ BOOK: "1-3,5" }`) lists the chapters that got them, their failures go to
+ *   `exceptions`. This is SAMPLED evidence, not exhaustive: a verse or range request is served on a clean chapter whose
+ *   samples were all equal, though the verses between the samples were not each compared.
  * - The adapters are opened for the sweep (verified.ts `setSweepOpen`), so
  *   the sweep says what the adapter does on a book, not that it has no proof yet.
  * Pure parts are exported for tests/unit/packs3-sweep.test.ts.
@@ -256,6 +262,8 @@ export function listExceptions(results) {
  *     deps: { "<catalog>|<resource key>": "<release>" },   // every other resource the answers depended on
  *     chapters: { "TIT": [0, 1, 2, "front"] },             // books/chapters swept (passage: items are verses + ranges)
  *     wholeBooks: ["TIT"],                                  // questions: the whole-book item was swept
+ *     samples: { "TIT": "1-3" },                            // notes/links/questions: chapters whose verse/range samples were swept
+ *                                                           // (their exceptions are listed as "TIT 1:8", "TIT 1:7-9")
  *     indexChapters: { "TIT": [0, 1] }, indexWholeBooks: ["TIT"],  // notes/links: the `fields=index` items swept
  *                                                           // (their exceptions are listed as "index:TIT 1")
  *                                                           // passage exceptions: one string per chapter, "TIT 1:3,10,1-16"
@@ -345,6 +353,7 @@ export function coverageOf(items) {
       whole: [...whole].sort(),
     };
   };
+  items = items.filter((i) => !i.sample); // verse/range samples are `samples` (`samplesOf`), not coverage
   const plain = collect(items.filter((i) => i.book && !i.index));
   const idx = collect(items.filter((i) => i.book && i.index));
   const hasPlain = items.some((i) => i.book && !i.index);
@@ -355,6 +364,58 @@ export function coverageOf(items) {
     ...(hasIdx ? { indexChapters: idx.chapters } : {}),
     ...(idx.whole.length ? { indexWholeBooks: idx.whole } : {}),
   };
+}
+
+/**
+ * The verse and range sample items of one chapter (notes, links, questions; `verses` ascending): the first, middle
+ * (`verses[floor((n-1)/2)]`) and last verse and the 3-verse range around the middle. 1-3 verses: every verse and the
+ * whole-chapter range (none for a single verse). No verses: none, so that chapter's verse requests are never served.
+ */
+export function verseSampleItems(book, chapter, verses) {
+  const vs = verses ?? [];
+  const n = vs.length;
+  if (!n) return [];
+  const at = (v) => `${book} ${chapter}:${v}`;
+  if (n <= 3) return [...vs.map(at), ...(n > 1 ? [`${at(vs[0])}-${vs[n - 1]}`] : [])];
+  const mid = Math.floor((n - 1) / 2);
+  return [...new Set([at(vs[0]), at(vs[mid]), at(vs[n - 1]), `${at(vs[mid - 1])}-${vs[mid + 1]}`])];
+}
+
+/** `samples` of an entry: the chapters per book that have sample items (`sample: true`), as runs `"1-3,5"`. */
+export function samplesOf(items) {
+  const per = {};
+  for (const i of items) if (i.sample && i.book) (per[i.book] ??= new Set()).add(Number(i.chapter));
+  const out = {};
+  for (const b of Object.keys(per).sort()) {
+    const cs = [...per[b]].filter((c) => Number.isInteger(c)).sort((x, y) => x - y);
+    const runs = [];
+    for (const c of cs) {
+      const last = runs[runs.length - 1];
+      if (last && c === last[1] + 1) last[1] = c;
+      else runs.push([c, c]);
+    }
+    if (runs.length) out[b] = runs.map(([x, y]) => (x === y ? `${x}` : `${x}-${y}`)).join(",");
+  }
+  return out;
+}
+
+/**
+ * The exceptions of a notes, links or questions entry with its sample exceptions compacted (verified.json is bundled):
+ * one sample exception already makes every verse and range of its chapter fall back, and a chapter whose own item is an
+ * exception falls back for them anyway, so only the first sample exception of each otherwise clean chapter is kept.
+ * Serves nothing more than the full list (verified.ts `isVerified`); the differences report keeps every item.
+ */
+export function compactSampleExceptions(exceptions) {
+  const list = exceptions ?? [];
+  const chapters = new Set(list.filter((x) => /^\S+ \d+$/.test(x)));
+  const seen = new Set();
+  return list.filter((x) => {
+    const m = /^(\S+ \d+):\d+(?:-\d+)?$/.exec(x);
+    if (!m) return true;
+    if (chapters.has(m[1]) || seen.has(m[1])) return false;
+    seen.add(m[1]);
+    return true;
+  });
 }
 
 /** The sweep item of an index-shape request: `index:BOOK C` (exceptions carry the same prefix). */
@@ -697,6 +758,13 @@ const isStringsV = (v) => Array.isArray(v) && v.every((x) => typeof x === "strin
 const JOINS_CHAPTER_V = /^(\d+):(\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)$/;
 const TERMS_PART_V = /^[^:|,]+:[^:|,]+(?:\|[^:|,]+)*$/;
 const MISS_TERM_V = /^[^/:|,=A-Z]+$/;
+const SAMPLE_RUNS_V = /^\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*$/;
+const samplesParseV = (line) =>
+  SAMPLE_RUNS_V.test(line) &&
+  line.split(",").every((run) => {
+    const [x, y = x] = run.split("-").map(Number);
+    return y >= x && y - x <= 1000;
+  });
 const joinsParsesV = (line) =>
   line.split(";").every((p) => {
     const m = JOINS_CHAPTER_V.exec(p);
@@ -716,11 +784,12 @@ export function entryWellFormed(e) {
     if (e[f] === undefined) continue;
     if (!isPlainV(e[f]) || !Object.values(e[f]).every((l) => Array.isArray(l))) return false;
   }
-  for (const f of ["idDirs", "joins", "terms"]) {
+  for (const f of ["idDirs", "joins", "terms", "samples"]) {
     if (e[f] === undefined) continue;
     if (!isPlainV(e[f]) || !Object.values(e[f]).every((l) => typeof l === "string")) return false;
   }
   if (isPlainV(e.joins) && !Object.values(e.joins).every(joinsParsesV)) return false;
+  if (isPlainV(e.samples) && !Object.values(e.samples).every(samplesParseV)) return false;
   if (isPlainV(e.terms) && !Object.values(e.terms).every((l) => l.split(",").every((p) => TERMS_PART_V.test(p)))) return false;
   if (e.misses !== undefined && (typeof e.misses !== "string" || !e.misses.split(",").every((t) => MISS_TERM_V.test(t))))
     return false;
@@ -1166,6 +1235,10 @@ async function main() {
         if (withBook) items.push({ sub: kind, item: indexItem(B), book: B, res, index: true, bare: B });
         for (const c of found?.chapters ?? []) {
           items.push({ sub: kind, item: `${B} ${c}`, book: B, chapter: c, res });
+          // verse and range samples of the default shape (see the header): numbered chapters only
+          if (/^\d+$/.test(String(c))) {
+            for (const item of verseSampleItems(B, c, found?.verses?.[c])) items.push({ sub: kind, item, book: B, chapter: c, res, sample: true });
+          }
           if (withBook) items.push({ sub: kind, item: indexItem(`${B} ${c}`), book: B, chapter: c, res, index: true, bare: `${B} ${c}` });
         }
       }
@@ -1230,9 +1303,11 @@ async function main() {
     const entry = buildEntry(mine, swept, {
       deps: depsFor(kind, r.key, catList, { alignedKey, usedKeys }),
       ...coverageOf(own),
+      ...(kind === "notes" || kind === "links" || kind === "questions" ? { samples: samplesOf(own) } : {}),
     });
     const joins = kind === "passage" ? windowJoins(all) : {};
     const termPaths = Object.fromEntries(own.filter((it) => it.termPath).map((it) => [it.item, it.termPath]));
+    if (entry.samples) entry.exceptions = compactSampleExceptions(entry.exceptions);
     entries[key] = kind === "passage" ? compactPassage(entry, own) : kind === "articles" ? compactArticles(entry, termPaths) : entry;
     const kept = pruneJoins(joins, entries[key]);
     if (Object.keys(kept).length) entries[key].joins = kept;
