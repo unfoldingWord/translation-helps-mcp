@@ -7,6 +7,7 @@ import {
 } from "../../src/packs3/catalogs";
 import { resetReadersForTests } from "../../src/packs3/readers";
 import {
+  bookTooLarge,
   scriptureFromPacks3,
   verseText,
 } from "../../src/packs3/adapters/scripture";
@@ -93,6 +94,44 @@ describe("scriptureFromPacks3", () => {
     });
   });
 
+  // Read from the API Worker on 2026-11-15: an Old Testament verse, with the Hebrew original.
+  it("es-419 RUT 1:3, every field (Old Testament)", async () => {
+    const got = await scriptureFromPacks3(env(), {
+      reference: "RUT 1:3",
+      language: "es-419",
+    });
+    expect(got).toEqual({
+      reference: "RUT 1:3",
+      language: "es-419",
+      book: "RUT",
+      chapter: "1",
+      verse: "3",
+      format: "text",
+      versions: [
+        {
+          resourceType: "tpl",
+          role: "literal",
+          text: "3 Entonces Elimelec, el esposo de Noemí, murió. Y fue dejada ella con sus dos hijos.",
+          source: "https://git.door43.org/es-419_gl/es-419_glt/archive/v42.zip",
+        },
+        {
+          resourceType: "gst",
+          role: "simplified",
+          text: "3 Entonces Elimelec, el esposo de Noemí, murió y solamente quedó ella con sus dos hijos.",
+          source: "https://git.door43.org/es-419_gl/es-419_gst/archive/v40.zip",
+        },
+        {
+          resourceType: "uhb",
+          role: "original",
+          text: "3 \u05d5\u05b7\u2060\u05d9\u05bc\u05b8\u05a5\u05de\u05b8\u05ea \u05d0\u05b1\u05dc\u05b4\u05d9\u05de\u05b6\u0596\u05dc\u05b6\u05da\u05b0 \u05d0\u05b4\u05a3\u05d9\u05e9\u05c1 \u05e0\u05b8\u05e2\u05b3\u05de\u05b4\u0591\u05d9 \u05d5\u05b7\u2060\u05ea\u05bc\u05b4\u05e9\u05c1\u05bc\u05b8\u05d0\u05b5\u05a5\u05e8 \u05d4\u05b4\u0596\u05d9\u05d0 \u05d5\u05bc\u2060\u05e9\u05c1\u05b0\u05e0\u05b5\u05a5\u05d9 \u05d1\u05b8\u05e0\u05b6\u05bd\u05d9\u2060\u05d4\u05b8\u05c3",
+          source:
+            "https://git.door43.org/unfoldingWord/hbo_uhb/archive/v3.0.0.zip",
+        },
+      ],
+      meta: { cache: "pack" },
+    });
+  });
+
   it("en TIT 1:1-3, every field", async () => {
     const got = await scriptureFromPacks3(env(), {
       reference: "Tit 1:1-3",
@@ -162,10 +201,6 @@ describe("scriptureFromPacks3", () => {
       { reference: "Tit 9:1", language: "en" },
     ],
     [
-      "an Old Testament book (Hebrew line breaks)",
-      { reference: "Rut 1:1", language: "es-419" },
-    ],
-    [
       "a reference that does not parse",
       { reference: "nonsense", language: "en" },
     ],
@@ -192,6 +227,30 @@ describe("verified resources", () => {
           "unverified-resource",
       );
       expect(warns).toHaveLength(1);
+    } finally {
+      setVerifiedForTests(undefined);
+    }
+  });
+
+  it("falls back on an Old Testament verse the sweep listed as an exception", async () => {
+    // RUT 1:1: the route's Hebrew keeps a USFM blank line ("\n ") that format 3 does not have.
+    await injectFixtureProofs(env(), (t) => {
+      for (const k of Object.keys(t))
+        if (k.includes("/es-419/glt|")) t[k]!.exceptions = ["RUT 1:1"];
+    });
+    try {
+      expect(
+        await scriptureFromPacks3(env(), {
+          reference: "Rut 1:1",
+          language: "es-419",
+        }),
+      ).toBeUndefined();
+      expect(
+        await scriptureFromPacks3(env(), {
+          reference: "Rut 1:3",
+          language: "es-419",
+        }),
+      ).toBeDefined();
     } finally {
       setVerifiedForTests(undefined);
     }
@@ -304,5 +363,24 @@ describe("verseText whitespace", () => {
   });
   it("trims the blank a verse slice starts or ends with", () => {
     expect(verseText(unit(" \n", "word ", "\n"), "5", 3, 3)).toBe("3 word");
+  });
+});
+
+describe("bookTooLarge", () => {
+  const reader = (sizes: Record<string, number>) => ({
+    unitOf: (cls: string, key: string) =>
+      `${cls}:${key}` in sizes ? `${cls}:${key}` : undefined,
+    size: (u: string) => sizes[u] ?? 0,
+  });
+  it("refuses a book whose text and originals pass the reader budget together (en Psalms)", () => {
+    // staging en: book:psa 1097745 + orig:psa 418898 compressed bytes, about 80 MB of heap in one call
+    expect(
+      bookTooLarge(reader({ "book:psa": 1097745, "orig:psa": 418898 }), "psa"),
+    ).toBe(true);
+  });
+  it("reads a book under the budget (en Matthew)", () => {
+    expect(
+      bookTooLarge(reader({ "book:mat": 670385, "orig:mat": 242959 }), "mat"),
+    ).toBe(false);
   });
 });

@@ -14,7 +14,7 @@ const chaptersOf = (books: Record<string, number>) =>
 
 /**
  * What the adapter tests of Tasks 5 and 6 pinned, as the sweep would have recorded it for the fixture catalogs:
- * passages of TIT and MAT for every Bible resource; notes and links of TIT (en) and TIT, RUT (es-419).
+ * passages of TIT, MAT and RUT for every Bible resource; notes and links of TIT (en) and TIT, RUT (es-419).
  * Reads the fixture's own releases, so a re-cut fixture needs no edit. Call after `resetPacks3CachesForTests()`.
  */
 export async function injectFixtureProofs(
@@ -66,7 +66,7 @@ export async function injectFixtureProofs(
       if (!kind) continue;
       const books: Record<string, number> =
         kind === "passage"
-          ? { TIT: 3, MAT: 28 }
+          ? { TIT: 3, MAT: 28, RUT: 4 }
           : lang === "en"
             ? { TIT: 3 }
             : { TIT: 3, RUT: 4 };

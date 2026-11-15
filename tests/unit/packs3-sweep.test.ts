@@ -349,3 +349,30 @@ describe("sweep-packs3 pure parts", () => {
     expect(JSON.parse(readFileSync(f, "utf8"))).toEqual({});
   });
 });
+
+describe("compactPassage", () => {
+  it("drops a chapter whose every item is an exception, with its exceptions (it is not listed, so never served)", () => {
+    const items = [
+      { item: "PSA 1:1", book: "PSA", chapter: 1 },
+      { item: "PSA 1:2", book: "PSA", chapter: 1 },
+      { item: "PSA 1:1-2", book: "PSA", chapter: 1 },
+      { item: "PSA 2:1", book: "PSA", chapter: 2 },
+      { item: "PSA 2:2", book: "PSA", chapter: 2 },
+      { item: "PSA 2:1-2", book: "PSA", chapter: 2 },
+      { item: "JON 1:1", book: "JON", chapter: 1 },
+    ];
+    const entry = {
+      items: 7,
+      exceptions: ["JON 1:1", "PSA 1:1", "PSA 1:1-2", "PSA 1:2", "PSA 2:2"],
+      swept: "x",
+      chapters: { JON: [1], PSA: [1, 2] },
+    };
+    expect(s.compactPassage(entry, items)).toEqual({
+      items: 7,
+      exceptions: ["PSA 2:2"],
+      swept: "x",
+      chapters: { PSA: [2] },
+    });
+    expect(entry.chapters.PSA).toEqual([1, 2]);
+  });
+});

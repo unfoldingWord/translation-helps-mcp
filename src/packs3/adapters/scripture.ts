@@ -16,7 +16,7 @@ import { requireReferenceAndLanguage } from "../../api/routes/helpers";
 import { scriptureVersionsForBook } from "../../api/routes/scripture";
 import type { Packs3Env } from "../catalogs";
 import { warnOnce } from "../keys";
-import { withReader } from "../readers";
+import { READER_BYTE_BUDGET, withReader } from "../readers";
 import { isVerifiedRange, releaseOfCatalogs } from "../verified";
 import type { Packs3Params } from "../answer";
 
@@ -122,6 +122,26 @@ export function verseText(
   return LOST_SPACE.test(text) ? undefined : text;
 }
 
+/**
+ * Does one call on `code` open more compressed bytes (the book's texts and its originals) than a reader may hold?
+ * The budget is checked between calls, so such a book (en Psalms: 1.1 MB + 0.4 MB, about 80 MB of heap) would
+ * overshoot it inside one call, and two readers like that do not fit the isolate (docs/packs3-measurements.md).
+ */
+export function bookTooLarge(
+  reader: {
+    unitOf(cls: "book" | "orig", key: string): string | undefined;
+    size(unit: string): number;
+  },
+  code: string,
+): boolean {
+  let bytes = 0;
+  for (const cls of ["book", "orig"] as const) {
+    const unit = reader.unitOf(cls, code);
+    if (unit) bytes += reader.size(unit);
+  }
+  return bytes > READER_BYTE_BUDGET;
+}
+
 type Resource = {
   key: string;
   subject: string;
@@ -182,8 +202,7 @@ export async function scriptureFromPacks3(
   if (!isCanonicalUsfmBook(book)) return undefined;
   const code = book.toLowerCase();
   const index = BOOKS.indexOf(code);
-  // The Hebrew in the route's answer has line breaks of the USFM that format 3 does not keep.
-  if (index < FIRST_NT) return undefined;
+  if (index < 0) return undefined;
   const first = Number(verseStart);
   const last = verseEnd ? Number(verseEnd) : first;
   if (!Number.isInteger(first) || !Number.isInteger(last)) return undefined;
@@ -195,6 +214,7 @@ export async function scriptureFromPacks3(
     async (reader, catalogs): Promise<ScriptureApiResponse | undefined> => {
       const language = catalogs.lang;
       if (!reader.listed(`book:${code}`)) return undefined;
+      if (bookTooLarge(reader, code)) return undefined;
 
       const common = catalogs.catalogs.find((c) => c.name === "common");
       const own = catalogs.catalogs.find((c) => c.name !== "common");

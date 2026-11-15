@@ -94,7 +94,7 @@ export function listExceptions(results) {
  *     indexChapters: { "TIT": [0, 1] }, indexWholeBooks: ["TIT"],  // notes/links: the `fields=index` items swept
  *                                                           // (their exceptions are listed as "index:TIT 1")
  *     ids: ["bible/kt/grace"],                              // articles and search: the exact items swept
- *     skippedBooks: ["GEN"] }                               // passage: books the resource lists that are not served (OT)
+ *     skippedBooks: ["GEN"] }                               // books listed but not swept (a sweep no longer writes it)
  * Task 13 serves an item only if it is in that list, is not an exception, and every `deps` release equals the catalog's.
  */
 export function buildEntry(results, swept, extra = {}) {
@@ -220,6 +220,31 @@ export function passageItems(book, verses) {
     if (vs.length > 1) out.push({ item: `${book} ${c}:1-${vs[vs.length - 1]}`, book, chapter: Number(c) });
   }
   return out;
+}
+
+/**
+ * A passage entry without the chapters whose every item is an exception (and without their exceptions): a chapter
+ * that is not listed is never served, so the proof says the same in far fewer bytes (verified.json is in the Worker).
+ * Books left with no chapter are dropped. `items` are the sweep items of the resource; inputs untouched.
+ */
+export function compactPassage(entry, items) {
+  const bad = new Set(entry.exceptions ?? []);
+  const perChapter = new Map();
+  for (const it of items) {
+    const k = `${it.book} ${it.chapter}`;
+    perChapter.set(k, (perChapter.get(k) ?? true) && bad.has(it.item));
+  }
+  const dead = new Set([...perChapter].filter(([, allBad]) => allBad).map(([k]) => k));
+  const chapters = {};
+  for (const [b, list] of Object.entries(entry.chapters ?? {})) {
+    const keep = list.filter((c) => !dead.has(`${b} ${c}`));
+    if (keep.length) chapters[b] = keep;
+  }
+  const exceptions = (entry.exceptions ?? []).filter((x) => {
+    const m = /^(\S+) (\d+):/.exec(x);
+    return !(m && dead.has(`${m[1]} ${m[2]}`));
+  });
+  return { ...entry, exceptions, chapters };
 }
 
 /** Existing entries plus new ones (a new entry replaces the same key); keys sorted; inputs untouched. */
@@ -368,7 +393,7 @@ async function main() {
   const { getCatalogs } = await import("../src/packs3/catalogs.ts");
   const { withReader } = await import("../src/packs3/readers.ts");
   const { attemptPacks3 } = await import("../src/packs3/answer.ts");
-  const { BOOKS, FIRST_NT } = await import("../src/packs3/adapters/scripture.ts");
+  const { BOOKS } = await import("../src/packs3/adapters/scripture.ts");
   const { GROUPS, pathOfId } = await import("../src/packs3/adapters/articles.ts");
   const helps = await import("../src/packs3/adapters/helps.ts");
   // The sweep makes the proofs, so the adapters answer without them (scripture and helps: verified.ts).
@@ -389,7 +414,6 @@ async function main() {
 
   // Items: { res (resource keys they count for), sub (request kind), item, book?, chapter? }.
   const items = [];
-  const skippedBooks = new Map(); // resource key -> books it lists that are not served
   if (kind === "search") {
     for (const q of searchQueries(lang)) items.push({ sub: "search", item: q, res: resources.map((r) => r.key) });
   } else if (kind === "articles") {
@@ -409,11 +433,6 @@ async function main() {
       const listing = resources.filter((r) => hasBit(r, i));
       if (!listing.length || (only && !only.includes(code))) continue;
       const B = code.toUpperCase();
-      if (kind === "passage" && i < FIRST_NT) {
-        // The scripture adapter serves the New Testament only; Hebrew is not proven.
-        for (const r of listing) skippedBooks.set(r.key, [...(skippedBooks.get(r.key) ?? []), B]);
-        continue;
-      }
       const res = listing.map((r) => r.key);
       const found = await withReader(env, lang, async (reader) => {
         const data = await reader.book(code);
@@ -477,12 +496,12 @@ async function main() {
     if (!mine.length) continue; // only a narrowed run gets here with none
     const key = sweepKey(lang, r.key, r.release, kind);
     const usedKeys = [...new Set(mine.flatMap((x) => x.used ?? []))];
-    const skipped = skippedBooks.get(r.key);
-    entries[key] = buildEntry(mine, swept, {
+    const own = items.filter((it) => it.res.includes(r.key));
+    const entry = buildEntry(mine, swept, {
       deps: depsFor(kind, r.key, catList, { alignedKey, usedKeys }),
-      ...coverageOf(items.filter((it) => it.res.includes(r.key))),
-      ...(skipped ? { skippedBooks: skipped } : {}),
+      ...coverageOf(own),
     });
+    entries[key] = kind === "passage" ? compactPassage(entry, own) : entry;
     const bad = mine.filter((x) => x.status !== "equal");
     const by = {};
     for (const x of bad) {
