@@ -22,7 +22,7 @@
       "language": "en"
     },
     "expect": "fallback",
-    "why": "Old Testament: the passage adapter rebuilds New Testament verses only (Hebrew line breaks); also a whole chapter"
+    "why": "PSA 23:1,2,4,5 and the whole chapter are swept exceptions of the en ult proof (adapter-undefined, no format 3 rebuild)"
   },
   {
     "tool": "th_get_passage",
@@ -31,7 +31,7 @@
       "language": "en"
     },
     "expect": "fallback",
-    "why": "Old Testament: the passage adapter rebuilds New Testament verses only (Hebrew line breaks)"
+    "why": "PSA 119:8 is a swept exception of the en ult proof and the range 1-8 contains it"
   },
   {
     "tool": "th_get_passage",
@@ -66,7 +66,7 @@
       "language": "en"
     },
     "expect": "fallback",
-    "why": "Old Testament: the passage adapter rebuilds New Testament verses only (Hebrew line breaks)"
+    "why": "JON 1:1, 1:2 and 1:3 are swept exceptions of the en ult proof"
   },
   {
     "tool": "th_get_passage",
@@ -350,7 +350,8 @@
       "reference": "JHN 3:16",
       "language": "fr"
     },
-    "expect": "fallback"
+    "expect": "fallback",
+    "why": "no fr language pack"
   },
   {
     "tool": "th_get_passage",
@@ -359,7 +360,7 @@
       "language": "es-419"
     },
     "expect": "fallback",
-    "why": "Old Testament: the passage adapter rebuilds New Testament verses only (Hebrew line breaks)"
+    "why": "RUT 1:1 is a swept exception of the es-419 gst proof"
   },
   {
     "tool": "th_get_passage",
@@ -384,7 +385,7 @@
       "language": "es-419"
     },
     "expect": "fallback",
-    "why": "Old Testament: the passage adapter rebuilds New Testament verses only (Hebrew line breaks)"
+    "why": "the es-419 pack has no Psalms (book not in the pack)"
   },
   {
     "tool": "th_get_passage",
@@ -419,7 +420,8 @@
       "reference": "MAT 5:1",
       "language": "es-419"
     },
-    "expect": "fallback"
+    "expect": "fallback",
+    "why": "the es-419 pack has no Matthew (book not in the pack)"
   },
   {
     "tool": "th_get_passage_index",
@@ -445,7 +447,7 @@
       "language": "es-419"
     },
     "expect": "fallback",
-    "why": "helps adapter covers New Testament books only"
+    "why": "the es-419 pack has no Psalms (book not in the pack)"
   },
   {
     "tool": "th_get_passage_index",
@@ -454,7 +456,7 @@
       "language": "es-419"
     },
     "expect": "fallback",
-    "why": "helps adapter covers New Testament books only"
+    "why": "es-419 RUT 1 is in the pack's index chapters yet falls back; cause not traced (known residual)"
   },
   {
     "tool": "th_get_notes",

@@ -616,6 +616,19 @@ The MCP tools can answer from format 3 instead of calling the API Worker (`src/p
   The "off" side needs the local API Worker on 8788 for the index shape (`--var API_BASE_URL:http://localhost:8788`):
   the deployed one answers index calls differently. docs/packs3-comparison.md is that run's generated output.
 
+- **Staging and preview run with `PACKS_V3_DEBUG = "on"`.** Every staging or preview `tools/call` result carries
+  `_meta._packs3`, and any caller may send `x-th-packs3: only` (its fallbacks then become `PACKS3_FALLBACK` 404s for
+  that caller). Production is unaffected: debug is not set and `PACKS_V3` is off. Staging consumers must not rely on
+  `_meta` being absent.
+- **The S0 republish must be a FULL rebuild.** The whitespace fix changes the output for `inputs` hashes that did not
+  change, so an incremental publish would keep the old bytes for unchanged inputs.
+- **Known residuals.**
+  - Notes, links and questions verse and range requests are served on the chapter proof (not swept per verse).
+  - The scripture `versionsNote` depends on Bible resources that are not in the entry's `deps`.
+  - en ult/ust JON chapter 2 is not in the proof (the call falls back).
+  - The es-419 RUT 1 and TIT 1 index fallback cause is not traced.
+  - The combined reader byte cap does not apply to calls with no `need`.
+
 ## Rotation
 
 - GitHub App private key: App settings → Private keys → generate a new one, update `GITHUB_APP_PRIVATE_KEY` on both

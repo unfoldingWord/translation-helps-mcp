@@ -79,6 +79,15 @@ describe("compare-packs3 pure parts", () => {
     );
     expect(c.skew).toHaveLength(1);
     expect(c.failing).toHaveLength(1);
+    // One-base mode: a release difference on a served call fails.
+    const one = s.classify(
+      [{ path: "$.resource.release", a: "v91", b: "v92" }],
+      { tool: "t", args: {} },
+      [],
+      false,
+    );
+    expect(one.skew).toHaveLength(0);
+    expect(one.failing).toHaveLength(1);
   });
 
   it("strips only the named cache fields", () => {

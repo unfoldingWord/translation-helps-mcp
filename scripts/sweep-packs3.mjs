@@ -823,7 +823,8 @@ export function compactVerified(table, { blocked: earlier } = {}) {
     if (k.endsWith("|articles") && e.misses !== undefined) {
       const cat = full[k.slice(0, -"articles".length) + "searchCatalog"];
       const equal =
-        (cat?.catalog === "equal" || (cat?.catalog === "equalExcept" && entryWellFormed(cat))) &&
+        entryWellFormed(cat) &&
+        (cat?.catalog === "equal" || cat?.catalog === "equalExcept") &&
         (cat.differs === undefined || cat.differs.length === 0);
       if (!equal) {
         const { misses, ...rest } = e;
@@ -968,7 +969,9 @@ async function localBucket(dir) {
 async function apiGet({ base, headers }, req, cache, { withStatus = false } = {}) {
   const qs = new URLSearchParams(req.params).toString();
   const url = `${base.replace(/\/$/, "")}${req.path}?${qs}`;
-  const file = join(cache.dir, createHash("sha1").update(url).digest("hex") + ".json");
+  const file = join(cache.dir, createHash("sha1")
+      .update(url + "|" + JSON.stringify(Object.entries(headers ?? {}).map(([k, v]) => [k.toLowerCase(), v]).sort()))
+      .digest("hex") + ".json");
   if (cache.resume && existsSync(file)) {
     const cached = JSON.parse(readFileSync(file, "utf8"));
     if (cacheFresh(cached, cache.catalogKey, Date.now(), cache.maxAgeHours)) {
@@ -1304,8 +1307,8 @@ async function sweepSearchCatalog({ env, lang, api, cats, resources, outDir, wri
     // would leave it unclear which one the catalog came from.
     const sameType = resources.filter((x) => SUBJECTS[type].includes(x.subject));
     if (!cat || !cat.articles.length || sameType.length !== 1) {
-      console.error(`${key}: format 3 has no single catalog for this resource; not written`);
-      continue;
+      console.error(`${key}: format 3 has no single catalog for this resource; nothing written`);
+      process.exit(2);
     }
     const candidates = cat.articles.map((a) => ({ path: a.path, title: a.title, category: a.category, resourceType: type }));
     const probes = await searchCatalogProbes({

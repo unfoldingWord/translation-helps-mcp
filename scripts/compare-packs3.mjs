@@ -147,13 +147,14 @@ export function errorMismatch(a, b) {
   return ca === cb ? null : `error mismatch: A ${ca ?? "ok"}, B ${cb ?? "ok"}`;
 }
 
-/** Sorts diffs into skew, known and failing. */
-export function classify(diffs, call, known) {
+/** Sorts diffs into skew, known and failing. Skew is tolerated only when `tolerateSkew` is true (two-base runs); in
+ *  one-base mode (off against only, same Worker) a release difference on a served call is a failure. */
+export function classify(diffs, call, known, tolerateSkew = true) {
   const skew = [];
   const knownHit = [];
   const failing = [];
   for (const d of diffs) {
-    if (isReleaseSkew(d.a, d.b, d.path)) skew.push(d);
+    if (tolerateSkew && isReleaseSkew(d.a, d.b, d.path)) skew.push(d);
     else {
       const k = matchKnown(known, call, d.path);
       if (k) knownHit.push({ ...d, reason: k.reason });
@@ -322,7 +323,7 @@ async function main() {
       }
     }
     if ((call.expect !== "fallback" && row.status === "served") || baseB) {
-      Object.assign(row, classify(dropMirroredText(diffPaths(normalizeResult(a.result), normalizeResult(b.result))), call, known));
+      Object.assign(row, classify(dropMirroredText(diffPaths(normalizeResult(a.result), normalizeResult(b.result))), call, known, !!baseB));
     }
     rows.push(row);
     const bad = row.problems.length + row.failing.length;
