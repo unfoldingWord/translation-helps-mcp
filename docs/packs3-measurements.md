@@ -81,3 +81,26 @@ lower bound on the true peak; the 96 MB run completing is the stronger evidence 
 ~110 MB. The heap is about 45-47 MB per compressed MB (Psalms 1.52 MB measured, peak 80 MB after gc). The cap is 1.8 MB: just
 above the largest measured book, about 85 MB of heap at that rate. A cap of 2.5 MB would be about 129 MB, past the
 128 MB isolate and unmeasured. A book over 1.8 MB compressed falls back (`book-too-large`).
+
+## Psalms notes, default shape (Task 14b-OT fix 1)
+
+A default-shape notes call opens the book and its original (en ULT + UHB, Psalms 1.52 MB compressed, exclusive
+reader) and builds the route's word tokens for its `gatewayQuote.aligned`. The tokens are built only for the verses
+of the rows asked (a whole book of Psalms would be about 20k Hebrew and 50k+ English token objects). Measured with a
+script that calls `buildNotesAnswer` from the local staging bucket, Node v22:
+`node --import tsx --expose-gc --max-old-space-size=<N> measure-notes.mjs <bucket> "<refs>"` (Task 14b-OT scratch
+folder). Psalms 119, 3, 18, 37, 68, 78 and 89 are sweep exceptions and fall back before any token is built.
+
+| old space | call                  | rows (aligned) | verses tokenised (orig + text) | sampled peak (no gc) | after call (gc) |
+| --------- | --------------------- | -------------- | ------------------------------ | -------------------- | --------------- |
+| 128 MB    | Psa 23:1              | 4 (2)          | 2                              | 101.1 MB             | 13.2 MB         |
+| 128 MB    | Psa 1 (chapter)       | 38 (36)        | 12                             | 94.4 MB              | 13.3 MB         |
+| 128 MB    | Psa 105 (chapter)     | 113 (111)      | 88                             | 96.3 MB              | 12.2 MB         |
+| 128 MB    | Psa 106 (chapter)     | 136 (134)      | 94                             | 86.5 MB              | 12.3 MB         |
+| 110 MB    | Psa 1, 23:1, 105, 106 | as above       | as above                       | 84.3-91.8 MB         | 11.9-13.4 MB    |
+| 96 MB     | Psa 1, 23:1, 105, 106 | as above       | as above                       | 84.7-92.3 MB         | 11.9-12.4 MB    |
+
+Every run completes. The sampled peak is heapUsed every 5 ms without gc: garbage not yet collected moves it by
+±10 MB from run to run (Psa 23:1 101.1 MB at 128 MB old space, 84-88 MB at 110 and 96), so it is a noisy lower
+bound; the 96 MB run completing every call is the stronger evidence that a Psalms notes call fits under ~110 MB.
+The decode of book + original (about 80 MB after gc, see above) dominates; the tokens of a chapter add little.

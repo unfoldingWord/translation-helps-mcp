@@ -18,6 +18,7 @@ import {
   chosenRows,
   restoreLinks,
   helpsNeed,
+  tokenisedForTests,
 } from "../../src/packs3/adapters/helps";
 import { READER_BYTE_BUDGET } from "../../src/packs3/readers";
 import { answerFromPacks3 } from "../../src/packs3/answer";
@@ -551,14 +552,13 @@ describe("notes", () => {
       ["nd8v", "2", "Mira"],
       ["ms25", "2", "estará aventando"],
     ];
+    expect(rows).toHaveLength(12);
     expect(
-      rows
-        .slice(0, want.length)
-        .map((r) => [
-          r.id,
-          r.verse,
-          (r.gatewayQuote as { aligned: string }).aligned,
-        ]),
+      rows.map((r) => [
+        r.id,
+        r.verse,
+        (r.gatewayQuote as { aligned: string }).aligned,
+      ]),
     ).toEqual(want);
   });
 
@@ -600,6 +600,47 @@ describe("notes", () => {
     const rut = probe({ "book:rut": 900000, "orig:rut": 200000 });
     expect(helpsNeed(rut, "rut", true)).toBeLessThan(READER_BYTE_BUDGET);
     expect(helpsNeed(rut, "rut", false)).toBeGreaterThan(READER_BYTE_BUDGET);
+    // Old Testament word links always fall back (never swept with aligned words): nothing to open.
+    expect(helpsNeed(psa, "psa", false, "links")).toBe(0);
+    expect(helpsNeed(psa, "psa", true, "links")).toBe(1097745);
+    const tit = probe({ "book:tit": 1000, "orig:tit": 500 });
+    expect(helpsNeed(tit, "tit", false, "links")).toBe(1500);
+  });
+
+  it("Old Testament word links without fields=index give undefined before reading the bucket (no exclusive reader)", async () => {
+    const e = env();
+    const get = vi.spyOn(
+      e.LANGUAGE_PACKS as unknown as { get: () => unknown },
+      "get",
+    );
+    expect(
+      await wordLinksFromPacks3(e, { reference: "Rut 3", language: "es-419" }),
+    ).toBeUndefined();
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it("notes build the route's tokens only for the verses asked, not the whole book", async () => {
+    tokenisedForTests();
+    const one = await buildNotesAnswer(env(), {
+      reference: "Rut 3:1-2",
+      language: "es-419",
+    });
+    expect(one).toBeDefined();
+    // Verses 1 and 2, in the Hebrew original and in the aligned text.
+    expect(tokenisedForTests().sort()).toEqual([
+      "orig 3:1",
+      "orig 3:2",
+      "text 3:1",
+      "text 3:2",
+    ]);
+    const chapter = await buildNotesAnswer(env(), {
+      reference: "Rut 3",
+      language: "es-419",
+    });
+    expect(chapter).toBeDefined();
+    const seen = tokenisedForTests();
+    expect(seen.every((k) => / 3:\d+$/.test(k))).toBe(true);
+    expect(seen.length).toBeLessThanOrEqual(2 * 18);
   });
 
   it("word links of an Old Testament book stay New Testament only (not swept)", async () => {

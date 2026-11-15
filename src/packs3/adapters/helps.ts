@@ -427,15 +427,22 @@ type Ctx = {
   releases: Map<string, string>;
 };
 
+/** Old Testament word links have no aligned words proven: only `fields=index` can answer them. */
+const otLinks = (code: string, kind: "notes" | "links", indexMode: boolean) =>
+  kind === "links" && !indexMode && BOOKS.indexOf(code) < FIRST_NT;
+
 /**
  * The compressed bytes a helps call opens: the book, plus its originals when aligned words are built (default shape).
  * Over READER_BYTE_BUDGET (en Psalms, Genesis…) the call runs in an exclusive reader; over its cap it gives `null`.
+ * Old Testament word links without `fields=index` open nothing (they always fall back).
  */
 export function helpsNeed(
   reader: SizeProbe,
   code: string,
   indexMode: boolean,
+  kind: "notes" | "links" = "notes",
 ): number {
+  if (otLinks(code, kind, indexMode)) return 0;
   if (!indexMode) return bookBytes(reader, code);
   const unit = reader.unitOf("book", code);
   return unit ? reader.size(unit) : 0;
@@ -450,6 +457,8 @@ async function withHelps<T>(
   const q = queryOf(params);
   if (!q) return undefined;
   const code = q.book.toLowerCase();
+  // Word links of the Old Testament: never swept with aligned words, so the route answers; no reader is opened.
+  if (otLinks(code, kind, q.indexMode)) return undefined;
   // The route answers from views, with another shape (reference, tags, sources, simple), when they have the chapter.
   if (await viewsExist(env, q, params.language, kind)) return undefined;
   const subject =
@@ -501,7 +510,7 @@ async function withHelps<T>(
         releases: new Map(resources.map((r) => [r.key, r.release])),
       });
     },
-    { need: (r) => helpsNeed(r, code, q.indexMode) },
+    { need: (r) => helpsNeed(r, code, q.indexMode, kind) },
   );
   return answer ?? undefined;
 }
@@ -600,12 +609,32 @@ async function prepare(
   if (!orig?.key) return undefined;
   const unit = res ? ctx.data.texts?.find((t) => t.res === res) : undefined;
   if (notes) {
-    const matched = routeMatcherOf(ctx.book, orig, unit);
+    const matched = routeMatcherOf(ctx.book, orig, unit, versesOf(chosen));
     return matched ? { chosen, titles, matched } : undefined;
   }
   const aligned = alignedOf(unit);
   if (!aligned) return undefined;
   return { chosen, titles, aligned };
+}
+
+/** The verses (`c:v`, as the route's `parseInt` reads them) whose words the rows' aligned words come from. */
+function versesOf(chosen: Placed[]): Set<string> {
+  const keys = new Set<string>();
+  for (const p of chosen) {
+    const c = parseInt(p.chapter, 10);
+    const v = parseInt(p.verse, 10);
+    if (!isNaN(c) && !isNaN(v)) keys.add(`${c}:${v}`);
+  }
+  return keys;
+}
+
+/** Recorded only once a test asked (never in the Worker, where it would grow with every call). */
+let tokenised: string[] | undefined;
+/** The verses tokenised since the last call (`orig c:v`, `text c:v`), and records from now on; for tests. */
+export function tokenisedForTests(): string[] {
+  const out = tokenised ?? [];
+  tokenised = [];
+  return out;
 }
 
 type Token = { id: number; text: string; type: "word"; align?: number[] };
@@ -619,6 +648,7 @@ type Token = { id: number; text: string; type: "word"; align?: number[] };
 function verseTokens(
   unit: TextUnit | undefined,
   aligned: boolean,
+  wanted: Set<string>,
 ): { verses: Map<string, Token[]>; doubtful: Set<string> } | undefined {
   const { pieces, events, align } = unit ?? {};
   if (!pieces || !events || (aligned && !align)) return undefined;
@@ -648,15 +678,21 @@ function verseTokens(
     const v = /^\d+/.exec(vs);
     if (!c || !v) continue;
     const key = `${Number(c[0])}:${Number(v[0])}`;
-    let list = verses.get(key);
-    if (!list) verses.set(key, (list = []));
-    else if (key !== last) doubtful.add(key);
+    // Every verse word's alignment is checked, as when the whole book was built, so the same units are refused.
+    if (aligned && !Array.isArray(align![id])) return undefined;
+    const prev = last;
     last = key;
+    // Tokens only for the verses asked: a whole book (Psalms) would be tens of thousands of objects.
+    if (!wanted.has(key)) continue;
+    let list = verses.get(key);
+    if (!list) {
+      verses.set(key, (list = []));
+      tokenised?.push(`${aligned ? "text" : "orig"} ${key}`);
+    } else if (key !== prev) doubtful.add(key);
     const text = pieces[p][0];
     if (!aligned) list.push({ id, text, type: "word" });
     else {
-      const to = align![id];
-      if (!Array.isArray(to)) return undefined;
+      const to = align![id] as number[];
       list.push({
         id: list.length + 1,
         text,
@@ -678,6 +714,7 @@ export function routeMatcherOf(
   book: string,
   orig: TextUnit | undefined,
   text: TextUnit | undefined,
+  wanted: Set<string>,
 ):
   | ((
       chapter: string,
@@ -686,8 +723,8 @@ export function routeMatcherOf(
       occurrence: string,
     ) => string | undefined)
   | undefined {
-  const o = verseTokens(orig, false);
-  const t = verseTokens(text, true);
+  const o = verseTokens(orig, false, wanted);
+  const t = verseTokens(text, true, wanted);
   if (!o || !t) return undefined;
   const matcher = new QuoteMatcher();
   const upper = book.toUpperCase();
