@@ -532,10 +532,16 @@ export function compactArticles(entry, resolved = {}) {
   // Term items (`term:<term>`): an equal one is listed under the article it resolved to, only when that article is a
   // clean item too (verified.ts `isVerifiedTerm`). `=` is the article's own name. One without a path is never listed.
   const byPath = new Map();
+  let termsExcepted = 0;
   for (const id of entry.ids ?? []) {
     if (bad.has(id) || !id.startsWith(TERM_PREFIX)) continue;
     const path = Object.hasOwn(resolved, id) ? resolved[id] : undefined;
-    if (!path || !clean.has(path)) continue;
+    if (!path) continue;
+    if (!clean.has(path)) {
+      // an equal term whose article is an exception: not listed, counted for the report
+      if (bad.has(path)) termsExcepted++;
+      continue;
+    }
     if (!byPath.has(path)) byPath.set(path, []);
     byPath.get(path).push(id.slice(TERM_PREFIX.length));
   }
@@ -560,6 +566,7 @@ export function compactArticles(entry, resolved = {}) {
     excepted: bad.size,
     idDirs,
     ...(Object.keys(terms).length ? { terms } : {}),
+    ...(termsExcepted ? { termsExcepted } : {}),
     ...(misses.length ? { misses: misses.join(",") } : {}),
   };
 }

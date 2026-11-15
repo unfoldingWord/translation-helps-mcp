@@ -132,5 +132,6 @@ export async function answerFromPacks3(
   params: Packs3Params,
 ): Promise<unknown | undefined> {
   const a = await attemptPacks3(env, path, params);
-  return a.hit ? a.value : undefined;
+  // A proven route error (the 404 miss) is not an answer: it flows only through `attemptPacks3` to the API client.
+  return a.hit && a.status === undefined ? a.value : undefined;
 }

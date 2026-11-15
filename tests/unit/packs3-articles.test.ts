@@ -469,6 +469,18 @@ const routeMiss = async (kind: "tw" | "ta", requestedPath: string) => {
 };
 
 describe("the miss side of a term lookup (sweep `misses`)", () => {
+  it("answerFromPacks3 does not hand a proven miss back as an answer", async () => {
+    await withMisses("en", "tw", "zzznoword");
+    expect((await miss("tw", "zzznoword")).hit).toBe(true);
+    expect(
+      await answerFromPacks3(env(), "/api/v1/words/zzznoword", {
+        language: "en",
+        requestedPath: "zzznoword",
+        prepared: "1",
+      }),
+    ).toBeUndefined();
+  });
+
   it("a swept miss with an equal search catalog proof answers the route's own 404", async () => {
     await withMisses("en", "tw", "zzznoword,qqq");
     const a = await miss("tw", "zzznoword");

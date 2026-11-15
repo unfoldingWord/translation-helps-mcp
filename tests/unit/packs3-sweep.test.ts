@@ -465,6 +465,7 @@ describe("compactArticles", () => {
       idDirs: { "bible/kt": "grace,sin" },
       // term:god resolves to an exception and term:sin is one: neither is listed
       terms: { "bible/kt": "grace:=|favor" },
+      termsExcepted: 1,
     });
   });
 
@@ -492,6 +493,34 @@ describe("compactArticles", () => {
     expect(
       s.compactArticles({ items: 1, exceptions: [], deps: {}, ids: ["a/b"] })
         .misses,
+    ).toBeUndefined();
+  });
+
+  it("counts an equal term whose article is an exception in `termsExcepted`", () => {
+    const entry = {
+      items: 4,
+      exceptions: ["bible/kt/god"],
+      deps: {},
+      ids: ["bible/kt/god", "bible/kt/grace", "term:god", "term:grace"],
+    };
+    const resolved = {
+      "term:god": "bible/kt/god",
+      "term:grace": "bible/kt/grace",
+    };
+    const c = s.compactArticles(entry, resolved);
+    expect(c.terms).toEqual({ "bible/kt": "grace:=" });
+    expect(c.termsExcepted).toBe(1);
+    // none dropped: the key is absent
+    expect(
+      s.compactArticles(
+        {
+          items: 2,
+          exceptions: [],
+          deps: {},
+          ids: ["bible/kt/grace", "term:grace"],
+        },
+        { "term:grace": "bible/kt/grace" },
+      ).termsExcepted,
     ).toBeUndefined();
   });
 

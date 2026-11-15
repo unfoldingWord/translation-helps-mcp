@@ -14,7 +14,7 @@
  *   and no `differs` (the ids that differed) when the article catalog format 3 ranks over equals the route's, so any
  *   query ranks the same (adapters/search.ts). articles: the exact item in `idDirs` (clean items only, per directory;
  *   `ids` is read too), or in `ids` and not in `exceptions`. A bare term or title (`/words/covenant`): `terms`, by the
- *   clean article it resolved to (`isVerifiedTerm`).
+ *   clean article it resolved to (`isVerifiedTerm`); `misses`: the terms whose route answer was the 404 miss.
  * `exceptions` lists the items whose answers did not equal today's; `deps` the other resources (`"<catalog>|<key>"`)
  * with the release the answers were made from; `skippedBooks` the books of a passage entry that were not swept.
  */
