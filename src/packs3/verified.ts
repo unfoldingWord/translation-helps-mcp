@@ -74,6 +74,37 @@ const ID_KINDS = new Set(["articles", ["sea", "rch"].join("")]);
 const strings = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 
+const isPlain = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+const isStrings = (v: unknown): boolean =>
+  Array.isArray(v) && v.every((x) => typeof x === "string");
+
+/** A present field of the wrong type makes the whole entry unusable (absent = empty): a bad proof never serves. */
+function wellFormed(e: VerifiedEntry): boolean {
+  const o = e as Record<string, unknown>;
+  for (const f of [
+    "exceptions",
+    "skippedBooks",
+    "wholeBooks",
+    "indexWholeBooks",
+    "ids",
+  ]) {
+    if (o[f] !== undefined && !isStrings(o[f])) return false;
+  }
+  for (const f of ["chapters", "indexChapters"]) {
+    const v = o[f];
+    if (v === undefined) continue;
+    if (!isPlain(v)) return false;
+    if (!Object.values(v).every((l) => Array.isArray(l))) return false;
+  }
+  if (o.deps !== undefined) {
+    if (!isPlain(o.deps)) return false;
+    if (!Object.values(o.deps).every((d) => typeof d === "string"))
+      return false;
+  }
+  return true;
+}
+
 function chapterListed(
   chapters: unknown,
   book: string,
@@ -122,10 +153,8 @@ export function isVerified(
   const k = `${lang}|${resourceKey}|${release}|${kind}`;
   const e = Object.hasOwn(table, k) ? table[k] : undefined;
   if (typeof e !== "object" || e === null) return false;
-  const deps =
-    typeof e.deps === "object" && e.deps !== null && !Array.isArray(e.deps)
-      ? e.deps
-      : {};
+  if (!wellFormed(e)) return false;
+  const deps = e.deps ?? {};
   for (const [depKey, depRelease] of Object.entries(deps)) {
     const have = opts.releaseOf?.(depKey);
     if (have === undefined || have !== depRelease) return false;

@@ -259,6 +259,25 @@ describe("matches what the sweep writes", () => {
     }
     expect(bad({ chapters: { TIT: 1 } })[0]).toBe(false);
     expect(bad({ chapters: [1] })[0]).toBe(false);
+    for (const extra of [
+      { exceptions: "TIT 1" },
+      { exceptions: {} },
+      { skippedBooks: "TIT" },
+      { deps: 5 },
+      { exceptions: [1] },
+      { skippedBooks: [1] },
+      { deps: [] },
+      { wholeBooks: "TIT" },
+      { ids: {} },
+      { indexWholeBooks: [2] },
+      { indexChapters: { TIT: "1" } },
+    ]) {
+      expect(bad({ chapters: { TIT: [1] }, ...extra })).toEqual([
+        false,
+        false,
+        false,
+      ]);
+    }
     setVerifiedForTests({});
     expect(notes("TIT 1")).toBe(false);
     use("constructor", entry());
