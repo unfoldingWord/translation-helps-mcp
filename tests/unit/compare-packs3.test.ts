@@ -59,12 +59,19 @@ describe("compare-packs3 pure parts", () => {
   });
 
   it("detects release skew and classifies", () => {
-    expect(s.isReleaseSkew("en_tn v91", "en_tn v92")).toBe(true);
-    expect(s.isReleaseSkew("en_tn v91", "en_ta v92")).toBe(false);
-    expect(s.isReleaseSkew("same v91", "same v91")).toBe(false);
+    expect(s.isReleaseSkew("en_tn v91", "en_tn v92", "$.a.release")).toBe(true);
+    expect(s.isReleaseSkew("en_tn v91", "en_ta v92", "$.a.release")).toBe(
+      false,
+    );
+    expect(s.isReleaseSkew("same v91", "same v91", "$.a.release")).toBe(false);
+    // Not a release field: v3 against v4 elsewhere stays a diff.
+    expect(s.isReleaseSkew("format v3", "format v4", "$.notes[0].body")).toBe(
+      false,
+    );
+    expect(s.isReleaseSkew("en_tn v91", "en_tn v92")).toBe(false);
     const c = s.classify(
       [
-        { path: "$.v", a: "v91", b: "v92" },
+        { path: "$.resource.release", a: "v91", b: "v92" },
         { path: "$.q", a: 1, b: 2 },
       ],
       { tool: "t", args: {} },
@@ -72,6 +79,24 @@ describe("compare-packs3 pure parts", () => {
     );
     expect(c.skew).toHaveLength(1);
     expect(c.failing).toHaveLength(1);
+  });
+
+  it("strips only the named cache fields", () => {
+    expect(
+      s.normalize({ cacheStatus: "hit", meta: { cacheStatus: "hit" } }),
+    ).toEqual({ cacheStatus: "hit" });
+    expect(s.normalize({ text: "a [hit]" })).toEqual({ text: "a [hit]" });
+  });
+
+  it("two errors must be the same error class", () => {
+    const e1 = { isError: true, structuredContent: { code: "NOT_FOUND" } };
+    const e2 = { isError: true, structuredContent: { code: "INTERNAL" } };
+    expect(s.errorMismatch(e1, e1)).toBeNull();
+    expect(s.errorMismatch(e1, e2)).toMatch(/mismatch/);
+    expect(s.errorMismatch(e1, { content: [{ text: "ok" }] })).toMatch(
+      /mismatch/,
+    );
+    expect(s.errorMismatch({ content: [] }, { content: [] })).toBeNull();
   });
 
   it("reads the Worker's _meta._packs3 mark, never the answer text", () => {

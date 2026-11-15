@@ -23,7 +23,12 @@ export const TOOLS = [
 ];
 const ID_PLACEHOLDER = "__FROM_INDEX__";
 
-/** Removes what is allowed to differ: requestId, meta.timings, meta.cache and the text summary's [cache] tag. */
+/** Removes what is allowed to differ, each for a reason:
+ *  - requestId: new on every call.
+ *  - meta.timings: wall-clock milliseconds.
+ *  - meta.cache, meta.cacheStatus: whether a cache answered differs between `off` and `only` by design.
+ *  - the text summary's trailing [cache...] tag: the same cache note, in prose.
+ *  - _meta._packs3: the debug mark of the path taken, read separately. */
 export function normalize(value) {
   if (typeof value === "string") {
     if (value.startsWith("{") || value.startsWith("[")) {
@@ -34,13 +39,13 @@ export function normalize(value) {
         /* not JSON */
       }
     }
-    return value.replace(/[ \t]*\[(?:cache|kv|r2|pack|memory|stale|hit|miss)[^\]]*\](?=\s*$)/gi, "");
+    return value.replace(/[ \t]*\[cache[^\]]*\](?=\s*$)/gi, "");
   }
   if (Array.isArray(value)) return value.map((v) => normalize(v));
   if (value && typeof value === "object") {
     const out = {};
     for (const [k, v] of Object.entries(value)) {
-      if (k === "requestId" || k === "cacheStatus") continue; // cacheStatus is cache metadata like meta.cache
+      if (k === "requestId") continue;
       if (k === "_meta" && v && typeof v === "object" && !Array.isArray(v)) {
         // _meta._packs3 is the debug mark of where the answer came from, not part of the answer.
         const { _packs3: _p, ...rest } = v;
@@ -48,7 +53,7 @@ export function normalize(value) {
         continue;
       }
       if (k === "meta" && v && typeof v === "object" && !Array.isArray(v)) {
-        const { timings: _t, cache: _c, ...rest } = v;
+        const { timings: _t, cache: _c, cacheStatus: _s, ...rest } = v;
         if (Object.keys(rest).length) out[k] = normalize(rest);
         continue;
       }
@@ -101,11 +106,32 @@ export function matchKnown(known, call, path) {
   });
 }
 
-/** Release skew: both sides are strings that only differ in a data release tag such as v91 against v92. */
-export function isReleaseSkew(a, b) {
+/** Release skew: a difference at a `release` field (path ends in `.release`) whose two strings differ only in the
+ *  release number, such as v91 against v92. Anything else, including a v3 against v4 elsewhere, stays a diff. */
+export function isReleaseSkew(a, b, path = "") {
+  if (!/\.release$/.test(path)) return false;
   if (typeof a !== "string" || typeof b !== "string" || a === b) return false;
   const tag = /\bv\d+\b/g;
   return /\bv\d+\b/.test(a) && a.replace(tag, "v#") === b.replace(tag, "v#");
+}
+
+/** The error class of an answer: the code (structuredContent.code or JSON-RPC error.code), else the first words of an
+ *  isError text; null when the answer is not an error. */
+export function errorClass(result) {
+  if (result?.error) return `rpc:${result.error.code ?? result.error.message ?? "error"}`;
+  const sc = result?.structuredContent;
+  const isErr = result?.isError === true || sc?.error === true || sc?.available === false;
+  if (!isErr) return null;
+  if (typeof sc?.code === "string") return sc.code;
+  const text = result?.content?.find?.((c) => typeof c?.text === "string")?.text ?? "";
+  return `text:${text.split(/[:\n]/)[0].trim().slice(0, 60)}`;
+}
+
+/** Null when the two answers agree on being errors or not and on the error class; otherwise a message. */
+export function errorMismatch(a, b) {
+  const ca = errorClass(a);
+  const cb = errorClass(b);
+  return ca === cb ? null : `error mismatch: A ${ca ?? "ok"}, B ${cb ?? "ok"}`;
 }
 
 /** Sorts diffs into skew, known and failing. */
@@ -114,7 +140,7 @@ export function classify(diffs, call, known) {
   const knownHit = [];
   const failing = [];
   for (const d of diffs) {
-    if (isReleaseSkew(d.a, d.b)) skew.push(d);
+    if (isReleaseSkew(d.a, d.b, d.path)) skew.push(d);
     else {
       const k = matchKnown(known, call, d.path);
       if (k) knownHit.push({ ...d, reason: k.reason });
@@ -267,6 +293,8 @@ async function main() {
       console.log(`FAIL ${call.tool} ${JSON.stringify(call.args)} rate limited`);
       continue;
     }
+    const em = errorMismatch(a.result, b.result);
+    if (em) row.problems.push(em);
     if (!baseB) {
       const st = packs3Status(b.result);
       row.status = st.kind;
