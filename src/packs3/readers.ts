@@ -15,6 +15,20 @@ export const MAX_READERS = 2;
  * calls, so one unit (Psalms) can take it past the budget inside a callback.
  */
 export const READER_BYTE_BUDGET = 1 * 1024 * 1024;
+/**
+ * A call whose `need` is over the budget (en Psalms 1.1 + 0.42 MB, en Genesis 1.13 MB) runs in an exclusive reader:
+ * a fresh reader opened only when no other reader has a call running (idle live readers are dropped first), that
+ * blocks every other call while it runs (`readers-busy`) and is retired right after its call. Over this cap the call
+ * falls back (`book-too-large`). Heap measured in docs/packs3-measurements.md (Task 14a-OT).
+ */
+export const EXCLUSIVE_BYTE_CAP = 2.5 * 1024 * 1024;
+
+/** What `need` may ask of the reader: the compressed size of units, from the catalogs (no unit is opened). */
+export type SizeProbe = Pick<PackReader, "unitOf" | "size">;
+export type WithReaderOptions = {
+  /** Compressed bytes the call will open; over READER_BYTE_BUDGET it runs in an exclusive reader. */
+  need?: (r: SizeProbe) => number;
+};
 
 type Entry = {
   lang: string;
@@ -30,15 +44,18 @@ type Entry = {
 const live = new Map<string, Entry>();
 /** Recycled or evicted readers that still have calls running. */
 const retired = new Set<Entry>();
+/** The exclusive reader while its call runs: no other reader is held meanwhile. */
+let exclusive: Entry | undefined;
 
 export function resetReadersForTests(): void {
   live.clear();
   retired.clear();
+  exclusive = undefined;
 }
 
-/** Readers held by this isolate, including recycled ones with calls still running. */
+/** Readers held by this isolate, including recycled ones with calls still running and the exclusive one. */
 export function liveReadersForTests(): number {
-  return live.size + retired.size;
+  return live.size + retired.size + (exclusive ? 1 : 0);
 }
 
 function retire(key: string, e: Entry): void {
@@ -124,14 +141,21 @@ function makeEntry(lang: string, c: Catalogs3, env: Packs3Env): Entry {
  * `readers-busy` fallback when all are running). Past the byte budget
  * the next call gets a fresh reader; calls already running keep theirs, and a
  * dropped reader is released when its last call ends. `null` without catalogs.
+ * With `opts.need` over the budget the call runs in an exclusive reader (EXCLUSIVE_BYTE_CAP).
  */
 export async function withReader<T>(
   env: Packs3Env,
   lang: string,
   use: (r: PackReader, c: Catalogs3) => Promise<T>,
+  opts: WithReaderOptions = {},
 ): Promise<T | null> {
   const c = await getCatalogs(env, lang);
   if (!c) return null;
+  // From here to `use` nothing awaits, so the checks below hold when the reader is handed out.
+  if (exclusive) {
+    warnOnce(lang, "readers-busy");
+    return null;
+  }
 
   // A new catalog key for the same language supersedes the old reader.
   for (const [k, old] of [...live]) {
@@ -141,6 +165,30 @@ export async function withReader<T>(
   if (e && e.bytes > READER_BYTE_BUDGET) {
     retire(c.key, e);
     e = undefined;
+  }
+  let fresh: Entry | undefined;
+  const need = opts.need
+    ? opts.need((e ?? (fresh = makeEntry(lang, c, env))).reader)
+    : 0;
+  if (need > EXCLUSIVE_BYTE_CAP) {
+    warnOnce(lang, "book-too-large");
+    return null;
+  }
+  if (need > READER_BYTE_BUDGET) {
+    if (retired.size > 0 || [...live.values()].some((x) => x.running > 0)) {
+      warnOnce(lang, "readers-busy");
+      return null;
+    }
+    live.clear(); // idle readers only: their memory goes before the big book comes in
+    const x = fresh ?? makeEntry(lang, c, env);
+    exclusive = x;
+    x.running++;
+    try {
+      return await use(x.view, c);
+    } finally {
+      x.running--;
+      exclusive = undefined;
+    }
   }
   if (e) {
     live.delete(c.key); // refresh recency
@@ -155,7 +203,7 @@ export async function withReader<T>(
       }
       live.delete(idle[0]);
     }
-    e = makeEntry(lang, c, env);
+    e = fresh ?? makeEntry(lang, c, env);
     live.set(c.key, e);
   }
 

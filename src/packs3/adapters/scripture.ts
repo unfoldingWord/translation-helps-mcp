@@ -16,7 +16,7 @@ import { requireReferenceAndLanguage } from "../../api/routes/helpers";
 import { scriptureVersionsForBook } from "../../api/routes/scripture";
 import type { Packs3Env } from "../catalogs";
 import { warnOnce } from "../keys";
-import { READER_BYTE_BUDGET, withReader } from "../readers";
+import { EXCLUSIVE_BYTE_CAP, type SizeProbe, withReader } from "../readers";
 import { isVerifiedRange, releaseOfCatalogs } from "../verified";
 import type { Packs3Params } from "../answer";
 
@@ -132,23 +132,22 @@ export function verseText(
 }
 
 /**
- * Does one call on `code` open more compressed bytes (the book's texts and its originals) than a reader may hold?
- * The budget is checked between calls, so such a book (en Psalms: 1.1 MB + 0.4 MB, about 80 MB of heap) would
- * overshoot it inside one call, and two readers like that do not fit the isolate (docs/packs3-measurements.md).
+ * Compressed bytes one call on `code` opens: the book's texts and its originals. Over READER_BYTE_BUDGET (en Psalms
+ * 1.1 + 0.4 MB, en Genesis 1.13 MB) the call runs in an exclusive reader (readers.ts), over EXCLUSIVE_BYTE_CAP it
+ * falls back (docs/packs3-measurements.md).
  */
-export function bookTooLarge(
-  reader: {
-    unitOf(cls: "book" | "orig", key: string): string | undefined;
-    size(unit: string): number;
-  },
-  code: string,
-): boolean {
+export function bookBytes(reader: SizeProbe, code: string): number {
   let bytes = 0;
   for (const cls of ["book", "orig"] as const) {
     const unit = reader.unitOf(cls, code);
     if (unit) bytes += reader.size(unit);
   }
-  return bytes > READER_BYTE_BUDGET;
+  return bytes;
+}
+
+/** Too large even for an exclusive reader. */
+export function bookTooLarge(reader: SizeProbe, code: string): boolean {
+  return bookBytes(reader, code) > EXCLUSIVE_BYTE_CAP;
 }
 
 type Resource = {
@@ -231,7 +230,6 @@ export async function scriptureFromPacks3(
     async (reader, catalogs): Promise<ScriptureApiResponse | undefined> => {
       const language = catalogs.lang;
       if (!reader.listed(`book:${code}`)) return undefined;
-      if (bookTooLarge(reader, code)) return undefined;
 
       const common = catalogs.catalogs.find((c) => c.name === "common");
       const own = catalogs.catalogs.find((c) => c.name !== "common");
@@ -324,6 +322,8 @@ export async function scriptureFromPacks3(
         meta: { cache: "pack" },
       };
     },
+    // A big book (en Psalms, Genesis) is read alone; one over the exclusive cap falls back here.
+    { need: (r) => bookBytes(r, code) },
   );
   return answer ?? undefined;
 }

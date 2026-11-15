@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 type FakeReader = {
   id: number;
@@ -88,7 +88,9 @@ import {
   withReader,
   liveReadersForTests,
   resetReadersForTests,
+  EXCLUSIVE_BYTE_CAP,
 } from "../../src/packs3/readers";
+import { resetWarnOnceForTests } from "../../src/packs3/keys";
 
 const MB = 1024 * 1024;
 const env = {};
@@ -316,5 +318,121 @@ describe("withReader", () => {
     for (const c of opened[0].calls) {
       expect(c).toMatch(/^(size|unitOf|book|orig|articles|passage):/);
     }
+  });
+
+  describe("exclusive reader (a book over the budget)", () => {
+    const big = { need: () => 1.5 * MB };
+    const hold = (lang: string, opts?: { need: () => number }) => {
+      let release!: () => void;
+      const gate = new Promise<void>((r) => (release = r));
+      const p = withReader(
+        env,
+        lang,
+        async (r) => (await gate, fake(r).id),
+        opts,
+      );
+      return { p, release };
+    };
+    let warn: ReturnType<typeof vi.spyOn>;
+    beforeEach(() => {
+      resetWarnOnceForTests();
+      warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    });
+    afterEach(() => warn.mockRestore());
+
+    it("opens alone: a fresh reader, idle readers dropped, recycled after its call", async () => {
+      await id("a");
+      await id("b");
+      expect(liveReadersForTests()).toBe(2);
+      let during = -1;
+      const got = await withReader(
+        env,
+        "a",
+        async (r) => ((during = liveReadersForTests()), fake(r).id),
+        big,
+      );
+      expect(got).toBe(2); // not the live reader 0
+      expect(during).toBe(1);
+      expect(liveReadersForTests()).toBe(0); // retired right after
+      expect(await id("a")).toBe(3); // the next normal call opens anew
+    });
+
+    it("is blocked while another reader has a call running", async () => {
+      const a = hold("b");
+      await tick();
+      expect(await withReader(env, "a", async () => 1, big)).toBeNull();
+      expect(warn).toHaveBeenCalledWith("packs3 fallback", {
+        lang: "a",
+        reason: "readers-busy",
+      });
+      a.release();
+      await a.p;
+      expect(await withReader(env, "a", async () => 1, big)).toBe(1);
+    });
+
+    it("is blocked while a recycled reader still runs", async () => {
+      const a = hold("a");
+      await tick();
+      opened[0].sizes["book:GEN"] = 2 * MB;
+      await withReader(env, "a", (r) => r.book("GEN"));
+      expect(await id("a")).toBe(1); // reader 0 retired but running, reader 1 live and idle
+      expect(await withReader(env, "b", async () => 1, big)).toBeNull();
+      a.release();
+      await a.p;
+      expect(await withReader(env, "b", async () => 1, big)).toBe(1);
+    });
+
+    it("blocks every other call while it is open, logged once per (lang, reason)", async () => {
+      const x = hold("a", big);
+      await tick();
+      expect(liveReadersForTests()).toBe(1);
+      expect(await withReader(env, "b", async () => 1)).toBeNull();
+      expect(await withReader(env, "b", async () => 1)).toBeNull();
+      expect(await withReader(env, "a", async () => 1)).toBeNull();
+      expect(await withReader(env, "a", async () => 1, big)).toBeNull();
+      expect(
+        warn.mock.calls.filter((c) => (c[1] as { lang: string }).lang === "b"),
+      ).toHaveLength(1);
+      x.release();
+      expect(await x.p).toBe(0);
+      expect(await withReader(env, "b", async () => 5)).toBe(5);
+    });
+
+    it("refuses a book over the exclusive cap (book-too-large)", async () => {
+      expect(EXCLUSIVE_BYTE_CAP).toBe(2.5 * MB);
+      const used = vi.fn(async () => 1);
+      expect(
+        await withReader(env, "a", used, { need: () => 2.5 * MB + 1 }),
+      ).toBeNull();
+      expect(used).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith("packs3 fallback", {
+        lang: "a",
+        reason: "book-too-large",
+      });
+      expect(
+        await withReader(env, "a", async () => 2, { need: () => 2.5 * MB }),
+      ).toBe(2);
+    });
+
+    it("a need within the budget uses the normal shared reader", async () => {
+      const first = await id("a");
+      expect(
+        await withReader(env, "a", async (r) => fake(r).id, {
+          need: () => 1 * MB,
+        }),
+      ).toBe(first);
+      expect(liveReadersForTests()).toBe(1);
+    });
+
+    it("the need is measured on the reader's sizes", async () => {
+      await id("a");
+      opened[0].sizes["book:psa"] = 1.2 * MB;
+      let seen = 0;
+      await withReader(env, "a", async () => 1, {
+        need: (r) => (seen = r.size(r.unitOf("book", "psa") ?? "")),
+      });
+      expect(seen).toBe(1.2 * MB);
+      expect(opened.length).toBe(2); // the exclusive one is fresh
+    });
   });
 });

@@ -5,9 +5,13 @@ import {
   resetPacks3CachesForTests,
   type Packs3Env,
 } from "../../src/packs3/catalogs";
-import { resetReadersForTests } from "../../src/packs3/readers";
+import {
+  READER_BYTE_BUDGET,
+  resetReadersForTests,
+} from "../../src/packs3/readers";
 import {
   BOOKS,
+  bookBytes,
   bookTooLarge,
   catalogEntryOf,
   scriptureFromPacks3,
@@ -439,16 +443,25 @@ describe("bookTooLarge", () => {
       `${cls}:${key}` in sizes ? `${cls}:${key}` : undefined,
     size: (u: string) => sizes[u] ?? 0,
   });
-  it("refuses a book whose text and originals pass the reader budget together (en Psalms)", () => {
-    // staging en: book:psa 1097745 + orig:psa 418898 compressed bytes, about 80 MB of heap in one call
-    expect(
-      bookTooLarge(reader({ "book:psa": 1097745, "orig:psa": 418898 }), "psa"),
-    ).toBe(true);
+  it("counts a book's text and originals together (en Psalms: over the budget, under the exclusive cap)", () => {
+    // staging en: book:psa 1097745 + orig:psa 418898 compressed bytes: read in an exclusive reader
+    const psa = reader({ "book:psa": 1097745, "orig:psa": 418898 });
+    expect(bookBytes(psa, "psa")).toBe(1097745 + 418898);
+    expect(bookBytes(psa, "psa")).toBeGreaterThan(READER_BYTE_BUDGET);
+    expect(bookTooLarge(psa, "psa")).toBe(false);
   });
   it("reads a book under the budget (en Matthew)", () => {
+    const mat = reader({ "book:mat": 670385, "orig:mat": 242959 });
+    expect(bookBytes(mat, "mat")).toBeLessThan(READER_BYTE_BUDGET);
+    expect(bookTooLarge(mat, "mat")).toBe(false);
+  });
+  it("refuses a book over the exclusive cap", () => {
     expect(
-      bookTooLarge(reader({ "book:mat": 670385, "orig:mat": 242959 }), "mat"),
-    ).toBe(false);
+      bookTooLarge(
+        reader({ "book:x": 2 * 1048576, "orig:x": 0.6 * 1048576 }),
+        "x",
+      ),
+    ).toBe(true);
   });
 });
 
