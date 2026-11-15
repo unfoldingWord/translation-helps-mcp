@@ -17,6 +17,7 @@ import { scriptureVersionsForBook } from "../../api/routes/scripture";
 import type { Packs3Env } from "../catalogs";
 import { warnOnce } from "../keys";
 import { withReader } from "../readers";
+import { isVerifiedRange, releaseOfCatalogs } from "../verified";
 import type { Packs3Params } from "../answer";
 
 export type ScriptureApiResponse = {
@@ -39,18 +40,12 @@ export const BOOKS =
 export const FIRST_NT = BOOKS.indexOf("mat");
 
 /**
- * The resources this adapter may answer with, key (`owner/lang/id`) -> the `resourceType` the route gives
- * (the catalog's abbreviation, which format 3 does not keep: es-419_glt is `tpl`). Every entry was checked against
- * live answers of the API Worker (read-only GET /api/v1/scripture, 2026-11-12; en TIT, MAT, MRK; es-419 and `es` TIT):
- * the abbreviation as shown, no version dropped for its `\id` language/script, no `versionsNote`. To add one, repeat
- * that check for the new key on a few books and add the line. A picked resource that is not here makes the adapter
- * give `undefined` (the route answers). The lasting fix is the builder carrying the abbreviation in the catalog.
+ * The `resourceType` the route gives where it is not the resource id (the catalog's abbreviation, which format 3 does
+ * not keep: es-419_glt is `tpl`). This is naming only, not a proof: what may be served is decided by `isVerified`
+ * (the sweep's proofs). The lasting fix is the builder carrying the abbreviation in the catalog.
  */
-export const VERIFIED: Record<string, string> = {
-  "unfoldingWord/en/ult": "ult",
-  "unfoldingWord/en/ust": "ust",
+export const ABBREVIATIONS: Record<string, string> = {
   "es-419_gl/es-419/glt": "tpl",
-  "es-419_gl/es-419/gst": "gst",
 };
 
 type Piece = [string, boolean];
@@ -63,9 +58,10 @@ const PLAIN_PARA = /^(para:(p|m|mi|nb|b|pi\d?|q\d?|li\d?)|ms:ts)$/;
 /**
  * Text where format 3 lost the whitespace USFM has: a word glued to `{`, `}` glued to a word, or punctuation glued
  * to the next word (staging en ULT MAT 5:3 "Blessed{are}", "spirit,for": the space after `\zaln-e\*` and the line
- * ends are gone). The route keeps them, so such a passage is not ours to rebuild.
+ * ends are gone). The route keeps them, so such a passage is not ours to rebuild. A short suffix glued to a word
+ * (`bird{s}`) is what the USFM really has, so only a whole word in braces after a letter counts (`Blessed{are}`).
  */
-const LOST_SPACE = /[\p{L}\p{N}]\{|\}[\p{L}\p{N}]|[.,;:!?][\p{L}{]/u;
+const LOST_SPACE = /[\p{L}\p{N}]\{\p{L}{3,}\}|\}[\p{L}\p{N}]|[.,;:!?][\p{L}{]/u;
 
 /**
  * The verses `start`..`end` of `chapter`, each with its number in front, joined by a space, or `undefined` when the
@@ -149,7 +145,7 @@ function entryOf(res: Resource, index: number, code: string): CatalogEntry {
     owner,
     repo,
     name: repo,
-    abbreviation: VERIFIED[res.key] ?? id,
+    abbreviation: ABBREVIATIONS[res.key] ?? id,
     ingredients: hasBit(res.books, index) ? [{ identifier: code }] : [],
   } as unknown as CatalogEntry;
 }
@@ -223,9 +219,20 @@ export async function scriptureFromPacks3(
       )
         return undefined;
       if (decision.picked.length === 0) return undefined;
-      const unverified = decision.picked.some(
-        (e) => !(resources[entries.indexOf(e)].key in VERIFIED),
-      );
+      const releaseOf = releaseOfCatalogs(catalogs.catalogs);
+      const unverified = decision.picked.some((e) => {
+        const r = resources[entries.indexOf(e)];
+        return !isVerifiedRange(
+          language,
+          r.key,
+          r.release,
+          code.toUpperCase(),
+          chapter,
+          first,
+          last,
+          { releaseOf },
+        );
+      });
       if (unverified) {
         warnOnce(params.language, "unverified-resource");
         return undefined;

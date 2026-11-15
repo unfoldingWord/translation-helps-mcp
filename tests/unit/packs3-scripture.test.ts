@@ -9,9 +9,10 @@ import { resetReadersForTests } from "../../src/packs3/readers";
 import {
   scriptureFromPacks3,
   verseText,
-  VERIFIED,
 } from "../../src/packs3/adapters/scripture";
 import { answerFromPacks3 } from "../../src/packs3/answer";
+import { setVerifiedForTests } from "../../src/packs3/verified";
+import { injectFixtureProofs } from "./packs3-fixture-verified";
 
 const STAGING =
   "78d2e6299a2de4d0:c2057cec32b948452849e7fcba6af323961a091ea82645eb297bb368e1c8d911";
@@ -46,9 +47,10 @@ function env(): Packs3Env {
   };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   resetPacks3CachesForTests();
   resetReadersForTests();
+  await injectFixtureProofs(env());
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
 
@@ -174,9 +176,10 @@ describe("scriptureFromPacks3", () => {
 });
 
 describe("verified resources", () => {
-  it("falls back, warning once, when a picked resource is not in the table", async () => {
-    const saved = VERIFIED["unfoldingWord/en/ust"];
-    delete VERIFIED["unfoldingWord/en/ust"];
+  it("falls back, warning once, when a picked resource has no proof", async () => {
+    await injectFixtureProofs(env(), (t) => {
+      for (const k of Object.keys(t)) if (k.includes("/en/ust|")) delete t[k];
+    });
     try {
       const params = { reference: "Tit 1:1", language: "en" };
       expect(await scriptureFromPacks3(env(), params)).toBeUndefined();
@@ -190,7 +193,7 @@ describe("verified resources", () => {
       );
       expect(warns).toHaveLength(1);
     } finally {
-      VERIFIED["unfoldingWord/en/ust"] = saved;
+      setVerifiedForTests(undefined);
     }
   });
 
@@ -274,5 +277,32 @@ describe("verseText", () => {
     };
     expect(verseText(clean, "5", 4, 4)).toBe("4 a b.");
     expect(verseText(clean, "5", 4, 5)).toBeUndefined();
+  });
+});
+
+describe("verseText whitespace", () => {
+  const unit = (...pieces: string[]) => ({
+    pieces: pieces.map((w) => [w, false] as [string, boolean]),
+    events: [
+      [0, "chapter", "5"],
+      [0, "verse", "3"],
+    ] as Array<[number, string, string]>,
+  });
+  it("falls back on the glued shapes of the old builder (Task 11)", () => {
+    expect(verseText(unit("Blessed", "{are}", "the poor"), "5", 3, 3)).toBe(
+      undefined,
+    );
+    expect(verseText(unit("Blessed", "{are}the poor"), "5", 3, 3)).toBe(
+      undefined,
+    );
+    expect(verseText(unit("spirit,for theirs"), "5", 3, 3)).toBe(undefined);
+  });
+  it("keeps a suffix the USFM really glues (bird{s})", () => {
+    expect(verseText(unit("the bird", "{s}", " sing"), "5", 3, 3)).toBe(
+      "3 the bird{s} sing",
+    );
+  });
+  it("trims the blank a verse slice starts or ends with", () => {
+    expect(verseText(unit(" \n", "word ", "\n"), "5", 3, 3)).toBe("3 word");
   });
 });

@@ -13,13 +13,11 @@ import {
   buildNotesAnswer,
   notesFromPacks3,
   wordLinksFromPacks3,
-  VERIFIED_NOTES,
-  VERIFIED_BOOKS,
-  VERIFIED_ORIGINALS,
   proofOfNoLink,
 } from "../../src/packs3/adapters/helps";
 import { answerFromPacks3 } from "../../src/packs3/answer";
-import { VERIFIED } from "../../src/packs3/adapters/scripture";
+import { setVerifiedForTests } from "../../src/packs3/verified";
+import { injectFixtureProofs } from "./packs3-fixture-verified";
 
 const STAGING =
   "78d2e6299a2de4d0:c2057cec32b948452849e7fcba6af323961a091ea82645eb297bb368e1c8d911";
@@ -90,10 +88,11 @@ const indexLink = (r: Row) => ({
   twTitle: r.twTitle,
 });
 
-beforeEach(() => {
+beforeEach(async () => {
   resetPacks3CachesForTests();
   resetReadersForTests();
   resetWarnOnceForTests();
+  await injectFixtureProofs(env());
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
 
@@ -448,8 +447,10 @@ describe("fallbacks", () => {
     expect(await notesFromPacks3(env(), params)).toBeUndefined();
   });
 
-  it("notes: undefined, warning once, when the notes resource is not in the verified table", async () => {
-    VERIFIED_NOTES.delete("unfoldingWord/en/tn");
+  it("notes: undefined, warning once, when the notes resource has no proof", async () => {
+    await injectFixtureProofs(env(), (t) => {
+      for (const k of Object.keys(t)) if (k.includes("/en/tn|")) delete t[k];
+    });
     try {
       const params = { reference: "Tit", language: "en", fields: "index" };
       expect(await notesFromPacks3(env(), params)).toBeUndefined();
@@ -463,7 +464,7 @@ describe("fallbacks", () => {
       );
       expect(warns).toHaveLength(1);
     } finally {
-      VERIFIED_NOTES.add("unfoldingWord/en/tn");
+      setVerifiedForTests(undefined);
     }
   });
 });
@@ -550,23 +551,23 @@ describe("fix round 1: shapes, quotes, books, references, texts", () => {
     ).toBeUndefined();
   });
 
-  it("only the books whose answers are pinned are answered; another gives undefined and warns once", async () => {
-    expect([...(VERIFIED_BOOKS.get("en") ?? [])]).toEqual(["tit"]);
-    expect([...(VERIFIED_BOOKS.get("es-419") ?? [])].sort()).toEqual([
-      "rut",
-      "tit",
-    ]);
-    VERIFIED_BOOKS.get("en")!.delete("tit");
+  it("only the chapters the sweep listed are answered; another book gives undefined and warns once", async () => {
+    await injectFixtureProofs(env(), (t) => {
+      for (const e of Object.values(t)) {
+        delete e.chapters?.TIT;
+        e.wholeBooks = e.wholeBooks?.filter((b) => b !== "TIT");
+      }
+    });
     try {
       const args = { reference: "Tit", language: "en", fields: "index" };
       expect(await notesFromPacks3(env(), args)).toBeUndefined();
       expect(await wordLinksFromPacks3(env(), args)).toBeUndefined();
       expect(console.warn).toHaveBeenCalledWith(
         "packs3 fallback",
-        expect.objectContaining({ reason: "unverified-book" }),
+        expect.objectContaining({ reason: "unverified-resource" }),
       );
     } finally {
-      VERIFIED_BOOKS.get("en")!.add("tit");
+      setVerifiedForTests(undefined);
     }
   });
 
@@ -590,10 +591,11 @@ describe("fix round 1: shapes, quotes, books, references, texts", () => {
     expect(proofOfNoLink({ ...cols("a"), tags: "x" })).toBe(false);
   });
 
-  it("aligned and original texts must be verified: otherwise no answer without fields=index", async () => {
+  it("the aligned text needs a passage proof and the original is a dep: otherwise no answer without fields=index", async () => {
     const args = { reference: "Tit 1:1", language: "en" };
-    const ult = VERIFIED["unfoldingWord/en/ult"];
-    delete VERIFIED["unfoldingWord/en/ult"];
+    await injectFixtureProofs(env(), (t) => {
+      for (const k of Object.keys(t)) if (k.includes("/en/ult|")) delete t[k];
+    });
     try {
       expect(await wordLinksFromPacks3(env(), args)).toBeUndefined();
       expect(
@@ -604,15 +606,21 @@ describe("fix round 1: shapes, quotes, books, references, texts", () => {
         }),
       ).toBeDefined();
     } finally {
-      VERIFIED["unfoldingWord/en/ult"] = ult;
+      setVerifiedForTests(undefined);
     }
-    VERIFIED_ORIGINALS.delete("unfoldingWord/el-x-koine/ugnt");
+    // A dep (the original) at another release than the catalog's: no proof of the links.
+    await injectFixtureProofs(env(), (t) => {
+      for (const [k, e] of Object.entries(t))
+        if (k.includes("/en/twl|"))
+          e.deps = { "common|unfoldingWord/el-x-koine/ugnt": "v0" };
+    });
     try {
       resetReadersForTests();
       expect(await wordLinksFromPacks3(env(), args)).toBeUndefined();
     } finally {
-      VERIFIED_ORIGINALS.add("unfoldingWord/el-x-koine/ugnt");
+      setVerifiedForTests(undefined);
     }
+    await injectFixtureProofs(env());
     expect(await wordLinksFromPacks3(env(), args)).toBeDefined();
   });
 });

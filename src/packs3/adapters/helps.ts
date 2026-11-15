@@ -26,17 +26,9 @@ import type { Packs3Env } from "../catalogs";
 import { warnOnce } from "../keys";
 import { withReader } from "../readers";
 import type { Packs3Params } from "../answer";
-import { BOOKS, FIRST_NT, VERIFIED } from "./scripture";
+import { isVerified, releaseOfCatalogs } from "../verified";
+import { BOOKS, FIRST_NT } from "./scripture";
 
-/** Resources whose rows were compared with the route's (en TIT, es-419 TIT and RUT, every row of every chapter). */
-export const VERIFIED_NOTES = new Set([
-  "unfoldingWord/en/tn",
-  "es-419_gl/es-419/tn",
-]);
-export const VERIFIED_LINKS = new Set([
-  "unfoldingWord/en/twl",
-  "es-419_gl/es-419/twl",
-]);
 /** The article resources whose titles equal the route's `supportReferenceTitle` / `twTitle`. */
 export const VERIFIED_ARTICLES = new Set([
   "unfoldingWord/en/ta",
@@ -44,18 +36,6 @@ export const VERIFIED_ARTICLES = new Set([
   "es-419_gl/es-419/ta",
   "es-419_gl/es-419/tw",
 ]);
-/**
- * The (language, book) pairs whose rows were compared with the route's live answers (tests/fixtures/packs3/live). Any
- * other book gives `undefined` (warning "unverified-book"). A pair is added after Task 10's comparison shows the answers
- * equal for that book. Keys are the catalog's language (as `c.lang`) and the lowercase book code.
- */
-export const VERIFIED_BOOKS = new Map<string, Set<string>>([
-  ["en", new Set(["tit"])],
-  ["es-419", new Set(["tit", "rut"])],
-]);
-/** The originals the quote positions of the pinned rows index (the route matches its quotes in the same text). */
-export const VERIFIED_ORIGINALS = new Set(["unfoldingWord/el-x-koine/ugnt"]);
-
 /**
  * The route's `supportReference` of a row with no article link in format 3 is "" only if the builder did not drop an
  * unresolved reference (it keeps no trace of one). What can be shown from the data: the row has only the known columns
@@ -370,6 +350,9 @@ type Ctx = {
   data: { texts?: TextUnit[] } & Record<string, unknown>;
   resource: Resource;
   placed: Placed[];
+  releaseOf: (depKey: string) => string | undefined;
+  /** `release` of each resource of the language's own catalog, by key. */
+  releases: Map<string, string>;
 };
 
 async function withHelps<T>(
@@ -383,15 +366,10 @@ async function withHelps<T>(
   const code = q.book.toLowerCase();
   // The route answers from views, with another shape (reference, tags, sources, simple), when they have the chapter.
   if (await viewsExist(env, q, params.language, kind)) return undefined;
-  const verified = kind === "notes" ? VERIFIED_NOTES : VERIFIED_LINKS;
   const subject =
     kind === "notes" ? "TSV Translation Notes" : "TSV Translation Words Links";
   const answer = await withReader(env, params.language, async (reader, c) => {
     if (!reader.listed(`book:${code}`)) return undefined;
-    if (!VERIFIED_BOOKS.get(c.lang)?.has(code)) {
-      warnOnce(params.language, "unverified-book");
-      return undefined;
-    }
     const own = c.catalogs.find((x) => x.name !== "common");
     const resources = ((own?.catalog as { resources?: Resource[] })
       ?.resources ?? []) as Resource[];
@@ -402,7 +380,17 @@ async function withHelps<T>(
       (r) => r.key === table.res && r.subject === subject,
     );
     if (!resource) return undefined;
-    if (!verified.has(resource.key)) {
+    const releaseOf = releaseOfCatalogs(c.catalogs);
+    // The sweep's items: the whole book (`*`) or one chapter; a verse or a range is served from its chapter's proof.
+    const item =
+      q.chapter === "*"
+        ? q.book.toUpperCase()
+        : `${q.book.toUpperCase()} ${q.chapter}`;
+    if (
+      !isVerified(c.lang, resource.key, resource.release, kind, item, {
+        releaseOf,
+      })
+    ) {
       warnOnce(params.language, "unverified-resource");
       return undefined;
     }
@@ -417,6 +405,8 @@ async function withHelps<T>(
       data,
       resource,
       placed,
+      releaseOf,
+      releases: new Map(resources.map((r) => [r.key, r.release])),
     });
   });
   return answer ?? undefined;
@@ -455,12 +445,21 @@ async function prepare(
   // Aligned words: New Testament only, from the verified text.
   if (BOOKS.indexOf(ctx.book.toLowerCase()) < FIRST_NT) return undefined;
   const res = ALIGNED_TEXT.get(ctx.lang);
-  // The aligned text must be a verified one of the scripture adapter, and the original the one the positions index.
-  if (!res || !(res in VERIFIED)) return undefined;
+  // The aligned text must have been swept as passages (the same release the notes were swept with), and the original
+  // is one of the entry's `deps`, so a changed release of it has no proof.
+  const alignedRelease = res ? ctx.releases.get(res) : undefined;
+  if (
+    !res ||
+    alignedRelease === undefined ||
+    !isVerified(ctx.lang, res, alignedRelease, "passage", undefined, {
+      releaseOf: ctx.releaseOf,
+    })
+  )
+    return undefined;
   const orig = (await ctx.reader.orig(ctx.book.toLowerCase())) as
     | { key?: string }
     | undefined;
-  if (!orig?.key || !VERIFIED_ORIGINALS.has(orig.key)) return undefined;
+  if (!orig?.key) return undefined;
   const unit = res ? ctx.data.texts?.find((t) => t.res === res) : undefined;
   const aligned = alignedOf(unit);
   if (!aligned) return undefined;
