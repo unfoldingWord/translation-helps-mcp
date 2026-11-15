@@ -8,6 +8,7 @@
  * Usage (the adapters are TypeScript, so run it with tsx, which the repo already has):
  *   npx tsx scripts/sweep-packs3.mjs --lang en|es-419 --kind passage|notes|links|questions|articles|search \
  *     --bucket <dir> --api <url> [--api-index <local url>] [--books tit,rut] [--resume] [--max-age-hours 24] [--out-dir <dir>] [--cache <dir>] [--keys <id:hex>] [--range-windows N-or-all]
+ *   npx tsx scripts/sweep-packs3.mjs --recompact [--out-dir <dir>]
  *
  * - `--bucket` is a local copy of the staging bucket (a folder with `v3/catalog`, `v3/seg`); catalogs are verified with
  *   the trusted key as the Worker does (`--keys`, default the staging key of wrangler.toml).
@@ -22,6 +23,9 @@
  * - TODO (Task 14): the API's own chapter count of a book is not cheaply available, so chapters come from format 3's
  *   book data (text events, helps rows incl. "front"); a chapter only the API has is not an item, and Task 13 must
  *   serve only the `chapters` an entry lists.
+ * - Every write is compacted (`compactVerified`): equal exceptions lists of one (lang, release, kind) are stored once
+ *   (`exceptionsSameAs`), and an articles entry keeps `misses` only under an equal search catalog verdict of the same
+ *   release, so sweep `searchCatalog` before `articles`. `--recompact` applies that to the file alone.
  * - `--range-windows N` (passage): also sweeps the first N range windows of every chapter (1-3, 3-5, …; a window that
  *   is not equal is swept again as its two 2-verse windows). The equal ones are written as the entry's `joins` (the
  *   verse boundaries they prove, verified.ts); windows are not items and never exceptions. 0 (default) sweeps none.
@@ -380,7 +384,7 @@ export function readWindowsFrom(path) {
     throw new Error(`--windows-from ${path} cannot be read: ${e.message}`);
   }
   if (!v || typeof v !== "object" || Array.isArray(v)) throw new Error(`--windows-from ${path} is not a verified.json object`);
-  return v;
+  return expandVerified(v);
 }
 
 /**
@@ -636,6 +640,75 @@ export function mergeVerified(existing, entries) {
   return Object.fromEntries(Object.keys(all).sort().map((k) => [k, all[k]]));
 }
 
+/** `"<lang>|<key>|<release>|<kind>"` without its resource key: the group whose entries may share an exceptions list. */
+const sameAsGroup = (k) => {
+  const p = k.split("|");
+  return p.length === 4 ? `${p[0]}|${p[2]}|${p[3]}` : undefined;
+};
+
+/**
+ * The table with every `exceptionsSameAs` pointer replaced by the list it names (a copy; inputs untouched). A pointer
+ * verified.ts could not follow (no target, a chain, another group) stays as it is: that entry serves nothing anyway.
+ */
+export function expandVerified(table) {
+  const out = {};
+  for (const [k, e] of Object.entries(table)) {
+    const to = e?.exceptionsSameAs;
+    const target = typeof to === "string" && Object.hasOwn(table, to) ? table[to] : undefined;
+    if (
+      target && e.exceptions === undefined && to !== k && sameAsGroup(to) === sameAsGroup(k) &&
+      target.exceptionsSameAs === undefined && Array.isArray(target.exceptions)
+    ) {
+      out[k] = Object.fromEntries(
+        Object.entries(e).map(([f, v]) => (f === "exceptionsSameAs" ? ["exceptions", [...target.exceptions]] : [f, v])),
+      );
+    } else out[k] = e;
+  }
+  return out;
+}
+
+/**
+ * The bundled form of a table (verified.json is in the Worker), saying the same for every served item:
+ * - an articles entry's `misses` go when the same release's search catalog verdict is not `"equal"` with nothing
+ *   differing (verified.ts serves a miss only under that verdict); a later articles sweep writes them again;
+ * - entries of one (lang, release, kind) with the same non-empty `exceptions` keep the list once: the first key in
+ *   order holds it, the others say `exceptionsSameAs: "<that key>"` (one hop, verified.ts).
+ * Pointers in the input are expanded first, so it is idempotent. Keys sorted; inputs untouched.
+ */
+export function compactVerified(table) {
+  const full = expandVerified(table);
+  const keys = Object.keys(full).sort();
+  const out = {};
+  const holder = new Map(); // `${group}\n${JSON of list}` -> key holding it
+  for (const k of keys) {
+    let e = full[k];
+    if (k.endsWith("|articles") && e && e.misses !== undefined) {
+      const cat = full[k.slice(0, -"articles".length) + "searchCatalog"];
+      const equal = cat?.catalog === "equal" && (cat.differs === undefined || cat.differs.length === 0);
+      if (!equal) {
+        const { misses, ...rest } = e;
+        e = rest;
+      }
+    }
+    const list = e?.exceptions;
+    const group = sameAsGroup(k);
+    if (group && Array.isArray(list) && list.length && e.exceptionsSameAs === undefined) {
+      const id = `${group}\n${JSON.stringify(list)}`;
+      const to = holder.get(id);
+      if (to !== undefined && JSON.stringify(list).length > JSON.stringify(to).length) {
+        e = Object.fromEntries(Object.entries(e).map(([f, v]) => (f === "exceptions" ? ["exceptionsSameAs", to] : [f, v])));
+      } else if (to === undefined) holder.set(id, k);
+    }
+    out[k] = e;
+  }
+  return out;
+}
+
+/** What a sweep writes: the existing table (pointers expanded) with the new entries merged, then compacted. */
+export function nextVerified(existing, entries) {
+  return compactVerified(mergeVerified(expandVerified(existing), entries));
+}
+
 /**
  * A miss item: the adapter's attempt against the API's `{ status, body }` (`undefined`: no answer). Equal only when both
  * are a 404 with the same body (the route's error, which apiClient turns into the same `ApiClientError`).
@@ -803,7 +876,18 @@ async function pool(tasks, n, run) {
 
 const cellOf = (v) => "`" + String(JSON.stringify(v)).slice(0, 140).replace(/`/g, "'") + "`";
 
+/** `--recompact`: rewrite `<out-dir>/verified.json` from itself with `compactVerified` (no API, no bucket; idempotent). */
+function recompact() {
+  const outDir = resolve(arg("out-dir") ?? join(dirname(fileURLToPath(import.meta.url)), "..", "src", "packs3"));
+  const vfile = join(outDir, "verified.json");
+  const before = readFileSync(vfile, "utf8");
+  const after = formatVerified(compactVerified(JSON.parse(before)));
+  writeFileSync(vfile, after);
+  console.log(`recompacted ${vfile}: ${before.length} -> ${after.length} characters`);
+}
+
 async function main() {
+  if (flag("recompact")) return recompact();
   const lang = arg("lang");
   const kind = arg("kind");
   const bucketDir = arg("bucket");
@@ -1039,7 +1123,7 @@ async function main() {
   const pfile = join(outDir, `sweep-partial-${lang}-${kind}.json`);
   if (writeVerified) {
     const existing = existsSync(vfile) ? JSON.parse(readFileSync(vfile, "utf8")) : {};
-    writeFileSync(vfile, formatVerified(mergeVerified(existing, entries)));
+    writeFileSync(vfile, formatVerified(nextVerified(existing, entries)));
   } else {
     writeFileSync(pfile, JSON.stringify(entries, null, 2) + "\n");
   }
@@ -1098,7 +1182,7 @@ async function sweepSearchCatalog({ env, lang, api, cats, resources, outDir, wri
   const vfile = join(outDir, "verified.json");
   if (writeVerified && Object.keys(entries).length) {
     const existing = existsSync(vfile) ? JSON.parse(readFileSync(vfile, "utf8")) : {};
-    writeFileSync(vfile, formatVerified(mergeVerified(existing, entries)));
+    writeFileSync(vfile, formatVerified(nextVerified(existing, entries)));
   }
   writeFileSync(join(outDir, `verified-differences-${lang}-searchCatalog.md`), lines.join("\n") + "\n");
 }

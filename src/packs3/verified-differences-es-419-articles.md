@@ -1,0 +1,808 @@
+# Sweep differences: es-419 articles
+
+Swept 2026-11-15T15:48:57.628Z, API https://translation-helps-api-v2.unfoldingword.workers.dev, catalog 591bf89c2a9d048cf06d111d969267a0ed976e916f699b5db4b92a7f13d6fd0a+e47a3e63650cd4fb394034bfb71e5bf52806df055d83dd581f00ad147082f196.
+
+## es-419|es-419_gl/es-419/ta|v4|articles
+
+Items 1784, exceptions 205 (differs 192, ambiguous 13)
+
+- translate/bita-part1: differs
+  - $.article: today `"\n\nEn esta página se analizan ideas que se emparejan de forma limitada. (Para una discusión de emparejamientos más complejos, ver: [Imagin` format 3 `"En esta página se analizan ideas que se emparejan de forma limitada. (Para una discusión de emparejamientos más complejos, ver: [Imaginería`
+- translate/bita-part3: differs
+  - $.article: today `"### Descripción\n\nLos modelos culturales son imágenes mentales que la gente de una cultura utiliza para pensar y hablar de ciertos aspecto` format 3 `"### Descripción\n\nLos modelos culturales son imágenes mentales que la gente de una cultura utiliza para pensar y hablar de ciertos aspecto`
+- translate/choose-style: differs
+  - $.article: today `"### Choose the Translation Style\n\nBefore beginning a translation of the Bible, the translation committee needs to discuss and agree on th` format 3 `"### Choose the Translation Style\n\nBefore beginning a translation of the Bible, the translation committee needs to discuss and agree on th`
+- translate/figs-aside: differs
+  - $.article: today `"### Definition\n\nAn aside is a figure of speech in which someone who is speaking to a person or group pauses to speak confidentially to hi` format 3 `"### Definition\n\nAn aside is a figure of speech in which someone who is speaking to a person or group pauses to speak confidentially to hi`
+- translate/figs-cometaphor: differs
+  - $.article: today `"\nUna **metáfora compleja** es una [metáfora](../figs-metaphor/01.md) *implícita* que utiliza múltiples imágenes y múltiples ideas al mismo` format 3 `"Una **metáfora compleja** es una [metáfora](../figs-metaphor/01.md) *implícita* que utiliza múltiples imágenes y múltiples ideas al mismo t`
+- translate/figs-distinguish: differs
+  - $.article: today `"### Descripción\n\nEn algunos idiomas, las frases que modifican un sustantivo pueden ser usadas con el sustantivo para dos propósitos difer` format 3 `"### Descripción\n\nEn algunos idiomas, las frases que modifican un sustantivo pueden ser usadas con el sustantivo para dos propósitos difer`
+- translate/figs-doublet: differs
+  - $.article: today `"### Descripción\n\nUsamos la palabra “doblete” para referirnos a dos palabras o frases que se usan juntas y que significan lo mismo o signi` format 3 `"### Descripción\n\nUsamos la palabra “doblete” para referirnos a dos palabras o frases que se usan juntas y que significan lo mismo o signi`
+- translate/figs-euphemism: differs
+  - $.article: today `"### Descripción\n\nUn eufemismo es una forma suave o educada de referirse a algo que es desagradable, embarazoso o socialmente inaceptable,` format 3 `"### Descripción\n\nUn eufemismo es una forma suave o educada de referirse a algo que es desagradable, embarazoso o socialmente inaceptable,`
+- translate/figs-events: differs
+  - $.article: today `"### Descripción\n\nEn la Biblia, los acontecimientos no siempre se cuentan en el orden en que ocurrieron. A veces el autor habla de algo qu` format 3 `"### Descripción\n\nEn la Biblia, los acontecimientos no siempre se cuentan en el orden en que ocurrieron. A veces el autor habla de algo qu`
+- translate/figs-exclamations: differs
+  - $.article: today `"### Descripción\n\nLas exclamaciones son palabras u oraciones que muestran un sentimiento fuerte, como la sorpresa, la alegría, el miedo o ` format 3 `"### Descripción\n\nLas exclamaciones son palabras u oraciones que muestran un sentimiento fuerte, como la sorpresa, la alegría, el miedo o `
+- translate/figs-explicit: differs
+  - $.article: today `"El conocimiento asumido es lo que el hablante asume que su audiencia conoce, antes de que él hable y le dé a su audiencia algún tipo de inf` format 3 `"El conocimiento asumido es lo que el hablante asume que su audiencia conoce, antes de que él hable y le dé a su audiencia algún tipo de inf`
+- translate/figs-explicitinfo: differs
+  - $.article: today `"### Description\n\nSome languages have ways of saying things that are natural for them but sound strange when translated into other languag` format 3 `"### Description\n\nSome languages have ways of saying things that are natural for them but sound strange when translated into other languag`
+- translate/figs-gendernotations: differs
+  - $.article: today `"\nEn la Biblia, a veces las palabras “hombres”, “hermanos” e “hijos” se refieren solo a los hombres. Otras veces, esas palabras incluyen ta` format 3 `"En la Biblia, a veces las palabras “hombres”, “hermanos” e “hijos” se refieren solo a los hombres. Otras veces, esas palabras incluyen tant`
+- translate/figs-go: differs
+  - $.article: today `"### Descripción\n\nLos distintos idiomas tienen formas diferentes de determinar si se deben utilizar las palabras “ir” o “venir” y si se de` format 3 `"### Descripción\n\nLos distintos idiomas tienen formas diferentes de determinar si se deben utilizar las palabras “ir” o “venir” y si se de`
+- translate/figs-grammar: differs
+  - $.article: today `"\nGrammar has two main parts: words and structure. Structure involves how we put words together to form phrases, clauses, and sentences.\n\` format 3 `"Grammar has two main parts: words and structure. Structure involves how we put words together to form phrases, clauses, and sentences.\n\n*`
+- translate/figs-hypo: differs
+  - $.article: today `"Considere estas frases: “Si el sol dejara de brillar…”, “Y qué si el sol dejara de brillar…”, “Supongamos que el sol dejara de brillar…” y ` format 3 `"Considere estas frases: “Si el sol dejara de brillar…”, “Y qué si el sol dejara de brillar…”, “Supongamos que el sol dejara de brillar…” y `
+- translate/figs-idiom: differs
+  - $.article: today `"Una expresión idiomática es una figura retórica conformada por un grupo de palabras que, en su conjunto, tienen un significado que es difer` format 3 `"Una expresión idiomática es una figura retórica conformada por un grupo de palabras que, en su conjunto, tienen un significado que es difer`
+- translate/figs-informremind: differs
+  - $.article: today `"\nAlgunos idiomas pueden usar una palabra o frase con un sustantivo para dar información sobre ese sustantivo o para recordar algo sobre él` format 3 `"Algunos idiomas pueden usar una palabra o frase con un sustantivo para dar información sobre ese sustantivo o para recordar algo sobre él.\`
+- translate/figs-intro: differs
+  - $.article: today `"\nLas figuras retóricas tienen significados especiales que no son los mismos que los de sus palabras individuales. Hay diferentes tipos de ` format 3 `"Las figuras retóricas tienen significados especiales que no son los mismos que los de sus palabras individuales. Hay diferentes tipos de fi`
+- translate/figs-irony: differs
+  - $.article: today `"### Descripción\n\nLa ironía es una figura retórica en la que el sentido que el hablante pretende comunicar es en realidad el opuesto al si` format 3 `"### Descripción\n\nLa ironía es una figura retórica en la que el sentido que el hablante pretende comunicar es en realidad el opuesto al si`
+- translate/figs-litany: differs
+  - $.article: today `"# Definition\n\nA litany is a figure of speech in which the various components of a thing are listed in a series of very similar statements` format 3 `"# Definition\n\nA litany is a figure of speech in which the various components of a thing are listed in a series of very similar statements`
+- translate/figs-litotes: differs
+  - $.article: today `"### Descripción\n\nLos litotes son una figura retórica en la que el hablante expresa un fuerte significado positivo utilizando dos palabras` format 3 `"### Descripción\n\nLos litotes son una figura retórica en la que el hablante expresa un fuerte significado positivo utilizando dos palabras`
+- translate/figs-merism: differs
+  - $.article: today `"### Definición\n\nEl merismo es una figura retórica en la que una persona se refiere a algo hablando de dos partes extremas del mismo. Al r` format 3 `"### Definición\n\nEl merismo es una figura retórica en la que una persona se refiere a algo hablando de dos partes extremas del mismo. Al r`
+- translate/figs-metaphor: differs
+  - $.article: today `"### Descripción\n\nUna **metáfora** es una figura literaria en la que alguien habla de una cosa como si fuera otra diferente, porque quiere` format 3 `"### Descripción\n\nUna **metáfora** es una figura literaria en la que alguien habla de una cosa como si fuera otra diferente, porque quiere`
+- translate/figs-metonymy: differs
+  - $.article: today `"### Descripción\n\n**La metonimia** es una figura literaria en la que un elemento (ya sea físico o abstracto) no se llama por su propio nom` format 3 `"### Descripción\n\n**La metonimia** es una figura literaria en la que un elemento (ya sea físico o abstracto) no se llama por su propio nom`
+- translate/figs-nominaladj: differs
+  - $.article: today `"### Descripción\n\nEn algunos idiomas un adjetivo puede ser utilizado para referirse a una clase de cosas que el adjetivo describe. Cuando ` format 3 `"### Descripción\n\nEn algunos idiomas un adjetivo puede ser utilizado para referirse a una clase de cosas que el adjetivo describe. Cuando `
+- translate/figs-order: differs
+  - $.article: today `"### Description\n\nMost languages have a normal way of ordering the parts of a sentence. It is not the same in all languages. You (the tran` format 3 `"### Description\n\nMost languages have a normal way of ordering the parts of a sentence. It is not the same in all languages. You (the tran`
+  - $.related[0].title: today `"Word Order"` format 3 `"Biblical Hebrew"`
+- translate/figs-ordergrk: differs
+  - $.path: today `"translate/figs-orderGrk"` format 3 `"translate/figs-ordergrk"`
+  - $.article: today `"There is no general agreement among scholars concerning standard word order for Koiné Greek as a language. It has been suggested that the n` format 3 `"There is no general agreement among scholars concerning standard word order for Koiné Greek as a language. It has been suggested that the n`
+- translate/figs-orderheb: differs
+  - $.path: today `"translate/figs-orderHeb"` format 3 `"translate/figs-orderheb"`
+  - $.article: today `"The normal word order for Biblical Hebrew is: **Conjunction–Verb–Subject–Object**.\n\nHowever, there are many different reasons why a write` format 3 `"The normal word order for Biblical Hebrew is: **Conjunction–Verb–Subject–Object**.\n\nHowever, there are many different reasons why a write`
+- translate/figs-parables: differs
+  - $.article: today `"Una parábola es una historia corta que enseña algo que es verdad, y enseña de tal manera que es fácil de entender y difícil de olvidar.\n\n` format 3 `"Una parábola es una historia corta que enseña algo que es verdad, y enseña de tal manera que es fácil de entender y difícil de olvidar.\n\n`
+- translate/figs-parallelism: differs
+  - $.article: today `"### Descripción\n\nEl paralelismo es un recurso poético en el que se utilizan juntas dos frases o cláusulas similares en cuanto a estructur` format 3 `"### Descripción\n\nEl paralelismo es un recurso poético en el que se utilizan juntas dos frases o cláusulas similares en cuanto a estructur`
+- translate/figs-pastforfuture: differs
+  - $.article: today `"### Description\n\nThe predictive past is a figure of speech that uses the past tense to refer to things that will happen in the future. Th` format 3 `"### Description\n\nThe predictive past is a figure of speech that uses the past tense to refer to things that will happen in the future. Th`
+- translate/figs-possession: differs
+  - $.article: today `"### Descripción\n\nEn español, la forma gramatical que comúnmente indica posesión también se utiliza para indicar una variedad de relacione` format 3 `"### Descripción\n\nEn español, la forma gramatical que comúnmente indica posesión también se utiliza para indicar una variedad de relacione`
+- translate/figs-quotations: differs
+  - $.article: today `"### Descripción\n\nHay dos tipos de citas: las directas y las indirectas.\n\nUna cita directa se produce cuando alguien informa lo que otro` format 3 `"### Descripción\n\nHay dos tipos de citas: las directas y las indirectas.\n\nUna cita directa se produce cuando alguien informa lo que otro`
+- translate/figs-quotemarks: differs
+  - $.article: today `"### Description\n\nSome languages use quotation marks to mark off direct quotes from the rest of the text. English uses the mark “ before a` format 3 `"### Description\n\nSome languages use quotation marks to mark off direct quotes from the rest of the text. English uses the mark “ before a`
+- translate/figs-rpronouns: differs
+  - $.article: today `"### Description\n\nAll languages have ways of showing that the same person fills two different roles in a sentence. English does this by us` format 3 `"### Description\n\nAll languages have ways of showing that the same person fills two different roles in a sentence. English does this by us`
+- translate/figs-rquestion: differs
+  - $.article: today `"Una pregunta retórica es una pregunta que un orador hace cuando está más interesado en expresar su actitud sobre algo que en obtener inform` format 3 `"Una pregunta retórica es una pregunta que un orador hace cuando está más interesado en expresar su actitud sobre algo que en obtener inform`
+- translate/figs-sentences: differs
+  - $.article: today `"### Description\n\nThe simplest sentence structure in English includes a **subject** and an **action** word:\n\n* The boy ran.\n\n#### Subj` format 3 `"### Description\n\nThe simplest sentence structure in English includes a **subject** and an **action** word:\n\n* The boy ran.\n\n#### Subj`
+- translate/figs-sentencetypes: differs
+  - $.article: today `"### Description\n\nA **sentence** is a group of words that expresses a complete thought. The basic types of sentences are listed below with` format 3 `"### Description\n\nA **sentence** is a group of words that expresses a complete thought. The basic types of sentences are listed below with`
+- translate/figs-simile: differs
+  - $.article: today `"### Descripción\n\nUn símil es una comparación de dos cosas que normalmente no se consideran similares. Se centra en un rasgo particular qu` format 3 `"### Descripción\n\nUn símil es una comparación de dos cosas que normalmente no se consideran similares. Se centra en un rasgo particular qu`
+- translate/figs-synecdoche: differs
+  - $.article: today `"### Descripción\n\nLa sinécdoque es una figura literaria en la que un hablante usa una parte de algo para referirse al todo, o usa el todo ` format 3 `"### Descripción\n\nLa sinécdoque es una figura literaria en la que un hablante usa una parte de algo para referirse al todo, o usa el todo `
+- translate/figs-synonparallelism: differs
+  - $.article: today `"### Description\n\n**Parallelism with the same meaning** is a poetic device in which one complex idea is expressed in two (or more) differe` format 3 `"### Description\n\n**Parallelism with the same meaning** is a poetic device in which one complex idea is expressed in two (or more) differe`
+- translate/figs-verbs: differs
+  - $.article: today `"### Description\n\nVerbs are words that refer to an action or event or that is used in describing or identifying things.\n\n**Examples** Th` format 3 `"### Description\n\nVerbs are words that refer to an action or event or that is used in describing or identifying things.\n\n**Examples** Th`
+- translate/figs-youdual: differs
+  - $.article: today `"### Descripción\n\nAlgunos idiomas tienen una forma singular de “tú” para cuando la palabra “tú” se refiere a una sola persona, y una forma` format 3 `"### Descripción\n\nAlgunos idiomas tienen una forma singular de “tú” para cuando la palabra “tú” se refiere a una sola persona, y una forma`
+- translate/figs-youformal: differs
+  - $.article: today `"\n(You may also want to watch the video at http://ufw.io/figs_youform).\n\n### Description\n\nSome languages make a distinction between the` format 3 `"(You may also want to watch the video at http://ufw.io/figs_youform).\n\n### Description\n\nSome languages make a distinction between the f`
+- translate/figs-yousingular: differs
+  - $.article: today `"### Description\n\nSome languages have a **singular** form of “you” for when the word “you” refers to just one person, and a **plural** for` format 3 `"### Description\n\nSome languages have a **singular** form of “you” for when the word “you” refers to just one person, and a **plural** for`
+- translate/first-draft: differs
+  - $.article: today `"### How do I start?\n\nFollow these steps in order to get started:\n\n1. **Organize.** Talk with the pastors and other believers from your ` format 3 `"### How do I start?\n\nFollow these steps in order to get started:\n\n1. **Organize.** Talk with the pastors and other believers from your `
+- translate/grammar-connect-condition-fact: differs
+  - $.article: today `"## Relaciones condicionales\n\nLos conectores condicionales conectan dos cláusulas para indicar que una de ellas sucederá cuando la otra su` format 3 `"## Relaciones condicionales\n\nLos conectores condicionales conectan dos cláusulas para indicar que una de ellas sucederá cuando la otra su`
+- translate/grammar-connect-condition-hypothetical: differs
+  - $.article: today `"## Relaciones condicionales\n\nLos conectores condicionales conectan dos cláusulas para indicar que una de ellas sucederá cuando la otra su` format 3 `"## Relaciones condicionales\n\nLos conectores condicionales conectan dos cláusulas para indicar que una de ellas sucederá cuando la otra su`
+- translate/grammar-connect-logic-contrast: differs
+  - $.article: today `"## Relaciones lógicas\n\nAlgunos conectores establecen relaciones lógicas entre dos frases, cláusulas, oraciones o fragmentos de texto.\n\n` format 3 `"## Relaciones lógicas\n\nAlgunos conectores establecen relaciones lógicas entre dos frases, cláusulas, oraciones o fragmentos de texto.\n\n`
+- translate/grammar-connect-time-background: differs
+  - $.article: today `"## Relación temporal\n\nAlgunos conectores establecen relaciones temporales entre dos frases, cláusulas, oraciones o trozos de texto.\n\n##` format 3 `"## Relación temporal\n\nAlgunos conectores establecen relaciones temporales entre dos frases, cláusulas, oraciones o trozos de texto.\n\n##`
+- translate/grammar-connect-time-simultaneous: differs
+  - $.article: today `"## Relaciones Temporales\n\nAlgunos conectores establecen relaciones temporales entre dos frases, cláusulas, oraciones o trozos de texto.\n` format 3 `"## Relaciones Temporales\n\nAlgunos conectores establecen relaciones temporales entre dos frases, cláusulas, oraciones o trozos de texto.\n`
+- translate/grammar-connect-words-phrases: differs
+  - $.article: today `"### Descripción\n\nComo humanos, escribimos nuestros pensamientos en frases y oraciones. Normalmente, queremos comunicar una serie de pensa` format 3 `"### Descripción\n\nComo humanos, escribimos nuestros pensamientos en frases y oraciones. Normalmente, queremos comunicar una serie de pensa`
+- translate/guidelines-authoritative: differs
+  - $.article: today `"\nAn **authoritative** Bible translation is one that is based on the biblical texts in the original languages as the highest authority for ` format 3 `"An **authoritative** Bible translation is one that is based on the biblical texts in the original languages as the highest authority for th`
+- translate/guidelines-church-approved: differs
+  - $.article: today `"### Church-Approved Translations\n\nThe first three qualities of a good translation are **Clear** (see [Create Clear Translations](../guide` format 3 `"### Church-Approved Translations\n\nThe first three qualities of a good translation are **Clear** (see [Create Clear Translations](../guide`
+- translate/guidelines-clear: differs
+  - $.article: today `"### Clear Translations\n\nA clear translation will use whatever language structures are needed to help readers easily read and understand i` format 3 `"### Clear Translations\n\nA clear translation will use whatever language structures are needed to help readers easily read and understand i`
+- translate/guidelines-collaborative: differs
+  - $.article: today `"\nBible translations that are **collaborative** are those that have been translated by a group of speakers of the same language. To ensure ` format 3 `"Bible translations that are **collaborative** are those that have been translated by a group of speakers of the same language. To ensure th`
+- translate/guidelines-equal: differs
+  - $.article: today `"\nAn **equal** translation communicates any expressive meaning from the source language in an equal way in the target language. Especially ` format 3 `"An **equal** translation communicates any expressive meaning from the source language in an equal way in the target language. Especially no`
+- translate/guidelines-historical: differs
+  - $.article: today `"\n(See the video “Translating the Scriptures - Culture” at http://ufw.io/trans_culture).\n\nA **historical definition** translation communi` format 3 `"(See the video “Translating the Scriptures - Culture” at http://ufw.io/trans_culture).\n\nA **historical definition** translation communica`
+- translate/guidelines-intro: differs
+  - $.article: today `"### Four Main Qualities\n\nThere are four main qualities of a good translation. It must be:\n\n* Clear - see [Create Clear Translations](..` format 3 `"### Four Main Qualities\n\nThere are four main qualities of a good translation. It must be:\n\n* Clear - see [Create Clear Translations](..`
+- translate/guidelines-natural: differs
+  - $.article: today `"### Natural Translations\n\nTo translate the Bible so that it is **natural** means that:\n\nThe translation sounds like it was written by a` format 3 `"### Natural Translations\n\nTo translate the Bible so that it is **natural** means that:\n\nThe translation sounds like it was written by a`
+- translate/guidelines-ongoing: differs
+  - $.article: today `"\nBible translations should be **ongoing**. Share the translation with others to see if they understand the meaning of the message. Improve` format 3 `"Bible translations should be **ongoing**. Share the translation with others to see if they understand the meaning of the message. Improve y`
+- translate/guidelines-sonofgodprinciples: differs
+  - $.article: today `"Door43 apoya las traducciones de la Biblia que representan estos conceptos cuando se refieren a Dios.\n\n### Testimonio Bíblico\n\n**“Padre` format 3 `"Door43 apoya las traducciones de la Biblia que representan estos conceptos cuando se refieren a Dios.\n\n### Testimonio Bíblico\n\n**“Padre`
+- translate/resources-alter: differs
+  - $.article: today `"### Description\n\nAn Alternate Translation is a possible way to change the form of the TPL in case the target language either prefers or n` format 3 `"### Description\n\nAn Alternate Translation is a possible way to change the form of the TPL in case the target language either prefers or n`
+- translate/resources-alterm: differs
+  - $.article: today `"#### Description\n\nAlternate meanings refer to situations where Bible scholars have different understandings of what a word or phrase mean` format 3 `"#### Description\n\nAlternate meanings refer to situations where Bible scholars have different understandings of what a word or phrase mean`
+- translate/resources-clarify: differs
+  - $.article: today `"### Description\n\nSometimes a Note suggests a translation from the UST. In that case the text from the TPS will be followed by “(UST)”.\n\` format 3 `"### Description\n\nSometimes a Note suggests a translation from the UST. In that case the text from the TPS will be followed by “(UST)”.\n\`
+- translate/resources-connect: differs
+  - $.article: today `"### Description\n\nSometimes, at the top of the list of notes, there are notes that start with **Connecting Statement** or **General Inform` format 3 `"### Description\n\nSometimes, at the top of the list of notes, there are notes that start with **Connecting Statement** or **General Inform`
+- translate/resources-def: differs
+  - $.article: today `"### Description\n\nSometimes you may not know what a word in the TPL means. The Notes may have a definition or a description of the word or` format 3 `"### Description\n\nSometimes you may not know what a word in the TPL means. The Notes may have a definition or a description of the word or`
+- translate/resources-eplain: differs
+  - $.article: today `"#### Description\n\nSometimes you may not know what a word or phrase means in the ULT, and it may also be used in the UST. In this case, it` format 3 `"#### Description\n\nSometimes you may not know what a word or phrase means in the ULT, and it may also be used in the UST. In this case, it`
+- translate/resources-iordquote: differs
+  - $.article: today `"### Description\n\nThere are two kinds of quotations: direct quotation and indirect quotation. When translating a quotation, translators ne` format 3 `"### Description\n\nThere are two kinds of quotations: direct quotation and indirect quotation. When translating a quotation, translators ne`
+- translate/resources-links: differs
+  - $.article: today `"\nThere are two types of links in the translationNotes: links to an unfoldingWord® Translation Academy topic page and links for repeated wo` format 3 `"There are two types of links in the translationNotes: links to an unfoldingWord® Translation Academy topic page and links for repeated word`
+- translate/resources-long: differs
+  - $.article: today `"### Description\n\nSometimes there are notes for a phrase and separate notes for portions of that phrase. In that case, the larger phrase i` format 3 `"### Description\n\nSometimes there are notes for a phrase and separate notes for portions of that phrase. In that case, the larger phrase i`
+- translate/resources-porp: differs
+  - $.article: today `"### Description\n\nSometimes Bible scholars do not know for sure, or do not agree on, what a particular phrase or sentence in the Bible mea` format 3 `"### Description\n\nSometimes Bible scholars do not know for sure, or do not agree on, what a particular phrase or sentence in the Bible mea`
+- translate/resources-questions: differs
+  - $.article: today `"\nAs a translator, it is your duty to do your best to make sure that each Bible passage you translate has the meaning that the writer of th` format 3 `"As a translator, it is your duty to do your best to make sure that each Bible passage you translate has the meaning that the writer of that`
+- translate/resources-synequi: differs
+  - $.article: today `"### Description\n\nSome Notes provide a translation suggestion that can replace the word or phrase that they quote from the ULT. These repl` format 3 `"### Description\n\nSome Notes provide a translation suggestion that can replace the word or phrase that they quote from the ULT. These repl`
+- translate/resources-types: differs
+  - $.article: today `"### Translation Notes\n\nTranslation Notes are words or phrases copied from the TPL and then explained. In English, every Note that explain` format 3 `"### Translation Notes\n\nTranslation Notes are words or phrases copied from the TPL and then explained. In English, every Note that explain`
+- translate/translate-alphabet: differs
+  - $.article: today `"### Creating an Alphabet\n\nIf your language has not been written down before, then you will need to create an alphabet so that you can wri` format 3 `"### Creating an Alphabet\n\nIf your language has not been written down before, then you will need to create an alphabet so that you can wri`
+- translate/translate-bdistance: differs
+  - $.article: today `"### Description\n\nThe following terms are the most common measures for distance or length that were originally used in the Bible. Most of ` format 3 `"### Description\n\nThe following terms are the most common measures for distance or length that were originally used in the Bible. Most of `
+- translate/translate-bibleorg: differs
+  - $.article: today `"\nThe Bible is made up of 66 “books”. Although they are called “books,” they vary greatly in length and the shortest ones are only a page o` format 3 `"The Bible is made up of 66 “books”. Although they are called “books,” they vary greatly in length and the shortest ones are only a page or `
+- translate/translate-bmoney: differs
+  - $.article: today `"### Description\n\nIn early Old Testament times, people weighed their metals such as silver and gold and would give a certain weight of tha` format 3 `"### Description\n\nIn early Old Testament times, people weighed their metals such as silver and gold and would give a certain weight of tha`
+- translate/translate-bvolume: differs
+  - $.article: today `"### Descripción\n\nLos siguientes términos son las unidades de volumen más comúnmente usadas en la Biblia para medir cuánto puede contener ` format 3 `"### Descripción\n\nLos siguientes términos son las unidades de volumen más comúnmente usadas en la Biblia para medir cuánto puede contener `
+- translate/translate-discover: differs
+  - $.article: today `"### How to Discover the Meaning\n\nThere are many different things that we can do to help us to discover the meaning of the text, that is, ` format 3 `"### How to Discover the Meaning\n\nThere are many different things that we can do to help us to discover the meaning of the text, that is, `
+- translate/translate-fandm: differs
+  - $.article: today `"### Defining Form & Meaning\n\nTwo of the major terms used in translating text are “form” and “meaning”. These terms are used in special wa` format 3 `"### Defining Form & Meaning\n\nTwo of the major terms used in translating text are “form” and “meaning”. These terms are used in special wa`
+- translate/translate-form: differs
+  - $.article: today `"### Why Form is Important\n\nThe meaning of a text is the most crucial element. However, the form of the text is also very important. It is` format 3 `"### Why Form is Important\n\nThe meaning of a text is the most crucial element. However, the form of the text is also very important. It is`
+- translate/translate-fraction: differs
+  - $.article: today `"### Description\n\nFractions are a kind of number that refer to equal parts of a thing or to equal groups within a larger group of people o` format 3 `"### Description\n\nFractions are a kind of number that refer to equal parts of a thing or to equal groups within a larger group of people o`
+- translate/translate-hebrewmonths: differs
+  - $.article: today `"### Description\n\nThe Hebrew calendar used in the Bible has twelve months. Unlike the western calendar, its first month begins in the spri` format 3 `"### Description\n\nThe Hebrew calendar used in the Bible has twelve months. Unlike the western calendar, its first month begins in the spri`
+- translate/translate-literal: differs
+  - $.article: today `"### Definition\n\nLiteral translations try to reproduce the form of the source text as much as possible.\n\n#### Other Names\n\nLiteral tra` format 3 `"### Definition\n\nLiteral translations try to reproduce the form of the source text as much as possible.\n\n#### Other Names\n\nLiteral tra`
+- translate/translate-manual: differs
+  - $.article: today `"### What Does the Translation Manual Teach?\n\nThis manual teaches translation theory and how to make a good translation for Other Language` format 3 `"### What Does the Translation Manual Teach?\n\nThis manual teaches translation theory and how to make a good translation for Other Language`
+- translate/translate-manuscripts: differs
+  - $.article: today `"### The Writing of the Original Manuscripts\n\nThe Bible was written many hundreds of years ago by God's prophets and apostles as God direc` format 3 `"### The Writing of the Original Manuscripts\n\nThe Bible was written many hundreds of years ago by God's prophets and apostles as God direc`
+- translate/translate-more: differs
+  - $.article: today `"\nTranslation is a process performed between different languages that requires a person (the translator) to understand the meaning that a w` format 3 `"Translation is a process performed between different languages that requires a person (the translator) to understand the meaning that a wri`
+- translate/translate-numbers: differs
+  - $.article: today `"### Descripción\n\nHay muchos números en la Biblia. Pueden estar escritos como palabras (“cinco”) o como números (“5”). Algunos números son` format 3 `"### Descripción\n\nHay muchos números en la Biblia. Pueden estar escritos como palabras (“cinco”) o como números (“5”). Algunos números son`
+- translate/translate-ordinal: differs
+  - $.article: today `"### Description\n\nOrdinal numbers are used in the Bible mainly to tell the position of something in a list.\n\n> He gave to the church **f` format 3 `"### Description\n\nOrdinal numbers are used in the Bible mainly to tell the position of something in a list.\n\n> He gave to the church **f`
+- translate/translate-problem: differs
+  - $.article: today `"### The meaning of forms change\n\nLiteral translations keep the form of the source text in the target text. As you saw in the teaching mod` format 3 `"### The meaning of forms change\n\nLiteral translations keep the form of the source text in the target text. As you saw in the teaching mod`
+- translate/translate-process: differs
+  - $.article: today `"### How to Translate\n\nThere are two things to do in translation:\n\n1. Discover the meaning in the source language text (See [Discover th` format 3 `"### How to Translate\n\nThere are two things to do in translation:\n\n1. Discover the meaning in the source language text (See [Discover th`
+- translate/translate-source-licensing: differs
+  - $.article: today `"### Why Is It Important?\n\nWhen choosing a source text from which to do a translation, considering the copyright and licensing issues are ` format 3 `"### Why Is It Important?\n\nWhen choosing a source text from which to do a translation, considering the copyright and licensing issues are `
+- translate/translate-source-text: differs
+  - $.article: today `"### Factors to Consider for a Source Text\n\nWhen choosing a source text, there are a number of factors that must be considered:\n\n* **[St` format 3 `"### Factors to Consider for a Source Text\n\nWhen choosing a source text, there are a number of factors that must be considered:\n\n* **[St`
+- translate/translate-symaction: differs
+  - $.article: today `"### Descripción\n\nUna acción simbólica es algo que alguien hace para expresar una idea determinada. Por ejemplo, en algunas culturas la ge` format 3 `"### Descripción\n\nUna acción simbólica es algo que alguien hace para expresar una idea determinada. Por ejemplo, en algunas culturas la ge`
+- translate/translate-terms: differs
+  - $.article: today `"### Important Words to Know\n\n**Note:** These terms are used in this manual. The translator will need to understand these terms in order t` format 3 `"### Important Words to Know\n\n**Note:** These terms are used in this manual. The translator will need to understand these terms in order t`
+- translate/translate-textvariants: differs
+  - $.article: today `"### Description\n\nThousands of years ago, people wrote the books of the Bible. Other people then copied them by hand and translated them. ` format 3 `"### Description\n\nThousands of years ago, people wrote the books of the Bible. Other people then copied them by hand and translated them. `
+- translate/translate-transliterate: differs
+  - $.article: today `"### Descripción\n\nA veces la Biblia incluye cosas que no forman parte de tu cultura y para las que tu idioma puede no tener una palabra. T` format 3 `"### Descripción\n\nA veces la Biblia incluye cosas que no forman parte de tu cultura y para las que tu idioma puede no tener una palabra. T`
+- translate/translate-unknown: differs
+  - $.article: today `"Mientras usted trabaja en la traducción de la Biblia, es posible que usted (el traductor) se pregunte: “¿Cómo traduzco palabras como león, ` format 3 `"Mientras usted trabaja en la traducción de la Biblia, es posible que usted (el traductor) se pregunte: “¿Cómo traduzco palabras como león, `
+- translate/translate-useultust: differs
+  - $.article: today `"\nComo traductor, puede utilizar de manera mejor el TPL y el TPS si recuerda las siguientes diferencias entre el TPL y el TPS, y si aprende` format 3 `"Como traductor, puede utilizar de manera mejor el TPL y el TPS si recuerda las siguientes diferencias entre el TPL y el TPS, y si aprende c`
+- translate/writing-apocalypticwriting: differs
+  - $.article: today `"### Description\n\nSymbolic prophecy is a type of message that God gave to a prophet so that the prophet would tell others. These messages ` format 3 `"### Description\n\nSymbolic prophecy is a type of message that God gave to a prophet so that the prophet would tell others. These messages `
+- translate/writing-background: differs
+  - $.article: today `"### Descripción\n\nCuando la gente cuenta una historia, normalmente relata los acontecimientos en el orden en que sucedieron. Esta secuenci` format 3 `"### Descripción\n\nCuando la gente cuenta una historia, normalmente relata los acontecimientos en el orden en que sucedieron. Esta secuenci`
+- translate/writing-decisions: differs
+  - $.article: today `"### Important Questions to Answer About Writing\n\nWhen a language is first written, the translator must decide how to indicate certain fea` format 3 `"### Important Questions to Answer About Writing\n\nWhen a language is first written, the translator must decide how to indicate certain fea`
+- translate/writing-endofstory: differs
+  - $.article: today `"### Descripción\n\nHay diferentes tipos de información que pueden darse al final de una historia. A menudo se trata de información de fondo` format 3 `"### Descripción\n\nHay diferentes tipos de información que pueden darse al final de una historia. A menudo se trata de información de fondo`
+- translate/writing-intro: differs
+  - $.article: today `"### Description\n\nThere are different kinds or types of writing, and each type of writing has its own purpose. Because these purposes are ` format 3 `"### Description\n\nThere are different kinds or types of writing, and each type of writing has its own purpose. Because these purposes are `
+- translate/writing-newevent: differs
+  - $.article: today `"### Descripción\n\nCuando la gente cuenta una historia, relata un acontecimiento o una serie de acontecimientos. A menudo ponen cierta info` format 3 `"### Descripción\n\nCuando la gente cuenta una historia, relata un acontecimiento o una serie de acontecimientos. A menudo ponen cierta info`
+- translate/writing-participants: differs
+  - $.article: today `"### Descripción\n\nLa primera vez que se mencionan personas o cosas en una historia, estos son **nuevos participantes**. Después, cada vez ` format 3 `"### Descripción\n\nLa primera vez que se mencionan personas o cosas en una historia, estos son **nuevos participantes**. Después, cada vez `
+- translate/writing-poetry: differs
+  - $.article: today `"### Descripción\n\nLa poesía es una de las formas en que las personas utilizan las palabras y los sonidos de su idioma para embellecer su d` format 3 `"### Descripción\n\nLa poesía es una de las formas en que las personas utilizan las palabras y los sonidos de su idioma para embellecer su d`
+- translate/writing-politeness: differs
+  - $.article: today `"### Description\n\nPeople say certain things, or say things in a certain way, in order to communicate that they respect the people to whom ` format 3 `"### Description\n\nPeople say certain things, or say things in a certain way, in order to communicate that they respect the people to whom `
+- translate/writing-proverbs: differs
+  - $.article: today `"### Descripción\n\nLos proverbios son refranes cortos que dan consejos sabios o enseñan algo que es generalmente cierto sobre la vida. A la` format 3 `"### Descripción\n\nLos proverbios son refranes cortos que dan consejos sabios o enseñan algo que es generalmente cierto sobre la vida. A la`
+- translate/writing-quotations: differs
+  - $.article: today `"### Description\n\nWhen saying that someone said something, we often tell who spoke, whom they spoke to, and what they said. The informatio` format 3 `"### Description\n\nWhen saying that someone said something, we often tell who spoke, whom they spoke to, and what they said. The informatio`
+- translate/writing-symlanguage: differs
+  - $.article: today `"### Descripción\n\nEl lenguaje simbólico en el habla y la escritura es el uso de símbolos para representar otras cosas, otros acontecimient` format 3 `"### Descripción\n\nEl lenguaje simbólico en el habla y la escritura es el uso de símbolos para representar otras cosas, otros acontecimient`
+- checking/acceptable: differs
+  - $.article: today `"\n### Translation in an Acceptable Style\n\nAs you read the new translation, ask yourself these questions. These are questions that will he` format 3 `"### Translation in an Acceptable Style\n\nAs you read the new translation, ask yourself these questions. These are questions that will help`
+- checking/accuracy-check: differs
+  - $.article: today `"\n### Checking the Translation for Accuracy by Pastors and Church Leaders\n\nIt is very important to make sure that the new translation is ` format 3 `"### Checking the Translation for Accuracy by Pastors and Church Leaders\n\nIt is very important to make sure that the new translation is ac`
+- checking/alignment-tool: differs
+  - $.article: today `"### Alignment Checking\n\nAlignment Checking will be done by the Church Network Delegates. These are people who are chosen by the church le` format 3 `"### Alignment Checking\n\nAlignment Checking will be done by the Church Network Delegates. These are people who are chosen by the church le`
+- checking/alphabet: differs
+  - $.article: today `"\n### The Alphabet for the Translation\n\nAs you read the translation, ask yourself these questions about the way words are spelled. These ` format 3 `"### The Alphabet for the Translation\n\nAs you read the translation, ask yourself these questions about the way words are spelled. These qu`
+- checking/authority-process: differs
+  - $.article: today `"\n### Explanation\n\n#### Accountability\n\nThe Bible belongs to the global Church, meaning all Christians throughout history and throughou` format 3 `"### Explanation\n\n#### Accountability\n\nThe Bible belongs to the global Church, meaning all Christians throughout history and throughout `
+- checking/church-leader-check: differs
+  - $.article: today `"\n### Accuracy Checking by Church Leaders\n\nAfter the translation has been checked by community members for clarity and naturalness, it wi` format 3 `"### Accuracy Checking by Church Leaders\n\nAfter the translation has been checked by community members for clarity and naturalness, it will`
+- checking/clear: differs
+  - $.article: today `"\n### A Clear Translation\n\nA translation should be clear. That means that someone reading or hearing it can easily understand what it is ` format 3 `"### A Clear Translation\n\nA translation should be clear. That means that someone reading or hearing it can easily understand what it is tr`
+- checking/community-evaluation: differs
+  - $.article: today `"\nThis page can be used as a checklist for the work of the Community Checkers. This page can be printed, filled in by the translation team ` format 3 `"This page can be used as a checklist for the work of the Community Checkers. This page can be printed, filled in by the translation team an`
+- checking/complete: differs
+  - $.article: today `"\n### A Complete Translation\n\nThe purpose of this section is to make sure that the translation is complete. In this section, the new tran` format 3 `"### A Complete Translation\n\nThe purpose of this section is to make sure that the translation is complete. In this section, the new transl`
+- checking/formatting: differs
+  - $.article: today `"\nThere are checks that you can do before, during, and after translation of a book of the Bible that will make the translation process go m` format 3 `"There are checks that you can do before, during, and after translation of a book of the Bible that will make the translation process go muc`
+- checking/goal-checking: differs
+  - $.article: today `"\n### Why Check?\n\nThe goal of checking is to help the translation team produce a translation that is accurate, natural, clear, and accept` format 3 `"### Why Check?\n\nThe goal of checking is to help the translation team produce a translation that is accurate, natural, clear, and accepted`
+- checking/good: differs
+  - $.article: today `"\n### Documentation for Affirmation of Accuracy and Community Evaluation\n\nWe, as church leaders in our language community, affirm the fol` format 3 `"### Documentation for Affirmation of Accuracy and Community Evaluation\n\nWe, as church leaders in our language community, affirm the follo`
+- checking/headings: differs
+  - $.article: today `"\n### Decisions about Section Headings\n\nOne of the decisions that the translation team will have to make is whether or not to use section` format 3 `"### Decisions about Section Headings\n\nOne of the decisions that the translation team will have to make is whether or not to use section h`
+- checking/important-term-check: differs
+  - $.article: today `"\n### How to do a translationWord check in translationCore®\n\n1. Sign in to translationCore®\n1. Select the project (book of the Bible) th` format 3 `"### How to do a translationWord check in translationCore®\n\n1. Sign in to translationCore®\n1. Select the project (book of the Bible) that`
+- checking/intro-check: differs
+  - $.article: today `"\n### Translation Checking Manual\n\nThis manual describes how to check Bible translations in Other Languages (OLs) for accuracy, clarity, ` format 3 `"### Translation Checking Manual\n\nThis manual describes how to check Bible translations in Other Languages (OLs) for accuracy, clarity, an`
+- checking/intro-checking: differs
+  - $.article: today `"\n### Translation Checking\n\n#### Introduction\n\n##### Why do we do Translation Checking?\n\nAs part of the translation process, it is ne` format 3 `"### Translation Checking\n\n#### Introduction\n\n##### Why do we do Translation Checking?\n\nAs part of the translation process, it is nece`
+- checking/language-community-check: differs
+  - $.article: today `"\n### Language Community Check\n\nAfter the translation team has completed the steps of drafting and checking as a team and performed the c` format 3 `"### Language Community Check\n\nAfter the translation team has completed the steps of drafting and checking as a team and performed the che`
+- checking/level3-approval: differs
+  - $.article: today `"\n### Quality Checker Evaluation\n\nI, as a Quality Checker for the * <u>fill in name of church network or other organization</u> * Church ` format 3 `"### Quality Checker Evaluation\n\nI, as a Quality Checker for the * <u>fill in name of church network or other organization</u> * Church Ne`
+- checking/level3-questions: differs
+  - $.article: today `"\n### Questions for Quality Checkers or Church Network Delegates\n\nIf the Church Network leadership or Translation Committee has given you` format 3 `"### Questions for Quality Checkers or Church Network Delegates\n\nIf the Church Network leadership or Translation Committee has given you t`
+- checking/natural: differs
+  - $.article: today `"\n### A Natural Translation\n\nTo translate the Bible so that it is natural means that the translation should sound like it was written by ` format 3 `"### A Natural Translation\n\nTo translate the Bible so that it is natural means that the translation should sound like it was written by a `
+- checking/other-methods: differs
+  - $.article: today `"\n### Other Checking Methods\n\nAs well as asking questions, there are other checking methods that you may also use to ensure that the tran` format 3 `"### Other Checking Methods\n\nAs well as asking questions, there are other checking methods that you may also use to ensure that the transl`
+- checking/peer-check: differs
+  - $.article: today `"\n### How to do an Oral Partner Check\n\nAt this point, you (the translator) should have already gone through the steps of drafting at leas` format 3 `"### How to do an Oral Partner Check\n\nAt this point, you (the translator) should have already gone through the steps of drafting at least `
+- checking/punctuation: differs
+  - $.article: today `"\n“Punctuation” refers to the marks that indicate how a sentence is to be read or understood. Examples include the indicators of pauses suc` format 3 `"“Punctuation” refers to the marks that indicate how a sentence is to be read or understood. Examples include the indicators of pauses such `
+- checking/self-assessment: differs
+  - $.article: today `"\n### Self-assessment of Translation Quality\n\nThe objective of this module is to describe a process by which the Church can reliably dete` format 3 `"### Self-assessment of Translation Quality\n\nThe objective of this module is to describe a process by which the Church can reliably determ`
+- checking/spelling: differs
+  - $.article: today `"\nIn order for the reader to be able to read and understand the translation easily, it is important that you (the translator) spell words c` format 3 `"In order for the reader to be able to read and understand the translation easily, it is important that you (the translator) spell words con`
+- checking/team-oral-chunk-check: differs
+  - $.article: today `"To check the translation of a passage or chapter as a team, do a Team Oral Chunk Check. To do this, each translator will read his translati` format 3 `"To check the translation of a passage or chapter as a team, do a Team Oral Chunk Check. To do this, each translator will read his translati`
+- checking/verses: differs
+  - $.article: today `"\nIt is important that your target language translation include all of the verses that are in the source language Bible. You do not want so` format 3 `"It is important that your target language translation include all of the verses that are in the source language Bible. You do not want some`
+- checking/vol2-backtranslation: differs
+  - $.article: today `"\n### What is a back translation?\n\nA back translation is a translation of the biblical text from the local target language (the OL) back ` format 3 `"### What is a back translation?\n\nA back translation is a translation of the biblical text from the local target language (the OL) back in`
+- checking/vol2-backtranslation-guidelines: differs
+  - $.article: today `"\n### 1. Show the Target Language Usage for Words and Clauses\n\nFor the purposes of this module, “target language” refers to the language ` format 3 `"### 1. Show the Target Language Usage for Words and Clauses\n\nFor the purposes of this module, “target language” refers to the language in`
+- checking/vol2-backtranslation-kinds: differs
+  - $.article: today `"\n### What kinds of back translations are there?\n\n#### Oral\n\nAn oral back translation is one that the back translator speaks to the tra` format 3 `"### What kinds of back translations are there?\n\n#### Oral\n\nAn oral back translation is one that the back translator speaks to the trans`
+- checking/vol2-backtranslation-purpose: differs
+  - $.article: today `"\n### Why is a back translation necessary?\n\nThe purpose of a back translation is to allow a consultant or checker of biblical material wh` format 3 `"### Why is a back translation necessary?\n\nThe purpose of a back translation is to allow a consultant or checker of biblical material who `
+- checking/vol2-backtranslation-who: differs
+  - $.article: today `"\n### Who should do the back translation?\n\nTo do a good back translation, the person must have three qualifications.\n\n1. The back trans` format 3 `"### Who should do the back translation?\n\nTo do a good back translation, the person must have three qualifications.\n\n1. The back transla`
+- checking/vol2-backtranslation-written: differs
+  - $.article: today `"\nThere are two kinds of written back translations.\n\n### Interlinear Back Translation\n\nIn an interlinear back translation, the back tra` format 3 `"There are two kinds of written back translations.\n\n### Interlinear Back Translation\n\nIn an interlinear back translation, the back trans`
+- checking/vol2-steps: differs
+  - $.article: today `"\n\n### Steps for Quality Checkers\n\nThese are steps for the Quality Checkers or Church Network Delegates to follow when checking a transl` format 3 `"### Steps for Quality Checkers\n\nThese are steps for the Quality Checkers or Church Network Delegates to follow when checking a translatio`
+- checking/vol2-things-to-check: differs
+  - $.article: today `"\n### Types of Things to Check\n\nThese are things to check as you look at a passage of Scripture to check it for accuracy. Pastors who spe` format 3 `"### Types of Things to Check\n\nThese are things to check as you look at a passage of Scripture to check it for accuracy. Pastors who speak`
+- process/intro-publishing: differs
+  - $.article: today `"\n### Publishing Overview\n\nOnce a work has been uploaded to Door43, it is automatically available online under your user account.  This i` format 3 `"### Publishing Overview\n\nOnce a work has been uploaded to Door43, it is automatically available online under your user account.  This is `
+- process/intro-share: differs
+  - $.article: today `"\n### Distribution Overview\n\nBiblical content is worthless unless it is distributed and used. One advantage of using the Door43 translati` format 3 `"### Distribution Overview\n\nBiblical content is worthless unless it is distributed and used. One advantage of using the Door43 translation`
+- process/platforms: differs
+  - $.article: today `"\n### Recommended Platform\n\nThe recommended platform for drafting Bible translations in the Door43 online community is translationStudio ` format 3 `"### Recommended Platform\n\nThe recommended platform for drafting Bible translations in the Door43 online community is translationStudio (h`
+- process/prechecking-training: differs
+  - $.article: today `"\n### Before Checking\n\nIt is recommended that you consult the [Checking Manual](../../checking/intro-check/01.md) frequently as you check` format 3 `"### Before Checking\n\nIt is recommended that you consult the [Checking Manual](../../checking/intro-check/01.md) frequently as you check y`
+- process/pretranslation-training: differs
+  - $.article: today `"\n### What to Know Before Translation\n\nIt is recommended that you consult the [Translation Manual](../../translate/translate-manual/01.md` format 3 `"### What to Know Before Translation\n\nIt is recommended that you consult the [Translation Manual](../../translate/translate-manual/01.md) `
+- process/process-manual: differs
+  - $.article: today `"\n### Welcome\n\nWelcome to Bible translation! We are pleased that you desire to translate God’s message into the language of your people, ` format 3 `"### Welcome\n\nWelcome to Bible translation! We are pleased that you desire to translate God’s message into the language of your people, wh`
+- process/setup-tc: differs
+  - $.article: today `"### How to Get translationCore®\n\ntranslationCore® is an open-source and open-licensed software program for checking Bible translations. I` format 3 `"### How to Get translationCore®\n\ntranslationCore® is an open-source and open-licensed software program for checking Bible translations. I`
+- process/setup-team: differs
+  - $.article: today `"\n### Choosing a Team\n\nAs you begin selecting a translation and checking team, there are many different types of people and roles that ar` format 3 `"### Choosing a Team\n\nAs you begin selecting a translation and checking team, there are many different types of people and roles that are `
+- process/setup-ts: differs
+  - $.article: today `"\n### Installing tS for Mobile\n\nThe mobile (Android) edition of translationStudio is available from the [Google Play Store](https://play.` format 3 `"### Installing tS for Mobile\n\nThe mobile (Android) edition of translationStudio is available from the [Google Play Store](https://play.go`
+- process/share-content: differs
+  - $.article: today `"\n### Sharing Content from tS and tC\n\nSharing content that is in translationStudio is easy.  For offine sharing, use the Backup feature f` format 3 `"### Sharing Content from tS and tC\n\nSharing content that is in translationStudio is easy.  For offine sharing, use the Backup feature fro`
+- intro/finding-answers: differs
+  - $.article: today `"\n### How to Get Answers\n\nThere are several resources available for finding answers to questions:\n\n* **unfoldingWord® Translation Acade` format 3 `"### How to Get Answers\n\nThere are several resources available for finding answers to questions:\n\n* **unfoldingWord® Translation Academy`
+- intro/gl-strategy: differs
+  - $.article: today `"\n**The official version of this document is found at http://ufw.io/gl/.**\n\n### Explanation\n\nThe objective of the gateway languages str` format 3 `"**The official version of this document is found at http://ufw.io/gl/.**\n\n### Explanation\n\nThe objective of the gateway languages strat`
+- intro/open-license: differs
+  - $.article: today `"\n### A License for Freedom\n\nTo achieve our vision of **the church in every people group and the Bible in every language**, a license is ` format 3 `"### A License for Freedom\n\nTo achieve our vision of **the church in every people group and the Bible in every language**, a license is ne`
+- intro/statement-of-faith: differs
+  - $.article: today `"\n**The official version of this document is found at http://ufw.io/faith.**\n\nThe following statement of faith is in agreement with these` format 3 `"**The official version of this document is found at http://ufw.io/faith.**\n\nThe following statement of faith is in agreement with these h`
+- intro/ta-intro: differs
+  - $.article: today `"\n### Welcome to unfoldingWord® Translation Academy\n\nunfoldingWord® Translation Academy is a collection of information and instruction on` format 3 `"### Welcome to unfoldingWord® Translation Academy\n\nunfoldingWord® Translation Academy is a collection of information and instruction on t`
+- intro/translate-why: differs
+  - $.article: today `"\nThe purpose of unfoldingWord® Translation Academy is to train you to become a Bible translator. Translating God’s Word into your language` format 3 `"The purpose of unfoldingWord® Translation Academy is to train you to become a Bible translator. Translating God’s Word into your language t`
+- intro/translation-guidelines: differs
+  - $.article: today `"\n**The official version of this document is found at http://ufw.io/guidelines/.**\n\nThe following statement on the principles and procedu` format 3 `"**The official version of this document is found at http://ufw.io/guidelines/.**\n\nThe following statement on the principles and procedure`
+- intro/uw-intro: differs
+  - $.article: today `"\nThe vision of unfoldingWord is **the church in every people group and the Bible in every language**.\n\nJesus commanded his disciples to ` format 3 `"The vision of unfoldingWord is **the church in every people group and the Bible in every language**.\n\nJesus commanded his disciples to ma`
+- term:aside: differs
+  - $.article: today `"### Definition\n\nAn aside is a figure of speech in which someone who is speaking to a person or group pauses to speak confidentially to hi` format 3 `"### Definition\n\nAn aside is a figure of speech in which someone who is speaking to a person or group pauses to speak confidentially to hi`
+- term:ay: differs
+  - $.article: today `"\n**The official version of this document is found at http://ufw.io/gl/.**\n\n### Explanation\n\nThe objective of the gateway languages str` format 3 `"**The official version of this document is found at http://ufw.io/gl/.**\n\n### Explanation\n\nThe objective of the gateway languages strat`
+- term:conocimiento: differs
+  - $.article: today `"El conocimiento asumido es lo que el hablante asume que su audiencia conoce, antes de que él hable y le dé a su audiencia algún tipo de inf` format 3 `"El conocimiento asumido es lo que el hablante asume que su audiencia conoce, antes de que él hable y le dé a su audiencia algún tipo de inf`
+- term:dan: differs
+  - $.article: today `"\nAlgunos idiomas pueden usar una palabra o frase con un sustantivo para dar información sobre ese sustantivo o para recordar algo sobre él` format 3 `"Algunos idiomas pueden usar una palabra o frase con un sustantivo para dar información sobre ese sustantivo o para recordar algo sobre él.\`
+- term:distinguir: differs
+  - $.article: today `"### Descripción\n\nEn algunos idiomas, las frases que modifican un sustantivo pueden ser usadas con el sustantivo para dos propósitos difer` format 3 `"### Descripción\n\nEn algunos idiomas, las frases que modifican un sustantivo pueden ser usadas con el sustantivo para dos propósitos difer`
+- term:doblete: differs
+  - $.article: today `"### Descripción\n\nUsamos la palabra “doblete” para referirnos a dos palabras o frases que se usan juntas y que significan lo mismo o signi` format 3 `"### Descripción\n\nUsamos la palabra “doblete” para referirnos a dos palabras o frases que se usan juntas y que significan lo mismo o signi`
+- term:era: ambiguous
+- term:eufemismo: differs
+  - $.article: today `"### Descripción\n\nUn eufemismo es una forma suave o educada de referirse a algo que es desagradable, embarazoso o socialmente inaceptable,` format 3 `"### Descripción\n\nUn eufemismo es una forma suave o educada de referirse a algo que es desagradable, embarazoso o socialmente inaceptable,`
+- term:eva: ambiguous
+- term:exclamaciones: differs
+  - $.article: today `"### Descripción\n\nLas exclamaciones son palabras u oraciones que muestran un sentimiento fuerte, como la sorpresa, la alegría, el miedo o ` format 3 `"### Descripción\n\nLas exclamaciones son palabras u oraciones que muestran un sentimiento fuerte, como la sorpresa, la alegría, el miedo o `
+- term:fe: ambiguous
+- term:fractions: differs
+  - $.article: today `"### Description\n\nFractions are a kind of number that refer to equal parts of a thing or to equal groups within a larger group of people o` format 3 `"### Description\n\nFractions are a kind of number that refer to equal parts of a thing or to equal groups within a larger group of people o`
+- term:gat: ambiguous
+- term:hijo: differs
+  - $.article: today `"Door43 apoya las traducciones de la Biblia que representan estos conceptos cuando se refieren a Dios.\n\n### Testimonio Bíblico\n\n**“Padre` format 3 `"Door43 apoya las traducciones de la Biblia que representan estos conceptos cuando se refieren a Dios.\n\n### Testimonio Bíblico\n\n**“Padre`
+- term:lea: ambiguous
+- term:lengua: ambiguous
+- term:litany: differs
+  - $.article: today `"# Definition\n\nA litany is a figure of speech in which the various components of a thing are listed in a series of very similar statements` format 3 `"# Definition\n\nA litany is a figure of speech in which the various components of a thing are listed in a series of very similar statements`
+- term:litotes: differs
+  - $.article: today `"### Descripción\n\nLos litotes son una figura retórica en la que el hablante expresa un fuerte significado positivo utilizando dos palabras` format 3 `"### Descripción\n\nLos litotes son una figura retórica en la que el hablante expresa un fuerte significado positivo utilizando dos palabras`
+- term:merismo: differs
+  - $.article: today `"### Definición\n\nEl merismo es una figura retórica en la que una persona se refiere a algo hablando de dos partes extremas del mismo. Al r` format 3 `"### Definición\n\nEl merismo es una figura retórica en la que una persona se refiere a algo hablando de dos partes extremas del mismo. Al r`
+- term:metonimia: differs
+  - $.article: today `"### Descripción\n\n**La metonimia** es una figura literaria en la que un elemento (ya sea físico o abstracto) no se llama por su propio nom` format 3 `"### Descripción\n\n**La metonimia** es una figura literaria en la que un elemento (ya sea físico o abstracto) no se llama por su propio nom`
+- term:nombre: ambiguous
+- term:orden: differs
+  - $.article: today `"### Descripción\n\nEn la Biblia, los acontecimientos no siempre se cuentan en el orden en que ocurrieron. A veces el autor habla de algo qu` format 3 `"### Descripción\n\nEn la Biblia, los acontecimientos no siempre se cuentan en el orden en que ocurrieron. A veces el autor habla de algo qu`
+- term:oso: ambiguous
+- term:padre: differs
+  - $.article: today `"Door43 apoya las traducciones de la Biblia que representan estos conceptos cuando se refieren a Dios.\n\n### Testimonio Bíblico\n\n**“Padre` format 3 `"Door43 apoya las traducciones de la Biblia que representan estos conceptos cuando se refieren a Dios.\n\n### Testimonio Bíblico\n\n**“Padre`
+- term:palabra: ambiguous
+- term:pan: differs
+  - $.article: today `"### Descripción\n\nLa primera vez que se mencionan personas o cosas en una historia, estos son **nuevos participantes**. Después, cada vez ` format 3 `"### Descripción\n\nLa primera vez que se mencionan personas o cosas en una historia, estos son **nuevos participantes**. Después, cada vez `
+- term:paralelismo: differs
+  - $.article: today `"### Descripción\n\nEl paralelismo es un recurso poético en el que se utilizan juntas dos frases o cláusulas similares en cuanto a estructur` format 3 `"### Descripción\n\nEl paralelismo es un recurso poético en el que se utilizan juntas dos frases o cláusulas similares en cuanto a estructur`
+- term:politeness: differs
+  - $.article: today `"### Description\n\nPeople say certain things, or say things in a certain way, in order to communicate that they respect the people to whom ` format 3 `"### Description\n\nPeople say certain things, or say things in a certain way, in order to communicate that they respect the people to whom `
+- term:proverbio: differs
+  - $.article: today `"### Descripción\n\nLos proverbios son refranes cortos que dan consejos sabios o enseñan algo que es generalmente cierto sobre la vida. A la` format 3 `"### Descripción\n\nLos proverbios son refranes cortos que dan consejos sabios o enseñan algo que es generalmente cierto sobre la vida. A la`
+- term:proverbios: differs
+  - $.article: today `"### Descripción\n\nLos proverbios son refranes cortos que dan consejos sabios o enseñan algo que es generalmente cierto sobre la vida. A la` format 3 `"### Descripción\n\nLos proverbios son refranes cortos que dan consejos sabios o enseñan algo que es generalmente cierto sobre la vida. A la`
+- term:recordar: differs
+  - $.article: today `"### Descripción\n\nEn algunos idiomas, las frases que modifican un sustantivo pueden ser usadas con el sustantivo para dos propósitos difer` format 3 `"### Descripción\n\nEn algunos idiomas, las frases que modifican un sustantivo pueden ser usadas con el sustantivo para dos propósitos difer`
+- term:roble: differs
+  - $.article: today `"### The meaning of forms change\n\nLiteral translations keep the form of the source text in the target text. As you saw in the teaching mod` format 3 `"### The meaning of forms change\n\nLiteral translations keep the form of the source text in the target text. As you saw in the teaching mod`
+- term:set: ambiguous
+- and more (see the counts above)
+
+## es-419|es-419_gl/es-419/tw|v37|articles
+
+Items 2605, exceptions 875 (differs 778, fallback adapter-undefined 4, ambiguous 93)
+
+- bible/kt/abomination: differs
+  - $.article: today `"# abominación, abominable\n\n## Definición\n\nEl término “abominación” es utilizado para referirse a algo que causa disgusto o extremo disg` format 3 `"# abominación, abominable\n\n## Definición\n\nEl término “abominación” es utilizado para referirse a algo que causa disgusto o extremo disg`
+- bible/kt/adultery: differs
+  - $.article: today `"# adulterio, adúltero, adulterador, adúltera\n\n## Definición\n\nEl término “adulterio” se refiere a un pecado que ocurre cuando una person` format 3 `"# adulterio, adúltero, adulterador, adúltera\n\n## Definición\n\nEl término “adulterio” se refiere a un pecado que ocurre cuando una person`
+- bible/kt/almighty: differs
+  - $.article: today `"# Todopoderoso\n\n## Hechos\n\nEl término “Todopoderoso” literalmente significa “que tiene todo poder”; en la Biblia, siempre se refiere a ` format 3 `"# Todopoderoso\n\n## Hechos\n\nEl término “Todopoderoso” literalmente significa “que tiene todo poder”; en la Biblia, siempre se refiere a `
+- bible/kt/altar: differs
+  - $.article: today `"# altar\n\n## Definición\n\nUn altar era una estructura elevada en la que los israelitas quemaban animales y granos como ofrendas a Dios.\n` format 3 `"# altar\n\n## Definición\n\nUn altar era una estructura elevada en la que los israelitas quemaban animales y granos como ofrendas a Dios.\n`
+- bible/kt/angel: differs
+  - $.article: today `"# ángel, arcángel\n\n## Definición\n\nUn ángel es un ser espiritual poderoso que Dios creó. Los ángeles existen para servir a Dios haciendo` format 3 `"# ángel, arcángel\n\n## Definición\n\nUn ángel es un ser espiritual poderoso que Dios creó. Los ángeles existen para servir a Dios haciendo`
+- bible/kt/anoint: differs
+  - $.article: today `"# Ungir, ungido, unción\n\n## Definición\n\nEl término “ungir” significa frotar o verter aceite sobre una persona u objeto. Algunas veces e` format 3 `"# Ungir, ungido, unción\n\n## Definición\n\nEl término “ungir” significa frotar o verter aceite sobre una persona u objeto. Algunas veces e`
+- bible/kt/apostle: differs
+  - $.article: today `"# apóstol, apostolado\n\n## Definición\n\nLos “apóstoles” eran hombres enviados por Jesús para que predicaran sobre Dios y su Reino. El tér` format 3 `"# apóstol, apostolado\n\n## Definición\n\nLos “apóstoles” eran hombres enviados por Jesús para que predicaran sobre Dios y su Reino. El tér`
+- bible/kt/authority: differs
+  - $.article: today `"# autoridad\n\n## Definición\n\nEl término “autoridad” generalmente se refiere a una posición de influencia, responsabilidad o gobierno sob` format 3 `"# autoridad\n\n## Definición\n\nEl término “autoridad” generalmente se refiere a una posición de influencia, responsabilidad o gobierno sob`
+- bible/kt/baptize: differs
+  - $.article: today `"# bautizar, bautizado, bautismo\n\n## Definición\n\nEn el Nuevo Testamento, los términos “bautizar” y “bautismo” suelen referirse a bañar r` format 3 `"# bautizar, bautizado, bautismo\n\n## Definición\n\nEn el Nuevo Testamento, los términos “bautizar” y “bautismo” suelen referirse a bañar r`
+- bible/kt/beloved: differs
+  - $.article: today `"# Amado\n\n## Definición\n\nEl término “**amado**” es una expresión de afecto que describe a alguien que es amado y querido por otra person` format 3 `"# Amado\n\n## Definición\n\nEl término “**amado**” es una expresión de afecto que describe a alguien que es amado y querido por otra person`
+- bible/kt/blasphemy: differs
+  - $.article: today `"# Blasfemia, blasfemar, blasfemo\n\n## Definición\n\nEn la Biblia, el término “blasfemia” se refiere a hablar de una manera que muestra un ` format 3 `"# Blasfemia, blasfemar, blasfemo\n\n## Definición\n\nEn la Biblia, el término “blasfemia” se refiere a hablar de una manera que muestra un `
+- bible/kt/bless: differs
+  - $.article: today `"# bendecir, bendecido, bienaventurado, bendición\n\n## Definición\n\n“Bendecir” a alguien o algo significa hacer que sucedan cosas buenas y` format 3 `"# bendecir, bendecido, bienaventurado, bendición\n\n## Definición\n\n“Bendecir” a alguien o algo significa hacer que sucedan cosas buenas y`
+- bible/kt/blood: differs
+  - $.article: today `"# sangre\n\n## Definición\n\nEl término “sangre” se refiere al líquido rojo que sale de la piel de una persona cuando tiene una lesión o he` format 3 `"# sangre\n\n## Definición\n\nEl término “sangre” se refiere al líquido rojo que sale de la piel de una persona cuando tiene una lesión o he`
+- bible/kt/bornagain: differs
+  - $.article: today `"# nacido de nuevo, nacido de Dios, nuevo nacimiento, regeneración\n\n## Definición\n\nEl término “nacido de nuevo” fue utilizado por primer` format 3 `"# nacido de nuevo, nacido de Dios, nuevo nacimiento, regeneración\n\n## Definición\n\nEl término “nacido de nuevo” fue utilizado por primer`
+- bible/kt/brother: differs
+  - $.article: today `"# hermano\n\n## Definición\n\nEl término **“hermano”** se refiere a un pariente masculino que comparte al menos un progenitor biológico. Es` format 3 `"# hermano\n\n## Definición\n\nEl término **“hermano”** se refiere a un pariente masculino que comparte al menos un progenitor biológico. Es`
+- bible/kt/call: differs
+  - $.article: today `"# Llamado, llamar, llamada, clamar\n\n## Definición\n\nLos términos \"llamar\" y \"clamar\" generalmente significan hablar en voz alta, per` format 3 `"# Llamado, llamar, llamada, clamar\n\n## Definición\n\nLos términos \"llamar\" y \"clamar\" generalmente significan hablar en voz alta, per`
+- bible/kt/children: differs
+  - $.article: today `"# hijo(a)s/niño(a)s, hijo(a)/niño(a), descendencia\n\n## Definición\n\nEl término “hijo(a)/niño(a)” (plural “hijos/niños”) se refiere a la ` format 3 `"# hijo(a)s/niño(a)s, hijo(a)/niño(a), descendencia\n\n## Definición\n\nEl término “hijo(a)/niño(a)” (plural “hijos/niños”) se refiere a la `
+- bible/kt/christian: differs
+  - $.article: today `"# Cristiano\n\n## Definición\n\nAlgún tiempo después de que Jesús volviera al cielo, la gente inventó el nombre “cristiano” que significa “` format 3 `"# Cristiano\n\n## Definición\n\nAlgún tiempo después de que Jesús volviera al cielo, la gente inventó el nombre “cristiano” que significa “`
+- bible/kt/church: differs
+  - $.article: today `"# Iglesia, iglesia\n\n## Definición\n\nEn el Nuevo Testamento, el término “**Iglesia**” se refiere a un grupo local de creyentes en Jesús q` format 3 `"# Iglesia, iglesia\n\n## Definición\n\nEn el Nuevo Testamento, el término “**Iglesia**” se refiere a un grupo local de creyentes en Jesús q`
+- bible/kt/clean: differs
+  - $.article: today `"# limpio, limpiar, lavar, impuro, inmundo\n\n## Definición\n\nEl término “limpio” generalmente se refiere a no tener suciedad o manchas. El` format 3 `"# limpio, limpiar, lavar, impuro, inmundo\n\n## Definición\n\nEl término “limpio” generalmente se refiere a no tener suciedad o manchas. El`
+- bible/kt/command: differs
+  - $.article: today `"# mandato, orden, mandar, mandamiento\n\n## Definición\n\nEl término “mandar” significa ordenar a alguien que haga algo. El término “mandam` format 3 `"# mandato, orden, mandar, mandamiento\n\n## Definición\n\nEl término “mandar” significa ordenar a alguien que haga algo. El término “mandam`
+- bible/kt/compassion: differs
+  - $.article: today `"# compasión, compasivo\n\n## Definición\n\nEl término \"compasión\" se refiere a un sentimiento de preocupación por las personas, especialm` format 3 `"# compasión, compasivo\n\n## Definición\n\nEl término \"compasión\" se refiere a un sentimiento de preocupación por las personas, especialm`
+- bible/kt/covenant: differs
+  - $.article: today `"# pacto\n\n## Definición\n\nEn la Biblia, el término “pacto” se refiere a un acuerdo formal y vinculante entre dos partes que una o ambas p` format 3 `"# pacto\n\n## Definición\n\nEn la Biblia, el término “pacto” se refiere a un acuerdo formal y vinculante entre dos partes que una o ambas p`
+- bible/kt/covenantfaith: differs
+  - $.article: today `"# Fidelidad de pacto, lealtad de pacto, misericordia, amor infalible\n\n## Definición\n\nEn tiempos bíblicos, el término traducido como “fi` format 3 `"# Fidelidad de pacto, lealtad de pacto, misericordia, amor infalible\n\n## Definición\n\nEn tiempos bíblicos, el término traducido como “fi`
+- bible/kt/cross: differs
+  - $.article: today `"# cruz\n\n## Definición\n\nEn los tiempos bíblicos, una cruz era un poste de madera vertical clavado en el suelo, con una viga de madera ho` format 3 `"# cruz\n\n## Definición\n\nEn los tiempos bíblicos, una cruz era un poste de madera vertical clavado en el suelo, con una viga de madera ho`
+- bible/kt/crucify: differs
+  - $.article: today `"# crucificar, crucificado\n\n## Definición\n\nEl término “crucificar” significa ejecutar a alguien atándolo a una cruz y dejándolo allí par` format 3 `"# crucificar, crucificado\n\n## Definición\n\nEl término “crucificar” significa ejecutar a alguien atándolo a una cruz y dejándolo allí par`
+- bible/kt/curse: differs
+  - $.article: today `"# maldición, maldito, maldecir\n\n## Definición\n\nEl término “maldición” significa causar cosas negativas a la persona o cosa que está sie` format 3 `"# maldición, maldito, maldecir\n\n## Definición\n\nEl término “maldición” significa causar cosas negativas a la persona o cosa que está sie`
+- bible/kt/demon: differs
+  - $.article: today `"# demonio, espíritu maligno, espíritu inmundo\n\n## Definición\n\nTodos estos términos se refieren a los demonios, que son seres espiritual` format 3 `"# demonio, espíritu maligno, espíritu inmundo\n\n## Definición\n\nTodos estos términos se refieren a los demonios, que son seres espiritual`
+- bible/kt/demonpossessed: differs
+  - $.article: today `"# endemoniado\n\n## Definición\n\nUna persona que está endemoniada, tiene un demonio o espíritu maligno que controla lo que hace y piensa.\` format 3 `"# endemoniado\n\n## Definición\n\nUna persona que está endemoniada, tiene un demonio o espíritu maligno que controla lo que hace y piensa.\`
+- bible/kt/disciple: differs
+  - $.article: today `"# discípulo\n\n## Definición\n\nEl término “discípulo” se refiere a una persona que pasa mucho tiempo con un maestro, aprendiendo del carác` format 3 `"# discípulo\n\n## Definición\n\nEl término “discípulo” se refiere a una persona que pasa mucho tiempo con un maestro, aprendiendo del carác`
+- bible/kt/discipline: differs
+  - $.article: today `"# disciplina, auto-disciplina, instrucción\n\n## Definición\n\nEl término “disciplina” se refiere a capacitar a las personas para que obede` format 3 `"# disciplina, auto-disciplina, instrucción\n\n## Definición\n\nEl término “disciplina” se refiere a capacitar a las personas para que obede`
+- bible/kt/elect: differs
+  - $.article: today `"# escogido, escoger, pueblo escogido, El Escogido, elegir\n\n## Definición\n\nEl término “los elegidos” significa literalmente “los escogid` format 3 `"# escogido, escoger, pueblo escogido, El Escogido, elegir\n\n## Definición\n\nEl término “los elegidos” significa literalmente “los escogid`
+- bible/kt/evil: differs
+  - $.article: today `"# maldad, malvado, malicia, desagradable\n\n## Definición\n\nEn la Biblia, el término “maldad” puede referirse al concepto de maldad moral ` format 3 `"# maldad, malvado, malicia, desagradable\n\n## Definición\n\nEn la Biblia, el término “maldad” puede referirse al concepto de maldad moral `
+- bible/kt/faith: differs
+  - $.article: today `"# fe\n\n## Definición\n\nEn general, el término “fe” se refiere a una creencia, confianza o esperanza en alguien o en algo.\n\n* “Tener fe”` format 3 `"# fe\n\n## Definición\n\nEn general, el término “fe” se refiere a una creencia, confianza o esperanza en alguien o en algo.\n\n* “Tener fe”`
+- bible/kt/faithful: differs
+  - $.article: today `"# fiel, fidelidad, infiel, infidelidad, fidedigna, digno de confianza\n\n## Definición\n\nLa palabra “fiel” hace referencia a algo o alguie` format 3 `"# fiel, fidelidad, infiel, infidelidad, fidedigna, digno de confianza\n\n## Definición\n\nLa palabra “fiel” hace referencia a algo o alguie`
+- bible/kt/falsegod: differs
+  - $.article: today `"# dios, dios falso, diosa, ídolo, idólatra, idolátrico, idolatría\n\n## Definición\n\nUn falso dios es algo que la gente adora en lugar del` format 3 `"# dios, dios falso, diosa, ídolo, idólatra, idolátrico, idolatría\n\n## Definición\n\nUn falso dios es algo que la gente adora en lugar del`
+- bible/kt/favor: differs
+  - $.article: today `"# Favor, favorable, favoritismo\n\n## Definición\n\nEl término “favor” significa generalmente aprobación. Alguien que favorece a otra perso` format 3 `"# Favor, favorable, favoritismo\n\n## Definición\n\nEl término “favor” significa generalmente aprobación. Alguien que favorece a otra perso`
+- bible/kt/fear: differs
+  - $.article: today `"# temer, temor, temor de Jehová\n\n## Definición\n\nLos términos “temer” y “temor” se refieren al sentimiento desagradable que una persona ` format 3 `"# temer, temor, temor de Jehová\n\n## Definición\n\nLos términos “temer” y “temor” se refieren al sentimiento desagradable que una persona `
+- bible/kt/foolish: differs
+  - $.article: today `"# tonto, tonta, necio, insensato\n\n## Definición\n\nEl término “tonto” se refiere a una persona a la que le falta el entendimiento y que a` format 3 `"# tonto, tonta, necio, insensato\n\n## Definición\n\nEl término “tonto” se refiere a una persona a la que le falta el entendimiento y que a`
+- bible/kt/forgive: differs
+  - $.article: today `"# perdonar, perdonado, perdón, indulto, perdonado\n\n## Definición\n\nPerdonar a alguien significa no guardarle rencor a esa persona aunque` format 3 `"# perdonar, perdonado, perdón, indulto, perdonado\n\n## Definición\n\nPerdonar a alguien significa no guardarle rencor a esa persona aunque`
+- bible/kt/fulfill: differs
+  - $.article: today `"# cumplir, realizado, llevado a cabo\n\n## Definición\n\nEl término “cumplir” significa completar o realizar algo que se esperaba.\n\n* Cua` format 3 `"# cumplir, realizado, llevado a cabo\n\n## Definición\n\nEl término “cumplir” significa completar o realizar algo que se esperaba.\n\n* Cua`
+- bible/kt/gentile: differs
+  - $.article: today `"# Gentil\n\n## Definición\n\nEl término “**gentil**” se refiere a cualquiera persona que no es judía. Los gentiles son personas que no son ` format 3 `"# Gentil\n\n## Definición\n\nEl término “**gentil**” se refiere a cualquiera persona que no es judía. Los gentiles son personas que no son `
+- bible/kt/glory: differs
+  - $.article: today `"# gloria, glorioso, glorificar\n\n## Definición\n\nEl término “gloria” es un término general para una familia de conceptos que incluyen val` format 3 `"# gloria, glorioso, glorificar\n\n## Definición\n\nEl término “gloria” es un término general para una familia de conceptos que incluyen val`
+- bible/kt/god: differs
+  - $.article: today `"# Dios\n\n## Definición\n\nEn la Biblia, el término “Dios” se refiere al ser eterno que creó el universo de la nada. Dios existe como Padre` format 3 `"# Dios\n\n## Definición\n\nEn la Biblia, el término “Dios” se refiere al ser eterno que creó el universo de la nada. Dios existe como Padre`
+- bible/kt/good: differs
+  - $.article: today `"# bueno, bien, correcto, agradable, mejor\n\n## Definición\n\nEl término “bueno” se refiere generalmente a una evaluación positiva de la ca` format 3 `"# bueno, bien, correcto, agradable, mejor\n\n## Definición\n\nEl término “bueno” se refiere generalmente a una evaluación positiva de la ca`
+- bible/kt/goodnews: differs
+  - $.article: today `"# buenas noticias, evangelio\n\n## Definición\n\nEl término “evangelio” significa literalmente “buenas noticias” y se refiere a un mensaje ` format 3 `"# buenas noticias, evangelio\n\n## Definición\n\nEl término “evangelio” significa literalmente “buenas noticias” y se refiere a un mensaje `
+- bible/kt/grace: differs
+  - $.article: today `"# gracia, amable\n\n## Definición\n\nLa palabra “gracia” se refiere a la ayuda o bendición que se le da a alguien que no se la ha ganado. E` format 3 `"# gracia, amable\n\n## Definición\n\nLa palabra “gracia” se refiere a la ayuda o bendición que se le da a alguien que no se la ha ganado. E`
+- bible/kt/guilt: differs
+  - $.article: today `"# culpa, culpable\n\n## Definición\n\nEl término “culpa” se refiere al hecho de haber pecado o cometido un crimen.\n\n* El “ser culpable” s` format 3 `"# culpa, culpable\n\n## Definición\n\nEl término “culpa” se refiere al hecho de haber pecado o cometido un crimen.\n\n* El “ser culpable” s`
+- bible/kt/hades: differs
+  - $.article: today `"# Hades, Seol\n\n## Definición\n\nLos términos \"Hades\" (en griego) y \"Seol\" (en hebreo) son nombres propios del lugar al que iban los e` format 3 `"# Hades, Seol\n\n## Definición\n\nLos términos \"Hades\" (en griego) y \"Seol\" (en hebreo) son nombres propios del lugar al que iban los e`
+- bible/kt/heart: differs
+  - $.article: today `"# corazón\n\n## Definición\n\nEl término “corazón” se refiere al órgano interno que impulsa la sangre por todo el cuerpo de las personas y ` format 3 `"# corazón\n\n## Definición\n\nEl término “corazón” se refiere al órgano interno que impulsa la sangre por todo el cuerpo de las personas y `
+- bible/kt/heaven: differs
+  - $.article: today `"# cielo, lo alto, cielos, celestial\n\n## Definición\n\nEl término que es traducido como “cielo” se refiere al lugar donde Dios vive. La mi` format 3 `"# cielo, lo alto, cielos, celestial\n\n## Definición\n\nEl término que es traducido como “cielo” se refiere al lugar donde Dios vive. La mi`
+- bible/kt/hebrew: differs
+  - $.article: today `"# Hebreo\n\n## Descripción:\n\nEl término “hebreo” se refiere en un sentido muy general al grupo de personas descendientes de Abraham a tra` format 3 `"# Hebreo\n\n## Descripción:\n\nEl término “hebreo” se refiere en un sentido muy general al grupo de personas descendientes de Abraham a tra`
+- bible/kt/hell: differs
+  - $.article: today `"# Infierno, lago de fuego\n\n## Definición\n\nEl infierno es el lugar final de dolor y sufrimiento interminables donde Dios castigará a tod` format 3 `"# Infierno, lago de fuego\n\n## Definición\n\nEl infierno es el lugar final de dolor y sufrimiento interminables donde Dios castigará a tod`
+- bible/kt/highpriest: differs
+  - $.article: today `"# Sumo sacerdote\n\n## Definición\n\nEl término “sumo sacerdote” se refiere a un sacerdote especial que era designado para servir durante u` format 3 `"# Sumo sacerdote\n\n## Definición\n\nEl término “sumo sacerdote” se refiere a un sacerdote especial que era designado para servir durante u`
+- bible/kt/holyspirit: differs
+  - $.article: today `"# Espíritu Santo, Espíritu de Dios, Espíritu del Señor, Espíritu\n\n## Definición\n\nTodos estos términos se refieren al Espíritu Santo, qu` format 3 `"# Espíritu Santo, Espíritu de Dios, Espíritu del Señor, Espíritu\n\n## Definición\n\nTodos estos términos se refieren al Espíritu Santo, qu`
+- bible/kt/hope: differs
+  - $.article: today `"# esperanza, esperaba\n\n## Definición\n\nEsperanza es desear fuertemente que algo suceda. La esperanza puede implicar certeza o incertidum` format 3 `"# esperanza, esperaba\n\n## Definición\n\nEsperanza es desear fuertemente que algo suceda. La esperanza puede implicar certeza o incertidum`
+- bible/kt/humble: differs
+  - $.article: today `"# humilde, humillarse, humildad, considerado\n\n## Definición\n\nEl término “humilde” describe a una persona que no se considera mejor que ` format 3 `"# humilde, humillarse, humildad, considerado\n\n## Definición\n\nEl término “humilde” describe a una persona que no se considera mejor que `
+- bible/kt/iamyahweh: differs
+  - $.article: today `"# Yo soy Jehová\n\n## Hechos\n\nLa afirmación “Yo soy Jehová” se utiliza para señalar un mandato, un acontecimiento histórico, una promesa ` format 3 `"# Yo soy Jehová\n\n## Hechos\n\nLa afirmación “Yo soy Jehová” se utiliza para señalar un mandato, un acontecimiento histórico, una promesa `
+- bible/kt/inherit: differs
+  - $.article: today `"# heredar, herencia, heredero\n\n## Definición\n\nLos términos “heredar” y “herencia” se refieren a recibir algo valioso de un padre u otra` format 3 `"# heredar, herencia, heredero\n\n## Definición\n\nLos términos “heredar” y “herencia” se refieren a recibir algo valioso de un padre u otra`
+- bible/kt/innocent: differs
+  - $.article: today `"# inocente\n\n## Definición\n\nEl término “inocente” significa no ser culpable de un crimen o de otro tipo de maldad. Puede también referir` format 3 `"# inocente\n\n## Definición\n\nEl término “inocente” significa no ser culpable de un crimen o de otro tipo de maldad. Puede también referir`
+- bible/kt/israel: differs
+  - $.article: today `"# Israel, israelitas\n\n## Hechos\n\nEl término “Israel” es el nombre que Dios dio a Jacob. A menudo se refiere a la nación que desciende d` format 3 `"# Israel, israelitas\n\n## Hechos\n\nEl término “Israel” es el nombre que Dios dio a Jacob. A menudo se refiere a la nación que desciende d`
+- bible/kt/judge: differs
+  - $.article: today `"# juzgar, juicio, juez\n\n## Definición\n\nLos términos “juzgar” y “juicio” a menudo se refieren a tomar una decisión sobre si algo es buen` format 3 `"# juzgar, juicio, juez\n\n## Definición\n\nLos términos “juzgar” y “juicio” a menudo se refieren a tomar una decisión sobre si algo es buen`
+- bible/kt/justice: differs
+  - $.article: today `"# justicia, justo, injusto, injusticia, justificar, justificación\n\n## Definición\n\n“Justicia” y “justo” se refieren a tratar a las perso` format 3 `"# justicia, justo, injusto, injusticia, justificar, justificación\n\n## Definición\n\n“Justicia” y “justo” se refieren a tratar a las perso`
+- bible/kt/kingdomofgod: differs
+  - $.article: today `"# reino de Dios, reino de los cielos\n\n## Definición\n\nLos términos “reino de Dios” y “reino de los cielos” se refieren ambos al gobierno` format 3 `"# reino de Dios, reino de los cielos\n\n## Definición\n\nLos términos “reino de Dios” y “reino de los cielos” se refieren ambos al gobierno`
+- bible/kt/kingofthejews: differs
+  - $.article: today `"# Rey de los judíos\n\n## Definición\n\nEl término “Rey de los judíos” es un título que se refiere a Jesús, el Mesías.\n\n* La primera vez ` format 3 `"# Rey de los judíos\n\n## Definición\n\nEl término “Rey de los judíos” es un título que se refiere a Jesús, el Mesías.\n\n* La primera vez `
+- bible/kt/lamb: differs
+  - $.article: today `"# cordero, Cordero de Dios\n\n## Definición\n\nEl término “cordero” se refiere a una oveja joven. Las ovejas son animales de cuatro patas c` format 3 `"# cordero, Cordero de Dios\n\n## Definición\n\nEl término “cordero” se refiere a una oveja joven. Las ovejas son animales de cuatro patas c`
+- bible/kt/lawofmoses: differs
+  - $.article: today `"# ley, ley de Moisés, ley de Jehová, ley de Dios\n\n## Definición\n\nSencillamente, el término “ley” se refiere a una regla o instrucción q` format 3 `"# ley, ley de Moisés, ley de Jehová, ley de Dios\n\n## Definición\n\nSencillamente, el término “ley” se refiere a una regla o instrucción q`
+- bible/kt/life: differs
+  - $.article: today `"# vida, vivir, viviendo, vivo\n\n## Definición\n\nEl término “vida” se refiere a estar físicamente vivo en contraposición a estar físicamen` format 3 `"# vida, vivir, viviendo, vivo\n\n## Definición\n\nEl término “vida” se refiere a estar físicamente vivo en contraposición a estar físicamen`
+- bible/kt/lord: differs
+  - $.article: today `"# señor, Señor, amo, caballero\n\n## Definición\n\nEn la Biblia, el término “señor” se refiere a alguien que tiene posesión o autoridad sob` format 3 `"# señor, Señor, amo, caballero\n\n## Definición\n\nEn la Biblia, el término “señor” se refiere a alguien que tiene posesión o autoridad sob`
+- bible/kt/love: differs
+  - $.article: today `"# amor, amar, amado\n\n## Definición\n\nAmar a otra persona es cuidar de esa persona y hacer cosas que la puedan beneficiar. Hay diferentes` format 3 `"# amor, amar, amado\n\n## Definición\n\nAmar a otra persona es cuidar de esa persona y hacer cosas que la puedan beneficiar. Hay diferentes`
+- bible/kt/mercy: differs
+  - $.article: today `"# misericordia, misericordioso\n\n## Definición\n\nLos términos “misericordia” y “misericordioso” se refieren a ayudar gente que está en ne` format 3 `"# misericordia, misericordioso\n\n## Definición\n\nLos términos “misericordia” y “misericordioso” se refieren a ayudar gente que está en ne`
+- bible/kt/miracle: differs
+  - $.article: today `"# milagro, maravilla, señal\n\n## Definición\n\nUn “milagro” es algo asombroso que no es posible a menos que Dios haga que ocurra.\n\n* Eje` format 3 `"# milagro, maravilla, señal\n\n## Definición\n\nUn “milagro” es algo asombroso que no es posible a menos que Dios haga que ocurra.\n\n* Eje`
+- bible/kt/name: differs
+  - $.article: today `"# nombre\n\n## Definición\n\nEl término “nombre” se refiere a la palabra con la que se llama a una persona o cosa específica. En la Biblia,` format 3 `"# nombre\n\n## Definición\n\nEl término “nombre” se refiere a la palabra con la que se llama a una persona o cosa específica. En la Biblia,`
+- bible/kt/passover: differs
+  - $.article: today `"# Pascua\n\n## Definición\n\nLa “Pascua” es el nombre de una fiesta religiosa que los judíos celebran cada año, para recordar cómo Dios res` format 3 `"# Pascua\n\n## Definición\n\nLa “Pascua” es el nombre de una fiesta religiosa que los judíos celebran cada año, para recordar cómo Dios res`
+- bible/kt/peopleofgod: differs
+  - $.article: today `"# Pueblo de Dios, mi pueblo\n\n## Definición\n\nEl concepto del “pueblo de Dios” se refiere a las personas con quiénes Dios ha establecido ` format 3 `"# Pueblo de Dios, mi pueblo\n\n## Definición\n\nEl concepto del “pueblo de Dios” se refiere a las personas con quiénes Dios ha establecido `
+- bible/kt/perish: differs
+  - $.article: today `"# Perecer, pereciendo, perecedero\n\n## Definición:\n\nEl término “perecer” significa morir o ser destruido, usualmente como resultado de v` format 3 `"# Perecer, pereciendo, perecedero\n\n## Definición:\n\nEl término “perecer” significa morir o ser destruido, usualmente como resultado de v`
+- bible/kt/power: differs
+  - $.article: today `"# poder, poderoso, capaz, poderosamente\n\n## Definición\n\nEl término “poder” se refiere a la habilidad o capacidad de hacer cosas o de ha` format 3 `"# poder, poderoso, capaz, poderosamente\n\n## Definición\n\nEl término “poder” se refiere a la habilidad o capacidad de hacer cosas o de ha`
+- bible/kt/pray: differs
+  - $.article: today `"# orar, oración\n\n## Definición\n\nLos términos “**orar**” y “**oración**” se refieren a hablar con Dios. Estos términos también se utiliz` format 3 `"# orar, oración\n\n## Definición\n\nLos términos “**orar**” y “**oración**” se refieren a hablar con Dios. Estos términos también se utiliz`
+- bible/kt/priest: differs
+  - $.article: today `"# sacerdote, sacerdocio\n\n## Definición\n\nEn la Biblia, un sacerdote era alguien que era elegido para ofrecer sacrificios a Dios en nombr` format 3 `"# sacerdote, sacerdocio\n\n## Definición\n\nEn la Biblia, un sacerdote era alguien que era elegido para ofrecer sacrificios a Dios en nombr`
+- bible/kt/promisedland: differs
+  - $.article: today `"# Tierra Prometida\n\n## Hechos\n\nEl término “Tierra Prometida” solo aparece en los relatos bíblicos, no en el texto bíblico. Es una forma` format 3 `"# Tierra Prometida\n\n## Hechos\n\nEl término “Tierra Prometida” solo aparece en los relatos bíblicos, no en el texto bíblico. Es una forma`
+- bible/kt/redeem: differs
+  - $.article: today `"# redimir, redentor, redención\n\n## Definición\n\nEl término “redimir” se refiere a recomprar algo o alguien que ha sido poseído o manteni` format 3 `"# redimir, redentor, redención\n\n## Definición\n\nEl término “redimir” se refiere a recomprar algo o alguien que ha sido poseído o manteni`
+- bible/kt/repent: differs
+  - $.article: today `"# arrepentirse, arrepentimiento\n\n## Definición\n\nLos términos “arrepentirse” y “arrepentimiento” se refieren a alejarse del pecado y vol` format 3 `"# arrepentirse, arrepentimiento\n\n## Definición\n\nLos términos “arrepentirse” y “arrepentimiento” se refieren a alejarse del pecado y vol`
+- bible/kt/restore: differs
+  - $.article: today `"# Restaurar, restauración\n\n## Definición\n\nLos términos “restaurar” y “restauración” se refiere a causar que algo regrese a su estado or` format 3 `"# Restaurar, restauración\n\n## Definición\n\nLos términos “restaurar” y “restauración” se refiere a causar que algo regrese a su estado or`
+- bible/kt/resurrection: differs
+  - $.article: today `"# resurrección\n\n## Definición\n\nEl término “resurrección” se refiere al acto de volver a la vida después de haber muerto.\n\n* Resucitar` format 3 `"# resurrección\n\n## Definición\n\nEl término “resurrección” se refiere al acto de volver a la vida después de haber muerto.\n\n* Resucitar`
+- bible/kt/sabbath: differs
+  - $.article: today `"# Sabat, Sábado\n\n## Definición\n\nEl término “Sabat” o “Sábado” se refiere al séptimo día de la semana en que Dios ordenó a los israelita` format 3 `"# Sabat, Sábado\n\n## Definición\n\nEl término “Sabat” o “Sábado” se refiere al séptimo día de la semana en que Dios ordenó a los israelita`
+- bible/kt/satan: differs
+  - $.article: today `"# Satanás, diablo, el maligno\n\n## Definición\n\nEl diablo es un ser espiritual que Dios creó, pero él se rebeló en contra de Dios y se co` format 3 `"# Satanás, diablo, el maligno\n\n## Definición\n\nEl diablo es un ser espiritual que Dios creó, pero él se rebeló en contra de Dios y se co`
+- bible/kt/save: differs
+  - $.article: today `"# salvar, salvo, a salvo, salvación\n\n## Definición\n\nEl término “salvar” se refiere a evitar que alguien experimente algo malo o dañino.` format 3 `"# salvar, salvo, a salvo, salvación\n\n## Definición\n\nEl término “salvar” se refiere a evitar que alguien experimente algo malo o dañino.`
+- bible/kt/sin: differs
+  - $.article: today `"# pecado, pecaminoso, pecador, pecando\n\n## Definición\n\nEl término “pecado” se refiere a las acciones, pensamientos, y palabras que está` format 3 `"# pecado, pecaminoso, pecador, pecando\n\n## Definición\n\nEl término “pecado” se refiere a las acciones, pensamientos, y palabras que está`
+- bible/kt/son: differs
+  - $.article: today `"# hijo\n\n## Definición\n\nAl descendiente varón de un hombre y una mujer se le llama “hijo”. También es llamado un hijo de ese hombre y un` format 3 `"# hijo\n\n## Definición\n\nAl descendiente varón de un hombre y una mujer se le llama “hijo”. También es llamado un hijo de ese hombre y un`
+- bible/kt/sonofgod: differs
+  - $.article: today `"# Hijo de Dios, el Hijo\n\n## Definición\n\nEl término “Hijo de Dios” se refiere a Jesús, el Verbo de Dios quien vino al mundo como un ser ` format 3 `"# Hijo de Dios, el Hijo\n\n## Definición\n\nEl término “Hijo de Dios” se refiere a Jesús, el Verbo de Dios quien vino al mundo como un ser `
+- bible/kt/sonsofgod: differs
+  - $.article: today `"# Hijos de Dios\n\n## Definición\n\nEl término, “hijos de Dios” es una expresión figurada que tiene varios significados posibles.\n\n* En e` format 3 `"# Hijos de Dios\n\n## Definición\n\nEl término, “hijos de Dios” es una expresión figurada que tiene varios significados posibles.\n\n* En e`
+- bible/kt/soul: differs
+  - $.article: today `"# Alma\n\n## Definición\n\nEl término “alma” puede referirse en general a la parte no física de una persona o referirse específicamente a l` format 3 `"# Alma\n\n## Definición\n\nEl término “alma” puede referirse en general a la parte no física de una persona o referirse específicamente a l`
+- bible/kt/spirit: differs
+  - $.article: today `"# Espíritu, espiritual\n\n## Definición\n\nEl término “espíritu” se refiere a la parte no-física de la gente la cual no puede ser vista. Cu` format 3 `"# Espíritu, espiritual\n\n## Definición\n\nEl término “espíritu” se refiere a la parte no-física de la gente la cual no puede ser vista. Cu`
+- bible/kt/temple: differs
+  - $.article: today `"# templo\n\n## Definición\n\nEl templo era un edificio rodeado de patios amurallados donde los israelitas venían a orar y a ofrecer sacrifi` format 3 `"# templo\n\n## Definición\n\nEl templo era un edificio rodeado de patios amurallados donde los israelitas venían a orar y a ofrecer sacrifi`
+- bible/kt/tempt: differs
+  - $.article: today `"# Tentar, tentación\n\n## Definición\n\nTentar a alguien es tratar de llevar a la persona a hacer algo indebido.\n\n* Una tentación es algo` format 3 `"# Tentar, tentación\n\n## Definición\n\nTentar a alguien es tratar de llevar a la persona a hacer algo indebido.\n\n* Una tentación es algo`
+- bible/kt/testimony: differs
+  - $.article: today `"# testimonio, testificar, testigo, testigo ocular, dar fe, evidenciar\n\n## Definición\n\nCuando una persona da “testimonio”, hace una decl` format 3 `"# testimonio, testificar, testigo, testigo ocular, dar fe, evidenciar\n\n## Definición\n\nCuando una persona da “testimonio”, hace una decl`
+- bible/kt/true: differs
+  - $.article: today `"# verdadero, verdad, confiable\n\n## Definición\n\nEl término “**verdad**” se refiere a hechos, eventos y declaraciones que se corresponden` format 3 `"# verdadero, verdad, confiable\n\n## Definición\n\nEl término “**verdad**” se refiere a hechos, eventos y declaraciones que se corresponden`
+- bible/kt/vow: differs
+  - $.article: today `"# Voto\n\n## Definición:\n\nUn voto es una promesa que una persona le hace a Dios. La persona promete hacer cierta cosa con el fin de honra` format 3 `"# Voto\n\n## Definición:\n\nUn voto es una promesa que una persona le hace a Dios. La persona promete hacer cierta cosa con el fin de honra`
+- bible/kt/wise: differs
+  - $.article: today `"# sabio, sabiduría\n\n## Definición\n\nEl término “sabio” describe a alguien que entiende lo que es lo correcto y lo moral que se debe hace` format 3 `"# sabio, sabiduría\n\n## Definición\n\nEl término “sabio” describe a alguien que entiende lo que es lo correcto y lo moral que se debe hace`
+- bible/kt/wordofgod: differs
+  - $.article: today `"# Palabra de Dios, Palabra de Jehová, Palabra del Señor, Palabra de Verdad, Escritura\n\n## Definición\n\nEn la Biblia, el término “Palabra` format 3 `"# Palabra de Dios, Palabra de Jehová, Palabra del Señor, Palabra de Verdad, Escritura\n\n## Definición\n\nEn la Biblia, el término “Palabra`
+- bible/kt/works: differs
+  - $.article: today `"# trabajo, obras, actos, acciones\n\n## Definición\n\nEl término “trabajo” se refiere generalmente a la acción de realizar un esfuerzo para` format 3 `"# trabajo, obras, actos, acciones\n\n## Definición\n\nEl término “trabajo” se refiere generalmente a la acción de realizar un esfuerzo para`
+- bible/kt/world: differs
+  - $.article: today `"# mundo, mundano\n\n## Definición\n\nEl término “mundo” usualmente se refiere a la parte del universo donde las personas viven: la tierra. ` format 3 `"# mundo, mundano\n\n## Definición\n\nEl término “mundo” usualmente se refiere a la parte del universo donde las personas viven: la tierra. `
+- bible/kt/worship: differs
+  - $.article: today `"# postrarse, inclinarse, adorar\n\n## Definición\n\n“Postrarse” significa tumbarse en el suelo, generalmente en sumisión a una persona de a` format 3 `"# postrarse, inclinarse, adorar\n\n## Definición\n\n“Postrarse” significa tumbarse en el suelo, generalmente en sumisión a una persona de a`
+- bible/kt/worthy: differs
+  - $.article: today `"# Digno, valor, indigno, inútil\n\n## Definición\n\nEl término “**digno**” describe a alguien o algo que merece respeto y honor. “Tener val` format 3 `"# Digno, valor, indigno, inútil\n\n## Definición\n\nEl término “**digno**” describe a alguien o algo que merece respeto y honor. “Tener val`
+- bible/kt/yahweh: differs
+  - $.article: today `"# Jehová\n\n## Definición\n\nEl término “Jehová” es el nombre personal de Dios en el Antiguo Testamento. Se desconoce el origen específico ` format 3 `"# Jehová\n\n## Definición\n\nEl término “Jehová” es el nombre personal de Dios en el Antiguo Testamento. Se desconoce el origen específico `
+- bible/kt/zealous: differs
+  - $.article: today `"# celo, celoso\n\n## Definición\n\nLos términos “celo” y “celoso” se refieren a ser fuertemente devoto al apoyar una persona o idea.\n\n* C` format 3 `"# celo, celoso\n\n## Definición\n\nLos términos “celo” y “celoso” se refieren a ser fuertemente devoto al apoyar una persona o idea.\n\n* C`
+- bible/names/aaron: differs
+  - $.article: today `"# Aarón\n\n## Hechos\n\nAarón fue el hermano mayor de Moisés. Dios escogió a Aarón para ser el primer sumo sacerdote del pueblo de Israel.\` format 3 `"# Aarón\n\n## Hechos\n\nAarón fue el hermano mayor de Moisés. Dios escogió a Aarón para ser el primer sumo sacerdote del pueblo de Israel.\`
+- bible/names/abraham: differs
+  - $.article: today `"# Abraham, Abram\n\n## Hechos\n\nAbram era un hombre caldeo de la ciudad de Ur a quien Dios escogió para ser el padre de los israelitas. Di` format 3 `"# Abraham, Abram\n\n## Hechos\n\nAbram era un hombre caldeo de la ciudad de Ur a quien Dios escogió para ser el padre de los israelitas. Di`
+- bible/names/adam: differs
+  - $.article: today `"# Adán\n\n## Hechos\n\nAdán fue la primera persona que Dios creó. Él y su esposa Eva fueron hechos a la imagen de Dios.\n\n* Dios formó a A` format 3 `"# Adán\n\n## Hechos\n\nAdán fue la primera persona que Dios creó. Él y su esposa Eva fueron hechos a la imagen de Dios.\n\n* Dios formó a A`
+- bible/names/ahab: differs
+  - $.article: today `"# Acab\n\n## Hechos\n\nAcab era un rey muy malvado que reinaba en el reino del norte de Israel desde 875 hasta 854 a. C.\n\n* El Rey Acab i` format 3 `"# Acab\n\n## Hechos\n\nAcab era un rey muy malvado que reinaba en el reino del norte de Israel desde 875 hasta 854 a. C.\n\n* El Rey Acab i`
+- bible/names/amorite: differs
+  - $.article: today `"# Amorreos\n\n## Hechos\n\nLos amorreos eran un grupo poderoso de personas que descendía de Canaán, el nieto de Noé. Los amorreos habitaban` format 3 `"# Amorreos\n\n## Hechos\n\nLos amorreos eran un grupo poderoso de personas que descendía de Canaán, el nieto de Noé. Los amorreos habitaban`
+- bible/names/apollos: differs
+  - $.article: today `"# Apolos\n\n## Definición\n\nApolos era un judío de la ciudad de Alejandría en Egipto que tenía una habilidad especial para enseñar a las p` format 3 `"# Apolos\n\n## Definición\n\nApolos era un judío de la ciudad de Alejandría en Egipto que tenía una habilidad especial para enseñar a las p`
+- bible/names/assyria: differs
+  - $.article: today `"# Asiria, asirios, Imperio asirio\n\n## Hechos\n\nAsiria era una nación poderosa durante el tiempo que los israelitas estaban viviendo en l` format 3 `"# Asiria, asirios, Imperio asirio\n\n## Hechos\n\nAsiria era una nación poderosa durante el tiempo que los israelitas estaban viviendo en l`
+- bible/names/baal: differs
+  - $.article: today `"# Baal\n\n## Hechos\n\n“Baal” significa “señor” o “maestro” y era el nombre del falso dios principal que era adorado por los Cananitas.\n\n` format 3 `"# Baal\n\n## Hechos\n\n“Baal” significa “señor” o “maestro” y era el nombre del falso dios principal que era adorado por los Cananitas.\n\n`
+- bible/names/babylon: differs
+  - $.article: today `"# Babilonia, babilonios\n\n## Hechos\n\nLa ciudad de Babilonia era la capital de la región antigua de Babilonia, que era parte también del ` format 3 `"# Babilonia, babilonios\n\n## Hechos\n\nLa ciudad de Babilonia era la capital de la región antigua de Babilonia, que era parte también del `
+- bible/names/barnabas: differs
+  - $.article: today `"# Bernabé\n\n## Hechos\n\nBernabé fue uno de los primeros cristianos que vivió en la época de los apóstoles.\n\n* Bernabé era de la tribu i` format 3 `"# Bernabé\n\n## Hechos\n\nBernabé fue uno de los primeros cristianos que vivió en la época de los apóstoles.\n\n* Bernabé era de la tribu i`
+- bible/names/bathsheba: differs
+  - $.article: today `"# Betsabé\n\n## Hechos\n\nBetsabé era la esposa de Urías, un soldado del ejército del rey David. Después de la muerte de Urías, se convirti` format 3 `"# Betsabé\n\n## Hechos\n\nBetsabé era la esposa de Urías, un soldado del ejército del rey David. Después de la muerte de Urías, se convirti`
+- bible/names/bethlehem: differs
+  - $.article: today `"# Belén, Efrata\n\n## Hechos\n\nBelén era una pequeña ciudad en la tierra de Israel, cerca de la ciudad de Jerusalén. También era conocida ` format 3 `"# Belén, Efrata\n\n## Hechos\n\nBelén era una pequeña ciudad en la tierra de Israel, cerca de la ciudad de Jerusalén. También era conocida `
+- bible/names/boaz: differs
+  - $.article: today `"# Booz\n\n## Hechos\n\nBooz era un israelita quien vivió durante el tiempo de los jueces en Israel. Él se casó con una mujer Moabita llamad` format 3 `"# Booz\n\n## Hechos\n\nBooz era un israelita quien vivió durante el tiempo de los jueces en Israel. Él se casó con una mujer Moabita llamad`
+- bible/names/caleb: differs
+  - $.article: today `"# Caleb\n\n## Hechos\n\nCaleb fue uno de los doce espías israelitas que Moisés envió a explorar la tierra de Canaán.\n\n* Él y Josué le dij` format 3 `"# Caleb\n\n## Hechos\n\nCaleb fue uno de los doce espías israelitas que Moisés envió a explorar la tierra de Canaán.\n\n* Él y Josué le dij`
+- bible/names/canaan: differs
+  - $.article: today `"# Canaán, cananeo\n\n## Hechos\n\nCanaán era el hijo de Cam, que era uno de los hijos de Noé. Los cananeos eran los descendientes de Canaán` format 3 `"# Canaán, cananeo\n\n## Hechos\n\nCanaán era el hijo de Cam, que era uno de los hijos de Noé. Los cananeos eran los descendientes de Canaán`
+- bible/names/david: differs
+  - $.article: today `"# David\n\n## Hechos\n\nDavid fue el segundo rey de Israel y amaba y servía a Dios. Fue el principal escritor del libro de los Salmos.\n\n*` format 3 `"# David\n\n## Hechos\n\nDavid fue el segundo rey de Israel y amaba y servía a Dios. Fue el principal escritor del libro de los Salmos.\n\n*`
+- bible/names/egypt: differs
+  - $.article: today `"# Egipto, egipcio\n\n## Hechos\n\nEgipto es un país situado en la parte noreste de África, al suroeste de la tierra de Canaán. Un egipcio e` format 3 `"# Egipto, egipcio\n\n## Hechos\n\nEgipto es un país situado en la parte noreste de África, al suroeste de la tierra de Canaán. Un egipcio e`
+- bible/names/eleazar: differs
+  - $.article: today `"# Eleazar\n\n## Definición\n\nEleazar era el nombre de varios hombres en la Biblia.\n\n1. Eleazar fue el tercer hijo del hermano de Moisés,` format 3 `"# Eleazar\n\n## Definición\n\nEleazar era el nombre de varios hombres en la Biblia.\n\n1. Eleazar fue el tercer hijo del hermano de Moisés,`
+- bible/names/elijah: differs
+  - $.article: today `"# Elías\n\n## Hechos\n\nElías fue uno de los más importantes profetas de Jehová. Elías profetizó durante los reinados de varios reyes de Is` format 3 `"# Elías\n\n## Hechos\n\nElías fue uno de los más importantes profetas de Jehová. Elías profetizó durante los reinados de varios reyes de Is`
+- bible/names/ephrathah: differs
+  - $.article: today `"# Efrata, efrateos\n\n## Hechos\n\nEl término “Efrata” y “efrateo” derivaron probablemente del nombre “Efraín”, que fue uno de los hijos de` format 3 `"# Efrata, efrateos\n\n## Hechos\n\nEl término “Efrata” y “efrateo” derivaron probablemente del nombre “Efraín”, que fue uno de los hijos de`
+- bible/names/esau: differs
+  - $.article: today `"# Esaú\n\n## Hechos\n\nEsaú era uno de los hijos gemelos de Isaac y Rebeca. Fue el primer bebé que les nació. Su hermano gemelo era Jacob.\` format 3 `"# Esaú\n\n## Hechos\n\nEsaú era uno de los hijos gemelos de Isaac y Rebeca. Fue el primer bebé que les nació. Su hermano gemelo era Jacob.\`
+- bible/names/eve: differs
+  - $.article: today `"# Eva\n\n## Hechos\n\nEste fue el nombre de la primera mujer. Su nombre significa “vida” o “viviente”.\n\n* Dios formó a Eva a partir de un` format 3 `"# Eva\n\n## Hechos\n\nEste fue el nombre de la primera mujer. Su nombre significa “vida” o “viviente”.\n\n* Dios formó a Eva a partir de un`
+- bible/names/galilee: differs
+  - $.article: today `"# Galilea, Galileo\n\n## Hechos\n\nGalilea era la región más al norte de Israel, justo al norte de Samaria. Un “galileo” era una persona qu` format 3 `"# Galilea, Galileo\n\n## Hechos\n\nGalilea era la región más al norte de Israel, justo al norte de Samaria. Un “galileo” era una persona qu`
+- bible/names/gibeon: differs
+  - $.article: today `"# Gabaón, gabaonitas\n\n## Hechos\n\nGabaón era una ciudad que estaba situada a unos 13 kilómetros al noroeste de Jerusalén. Los habitantes` format 3 `"# Gabaón, gabaonitas\n\n## Hechos\n\nGabaón era una ciudad que estaba situada a unos 13 kilómetros al noroeste de Jerusalén. Los habitantes`
+- bible/names/gideon: differs
+  - $.article: today `"# Gedeón\n\n## Hechos\n\nGedeón fue un hombre israelita a quien Dios levantó para liberar a los israelitas de sus enemigos.\n\n* Durante el` format 3 `"# Gedeón\n\n## Hechos\n\nGedeón fue un hombre israelita a quien Dios levantó para liberar a los israelitas de sus enemigos.\n\n* Durante el`
+- bible/names/hagar: differs
+  - $.article: today `"# Agar\n\n## Hechos\n\nAgar era una mujer egipcia que era la esclava personal de Sarai.\n\n* Cuando Sarai no pudo tener hijos, entregó a su` format 3 `"# Agar\n\n## Hechos\n\nAgar era una mujer egipcia que era la esclava personal de Sarai.\n\n* Cuando Sarai no pudo tener hijos, entregó a su`
+- bible/names/houseofdavid: differs
+  - $.article: today `"# Casa de David\n\n## Definición\n\nLa expresión “casa de David” se refiere a la familia o descendientes del Rey David.\n\n* Esto puede tam` format 3 `"# Casa de David\n\n## Definición\n\nLa expresión “casa de David” se refiere a la familia o descendientes del Rey David.\n\n* Esto puede tam`
+- bible/names/isaac: differs
+  - $.article: today `"# Isaac\n\n## Hechos\n\nIsaac era el único hijo de Abraham y Sara. Dios había prometido darles un hijo a pesar de que eran muy viejos.\n\n*` format 3 `"# Isaac\n\n## Hechos\n\nIsaac era el único hijo de Abraham y Sara. Dios había prometido darles un hijo a pesar de que eran muy viejos.\n\n*`
+- bible/names/isaiah: differs
+  - $.article: today `"# Isaías\n\n## Hechos\n\nIsaías fue un profeta de Dios que profetizó durante los reinados de cuatro reyes de Judá: Uzías, Jotam, Acaz y Eze` format 3 `"# Isaías\n\n## Hechos\n\nIsaías fue un profeta de Dios que profetizó durante los reinados de cuatro reyes de Judá: Uzías, Jotam, Acaz y Eze`
+- bible/names/ishmael: differs
+  - $.article: today `"# Ismael, ismaelita\n\n## Hechos\n\nIsmael era el hijo de Abraham y de la esclava egipcia Agar. Hubo varios otros hombres en el Antiguo Tes` format 3 `"# Ismael, ismaelita\n\n## Hechos\n\nIsmael era el hijo de Abraham y de la esclava egipcia Agar. Hubo varios otros hombres en el Antiguo Tes`
+- bible/names/jacob: differs
+  - $.article: today `"# Jacob, Israel\n\n## Hechos\n\nJacob fue el hijo gemelo más joven de Isaac y Rebeca. Dios cambió su nombre a “Israel”. Sus descendientes s` format 3 `"# Jacob, Israel\n\n## Hechos\n\nJacob fue el hijo gemelo más joven de Isaac y Rebeca. Dios cambió su nombre a “Israel”. Sus descendientes s`
+- bible/names/jamesbrotherofjesus: differs
+  - $.article: today `"# Santiago (hermano de Jesús)\n\n## Hechos\n\nSantiago fue un hijo de María y José. Él era uno de los medio hermanos de Jesús más jóvenes.\` format 3 `"# Santiago (hermano de Jesús)\n\n## Hechos\n\nSantiago fue un hijo de María y José. Él era uno de los medio hermanos de Jesús más jóvenes.\`
+- bible/names/jeremiah: differs
+  - $.article: today `"# Jeremías\n\n## Hechos\n\nJeremías fue un profeta de Dios en el reino de Judá. El libro de Jeremías del Antiguo Testamento contiene sus pr` format 3 `"# Jeremías\n\n## Hechos\n\nJeremías fue un profeta de Dios en el reino de Judá. El libro de Jeremías del Antiguo Testamento contiene sus pr`
+- bible/names/jericho: differs
+  - $.article: today `"# Jericó\n\n## Hechos\n\nJericó fue una poderosa ciudad en la tierra de Canaán. Estaba localizada justo al oeste del río Jordán y justo al ` format 3 `"# Jericó\n\n## Hechos\n\nJericó fue una poderosa ciudad en la tierra de Canaán. Estaba localizada justo al oeste del río Jordán y justo al `
+- bible/names/jeroboam: differs
+  - $.article: today `"# Jeroboam\n\n## Hechos\n\nJeroboam, hijo de Nabat, fue el primer rey del reino del norte de Israel cerca de 900-910 antes de Cristo. Otro ` format 3 `"# Jeroboam\n\n## Hechos\n\nJeroboam, hijo de Nabat, fue el primer rey del reino del norte de Israel cerca de 900-910 antes de Cristo. Otro `
+- bible/names/jerusalem: differs
+  - $.article: today `"# Jerusalén\n\n## Hechos\n\nJerusalén fue originalmente una antigua ciudad cananea que luego se convirtió en la ciudad más importante en Is` format 3 `"# Jerusalén\n\n## Hechos\n\nJerusalén fue originalmente una antigua ciudad cananea que luego se convirtió en la ciudad más importante en Is`
+- bible/names/jesse: differs
+  - $.article: today `"# Isaí\n\n## Hechos\n\nIsaí fue el padre del Rey David, y el nieto de Ruth y Boaz.\n\n* Isaí pertenecía a la tribu de Judá.\n* Él era un “e` format 3 `"# Isaí\n\n## Hechos\n\nIsaí fue el padre del Rey David, y el nieto de Ruth y Boaz.\n\n* Isaí pertenecía a la tribu de Judá.\n* Él era un “e`
+- bible/names/johntheapostle: differs
+  - $.article: today `"# Juan (el apóstol)\n\n## Hechos\n\nJuan fue uno de los doce discípulos de Jesús y uno de los amigos más cercanos de Jesús.\n\n* Juan y su ` format 3 `"# Juan (el apóstol)\n\n## Hechos\n\nJuan fue uno de los doce discípulos de Jesús y uno de los amigos más cercanos de Jesús.\n\n* Juan y su `
+- bible/names/johnthebaptist: differs
+  - $.article: today `"# Juan (el Bautista)\n\n## Hechos\n\nJuan era el hijo de Zacarías y Elisabet. Ya que “Juan” era un nombre común, a menudo es llamado “Juan ` format 3 `"# Juan (el Bautista)\n\n## Hechos\n\nJuan era el hijo de Zacarías y Elisabet. Ya que “Juan” era un nombre común, a menudo es llamado “Juan `
+- bible/names/jonah: differs
+  - $.article: today `"# Jonás\n\n## Definición\n\nJonás fue un profeta hebreo en el Antiguo Testamento.\n\n*   El libro de Jonás narra la historia de lo que suce` format 3 `"# Jonás\n\n## Definición\n\nJonás fue un profeta hebreo en el Antiguo Testamento.\n\n*   El libro de Jonás narra la historia de lo que suce`
+- bible/names/joppa: differs
+  - $.article: today `"# Jope\n\n## Descripción:\n\nEn tiempos bíblicos, la ciudad de Jope era un importante puerto comercial ubicado en el Mar Mediterráneo, al s` format 3 `"# Jope\n\n## Descripción:\n\nEn tiempos bíblicos, la ciudad de Jope era un importante puerto comercial ubicado en el Mar Mediterráneo, al s`
+- bible/names/jordanriver: differs
+  - $.article: today `"# río Jordán, Jordán\n\n## Hechos\n\nEl río Jordán es un río que fluye de norte a sur y forma la frontera oriental de la tierra que fue lla` format 3 `"# río Jordán, Jordán\n\n## Hechos\n\nEl río Jordán es un río que fluye de norte a sur y forma la frontera oriental de la tierra que fue lla`
+- bible/names/josephnt: differs
+  - $.article: today `"# José (NT)\n\n## Hechos\n\nJosé fue el padre terrenal de Jesús y lo crió como su hijo. Era un hombre justo que trabajó como carpintero.\n\` format 3 `"# José (NT)\n\n## Hechos\n\nJosé fue el padre terrenal de Jesús y lo crió como su hijo. Era un hombre justo que trabajó como carpintero.\n\`
+- bible/names/josephot: differs
+  - $.article: today `"# José (Antiguo Testamento)\n\n## Hechos\n\nJosé fue el undécimo hijo de Jacob y el primer hijo de su madre Raquel. Los descendientes de su` format 3 `"# José (Antiguo Testamento)\n\n## Hechos\n\nJosé fue el undécimo hijo de Jacob y el primer hijo de su madre Raquel. Los descendientes de su`
+- bible/names/joshua: differs
+  - $.article: today `"# Josué\n\n## Hechos\n\nHubo varios hombres israelitas llamados Josué en la Biblia. El más conocido es Josué, el hijo de Nun, que fue el ay` format 3 `"# Josué\n\n## Hechos\n\nHubo varios hombres israelitas llamados Josué en la Biblia. El más conocido es Josué, el hijo de Nun, que fue el ay`
+- bible/names/judah: differs
+  - $.article: today `"# Judá\n\n## Hechos\n\nJudá fue el cuarto de los doce hijos de Jacob. Su madre era Lea. Sus descendientes convirtieron en una de las tribus` format 3 `"# Judá\n\n## Hechos\n\nJudá fue el cuarto de los doce hijos de Jacob. Su madre era Lea. Sus descendientes convirtieron en una de las tribus`
+- bible/names/judasiscariot: differs
+  - $.article: today `"# Judas Iscariote\n\n## Hechos\n\nJudas Iscariote fue uno de los doce apóstoles de Jesús. Él fue quien traicionó a Jesús ante los líderes j` format 3 `"# Judas Iscariote\n\n## Hechos\n\nJudas Iscariote fue uno de los doce apóstoles de Jesús. Él fue quien traicionó a Jesús ante los líderes j`
+- bible/names/kingdomofisrael: differs
+  - $.article: today `"# reino de Israel\n\n## Hechos\n\nEl término “reino de Israel” se refiere a la parte norte de la nación de Israel donde las doce tribus de ` format 3 `"# reino de Israel\n\n## Hechos\n\nEl término “reino de Israel” se refiere a la parte norte de la nación de Israel donde las doce tribus de `
+- bible/names/kingdomofjudah: differs
+  - $.article: today `"# Judá, reino de Judá\n\n## Hechos\n\nLa tribu de Judá fue la más grande de las doce tribus de Israel. El reino de Judá estaba compuesto po` format 3 `"# Judá, reino de Judá\n\n## Hechos\n\nLa tribu de Judá fue la más grande de las doce tribus de Israel. El reino de Judá estaba compuesto po`
+- bible/names/lazarus: differs
+  - $.article: today `"# Lázaro\n\n## Hechos\n\nLázaro y sus dos hermanas, María y Marta, fueron amigos especiales de Jesús. Él se quedaba con ellos a menudo en s` format 3 `"# Lázaro\n\n## Hechos\n\nLázaro y sus dos hermanas, María y Marta, fueron amigos especiales de Jesús. Él se quedaba con ellos a menudo en s`
+- bible/names/leah: differs
+  - $.article: today `"# Lea\n\n## Hechos\n\nLea fue una de las esposas de Jacob. Era la hermana mayor de Raquel y la madre de seis de los hijos de Jacob: Rubén, ` format 3 `"# Lea\n\n## Hechos\n\nLea fue una de las esposas de Jacob. Era la hermana mayor de Raquel y la madre de seis de los hijos de Jacob: Rubén, `
+- bible/names/mary: differs
+  - $.article: today `"# María, la madre de Jesús\n\n## Hechos\n\nMaría era una mujer joven que vivía en la ciudad de Nazaret quien estaba comprometida a casarse ` format 3 `"# María, la madre de Jesús\n\n## Hechos\n\nMaría era una mujer joven que vivía en la ciudad de Nazaret quien estaba comprometida a casarse `
+- bible/names/midian: differs
+  - $.article: today `"# Madián, Madianitas\n\n## Hechos\n\nMadián era un hijo de Abraham y su esposa Cetura. Este también es el nombre de un grupo de personas lo` format 3 `"# Madián, Madianitas\n\n## Hechos\n\nMadián era un hijo de Abraham y su esposa Cetura. Este también es el nombre de un grupo de personas lo`
+- bible/names/moab: differs
+  - $.article: today `"# Moab, Moabita\n\n## Hechos\n\nEl término “Moab” se refiere a un grupo de personas que vivían al este del Mar Muerto. El libro del Génesis` format 3 `"# Moab, Moabita\n\n## Hechos\n\nEl término “Moab” se refiere a un grupo de personas que vivían al este del Mar Muerto. El libro del Génesis`
+- bible/names/moses: differs
+  - $.article: today `"# Moisés\n\n## Hechos\n\nMoisés era un profeta y líder del pueblo israelita por más de 40 años. Él fue el líder del pueblo israelita cuando` format 3 `"# Moisés\n\n## Hechos\n\nMoisés era un profeta y líder del pueblo israelita por más de 40 años. Él fue el líder del pueblo israelita cuando`
+- bible/names/naaman: differs
+  - $.article: today `"# Naamán\n\n## Hechos\n\nEn el Antiguo Testamento, Naamán era el comandante de el ejército del rey Aram.\n\n* Naamán tenía una terrible enf` format 3 `"# Naamán\n\n## Hechos\n\nEn el Antiguo Testamento, Naamán era el comandante de el ejército del rey Aram.\n\n* Naamán tenía una terrible enf`
+- bible/names/nathan: differs
+  - $.article: today `"# Natán\n\n## Hechos\n\nNatán era un fiel profeta de Dios que vivió durante el tiempo en que David era rey de Israel.\n\n* Dios envió a Nat` format 3 `"# Natán\n\n## Hechos\n\nNatán era un fiel profeta de Dios que vivió durante el tiempo en que David era rey de Israel.\n\n* Dios envió a Nat`
+- bible/names/nazareth: differs
+  - $.article: today `"# Nazaret, Nazareno\n\n## Hechos\n\nNazaret es una ciudad en la región de Galilea en el norte de Israel. Se encuentra aproximadamente a 100` format 3 `"# Nazaret, Nazareno\n\n## Hechos\n\nNazaret es una ciudad en la región de Galilea en el norte de Israel. Se encuentra aproximadamente a 100`
+- bible/names/nebuchadnezzar: differs
+  - $.article: today `"# Nabucodonosor\n\n## Hechos\n\nNabucodonosor era un rey del Imperio Babilónico cuyo poderoso ejército conquistó muchos grupos de personas ` format 3 `"# Nabucodonosor\n\n## Hechos\n\nNabucodonosor era un rey del Imperio Babilónico cuyo poderoso ejército conquistó muchos grupos de personas `
+- bible/names/nileriver: differs
+  - $.article: today `"# río Nilo, río de Egipto, el Nilo\n\n## Hechos\n\nEl Nilo es un río muy grande y ancho en el Noreste de África. Es especialmente bien cono` format 3 `"# río Nilo, río de Egipto, el Nilo\n\n## Hechos\n\nEl Nilo es un río muy grande y ancho en el Noreste de África. Es especialmente bien cono`
+- bible/names/nineveh: differs
+  - $.article: today `"# Nínive, Ninivita\n\n## Descripción:\n\nNínive era la ciudad capital del imperio Asirio. Un “Ninivita” era una persona que vivía en Nínive` format 3 `"# Nínive, Ninivita\n\n## Descripción:\n\nNínive era la ciudad capital del imperio Asirio. Un “Ninivita” era una persona que vivía en Nínive`
+- bible/names/noah: differs
+  - $.article: today `"# Noé\n\n## Hechos\n\nNoé era un hombre que vivió hace más de 4,000 años atrás, en el tiempo cuando Dios envió un diluvio mundial para dest` format 3 `"# Noé\n\n## Hechos\n\nNoé era un hombre que vivió hace más de 4,000 años atrás, en el tiempo cuando Dios envió un diluvio mundial para dest`
+- bible/names/peter: differs
+  - $.article: today `"# Pedro, Simón Pedro, Cefas\n\n## Hechos\n\nPedro fue uno de los doce apóstoles de Jesús. Él fue un líder importante de la Iglesia primitiv` format 3 `"# Pedro, Simón Pedro, Cefas\n\n## Hechos\n\nPedro fue uno de los doce apóstoles de Jesús. Él fue un líder importante de la Iglesia primitiv`
+- bible/names/pharaoh: differs
+  - $.article: today `"# faraón, rey de Egipto\n\n## Hechos\n\nEn tiempos antiguos, los reyes que gobernaban el país de Egipto eran llamados faraones.\n\n* En tot` format 3 `"# faraón, rey de Egipto\n\n## Hechos\n\nEn tiempos antiguos, los reyes que gobernaban el país de Egipto eran llamados faraones.\n\n* En tot`
+- bible/names/philippi: differs
+  - $.article: today `"# Filipos, filipenses\n\n## Hechos\n\nFilipos fue una ciudad principal y colonia romana localizada en Macedonia en la parte norte de la ant` format 3 `"# Filipos, filipenses\n\n## Hechos\n\nFilipos fue una ciudad principal y colonia romana localizada en Macedonia en la parte norte de la ant`
+- bible/names/pilate: differs
+  - $.article: today `"# Pilato\n\n## Hechos\n\nPilato era el gobernador de la provincia romana de Judea que condenó a Jesús a la muerte.\n\n* Porque Pilato era e` format 3 `"# Pilato\n\n## Hechos\n\nPilato era el gobernador de la provincia romana de Judea que condenó a Jesús a la muerte.\n\n* Porque Pilato era e`
+- bible/names/rachel: differs
+  - $.article: today `"# Raquel\n\n## Hechos\n\nRaquel fue una de las esposas de Jacob. Fue la madre de José y Benjamín, cuyos descendientes se convirtieron en tr` format 3 `"# Raquel\n\n## Hechos\n\nRaquel fue una de las esposas de Jacob. Fue la madre de José y Benjamín, cuyos descendientes se convirtieron en tr`
+- bible/names/rahab: differs
+  - $.article: today `"# Rahab\n\n## Hechos\n\nRahab era una mujer que vivió en Jericó cuando Israel atacó la ciudad. Ella era una prostituta.\n\n* Rahab escondió` format 3 `"# Rahab\n\n## Hechos\n\nRahab era una mujer que vivió en Jericó cuando Israel atacó la ciudad. Ella era una prostituta.\n\n* Rahab escondió`
+- bible/names/rebekah: differs
+  - $.article: today `"# Rebeca\n\n## Hechos\n\nRebeca era una nieta del hermano de Abraham, Nacor.\n\n* Dios escogió a Rebeca para ser la esposa de Isaac, hijo d` format 3 `"# Rebeca\n\n## Hechos\n\nRebeca era una nieta del hermano de Abraham, Nacor.\n\n* Dios escogió a Rebeca para ser la esposa de Isaac, hijo d`
+- bible/names/redsea: differs
+  - $.article: today `"# mar de Cañas, mar Rojo\n\n## Hechos\n\nEl “mar de Cañas” era el nombre de un cuerpo de agua localizado entre Egipto y Arabia. Es ahora ll` format 3 `"# mar de Cañas, mar Rojo\n\n## Hechos\n\nEl “mar de Cañas” era el nombre de un cuerpo de agua localizado entre Egipto y Arabia. Es ahora ll`
+- bible/names/rehoboam: differs
+  - $.article: today `"# Roboam\n\n## Hechos\n\nRoboam era uno de los hijos del Rey Salomón, y vino a ser rey de la nación de Israel cuando Salomón murió.\n\n* En` format 3 `"# Roboam\n\n## Hechos\n\nRoboam era uno de los hijos del Rey Salomón, y vino a ser rey de la nación de Israel cuando Salomón murió.\n\n* En`
+- bible/names/rome: differs
+  - $.article: today `"# Roma, romano\n\n## Hechos\n\nEn los tiempos del Nuevo Testamento, la ciudad de Roma fue el centro del Imperio Romano. Hoy día es la ciuda` format 3 `"# Roma, romano\n\n## Hechos\n\nEn los tiempos del Nuevo Testamento, la ciudad de Roma fue el centro del Imperio Romano. Hoy día es la ciuda`
+- bible/names/ruth: differs
+  - $.article: today `"# Rut\n\n## Hechos\n\nRut fue una mujer moabita que vivió durante la época en que los jueces dirigían Israel. En Moab, se casó con un hombr` format 3 `"# Rut\n\n## Hechos\n\nRut fue una mujer moabita que vivió durante la época en que los jueces dirigían Israel. En Moab, se casó con un hombr`
+- bible/names/samaria: differs
+  - $.article: today `"# Samaria, samaritano\n\n## Hechos\n\nSamaria era el nombre de la ciudad y de la región alrededor en la parte norte de Israel. La región es` format 3 `"# Samaria, samaritano\n\n## Hechos\n\nSamaria era el nombre de la ciudad y de la región alrededor en la parte norte de Israel. La región es`
+- bible/names/sarah: differs
+  - $.article: today `"# Sara, Saraí\n\n## Hechos\n\n* Sara era la esposa de Abraham.\n* El nombre original de Sara era “Saraí”, pero Dios se lo cambió por Sara.\` format 3 `"# Sara, Saraí\n\n## Hechos\n\n* Sara era la esposa de Abraham.\n* El nombre original de Sara era “Saraí”, pero Dios se lo cambió por Sara.\`
+- bible/names/saul: differs
+  - $.article: today `"# Saúl\n\n## Hechos\n\nSaúl era un hombre israelita a quien Dios eligió para ser el primer rey de Israel.\n\n* Saúl era alto y guapo, y un ` format 3 `"# Saúl\n\n## Hechos\n\nSaúl era un hombre israelita a quien Dios eligió para ser el primer rey de Israel.\n\n* Saúl era alto y guapo, y un `
+- bible/names/silas: differs
+  - $.article: today `"# Silas, Silvano\n\n## Hechos\n\nSilas era un líder entre los creyentes de Jerusalén.\n\n* Los ancianos de la iglesia de Jerusalén designar` format 3 `"# Silas, Silvano\n\n## Hechos\n\nSilas era un líder entre los creyentes de Jerusalén.\n\n* Los ancianos de la iglesia de Jerusalén designar`
+- bible/names/sinai: differs
+  - $.article: today `"# Sinaí, Horeb\n\n## Hechos\n\nEl monte Sinaí o el monte Horeb es una montaña que probablemente estaba situada en la parte sur de lo que ah` format 3 `"# Sinaí, Horeb\n\n## Hechos\n\nEl monte Sinaí o el monte Horeb es una montaña que probablemente estaba situada en la parte sur de lo que ah`
+- bible/names/solomon: differs
+  - $.article: today `"# Salomón\n\n## Hechos\n\nSalomón era uno de los hijos del rey David. Su madre era Betsabé.\n\n* Cuando Salomón se convirtió en rey, Dios l` format 3 `"# Salomón\n\n## Hechos\n\nSalomón era uno de los hijos del rey David. Su madre era Betsabé.\n\n* Cuando Salomón se convirtió en rey, Dios l`
+- bible/names/tamar: differs
+  - $.article: today `"# Tamar\n\n## Hechos\n\nTamar es el nombre de varias mujeres diferentes en el Antiguo Testamento. Hay varias ciudades u otros lugares que s` format 3 `"# Tamar\n\n## Hechos\n\nTamar es el nombre de varias mujeres diferentes en el Antiguo Testamento. Hay varias ciudades u otros lugares que s`
+- bible/names/tarshish: differs
+  - $.article: today `"# Tarsis\n\n## Descripción:\n\nEn tiempos bíblicos, Tarsis era una ciudad portuaria situada en el Mar Mediterráneo. Se desconoce la ubicaci` format 3 `"# Tarsis\n\n## Descripción:\n\nEn tiempos bíblicos, Tarsis era una ciudad portuaria situada en el Mar Mediterráneo. Se desconoce la ubicaci`
+- bible/names/tychicus: differs
+  - $.article: today `"# Tíquico\n\n## Definición\n\nTíquico era uno de los ministros evangelistas, compañeros de Pablo.\n\n* Tíquico acompañó a Pablo en al menos` format 3 `"# Tíquico\n\n## Definición\n\nTíquico era uno de los ministros evangelistas, compañeros de Pablo.\n\n* Tíquico acompañó a Pablo en al menos`
+- bible/names/uriah: differs
+  - $.article: today `"# Urías\n\n## Hechos\n\nUrías era un hombre justo y uno de los mejores soldados del rey David. A menudo se le conoce como “Urías el hitita”` format 3 `"# Urías\n\n## Hechos\n\nUrías era un hombre justo y uno de los mejores soldados del rey David. A menudo se le conoce como “Urías el hitita”`
+- bible/names/zechariahnt: differs
+  - $.article: today `"# Zacarías (Nuevo Testamento)\n\n## Hechos\n\nEn el Nuevo Testamento, Zacarías era un sacerdote judío que se convirtió en el padre de Juan ` format 3 `"# Zacarías (Nuevo Testamento)\n\n## Hechos\n\nEn el Nuevo Testamento, Zacarías era un sacerdote judío que se convirtió en el padre de Juan `
+- bible/other/admonish: differs
+  - $.article: today `"# amonestar, alertar, advertencia\n\n## Definición\n\nEl término “amonestar” significa advertir o aconsejar.\n\n* Usualmente, “amonestar” s` format 3 `"# amonestar, alertar, advertencia\n\n## Definición\n\nEl término “amonestar” significa advertir o aconsejar.\n\n* Usualmente, “amonestar” s`
+- bible/other/afflict: differs
+  - $.article: today `"# afligir, aflicción, angustia\n\n## Definición\n\nEl término “afligir” significa causarle a alguien angustia o sufrimiento. Una “aflicción` format 3 `"# afligir, aflicción, angustia\n\n## Definición\n\nEl término “afligir” significa causarle a alguien angustia o sufrimiento. Una “aflicción`
+- bible/other/age: differs
+  - $.article: today `"# Edad, envejecido, era\n\n## Definición\n\nEl término “edad” se refiere al número de años que una persona ha vivido. También es usado gene` format 3 `"# Edad, envejecido, era\n\n## Definición\n\nEl término “edad” se refiere al número de años que una persona ha vivido. También es usado gene`
+- bible/other/ash: differs
+  - $.article: today `"# ceniza, cenizas\n\n## Hechos:\n\nEl término \"ceniza\" (o \"cenizas\") se refiere a la sustancia pulverulenta gris que queda tras la comb` format 3 `"# ceniza, cenizas\n\n## Hechos:\n\nEl término \"ceniza\" (o \"cenizas\") se refiere a la sustancia pulverulenta gris que queda tras la comb`
+- bible/other/astray: differs
+  - $.article: today `"# descarriarse, extraviarse, extravío, desviarse, apartarse\n\n## Definición\n\nEl término “perderse” y “extraviarse” significa desobedecer` format 3 `"# descarriarse, extraviarse, extravío, desviarse, apartarse\n\n## Definición\n\nEl término “perderse” y “extraviarse” significa desobedecer`
+- bible/other/barley: differs
+  - $.article: today `"# Cebada\n\n## Definición\n\nEl término “cebada” se refiere a un tipo de grano utilizado para hacer pan.\n\n* La planta de cebada tiene un ` format 3 `"# Cebada\n\n## Definición\n\nEl término “cebada” se refiere a un tipo de grano utilizado para hacer pan.\n\n* La planta de cebada tiene un `
+- bible/other/beg: differs
+  - $.article: today `"# mendigar, rogar, suplicar, mendigo, necesitado\n\n## Definición\n\nEl término “mendigar” significa pedir algo a alguien con urgencia. A m` format 3 `"# mendigar, rogar, suplicar, mendigo, necesitado\n\n## Definición\n\nEl término “mendigar” significa pedir algo a alguien con urgencia. A m`
+- bible/other/betray: differs
+  - $.article: today `"# traicionar, traidor\n\n## Definición\n\nEl término “traicionar” significa actuar de una forma que engaña y perjudica a alguien. Un “traid` format 3 `"# traicionar, traidor\n\n## Definición\n\nEl término “traicionar” significa actuar de una forma que engaña y perjudica a alguien. Un “traid`
+- bible/other/bow: differs
+  - $.article: today `"# Inclinarse, reverenciar, arrodillar, doblar la rodilla\n\n## Definición\n\nEl inclinarse significa doblarse para humildemente expresar re` format 3 `"# Inclinarse, reverenciar, arrodillar, doblar la rodilla\n\n## Definición\n\nEl inclinarse significa doblarse para humildemente expresar re`
+- bible/other/bread: differs
+  - $.article: today `"# pan\n\n## Definición\n\nEl pan es una comida hecha de harina mezclada con agua y aceite para formar una masa. Luego se le da forma de una` format 3 `"# pan\n\n## Definición\n\nEl pan es una comida hecha de harina mezclada con agua y aceite para formar una masa. Luego se le da forma de una`
+- and more (see the counts above)

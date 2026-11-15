@@ -17,12 +17,17 @@
  *   clean article it resolved to (`isVerifiedTerm`); `misses`: the terms whose route answer was the 404 miss.
  * `exceptions` lists the items whose answers did not equal today's; `deps` the other resources (`"<catalog>|<key>"`)
  * with the release the answers were made from; `skippedBooks` the books of a passage entry that were not swept.
+ * `exceptionsSameAs: "<key>"` instead of `exceptions`: the exceptions of that entry (same lang, release and kind; one hop,
+ * the target must hold its own list), stored once when equal (en ult and ust); a pointer it cannot follow makes the
+ * entry unusable.
  */
 import raw from "./verified.json";
 
 export type VerifiedEntry = {
   items?: number;
   exceptions?: string[];
+  /** The key of an entry of the same lang, release and kind whose `exceptions` are this entry's (see `entryAt`). */
+  exceptionsSameAs?: string;
   swept?: string;
   deps?: Record<string, string>;
   chapters?: Record<string, Array<number | string>>;
@@ -217,12 +222,48 @@ function wellFormed(e: VerifiedEntry): boolean {
     if (!o.misses.split(",").every((t) => MISS_TERM.test(t))) return false;
   }
   if (o.catalog !== undefined && typeof o.catalog !== "string") return false;
+  if (
+    o.exceptionsSameAs !== undefined &&
+    typeof o.exceptionsSameAs !== "string"
+  )
+    return false;
   if (o.deps !== undefined) {
     if (!isPlain(o.deps)) return false;
     if (!Object.values(o.deps).every((d) => typeof d === "string"))
       return false;
   }
   return true;
+}
+
+/** `"<lang>|<key>|<release>|<kind>"` without the resource key (entries that may share one exceptions list). */
+function sameAsGroup(k: string): string | undefined {
+  const p = k.split("|");
+  return p.length === 4 ? `${p[0]}|${p[2]}|${p[3]}` : undefined;
+}
+
+/**
+ * The usable entry at `k`: present, well formed, and with `exceptionsSameAs` replaced by the target's `exceptions`.
+ * The pointer is followed one hop only: the target must be another well formed entry of the same lang, release and kind
+ * with its own `exceptions` (no pointer of its own, so no chains or cycles), and the entry must not list its own.
+ * Anything else makes the whole entry unusable (`undefined`), like any malformed field.
+ */
+function entryAt(k: string): VerifiedEntry | undefined {
+  const e = Object.hasOwn(table, k) ? table[k] : undefined;
+  if (typeof e !== "object" || e === null || !wellFormed(e)) return undefined;
+  const to = (e as Record<string, unknown>).exceptionsSameAs;
+  if (to === undefined) return e;
+  if (typeof to !== "string" || e.exceptions !== undefined || to === k)
+    return undefined;
+  const group = sameAsGroup(k);
+  if (group === undefined || sameAsGroup(to) !== group) return undefined;
+  const t = Object.hasOwn(table, to) ? table[to] : undefined;
+  if (typeof t !== "object" || t === null || !wellFormed(t)) return undefined;
+  if (
+    (t as Record<string, unknown>).exceptionsSameAs !== undefined ||
+    !Array.isArray(t.exceptions)
+  )
+    return undefined;
+  return { ...e, exceptions: t.exceptions };
 }
 
 function chapterListed(
@@ -290,10 +331,8 @@ export function isVerified(
     kind !== SEARCH_CATALOG_KIND
   )
     return false;
-  const k = `${lang}|${resourceKey}|${release}|${kind}`;
-  const e = Object.hasOwn(table, k) ? table[k] : undefined;
-  if (typeof e !== "object" || e === null) return false;
-  if (!wellFormed(e)) return false;
+  const e = entryAt(`${lang}|${resourceKey}|${release}|${kind}`);
+  if (!e) return false;
   const deps = e.deps ?? {};
   for (const [depKey, depRelease] of Object.entries(deps)) {
     const have = opts.releaseOf?.(depKey);
@@ -398,9 +437,8 @@ export function isVerifiedMiss(
 ): boolean {
   if (open) return true;
   if (!MISS_TERM.test(term)) return false;
-  const k = `${lang}|${resourceKey}|${release}|articles`;
-  const e = Object.hasOwn(table, k) ? table[k] : undefined;
-  if (typeof e !== "object" || e === null || !wellFormed(e)) return false;
+  const e = entryAt(`${lang}|${resourceKey}|${release}|articles`);
+  if (!e) return false;
   for (const [depKey, depRelease] of Object.entries(e.deps ?? {})) {
     const have = opts.releaseOf?.(depKey);
     if (have === undefined || have !== depRelease) return false;
@@ -432,9 +470,8 @@ export function depsCover(
   releaseOf: (depKey: string) => string | undefined,
 ): boolean {
   if (open) return true;
-  const k = `${lang}|${resourceKey}|${release}|${kind}`;
-  const e = Object.hasOwn(table, k) ? table[k] : undefined;
-  if (typeof e !== "object" || e === null || !wellFormed(e)) return false;
+  const e = entryAt(`${lang}|${resourceKey}|${release}|${kind}`);
+  if (!e) return false;
   const deps = e.deps ?? {};
   for (const key of keys) {
     const depKey = `${lang}|${key}`;

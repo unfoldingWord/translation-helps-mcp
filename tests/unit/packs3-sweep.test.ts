@@ -1,4 +1,6 @@
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error plain .mjs script, no types
 import * as s from "../../scripts/sweep-packs3.mjs";
@@ -954,5 +956,111 @@ describe("search catalog proof", () => {
     });
     expect(e.differs).toHaveLength(51);
     expect(e.differs.at(-1)).toBe("(and 30 more)");
+  });
+});
+
+describe("compactVerified / expandVerified / nextVerified", () => {
+  const ULT = "en|u/en/ult|v9|passage";
+  const UST = "en|u/en/ust|v9|passage";
+  const GLT = "es|u/es/glt|v9|passage";
+  const long = ["TIT 1:3,4,1-16", "TIT 2:1,2,3,4,5,6,7,8,9,10,11,12,13,14,15"];
+  const TA = "en|u/en/ta|v9|articles";
+  const TACAT = "en|u/en/ta|v9|searchCatalog";
+
+  it("stores identical exceptions of the same lang, release and kind once", () => {
+    const out = s.compactVerified({
+      [UST]: { items: 2, exceptions: [...long], chapters: { TIT: [1] } },
+      [ULT]: { items: 2, exceptions: [...long], chapters: { TIT: [1] } },
+      [GLT]: { items: 2, exceptions: [...long] },
+    });
+    expect(out[ULT].exceptions).toEqual(long);
+    expect(out[UST].exceptions).toBeUndefined();
+    expect(out[UST].exceptionsSameAs).toBe(ULT);
+    expect(Object.keys(out[UST])).toEqual([
+      "items",
+      "exceptionsSameAs",
+      "chapters",
+    ]);
+    expect(out[GLT].exceptions).toEqual(long);
+  });
+
+  it("leaves different or empty lists alone", () => {
+    const v = {
+      [ULT]: { exceptions: [...long] },
+      [UST]: { exceptions: [long[0]] },
+      "en|u/en/bsb|v9|passage": { exceptions: [] },
+      "en|u/en/t4t|v9|passage": { exceptions: [] },
+    };
+    expect(s.compactVerified(v)).toEqual(v);
+  });
+
+  it("expands a pointer back to the list and is idempotent", () => {
+    const v = {
+      [ULT]: { exceptions: [...long] },
+      [UST]: { exceptions: [...long] },
+    };
+    const once = s.compactVerified(v);
+    expect(s.expandVerified(once)).toEqual(v);
+    expect(s.compactVerified(once)).toEqual(once);
+    expect(
+      s.formatVerified(s.compactVerified(JSON.parse(s.formatVerified(once)))),
+    ).toBe(s.formatVerified(once));
+  });
+
+  it("drops misses unless the same release's search catalog verdict is equal", () => {
+    const art = { items: 2, idDirs: { "bible/kt": "god" }, misses: "foo,bar" };
+    expect(s.compactVerified({ [TA]: art })[TA]).toEqual({
+      items: 2,
+      idDirs: { "bible/kt": "god" },
+    });
+    expect(
+      s.compactVerified({
+        [TA]: art,
+        [TACAT]: { catalog: "differs", differs: ["x"] },
+      })[TA].misses,
+    ).toBeUndefined();
+    expect(
+      s.compactVerified({
+        [TA]: art,
+        "en|u/en/ta|v8|searchCatalog": { catalog: "equal" },
+      })[TA].misses,
+    ).toBeUndefined();
+    expect(
+      s.compactVerified({ [TA]: art, [TACAT]: { catalog: "equal" } })[TA]
+        .misses,
+    ).toBe("foo,bar");
+  });
+
+  it("a new sweep entry replaces the target without breaking the entry that pointed at it", () => {
+    const old = s.compactVerified({
+      [ULT]: { exceptions: [...long] },
+      [UST]: { exceptions: [...long] },
+    });
+    const next = s.nextVerified(old, { [ULT]: { exceptions: ["TIT 1:1"] } });
+    expect(next[ULT].exceptions).toEqual(["TIT 1:1"]);
+    expect(next[UST].exceptions).toEqual(long);
+    expect(next[UST].exceptionsSameAs).toBeUndefined();
+  });
+
+  it("a later equal verdict keeps the misses an articles sweep writes", () => {
+    const cat = s.nextVerified({}, { [TACAT]: { catalog: "equal" } });
+    const next = s.nextVerified(cat, { [TA]: { items: 1, misses: "foo" } });
+    expect(next[TA].misses).toBe("foo");
+  });
+
+  it("readWindowsFrom expands pointers so the previous proof's range exceptions are seen", () => {
+    const dir = mkdtempSync(join(tmpdir(), "sweep-"));
+    const file = join(dir, "verified.json");
+    writeFileSync(
+      file,
+      s.formatVerified(
+        s.compactVerified({
+          [ULT]: { exceptions: [...long] },
+          [UST]: { exceptions: [...long] },
+        }),
+      ),
+    );
+    const v = s.readWindowsFrom(file);
+    expect(s.rangeExceptionChapters(v[UST]).get("TIT")).toEqual(new Set([1]));
   });
 });

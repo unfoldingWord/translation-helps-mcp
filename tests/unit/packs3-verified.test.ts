@@ -373,3 +373,100 @@ describe("matches what the sweep writes", () => {
     expect(isVerified("x", "y", "z", "notes", "TIT 1")).toBe(false);
   });
 });
+
+describe("exceptionsSameAs (one shared exceptions list)", () => {
+  const ULT = "en|u/en/ult|v9|passage";
+  const UST = "en|u/en/ust|v9|passage";
+  const T4T = "en|u/en/t4t|v9|passage";
+  const pass = (extra: VerifiedEntry = {}): VerifiedEntry => ({
+    items: 3,
+    chapters: { TIT: [1] },
+    ...extra,
+  });
+  const ust = (item: string) =>
+    isVerified("en", "u/en/ust", "v9", "passage", item);
+  const ult = (item: string) =>
+    isVerified("en", "u/en/ult", "v9", "passage", item);
+
+  it("reads the target's exceptions", () => {
+    setVerifiedForTests({
+      [ULT]: pass({ exceptions: ["TIT 1:3"] }),
+      [UST]: pass({ exceptionsSameAs: ULT }),
+    });
+    expect(ust("TIT 1:2")).toBe(true);
+    expect(ust("TIT 1:3")).toBe(false);
+    expect(ult("TIT 1:3")).toBe(false);
+    expect(ult("TIT 1:2")).toBe(true);
+  });
+
+  it("is unusable when the target is missing", () => {
+    setVerifiedForTests({ [UST]: pass({ exceptionsSameAs: ULT }) });
+    expect(ust("TIT 1:2")).toBe(false);
+  });
+
+  it("is unusable when the target has no exceptions list or a bad one", () => {
+    setVerifiedForTests({
+      [ULT]: pass(),
+      [UST]: pass({ exceptionsSameAs: ULT }),
+    });
+    expect(ust("TIT 1:2")).toBe(false);
+    setVerifiedForTests({
+      [ULT]: pass({ exceptions: "TIT 1:3" as unknown as string[] }),
+      [UST]: pass({ exceptionsSameAs: ULT }),
+    });
+    expect(ust("TIT 1:2")).toBe(false);
+  });
+
+  it("is unusable on a cycle, a self reference or a chain", () => {
+    setVerifiedForTests({
+      [ULT]: pass({ exceptionsSameAs: UST }),
+      [UST]: pass({ exceptionsSameAs: ULT }),
+    });
+    expect(ust("TIT 1:2")).toBe(false);
+    expect(ult("TIT 1:2")).toBe(false);
+    setVerifiedForTests({ [UST]: pass({ exceptionsSameAs: UST }) });
+    expect(ust("TIT 1:2")).toBe(false);
+    setVerifiedForTests({
+      [T4T]: pass({ exceptions: [] }),
+      [ULT]: pass({ exceptionsSameAs: T4T }),
+      [UST]: pass({ exceptionsSameAs: ULT }),
+    });
+    expect(ult("TIT 1:2")).toBe(true);
+    expect(ust("TIT 1:2")).toBe(false);
+  });
+
+  it("is unusable beside its own exceptions, with a non-string value, or across lang, release or kind", () => {
+    setVerifiedForTests({
+      [ULT]: pass({ exceptions: [] }),
+      [UST]: pass({ exceptions: [], exceptionsSameAs: ULT }),
+    });
+    expect(ust("TIT 1:2")).toBe(false);
+    setVerifiedForTests({
+      [ULT]: pass({ exceptions: [] }),
+      [UST]: pass({ exceptionsSameAs: 3 as unknown as string }),
+    });
+    expect(ust("TIT 1:2")).toBe(false);
+    for (const other of [
+      "es|u/en/ult|v9|passage",
+      "en|u/en/ult|v8|passage",
+      "en|u/en/ult|v9|notes",
+    ]) {
+      setVerifiedForTests({
+        [other]: pass({ exceptions: [] }),
+        [UST]: pass({ exceptionsSameAs: other }),
+      });
+      expect(ust("TIT 1:2")).toBe(false);
+    }
+  });
+
+  it("is unusable when the target entry itself is malformed", () => {
+    setVerifiedForTests({
+      [ULT]: pass({
+        exceptions: [],
+        chapters: "TIT" as unknown as Record<string, number[]>,
+      }),
+      [UST]: pass({ exceptionsSameAs: ULT }),
+    });
+    expect(ust("TIT 1:2")).toBe(false);
+  });
+});
