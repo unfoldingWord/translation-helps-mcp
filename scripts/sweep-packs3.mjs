@@ -646,21 +646,91 @@ const sameAsGroup = (k) => {
   return p.length === 4 ? `${p[0]}|${p[2]}|${p[3]}` : undefined;
 };
 
+// The entry rules of src/packs3/verified.ts (`wellFormed`, `entryAt`), copied: that file bundles verified.json and
+// exports no rule, and compaction must follow exactly the pointers the reader follows (tests/unit/packs3-sweep.test.ts
+// judges every case with the real reader).
+const isPlainV = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+const isStringsV = (v) => Array.isArray(v) && v.every((x) => typeof x === "string");
+const JOINS_CHAPTER_V = /^(\d+):(\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)$/;
+const TERMS_PART_V = /^[^:|,]+:[^:|,]+(?:\|[^:|,]+)*$/;
+const MISS_TERM_V = /^[^/:|,=A-Z]+$/;
+const joinsParsesV = (line) =>
+  line.split(";").every((p) => {
+    const m = JOINS_CHAPTER_V.exec(p);
+    return !!m && m[2].split(",").every((run) => {
+      const [x, y = x] = run.split("-").map(Number);
+      return y >= x && y - x <= 1000;
+    });
+  });
+
+/** verified.ts `wellFormed`: an object entry whose every present field has the right type and parses. */
+export function entryWellFormed(e) {
+  if (typeof e !== "object" || e === null) return false;
+  for (const f of ["exceptions", "skippedBooks", "wholeBooks", "indexWholeBooks", "ids", "differs"]) {
+    if (e[f] !== undefined && !isStringsV(e[f])) return false;
+  }
+  for (const f of ["chapters", "indexChapters"]) {
+    if (e[f] === undefined) continue;
+    if (!isPlainV(e[f]) || !Object.values(e[f]).every((l) => Array.isArray(l))) return false;
+  }
+  for (const f of ["idDirs", "joins", "terms"]) {
+    if (e[f] === undefined) continue;
+    if (!isPlainV(e[f]) || !Object.values(e[f]).every((l) => typeof l === "string")) return false;
+  }
+  if (isPlainV(e.joins) && !Object.values(e.joins).every(joinsParsesV)) return false;
+  if (isPlainV(e.terms) && !Object.values(e.terms).every((l) => l.split(",").every((p) => TERMS_PART_V.test(p)))) return false;
+  if (e.misses !== undefined && (typeof e.misses !== "string" || !e.misses.split(",").every((t) => MISS_TERM_V.test(t))))
+    return false;
+  if (e.catalog !== undefined && typeof e.catalog !== "string") return false;
+  if (e.exceptionsSameAs !== undefined && typeof e.exceptionsSameAs !== "string") return false;
+  if (e.deps !== undefined && (!isPlainV(e.deps) || !Object.values(e.deps).every((d) => typeof d === "string")))
+    return false;
+  return true;
+}
+
+/** verified.ts `entryAt`'s pointer rule: the key `table[k].exceptionsSameAs` names when the reader follows it, else undefined. */
+function followedTarget(table, k) {
+  const e = Object.hasOwn(table, k) ? table[k] : undefined;
+  if (!entryWellFormed(e)) return undefined;
+  const to = e.exceptionsSameAs;
+  if (typeof to !== "string" || e.exceptions !== undefined || to === k) return undefined;
+  const group = sameAsGroup(k);
+  if (group === undefined || sameAsGroup(to) !== group) return undefined;
+  const t = Object.hasOwn(table, to) ? table[to] : undefined;
+  if (!entryWellFormed(t) || t.exceptionsSameAs !== undefined || !Array.isArray(t.exceptions)) return undefined;
+  return to;
+}
+
 /**
- * The table with every `exceptionsSameAs` pointer replaced by the list it names (a copy; inputs untouched). A pointer
- * verified.ts could not follow (no target, a chain, another group) stays as it is: that entry serves nothing anyway.
+ * The keys of `table` whose `exceptionsSameAs` the reader cannot follow only because of what its target is (missing,
+ * malformed, a pointer itself, no list): the source is well formed, without its own list, and names another key of
+ * its group. Rewriting the target could make such a pointer followable, so it must not be.
+ */
+function blockedPointers(table) {
+  const out = new Map(); // source key -> target key
+  for (const [k, e] of Object.entries(table)) {
+    if (!entryWellFormed(e) || typeof e.exceptionsSameAs !== "string") continue;
+    const to = e.exceptionsSameAs;
+    if (e.exceptions !== undefined || to === k || sameAsGroup(k) === undefined || sameAsGroup(to) !== sameAsGroup(k))
+      continue;
+    if (followedTarget(table, k) === undefined) out.set(k, to);
+  }
+  return out;
+}
+
+/**
+ * The table with every `exceptionsSameAs` pointer verified.ts follows (`entryAt`: a well formed source without its own
+ * list, a well formed target of the same group with its own list, one hop) replaced by that list (a copy; inputs
+ * untouched). Any other pointer stays as it is: that entry serves nothing, and must not start to.
  */
 export function expandVerified(table) {
   const out = {};
   for (const [k, e] of Object.entries(table)) {
-    const to = e?.exceptionsSameAs;
-    const target = typeof to === "string" && Object.hasOwn(table, to) ? table[to] : undefined;
-    if (
-      target && e.exceptions === undefined && to !== k && sameAsGroup(to) === sameAsGroup(k) &&
-      target.exceptionsSameAs === undefined && Array.isArray(target.exceptions)
-    ) {
+    const to = followedTarget(table, k);
+    if (to !== undefined) {
+      const list = table[to].exceptions;
       out[k] = Object.fromEntries(
-        Object.entries(e).map(([f, v]) => (f === "exceptionsSameAs" ? ["exceptions", [...target.exceptions]] : [f, v])),
+        Object.entries(e).map(([f, v]) => (f === "exceptionsSameAs" ? ["exceptions", [...list]] : [f, v])),
       );
     } else out[k] = e;
   }
@@ -673,16 +743,38 @@ export function expandVerified(table) {
  *   differing (verified.ts serves a miss only under that verdict); a later articles sweep writes them again;
  * - entries of one (lang, release, kind) with the same non-empty `exceptions` keep the list once: the first key in
  *   order holds it, the others say `exceptionsSameAs: "<that key>"` (one hop, verified.ts).
- * Pointers in the input are expanded first, so it is idempotent. Keys sorted; inputs untouched.
+ * Pointers verified.ts follows are expanded first, so it is idempotent. It never widens what is served: an entry that
+ * is not well formed is kept exactly as it is and never holds a list for others; a pointer the reader cannot follow
+ * stays as it is, and its target never becomes a holder (a followable pointer there points at a holder again).
+ * `blocked` (source -> target, see `blockedPointers`): pointers of an earlier table that must stay unusable too
+ * (`nextVerified`); one a new entry would make followable is dropped (it served nothing). Keys sorted; inputs untouched.
  */
-export function compactVerified(table) {
+export function compactVerified(table, { blocked: earlier } = {}) {
+  const blocked = new Map([...(earlier ?? []), ...blockedPointers(table)]);
+  const noHolder = new Set(blocked.values());
   const full = expandVerified(table);
+  for (const k of blocked.keys()) if (Object.hasOwn(table, k)) full[k] = table[k];
   const keys = Object.keys(full).sort();
+  const listId = (k, e) => {
+    const group = sameAsGroup(k);
+    const list = e?.exceptions;
+    return group && Array.isArray(list) && list.length && e.exceptionsSameAs === undefined
+      ? `${group}\n${JSON.stringify(list)}`
+      : undefined;
+  };
+  const holder = new Map(); // `${group}\n${JSON of list}` -> the first well formed key that may hold it
+  for (const k of keys) {
+    const id = listId(k, full[k]);
+    if (id !== undefined && !noHolder.has(k) && entryWellFormed(full[k]) && !holder.has(id)) holder.set(id, k);
+  }
   const out = {};
-  const holder = new Map(); // `${group}\n${JSON of list}` -> key holding it
   for (const k of keys) {
     let e = full[k];
-    if (k.endsWith("|articles") && e && e.misses !== undefined) {
+    if (!entryWellFormed(e)) {
+      out[k] = e;
+      continue;
+    }
+    if (k.endsWith("|articles") && e.misses !== undefined) {
       const cat = full[k.slice(0, -"articles".length) + "searchCatalog"];
       const equal = cat?.catalog === "equal" && (cat.differs === undefined || cat.differs.length === 0);
       if (!equal) {
@@ -690,23 +782,26 @@ export function compactVerified(table) {
         e = rest;
       }
     }
-    const list = e?.exceptions;
-    const group = sameAsGroup(k);
-    if (group && Array.isArray(list) && list.length && e.exceptionsSameAs === undefined) {
-      const id = `${group}\n${JSON.stringify(list)}`;
-      const to = holder.get(id);
-      if (to !== undefined && JSON.stringify(list).length > JSON.stringify(to).length) {
-        e = Object.fromEntries(Object.entries(e).map(([f, v]) => (f === "exceptions" ? ["exceptionsSameAs", to] : [f, v])));
-      } else if (to === undefined) holder.set(id, k);
+    const id = listId(k, e);
+    const to = id === undefined ? undefined : holder.get(id);
+    if (to !== undefined && to !== k && (noHolder.has(k) || JSON.stringify(e.exceptions).length > JSON.stringify(to).length)) {
+      e = Object.fromEntries(Object.entries(e).map(([f, v]) => (f === "exceptions" ? ["exceptionsSameAs", to] : [f, v])));
     }
     out[k] = e;
+  }
+  for (const k of blocked.keys()) {
+    if (Object.hasOwn(out, k) && followedTarget(out, k) !== undefined) delete out[k];
   }
   return out;
 }
 
-/** What a sweep writes: the existing table (pointers expanded) with the new entries merged, then compacted. */
+/**
+ * What a sweep writes: the existing table (pointers expanded) with the new entries merged, then compacted. A pointer of
+ * the existing table the reader could not follow stays unusable when a new entry is written at its target.
+ */
 export function nextVerified(existing, entries) {
-  return compactVerified(mergeVerified(expandVerified(existing), entries));
+  const blocked = new Map([...blockedPointers(existing)].filter(([k]) => !Object.hasOwn(entries, k)));
+  return compactVerified(mergeVerified(expandVerified(existing), entries), { blocked });
 }
 
 /**

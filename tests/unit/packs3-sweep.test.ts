@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error plain .mjs script, no types
 import * as s from "../../scripts/sweep-packs3.mjs";
+import { isVerified, setVerifiedForTests } from "../../src/packs3/verified";
 
 describe("sweep-packs3 pure parts", () => {
   it("builds the key from language, resource key, release and kind", () => {
@@ -1062,5 +1063,121 @@ describe("compactVerified / expandVerified / nextVerified", () => {
     );
     const v = s.readWindowsFrom(file);
     expect(s.rangeExceptionChapters(v[UST]).get("TIT")).toEqual(new Set([1]));
+  });
+});
+
+describe("compactVerified never widens what verified.ts serves", () => {
+  const key = (r: string, kind = "passage") => `en|u/en/${r}|v9|${kind}`;
+  const [A, B, C, D] = ["a", "b", "c", "d"].map((r) => key(r));
+  const long = ["TIT 1:3,4,1-16", "TIT 2:1,2,3,4,5,6,7,8,9,10,11,12,13,14,15"];
+  const ok = (extra = {}) => ({ items: 9, chapters: { TIT: [3] }, ...extra });
+  const bad = (extra = {}) => ({ items: 9, chapters: "TIT", ...extra });
+
+  /** What the real reader serves for each key of `table` (a passage verse, or the articles item `bible/kt/god`). */
+  function served(table: Record<string, unknown>): Record<string, boolean> {
+    setVerifiedForTests(table as never);
+    try {
+      return Object.fromEntries(
+        Object.keys(table).map((k) => {
+          const [lang, rk, rel, kind] = k.split("|");
+          const item = kind === "passage" ? "TIT 3:1" : "bible/kt/god";
+          return [k, isVerified(lang!, rk!, rel!, kind!, item)];
+        }),
+      );
+    } finally {
+      setVerifiedForTests(undefined);
+    }
+  }
+  const twice = (t: Record<string, unknown>) => {
+    const once = s.formatVerified(s.compactVerified(t));
+    expect(s.formatVerified(s.compactVerified(JSON.parse(once)))).toBe(once);
+    return JSON.parse(once);
+  };
+
+  it("(a) a pointer at a later malformed entry stays unusable, and so does its target", () => {
+    const t = {
+      [A]: ok({ exceptionsSameAs: B }),
+      [B]: bad({ exceptions: [...long] }),
+    };
+    expect(served(t)).toEqual({ [A]: false, [B]: false });
+    const out = twice(t);
+    expect(served(out)).toEqual({ [A]: false, [B]: false });
+    expect(out).toEqual(t);
+  });
+
+  it("(b) a chain A->B->C where only B serves: A still does not serve", () => {
+    const t = {
+      [A]: ok({ exceptionsSameAs: B }),
+      [B]: ok({ exceptionsSameAs: C }),
+      [C]: ok({ exceptions: [...long] }),
+    };
+    const before = served(t);
+    expect(before).toEqual({ [A]: false, [B]: true, [C]: true });
+    expect(served(twice(t))).toEqual(before);
+  });
+
+  it("(b) the same chain with the list holder first in key order", () => {
+    const t = {
+      [A]: ok({ exceptions: [...long] }),
+      [C]: ok({ exceptionsSameAs: D }),
+      [D]: ok({ exceptionsSameAs: A }),
+    };
+    const before = served(t);
+    expect(before).toEqual({ [A]: true, [C]: false, [D]: true });
+    expect(served(twice(t))).toEqual(before);
+  });
+
+  it("(2) a well formed entry whose list equals a malformed earlier one keeps its own list", () => {
+    const t = {
+      [A]: bad({ exceptions: [...long] }),
+      [B]: ok({ exceptions: [...long] }),
+    };
+    const out = twice(t);
+    expect(out[B].exceptions).toEqual(long);
+    expect(out[B].exceptionsSameAs).toBeUndefined();
+    expect(served(out)).toEqual({ [A]: false, [B]: true });
+  });
+
+  it("a malformed entry is left as it is: its misses are not dropped to make it well formed", () => {
+    const TA = key("ta", "articles");
+    const TB = key("tb", "articles");
+    const art = { items: 1, idDirs: { "bible/kt": "god" } };
+    const t = {
+      [TA]: { ...art, exceptionsSameAs: TB },
+      [TB]: { ...art, exceptions: ["x"], misses: "Not A Term" },
+    };
+    expect(served(t)).toEqual({ [TA]: false, [TB]: false });
+    const out = twice(t);
+    expect(out[TB].misses).toBe("Not A Term");
+    expect(served(out)).toEqual({ [TA]: false, [TB]: false });
+  });
+
+  it("a stale pointer (no target) stays as it is, also when a later sweep writes that target", () => {
+    const t = {
+      [A]: ok({ exceptionsSameAs: D }),
+      [B]: ok({ exceptions: [...long] }),
+    };
+    const out = twice(t);
+    expect(out).toEqual(t);
+    expect(served(out)).toEqual({ [A]: false, [B]: true });
+    const next = s.nextVerified(out, { [D]: ok({ exceptions: ["TIT 1:1"] }) });
+    expect(served(next)[A]).not.toBe(true);
+    expect(served(next)[D]).toBe(true);
+  });
+
+  it("a mixed table: what each key serves and the bytes are the same after one and two runs", () => {
+    const t = {
+      [A]: ok({ exceptionsSameAs: B }),
+      [B]: ok({ exceptionsSameAs: C }),
+      [C]: ok({ exceptions: [...long] }),
+      [D]: ok({ exceptions: [...long] }),
+      [key("e")]: bad({ exceptions: [...long] }),
+      [key("f")]: ok({ exceptionsSameAs: key("e") }),
+      [key("g")]: ok({ exceptionsSameAs: key("g") }),
+      [key("h")]: ok({ exceptions: [...long] }),
+    };
+    const before = served(t);
+    const out = twice(t);
+    expect(served(out)).toEqual(before);
   });
 });
