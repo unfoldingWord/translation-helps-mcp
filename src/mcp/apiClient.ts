@@ -105,6 +105,20 @@ function isLocalApiBaseUrl(url: string): boolean {
   }
 }
 
+/** The error of a non-2xx answer with this status and (parsed) body, as `ApiClient.get` throws it. */
+function apiErrorOf(status: number, raw: unknown): ApiClientError {
+  let code = "API_ERROR";
+  let message = `HTTP ${status}`;
+  let retryable = status >= 500;
+  const body = raw as ApiErrorResponse | undefined;
+  if (body?.error) {
+    code = body.error.code ?? code;
+    message = body.error.message ?? message;
+    retryable = body.error.retryable ?? retryable;
+  }
+  return new ApiClientError(code, message, status, retryable);
+}
+
 export class ApiClient {
   private readonly baseUrl: string;
   private readonly fetcher: Fetcher | null;
@@ -166,6 +180,8 @@ export class ApiClient {
       const a = await attemptPacks3(p3, path, params ?? {});
       if (a.hit) {
         this.trace?.push({ served: true });
+        // A proven route error (a term lookup's 404 miss): the same error the API's own answer gives below.
+        if (a.status !== undefined) throw apiErrorOf(a.status, a.value);
         return a.value as T;
       }
       this.trace?.push({ fallback: a.reason });
@@ -188,23 +204,14 @@ export class ApiClient {
     const response = await this.fetchUrl(url.toString(), true);
 
     if (!response.ok) {
-      let code = "API_ERROR";
-      let message = `HTTP ${response.status}`;
-      let retryable = response.status >= 500;
-
+      let body: ApiErrorResponse | undefined;
       try {
-        const body = await this.readJson<ApiErrorResponse>(response);
-        if (body?.error) {
-          code = body.error.code ?? code;
-          message = body.error.message ?? message;
-          retryable = body.error.retryable ?? retryable;
-        }
+        body = await this.readJson<ApiErrorResponse>(response);
       } catch (error) {
         if (error instanceof ApiTimeoutError) throw error;
         // ignore JSON parse failure
       }
-
-      throw new ApiClientError(code, message, response.status, retryable);
+      throw apiErrorOf(response.status, body);
     }
 
     return this.readJson<T>(response);

@@ -79,8 +79,12 @@ export const ADAPTERS: Packs3Adapter[] = [
   },
 ];
 
+/**
+ * `status` is set only for a proven route error (an article lookup's 404 miss): `value` is then the route's error body,
+ * and the caller treats it as the API's own non-2xx answer (apiClient throws the same `ApiClientError`).
+ */
 export type Packs3Attempt =
-  | { hit: true; value: unknown }
+  | { hit: true; value: unknown; status?: number }
   | { hit: false; reason: string };
 
 function langOf(params: Packs3Params): string {
@@ -105,6 +109,14 @@ export async function attemptPacks3(
     if (value === undefined) {
       warnOnce(langOf(params), "adapter-undefined");
       return { hit: false, reason: "adapter-undefined" };
+    }
+    // An adapter answers a route error as the route's own `Response` (only a 404, the proven miss of a term lookup).
+    if (value instanceof Response) {
+      if (value.status !== 404) {
+        warnOnce(langOf(params), "adapter-status");
+        return { hit: false, reason: "adapter-status" };
+      }
+      return { hit: true, status: 404, value: await value.json() };
     }
     return { hit: true, value };
   } catch {

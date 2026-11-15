@@ -522,7 +522,7 @@ export function compactArticles(entry, resolved = {}) {
   const dirs = {};
   const clean = new Set();
   for (const id of entry.ids ?? []) {
-    if (bad.has(id) || id.startsWith(TERM_PREFIX)) continue;
+    if (bad.has(id) || id.startsWith(TERM_PREFIX) || id.startsWith(MISS_PREFIX)) continue;
     clean.add(id);
     const i = id.lastIndexOf("/");
     const dir = i < 0 ? "" : id.slice(0, i);
@@ -548,9 +548,24 @@ export function compactArticles(entry, resolved = {}) {
     (termDirs[dir] ??= []).push(`${name}:${ts.join("|")}`);
   }
   const terms = Object.fromEntries(Object.keys(termDirs).sort().map((d) => [d, termDirs[d].join(",")]));
+  // Miss items (`miss:<term>`): an equal one (the route's 404 and the adapter's) goes to `misses` (verified.ts
+  // `isVerifiedMiss`), sorted and comma-joined.
+  const misses = (entry.ids ?? [])
+    .filter((id) => id.startsWith(MISS_PREFIX) && !bad.has(id))
+    .map((id) => id.slice(MISS_PREFIX.length))
+    .sort();
   const { ids, exceptions, ...rest } = entry;
-  return { ...rest, excepted: bad.size, idDirs, ...(Object.keys(terms).length ? { terms } : {}) };
+  return {
+    ...rest,
+    excepted: bad.size,
+    idDirs,
+    ...(Object.keys(terms).length ? { terms } : {}),
+    ...(misses.length ? { misses: misses.join(",") } : {}),
+  };
 }
+
+/** A term or title whose lookup the route answers with its 404 miss: its item in an articles entry. */
+export const MISS_PREFIX = "miss:";
 
 /** A term or title asked as a bare article path (`/words/<term>`): its item in an articles entry. */
 export const TERM_PREFIX = "term:";
@@ -561,8 +576,21 @@ export const TERM_PREFIX = "term:";
  * resolver resolves it over the whole catalog: `{ item, status, path? }`. A title the preparation refuses (not ASCII)
  * or that keeps a `/` is not a term. `resolve` is `src/core/articleResolve`.
  */
-export function articleTerms(sub, articles, resolve) {
+export function articleTerms(sub, articles, resolve, extra = []) {
   const resolver = sub === "tw" ? resolve.resolveTwArticle : resolve.resolveTaArticle;
+  const terms = new Set([...titleTerms(sub, articles, resolve), ...extra]);
+  return [...terms].sort().map((t) => {
+    const m = resolver(t, articles);
+    if (m.status === "miss") return { item: `${MISS_PREFIX}${t}`, status: "miss" };
+    return { item: `${TERM_PREFIX}${t}`, status: m.status, ...(m.path && m.status === "resolved" ? { path: m.path } : {}) };
+  });
+}
+
+/**
+ * The terms of one article catalog (see `articleTerms`), sorted. th_get_article asks a bare term of both tW and tA, so
+ * each type's terms are asked of the other type too (`extra`), where most are misses (`miss:<term>` items).
+ */
+export function titleTerms(sub, articles, resolve) {
   const terms = new Set();
   for (const a of articles) {
     const parts = sub === "tw" ? a.title.split(",").map((p) => p.trim()).filter(Boolean) : [a.title.trim()];
@@ -576,10 +604,7 @@ export function articleTerms(sub, articles, resolve) {
       if (t && !/[/:|,=]/.test(t)) terms.add(t);
     }
   }
-  return [...terms].sort().map((t) => {
-    const m = resolver(t, articles);
-    return { item: `${TERM_PREFIX}${t}`, status: m.status, ...(m.path && m.status === "resolved" ? { path: m.path } : {}) };
-  });
+  return [...terms].sort();
 }
 
 /** How many items an entry excepts (a passage exception string groups a chapter's items). */
@@ -602,6 +627,20 @@ export function formatVerified(table) {
 export function mergeVerified(existing, entries) {
   const all = { ...existing, ...entries };
   return Object.fromEntries(Object.keys(all).sort().map((k) => [k, all[k]]));
+}
+
+/**
+ * A miss item: the adapter's attempt against the API's `{ status, body }` (`undefined`: no answer). Equal only when both
+ * are a 404 with the same body (the route's error, which apiClient turns into the same `ApiClientError`).
+ */
+export function classifyMiss(attempt, api) {
+  if (api === undefined) return { status: "api-error" };
+  if (!attempt.hit) return { status: "fallback", reason: attempt.reason };
+  if (attempt.status !== 404 || api.status !== 404) {
+    return { status: "differs", diffs: [`status ${attempt.status ?? 200} vs ${api.status}`] };
+  }
+  const diffs = diffPaths(normalize(api.body), normalize(JSON.parse(JSON.stringify(attempt.value))));
+  return diffs.length ? { status: "differs", diffs } : { status: "equal" };
 }
 
 /** One item: the adapter's attempt against the API's JSON (`undefined` when the API did not answer 2xx). */
@@ -644,8 +683,10 @@ export function requestOf(kind, language, item, { index = false } = {}) {
       return { path: "/api/v1/questions", params: { reference: item, language } };
     case "tw":
     case "ta": {
-      // A term item (`term:<term>`, see `articleTerms`) is asked as the bare term, as th_get_article asks a title.
-      const p = item.startsWith(TERM_PREFIX) ? item.slice(TERM_PREFIX.length) : item;
+      // A term or miss item (`term:<term>`, `miss:<term>`, see `articleTerms`) is asked as the bare term, as
+      // th_get_article asks a title.
+      const prefix = [TERM_PREFIX, MISS_PREFIX].find((x) => item.startsWith(x));
+      const p = prefix ? item.slice(prefix.length) : item;
       return {
         path: `/api/v1/${kind === "tw" ? "words" : "academy"}/${p.split("/").map(encodeURIComponent).join("/")}`,
         params: { language, requestedPath: p, prepared: "1" },
@@ -697,14 +738,21 @@ async function localBucket(dir) {
   };
 }
 
-/** GET with retries (429 and 5xx back off, 4 tries after the first); `undefined` for any other non-2xx. Cached on disk. */
-async function apiGet({ base, headers }, req, cache) {
+/**
+ * GET with retries (429 and 5xx back off, 4 tries after the first); `undefined` for any other non-2xx. Cached on disk.
+ * `withStatus` (miss items): `{ status, body }`, the body of a 404 too; an older cached 404 without it is asked again.
+ */
+async function apiGet({ base, headers }, req, cache, { withStatus = false } = {}) {
   const qs = new URLSearchParams(req.params).toString();
   const url = `${base.replace(/\/$/, "")}${req.path}?${qs}`;
   const file = join(cache.dir, createHash("sha1").update(url).digest("hex") + ".json");
   if (cache.resume && existsSync(file)) {
     const cached = JSON.parse(readFileSync(file, "utf8"));
-    if (cacheFresh(cached, cache.catalogKey, Date.now(), cache.maxAgeHours)) return cached.body;
+    if (cacheFresh(cached, cache.catalogKey, Date.now(), cache.maxAgeHours)) {
+      if (!withStatus) return cached.body;
+      if (cached.status !== 404) return { status: cached.status, body: cached.body };
+      if (cached.errorBody !== undefined) return { status: 404, body: cached.errorBody };
+    }
   }
   let last = 0;
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -722,7 +770,10 @@ async function apiGet({ base, headers }, req, cache) {
       continue;
     }
     const body = res.ok ? await res.json().catch(() => undefined) : undefined;
-    writeFileSync(file, JSON.stringify({ url, status: res.status, fetchedAt: Date.now(), catalog: cache.catalogKey, body }));
+    const errorBody = res.status === 404 ? await res.json().catch(() => undefined) : undefined;
+    const record = { url, status: res.status, fetchedAt: Date.now(), catalog: cache.catalogKey, body };
+    writeFileSync(file, JSON.stringify(errorBody !== undefined ? { ...record, errorBody } : record));
+    if (withStatus) return { status: res.status, body: res.status === 404 ? errorBody : body };
     return body;
   }
   console.error(`API gave ${last} for ${url} after retries`);
@@ -822,20 +873,27 @@ async function main() {
         }
       }
     });
-    // Terms and titles (th_get_article by title or alternate name): resolved over the resource's whole catalog. A term
-    // resolving to one article is swept; an ambiguous one is recorded as an exception without asking (the adapter never
-    // answers it); a miss or an exact path is not an item.
+    // Terms and titles (th_get_article by title or alternate name, asked of both tW and tA): every term of either
+    // catalog, resolved over each resource's whole catalog. A term resolving to one article is swept; an ambiguous one
+    // is recorded as an exception without asking (the adapter never answers it); a miss is swept as a miss item (the
+    // route's 404 against the adapter's); an exact path is not an item.
+    const wholeCats = {};
+    for (const sub of ["tw", "ta"]) {
+      if (!resources.some((r) => SUBJECTS[sub].includes(r.subject))) continue;
+      wholeCats[sub] = await articleCatalogFromPacks3(env, lang, sub, { kind: "articles" });
+      if (!wholeCats[sub]) console.log(`${lang} ${sub}: whole catalog not readable: no term items`);
+    }
     for (const sub of ["tw", "ta"]) {
       const res = resources.filter((r) => SUBJECTS[sub].includes(r.subject)).map((r) => r.key);
-      if (!res.length) continue;
-      const cat = await articleCatalogFromPacks3(env, lang, sub, { kind: "articles" });
-      if (!cat) {
-        console.log(`${lang} ${sub}: whole catalog not readable: no term items`);
-        continue;
-      }
-      for (const t of articleTerms(sub, cat.articles, articleResolve)) {
+      const cat = wholeCats[sub];
+      if (!res.length || !cat) continue;
+      const otherSub = sub === "tw" ? "ta" : "tw";
+      const other = wholeCats[otherSub];
+      const extra = other ? titleTerms(otherSub, other.articles, articleResolve) : [];
+      for (const t of articleTerms(sub, cat.articles, articleResolve, extra)) {
         if (t.status === "resolved") items.push({ sub, item: t.item, res, termPath: t.path });
         else if (t.status === "ambiguous") items.push({ sub, item: t.item, res, skip: "ambiguous" });
+        else if (t.status === "miss") items.push({ sub, item: t.item, res, miss: true });
       }
     }
   } else {
@@ -899,6 +957,12 @@ async function main() {
   const sweepOne = async (it) => {
     if (it.skip) return { ...it, status: it.skip };
     const req = requestOf(it.sub, lang, it.index ? it.bare : it.item, { index: !!it.index });
+    if (it.miss) {
+      const got = await apiGet(apiTarget(it, { api, apiIndex }), req, cache, { withStatus: true });
+      const r = { ...it, ...classifyMiss(await runAdapter(req.path, req.params), got) };
+      if (++done % 100 === 0) console.log(`${done}/${items.length}`);
+      return r;
+    }
     const body = await apiGet(apiTarget(it, { api, apiIndex }), req, cache);
     const attempt = await runAdapter(req.path, req.params);
     const used = kind === "passage" && attempt.hit ? keysFromVersions(attempt.value?.versions) : undefined;

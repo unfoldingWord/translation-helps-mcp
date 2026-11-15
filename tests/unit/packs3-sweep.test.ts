@@ -468,6 +468,33 @@ describe("compactArticles", () => {
     });
   });
 
+  it("equal miss items go to `misses` (sorted, comma-joined); excepted ones are not listed", () => {
+    const entry = {
+      items: 4,
+      exceptions: ["miss:pact"],
+      swept: "d",
+      deps: {},
+      ids: [
+        "translate/figs-metaphor",
+        "miss:pact",
+        "miss:covenant",
+        "miss:grace",
+      ],
+    };
+    expect(s.compactArticles(entry)).toEqual({
+      items: 4,
+      swept: "d",
+      deps: {},
+      excepted: 1,
+      idDirs: { translate: "figs-metaphor" },
+      misses: "covenant,grace",
+    });
+    expect(
+      s.compactArticles({ items: 1, exceptions: [], deps: {}, ids: ["a/b"] })
+        .misses,
+    ).toBeUndefined();
+  });
+
   it("a term item without a resolved path is never listed", () => {
     const entry = {
       items: 2,
@@ -527,6 +554,82 @@ describe("articleTerms", () => {
     expect(s.requestOf("ta", "en", "term:metaphor").path).toBe(
       "/api/v1/academy/metaphor",
     );
+    // a miss item is asked the same way
+    expect(s.requestOf("ta", "en", "miss:covenant")).toEqual({
+      path: "/api/v1/academy/covenant",
+      params: { language: "en", requestedPath: "covenant", prepared: "1" },
+    });
+  });
+
+  it("terms of the other type (th_get_article asks both) are resolved here too: a miss becomes a miss item", async () => {
+    const r = await import("../../src/core/articleResolve");
+    const ta = [{ path: "translate/figs-metaphor", title: "Metaphor" }];
+    const out = s.articleTerms("ta", ta, r, ["covenant", "metaphor"]);
+    expect(out).toEqual([
+      { item: "miss:covenant", status: "miss" },
+      {
+        item: "term:metaphor",
+        status: "resolved",
+        path: "translate/figs-metaphor",
+      },
+    ]);
+    // without the other type's terms, own titles only (as before)
+    expect(
+      s.articleTerms("ta", ta, r).map((x: { item: string }) => x.item),
+    ).toEqual(["term:metaphor"]);
+    // the prepared terms of a catalog (both types share them)
+    expect(
+      s.titleTerms(
+        "tw",
+        [{ path: "bible/kt/grace", title: "Grace, gracious" }],
+        r,
+      ),
+    ).toEqual(["grace", "gracious"]);
+  });
+});
+
+describe("classifyMiss", () => {
+  const body = (m: string) => ({
+    error: { code: "NOT_FOUND", message: m, retryable: false },
+  });
+  const msg = 'Translation Academy article not found at path: "covenant"';
+  it("equal only when both are a 404 with the same body", () => {
+    expect(
+      s.classifyMiss(
+        { hit: true, status: 404, value: body(msg) },
+        { status: 404, body: body(msg) },
+      ),
+    ).toEqual({ status: "equal" });
+    expect(
+      s.classifyMiss(
+        { hit: true, status: 404, value: body("other") },
+        { status: 404, body: body(msg) },
+      ).status,
+    ).toBe("differs");
+  });
+  it("an article answer, a fallback, or an API that is not a 404 is never an equal miss", () => {
+    expect(
+      s.classifyMiss(
+        { hit: true, value: { path: "x" } },
+        { status: 404, body: body(msg) },
+      ).status,
+    ).toBe("differs");
+    expect(
+      s.classifyMiss(
+        { hit: false, reason: "r" },
+        { status: 404, body: body(msg) },
+      ).status,
+    ).toBe("fallback");
+    expect(
+      s.classifyMiss(
+        { hit: true, status: 404, value: body(msg) },
+        { status: 200, body: { path: "x" } },
+      ).status,
+    ).toBe("differs");
+    expect(
+      s.classifyMiss({ hit: true, status: 404, value: body(msg) }, undefined)
+        .status,
+    ).toBe("api-error");
   });
 });
 

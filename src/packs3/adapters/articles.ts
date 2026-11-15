@@ -6,8 +6,11 @@
  *   is answered; the requested language must be the catalog's. A bare term or title (no `/`) that is not an exact path
  *   resolves against the resource's whole catalog and is answered only as a swept term item (`terms`, `isVerifiedTerm`):
  *   equal for this release, resolving to the article recorded for it, which is itself a clean item.
- * - A path that does not resolve to one article (a miss or several candidates) gives `undefined`: format 3 never says
- *   "not found" or "not available", the API Worker decides (its catalog may hold an article this pack lacks).
+ * - A path that does not resolve to one article (a miss or several candidates) gives `undefined`: format 3 does not say
+ *   "not found" or "not available" on its own, the API Worker decides (its catalog may hold an article this pack lacks).
+ *   The one exception is a proven miss: a bare term swept as a miss (`misses`, `isVerifiedMiss`, which needs the equal
+ *   search catalog proof of the release: the route's catalog is ours) that misses here too gets the route's own 404
+ *   `Response` (`jsonArticleMatch`), which answer.ts passes on as the API's error.
  * - The body is rebuilt from the sections exactly as the zip file reads. Format 3 rewrites Bible reference links as
  *   `](ref:act 4:33)` and keeps no trace of the published form; the canonical `rc://<lang>/tn/help/act/04/33` is rebuilt
  *   and the sweep proves it per article (one published otherwise is an exception). `[[ta:`, `[[tw:` gives `undefined`.
@@ -30,7 +33,12 @@ import type { Catalogs3, Packs3Env } from "../catalogs";
 import { warnOnce } from "../keys";
 import { withReader } from "../readers";
 import type { Packs3Params } from "../answer";
-import { isVerified, isVerifiedTerm, releaseOfCatalogs } from "../verified";
+import {
+  isVerified,
+  isVerifiedMiss,
+  isVerifiedTerm,
+  releaseOfCatalogs,
+} from "../verified";
 
 export type ArticleKind = "tw" | "ta";
 export const GROUPS: Record<ArticleKind, string[]> = {
@@ -207,7 +215,7 @@ async function articleFromPacks3(
   env: Packs3Env,
   kind: ArticleKind,
   params: ArticleParams,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<Record<string, unknown> | Response | undefined> {
   const { pathParam, language } = params;
   if (!language || !pathParam) return undefined;
   let prepared: string;
@@ -245,6 +253,33 @@ async function articleFromPacks3(
       if (!all || all.length === 0) return undefined;
       if (new Set(all.map((r) => r.res)).size !== 1) return undefined;
       const m = resolve(prepared, asCatalogArticles(kind, all));
+      if (m.status === "miss") {
+        const res = all[0]!.res;
+        const resource = releaseOf(c, kind, res);
+        if (
+          !resource ||
+          !isVerifiedMiss(
+            c.lang,
+            res,
+            resource.release,
+            prepared.toLowerCase(),
+            { releaseOf: releaseOfCatalogs(c.catalogs) },
+          )
+        ) {
+          warnOnce(language, "unverified-resource");
+          return undefined;
+        }
+        // The route's own miss answer (a 404 whose message echoes `requestedPath`).
+        return jsonArticleMatch({
+          kind,
+          language: c.lang,
+          requestedLanguage: language,
+          requestedPath,
+          match: m,
+          article: null,
+          titleOf: () => undefined,
+        });
+      }
       if (m.status !== "resolved") return undefined;
       match = m;
       recs = all;

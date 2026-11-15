@@ -14,7 +14,8 @@ import {
   academyPathFromPacks3,
   bodyOf,
 } from "../../src/packs3/adapters/articles";
-import { answerFromPacks3 } from "../../src/packs3/answer";
+import { answerFromPacks3, attemptPacks3 } from "../../src/packs3/answer";
+import { jsonArticleMatch } from "../../src/api/routes/articleResponse";
 import { injectFixtureProofs } from "./packs3-fixture-verified";
 
 const STAGING =
@@ -393,6 +394,177 @@ describe("articles by term and title (sweep `terms`)", () => {
     ]) {
       await withTerms("en", "tw", bad);
       expect(await words("callspeakloudly")).toBeUndefined();
+      expect(await words("bible/kt/call-speakloudly")).toBeUndefined();
+    }
+  });
+});
+
+/**
+ * The fixture proofs plus `misses` on the articles entry of one language and kind and, unless `catalog` is false, an
+ * equal search catalog proof of the same resource release.
+ */
+const withMisses = (
+  lang: string,
+  kind: "tw" | "ta",
+  misses: unknown,
+  {
+    catalog = true,
+    edit = () => {},
+  }: {
+    catalog?: boolean;
+    edit?: (e: Record<string, unknown>) => void;
+  } = {},
+) =>
+  injectFixtureProofs(
+    env(),
+    (t) => {
+      for (const [k, e] of Object.entries(t))
+        if (
+          k.startsWith(`${lang}|`) &&
+          k.endsWith("|articles") &&
+          k.includes(`/${kind}|`)
+        ) {
+          (e as Record<string, unknown>).misses = misses;
+          edit(e as Record<string, unknown>);
+          if (catalog)
+            t[k.replace(/\|articles$/, "|searchCatalog")] = {
+              items: 0,
+              exceptions: [],
+              deps: {},
+              catalog: "equal",
+            };
+        }
+    },
+    { articles: SWEPT },
+  );
+
+const miss = (
+  kind: "tw" | "ta",
+  term: string,
+  language = "en",
+  requestedPath = term,
+) =>
+  attemptPacks3(
+    env(),
+    `/api/v1/${kind === "tw" ? "words" : "academy"}/${term}`,
+    {
+      language,
+      requestedPath,
+      prepared: "1",
+    },
+  );
+
+/** The route's own miss answer (articleResponse.ts), as the API Worker sends it. */
+const routeMiss = async (kind: "tw" | "ta", requestedPath: string) => {
+  const r = jsonArticleMatch({
+    kind,
+    language: "en",
+    requestedLanguage: "en",
+    requestedPath,
+    match: { status: "miss" } as never,
+    article: null,
+    titleOf: () => undefined,
+  });
+  return { status: r.status, body: await r.json() };
+};
+
+describe("the miss side of a term lookup (sweep `misses`)", () => {
+  it("a swept miss with an equal search catalog proof answers the route's own 404", async () => {
+    await withMisses("en", "tw", "zzznoword,qqq");
+    const a = await miss("tw", "zzznoword");
+    const want = await routeMiss("tw", "zzznoword");
+    expect(want.status).toBe(404);
+    expect(a).toEqual({ hit: true, status: 404, value: want.body });
+    expect(want.body).toEqual({
+      error: {
+        code: "NOT_FOUND",
+        message: 'Translation Word not found at path: "zzznoword"',
+        retryable: false,
+      },
+    });
+    // the echo is the caller's requestedPath, as the route's
+    const b = await miss("tw", "ZZZNoWord", "en", "ZZZNoWord");
+    expect(b).toEqual({
+      hit: true,
+      status: 404,
+      value: (await routeMiss("tw", "ZZZNoWord")).body,
+    });
+  });
+
+  it("an unswept term falls back", async () => {
+    await withMisses("en", "tw", "qqq");
+    expect((await miss("tw", "zzznoword")).hit).toBe(false);
+  });
+
+  it("a swept miss without the search catalog proof falls back", async () => {
+    await withMisses("en", "tw", "zzznoword", { catalog: false });
+    expect((await miss("tw", "zzznoword")).hit).toBe(false);
+  });
+
+  it("a search catalog proof that is not equal falls back", async () => {
+    await injectFixtureProofs(
+      env(),
+      (t) => {
+        for (const [k, e] of Object.entries(t))
+          if (
+            k.startsWith("en|") &&
+            k.endsWith("|articles") &&
+            k.includes("/tw|")
+          ) {
+            (e as Record<string, unknown>).misses = "zzznoword";
+            t[k.replace(/\|articles$/, "|searchCatalog")] = {
+              items: 0,
+              exceptions: [],
+              deps: {},
+              catalog: "differs",
+              differs: ["bible/kt/god"],
+            };
+          }
+      },
+      { articles: SWEPT },
+    );
+    expect((await miss("tw", "zzznoword")).hit).toBe(false);
+  });
+
+  it("a miss listed but that resolves here is not a miss: the term path still needs its own proof", async () => {
+    await withMisses("en", "tw", "callspeakloudly");
+    expect((await miss("tw", "callspeakloudly")).hit).toBe(false);
+  });
+
+  it("the proof of another language or resource cannot serve a miss", async () => {
+    await withMisses("es-419", "tw", "zzznoword");
+    expect((await miss("tw", "zzznoword")).hit).toBe(false);
+    await withMisses("en", "tw", "zzznoword");
+    expect((await miss("tw", "zzznoword", "es-419")).hit).toBe(false);
+    // a tW miss is not a tA miss
+    await withMisses("en", "tw", "zzznoword");
+    expect((await miss("ta", "zzznoword")).hit).toBe(false);
+  });
+
+  it("an exception or a slash path never serves a miss", async () => {
+    await withMisses("en", "tw", "zzznoword", {
+      edit: (e) => {
+        e.exceptions = ["miss:zzznoword"];
+      },
+    });
+    expect((await miss("tw", "zzznoword")).hit).toBe(false);
+    await withMisses("en", "tw", "zzznoword");
+    expect((await miss("tw", "kt/zzznoword")).hit).toBe(false);
+  });
+
+  it("malformed `misses` makes the whole entry unusable (fails closed)", async () => {
+    for (const bad of [
+      ["zzznoword"],
+      "",
+      "zzznoword,",
+      "ZZZNoWord",
+      "a/b",
+      "a:b",
+      "a|b",
+      42,
+    ]) {
+      await withMisses("en", "tw", bad);
+      expect((await miss("tw", "zzznoword")).hit).toBe(false);
       expect(await words("bible/kt/call-speakloudly")).toBeUndefined();
     }
   });

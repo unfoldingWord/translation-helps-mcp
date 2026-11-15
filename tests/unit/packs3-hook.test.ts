@@ -69,6 +69,61 @@ describe("packs3 hook in ApiClient.get", () => {
     expect(urls).toHaveLength(0);
   });
 
+  it("an adapter 404 (a proven miss) throws the same ApiClientError the API's 404 gives, without calling the API", async () => {
+    const body = {
+      error: {
+        code: "NOT_FOUND",
+        message: 'Translation Word not found at path: "x"',
+        retryable: false,
+      },
+    };
+    const res404 = () =>
+      new Response(JSON.stringify(body), {
+        status: 404,
+        headers: { "content-type": "application/json" },
+      });
+    const catchGet = (c: ApiClient) =>
+      c.get("/api/v1/words/x", { language: "en" }).then(
+        () => undefined,
+        (e: unknown) => e,
+      );
+    const api = {
+      fetch: vi.fn(async () => res404()),
+    } as unknown as Fetcher;
+    const fromApi = await catchGet(new ApiClient({ API: api }));
+    ADAPTERS.push({
+      match: (p) => p.startsWith("/api/v1/words/"),
+      run: async () => res404(),
+    });
+    const { API, urls } = fakeApi();
+    const fromPack = await catchGet(new ApiClient({ API }, { packs3: v3On }));
+    expect(urls).toHaveLength(0);
+    expect(fromPack).toBeInstanceOf(ApiClientError);
+    expect(fromApi).toBeInstanceOf(ApiClientError);
+    const fields = (e: any) => [e.code, e.message, e.status, e.retryable];
+    expect(fields(fromPack)).toEqual(fields(fromApi));
+    expect(fields(fromPack)).toEqual([
+      "NOT_FOUND",
+      'Translation Word not found at path: "x"',
+      404,
+      false,
+    ]);
+  });
+
+  it("an adapter Response that is not a 404 falls back to the API", async () => {
+    ADAPTERS.push({
+      match: () => true,
+      run: async () => new Response("{}", { status: 500 }),
+    });
+    const { API, urls } = fakeApi();
+    const r = await new ApiClient({ API }, { packs3: v3On }).get(
+      "/api/v1/words/x",
+      { language: "en" },
+    );
+    expect(r).toEqual({ from: "api" });
+    expect(urls).toHaveLength(1);
+  });
+
   it("adapter undefined or throwing → API called once, fallback logged once per (lang, reason)", async () => {
     let mode: "undef" | "throw" = "undef";
     ADAPTERS.push({

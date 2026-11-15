@@ -36,6 +36,12 @@ export type VerifiedEntry = {
    * `bible/kt/covenant` (`=` is the article's own name). A term is the prepared term in lower case.
    */
   terms?: Record<string, string>;
+  /**
+   * Articles: the swept terms (`/words/<term>`, `/academy/<term>`) whose route answer was the 404 miss of the lookup and
+   * the adapter's too, sorted and comma-joined (`"covenant,pact"`). Served only with an equal search catalog proof of the
+   * same release (`isVerifiedMiss`).
+   */
+  misses?: string;
   /** Articles (compact): how many swept items were not equal (they are not listed, so never served). */
   excepted?: number;
   skippedBooks?: string[];
@@ -105,6 +111,8 @@ function passageExceptions(list: string[]): Set<string> | undefined {
   }
   return out;
 }
+/** One term of a `misses` string: lower case, no separator (`/:|,=`). */
+const MISS_TERM = /^[^/:|,=A-Z]+$/;
 /** One article of a `terms` line: `name:term|term` (no separators inside a name or a term). */
 const TERMS_PART = /^[^:|,]+:[^:|,]+(?:\|[^:|,]+)*$/;
 const JOINS_CHAPTER = /^(\d+):(\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)$/;
@@ -202,6 +210,11 @@ function wellFormed(e: VerifiedEntry): boolean {
       if (!(line as string).split(",").every((p) => TERMS_PART.test(p)))
         return false;
     }
+  }
+  // `misses`: one string whose every comma part is a term, or the whole entry is unusable
+  if (o.misses !== undefined) {
+    if (typeof o.misses !== "string") return false;
+    if (!o.misses.split(",").every((t) => MISS_TERM.test(t))) return false;
   }
   if (o.catalog !== undefined && typeof o.catalog !== "string") return false;
   if (o.deps !== undefined) {
@@ -368,6 +381,41 @@ export function isVerifiedTerm(
       .some((t) => (t === "=" ? name : t) === term);
   }
   return false;
+}
+
+/**
+ * Was the term (or title) `term` swept as a miss for this articles release: the route answered the lookup's 404 and the
+ * adapter's resolution found nothing too. Holds only with an equal search catalog proof of the same resource release
+ * (the route's article catalog equals ours, so the lookup resolves the same). `term` is the prepared term in lower case
+ * without `/`. The entry must be well formed (its `misses` included), its deps hold, and `miss:<term>` no exception.
+ */
+export function isVerifiedMiss(
+  lang: string,
+  resourceKey: string,
+  release: string,
+  term: string,
+  opts: VerifiedOpts = {},
+): boolean {
+  if (open) return true;
+  if (!MISS_TERM.test(term)) return false;
+  const k = `${lang}|${resourceKey}|${release}|articles`;
+  const e = Object.hasOwn(table, k) ? table[k] : undefined;
+  if (typeof e !== "object" || e === null || !wellFormed(e)) return false;
+  for (const [depKey, depRelease] of Object.entries(e.deps ?? {})) {
+    const have = opts.releaseOf?.(depKey);
+    if (have === undefined || have !== depRelease) return false;
+  }
+  if (strings(e.exceptions).includes(`miss:${term}`)) return false;
+  if (typeof e.misses !== "string" || !e.misses.split(",").includes(term))
+    return false;
+  return isVerified(
+    lang,
+    resourceKey,
+    release,
+    SEARCH_CATALOG_KIND,
+    undefined,
+    opts,
+  );
 }
 
 /**
