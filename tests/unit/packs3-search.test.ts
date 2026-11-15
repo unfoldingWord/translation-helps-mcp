@@ -215,7 +215,9 @@ describe("search from format 3", () => {
         expect(await search(q, "en", { types })).toBeUndefined();
   });
   it("falls back for limit, other types, other languages, a q not normalized", async () => {
+    // the query proof was swept at the default limit only (no catalog proof here)
     expect(await search("covenant", "en", { limit: 3 })).toBeUndefined();
+    expect(await search("covenant", "en", { limit: 10 })).toBeUndefined();
     expect(await search("covenant", "en", { types: "tw,ta" })).toBeUndefined();
     expect(await search("covenant", "es")).toBeUndefined();
     expect(await search("Covenant", "en")).toBeUndefined();
@@ -344,9 +346,33 @@ describe("search for any query by catalog proof", () => {
       await searchFromPacks3(env(), { q: "faith", language: "en" }),
     ).toBeUndefined();
   });
-  it("guard: limit, a q not normalized and another spelling of types still fall back", async () => {
+  it("serves any plain limit (th_search sends 10), ranked with that many as the route ranks", async () => {
     await withCatalogProof();
-    expect(await search("faith", "en", { limit: 3 })).toBeUndefined();
+    const five = (await search("faith", "en")) as {
+      results: Array<{ path: string }>;
+    };
+    for (const limit of [10, "10", 3, 1, 50]) {
+      const r = (await search("faith", "en", { limit })) as {
+        q: string;
+        results: Array<{ path: string }>;
+      };
+      expect(r, `limit ${limit}`).toBeDefined();
+      expect(r.q).toBe("faith");
+      expect(r.results.length).toBeLessThanOrEqual(Number(limit));
+      const n = Math.min(Number(limit), five.results.length);
+      expect(r.results.slice(0, n)).toEqual(five.results.slice(0, n));
+    }
+  });
+  it("guard: a limit the route would not read as the same plain number falls back", async () => {
+    await withCatalogProof();
+    for (const limit of ["03", "0", "-1", "abc", "5.5", " 5", "1000", ""])
+      expect(
+        await search("faith", "en", { limit }),
+        `limit ${JSON.stringify(limit)}`,
+      ).toBeUndefined();
+  });
+  it("guard: a q not normalized and another spelling of types still fall back", async () => {
+    await withCatalogProof();
     expect(await search("Faith", "en")).toBeUndefined();
     expect(await search("faith", "en", { types: "TW" })).toBeUndefined();
     expect(await search("faith", "es")).toBeUndefined();

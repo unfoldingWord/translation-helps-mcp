@@ -12,7 +12,8 @@
  *   the exact item in `ids`: `q` for tw, `ta|q`, `ta,tw|q`) is answered. A types set not swept falls back. The two
  *   proofs are never mixed in one answer.
  * - The ranking is the route's own (`rankArticles` over candidates ordered ta then tw), then `isSafeArticlePath`.
- * - Only `types` tw, ta or ta,tw (the default), the default limit (5), the catalog's own language, and a query already in its normalized form (the
+ * - Only `types` tw, ta or ta,tw (the default), a plain limit 1-999 (the catalog proof; the query proof only the default
+ *   5 it was swept at), the catalog's own language, and a query already in its normalized form (the
  *   route's cache is keyed by the normalized query and echoes the `q` of the first request) are answered.
  */
 import { rankArticles } from "@translation-helps/door43";
@@ -61,34 +62,43 @@ export async function searchFromPacks3(
   const types = params.types ?? "ta,tw";
   // Only the type sets the sweep covers; any other spelling (`tw,ta`, `ta,ta`) falls back.
   if (types !== "tw" && types !== "ta" && types !== "ta,tw") return undefined;
-  if (params.limit !== undefined && String(params.limit) !== "5")
-    return undefined;
+  // The route ranks `parseInt(limit)` results: only a plain number it reads as itself (1-999) is answered.
+  const limit = params.limit === undefined ? "5" : String(params.limit);
+  if (!/^[1-9][0-9]{0,2}$/.test(limit)) return undefined;
   if (q !== normalizeSearchQuery(q)) return undefined;
 
-  // Any query when every catalog is proven; the key is then not the query, so `|` does not matter.
+  // Any query and any limit when every catalog is proven: the ranking reads only the catalog, the query and the limit.
+  // The key is then not the query, so `|` does not matter.
   const byCatalog = await candidatesOf(env, language, types, {
     kind: SEARCH_CATALOG_KIND,
   });
   if (byCatalog) {
-    const served = answer(q, language, byCatalog.candidates);
+    const served = answer(q, language, byCatalog.candidates, Number(limit));
     if (!served.results.some((r) => byCatalog.except.has(r.path.toLowerCase())))
       return served;
   }
 
+  // The query proof was swept at the default limit only.
+  if (limit !== "5") return undefined;
   // `|` is the separator of the proof keys (`ta|q`, `ta,tw|q`): a query holding one could name another set's item.
   if (q.includes("|")) return undefined;
   const byQuery = await candidatesOf(env, language, types, {
     kind: SEARCH_KIND,
     item: proofItem(types, q),
   });
-  return byQuery ? answer(q, language, byQuery.candidates) : undefined;
+  return byQuery ? answer(q, language, byQuery.candidates, 5) : undefined;
 }
 
-const answer = (q: string, language: string, candidates: Candidate[]) => ({
+const answer = (
+  q: string,
+  language: string,
+  candidates: Candidate[],
+  topK: number,
+) => ({
   q,
   language,
   requestedLanguage: language,
-  results: rankCandidates(candidates, q, 5),
+  results: rankCandidates(candidates, q, topK),
 });
 
 /**
