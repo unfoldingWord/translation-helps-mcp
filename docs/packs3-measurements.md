@@ -55,3 +55,23 @@ Caveat: the budget is checked between calls, so a single unit can overshoot it (
 overshoot happens inside one callback: a reader at 0.9 MB that then reads Psalms reaches about 85 MB alone. Two such
 readers would not fit, which is why they are bounded together. This is an estimate, not a measurement of two readers at
 once: it is to be measured in staging step S4 (the exceededMemory tail).
+
+## Exclusive reader for big books (Task 14a-OT)
+
+en Psalms (book 1,097,745 + orig 418,898 compressed bytes) and en Genesis (757,575 + 374,287) are over the 1 MB budget.
+They are read in an exclusive reader (readers.ts): opened only when no other reader has a call running, blocking every
+other call meanwhile, retired right after its call, hard cap 2.5 MB compressed.
+
+Measured with a script that calls `withReader` with `need: bookBytes` from the local staging bucket (no network), Node
+v22, reading `book` then `orig`, in the order PSA, GEN, PSA:
+`node --import tsx --expose-gc --max-old-space-size=<N> measure-ot.mjs <bucket>` (kept in the Task 14a-OT scratch folder).
+
+| old space | PSA heap after book / after orig (gc) | GEN after book / after orig | after each call | sampled peak (no gc) |
+| --------- | ------------------------------------- | --------------------------- | --------------- | -------------------- |
+| 128 MB    | 61.5 / 79.9 MB                        | 61.0 / 78.4 MB              | 11.8-12.8 MB    | 87.7 MB              |
+| 110 MB    | 61.6 / 79.9 MB                        | 61.0 / 78.4 MB              | 11.4-12.8 MB    | 87.0 MB              |
+| 96 MB     | 61.6 / 79.9 MB                        | 61.0 / 77.5 MB              | 11.4-12.6 MB    | 86.0 MB              |
+
+All three complete. One call takes 0.5-0.85 s (decode only). The sampled peak is heapUsed every 5 ms without gc, so a
+lower bound on the true peak; the 96 MB run completing is the stronger evidence that one exclusive call fits under
+~110 MB. An exclusive book over 2.5 MB compressed (about 100 MB of heap at this rate) falls back.

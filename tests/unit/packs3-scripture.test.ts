@@ -370,6 +370,85 @@ describe("verseText", () => {
     expect(verseText(clean, "5", 4, 4)).toBe("4 a b.");
     expect(verseText(clean, "5", 4, 5)).toBeUndefined();
   });
+
+  // Shapes of staging en ULT PSA 11:1 and PSA 3:2; texts as the API Worker gave them on 2026-11-15.
+  it("keeps a Psalm superscription inside verse 1 (`\\d` after `\\v 1`), a space before the next line", () => {
+    const psa11 = {
+      pieces: [
+        W("To the chief musician; of David."),
+        W("In Yahweh I take refuge."),
+      ],
+      events: [
+        [0, "chapter", "11"],
+        [0, "verse", "1"],
+        [0, "close", ""],
+        [0, "open", "para:d"],
+        [1, "close", ""],
+        [1, "open", "para:q1"],
+        [2, "verse", "2"],
+      ] as [number, string, string][],
+    };
+    expect(verseText(psa11, "11", 1, 1)).toBe(
+      "1 To the chief musician; of David. In Yahweh I take refuge.",
+    );
+  });
+
+  it("keeps Selah (`\\qs`) as text of the verse", () => {
+    const psa3 = {
+      pieces: [
+        W("about me,"),
+        W("“There is no salvation for him in God.” "),
+        W("Selah"),
+        W("But"),
+      ],
+      events: [
+        [0, "chapter", "3"],
+        [0, "verse", "2"],
+        [1, "close", ""],
+        [1, "open", "para:q2"],
+        [2, "open", "char:qs"],
+        [3, "close", ""],
+        [3, "close", ""],
+        [3, "open", "para:b"],
+        [3, "close", ""],
+        [3, "open", "para:q1"],
+        [3, "verse", "3"],
+      ] as [number, string, string][],
+    };
+    expect(verseText(psa3, "3", 2, 2)).toBe(
+      "2 about me, “There is no salvation for him in God.” Selah",
+    );
+  });
+
+  it("reads embedded paragraphs (`\\pm`, `\\pmo`, `\\pmc`) like other paragraphs", () => {
+    for (const p of ["pm", "pmo", "pmc", "pmr"]) {
+      const deu = {
+        pieces: [W("from the house of slaves."), W("There shall not be")],
+        events: [
+          [0, "chapter", "5"],
+          [0, "verse", "6"],
+          [1, "open", `para:${p}`],
+          [1, "verse", "7"],
+        ] as [number, string, string][],
+      };
+      expect(verseText(deu, "5", 6, 6)).toBe("6 from the house of slaves.");
+    }
+  });
+
+  it("still falls back on an acrostic header (`\\qa`) or a speaker (`\\sp`) inside a verse", () => {
+    for (const p of ["para:qa", "para:sp", "char:ca", "note:f"]) {
+      const u = {
+        pieces: [W("leave me."), W("BETH")],
+        events: [
+          [0, "chapter", "119"],
+          [0, "verse", "8"],
+          [1, "open", p],
+          [2, "verse", "9"],
+        ] as [number, string, string][],
+      };
+      expect(verseText(u, "119", 8, 8)).toBeUndefined();
+    }
+  });
 });
 
 describe("verseText fails closed", () => {

@@ -52,8 +52,14 @@ type Piece = [string, boolean];
 type Event = [number, string, string];
 type TextUnit = { res?: string; pieces?: Piece[]; events?: Event[] };
 
-/** An open marker with no text of its own (a paragraph, the ts milestone), so the pieces equal what the route strips from USFM. */
-const PLAIN_PARA = /^(para:(p|m|mi|nb|b|pi\d?|q\d?|li\d?)|ms:ts)$/;
+/**
+ * An open marker with no text of its own (a paragraph, the ts milestone), so the pieces equal what the route strips from
+ * USFM. A Psalm superscription (`\d`) after `\v 1` and the embedded paragraphs (`\pm*`) read the same way: the route
+ * keeps their text in the verse, a space at the line break (staging en ULT PSA 11:1, DEU 5:6).
+ */
+const PLAIN_PARA = /^(para:(p|m|mi|nb|b|d|pm[ocr]?|pi\d?|q\d?|li\d?)|ms:ts)$/;
+/** Character markers whose text the route keeps as is, with no break: Selah (`\qs`, staging en ULT PSA 3:2). */
+const PLAIN_CHAR = /^char:qs$/;
 
 /**
  * Text where format 3 lost the whitespace USFM has: a word glued to `{`, `}` glued to a word, or punctuation glued
@@ -116,6 +122,7 @@ export function verseText(
     }
     if (!open) continue;
     if (kind === "close") continue;
+    if (kind === "open" && PLAIN_CHAR.test(value)) continue;
     if (kind === "open" && value === "ms:ts") tsInRange = true;
     if (kind === "open" && PLAIN_PARA.test(value)) {
       if (value !== "ms:ts") open.breaks.add(at);
