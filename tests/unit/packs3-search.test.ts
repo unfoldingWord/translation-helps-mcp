@@ -10,6 +10,8 @@ import { resetReadersForTests } from "../../src/packs3/readers";
 import { resetWarnOnceForTests } from "../../src/packs3/keys";
 import { searchFromPacks3 } from "../../src/packs3/adapters/search";
 import { answerFromPacks3 } from "../../src/packs3/answer";
+import { injectFixtureProofs } from "./packs3-fixture-verified";
+import { setVerifiedForTests } from "../../src/packs3/verified";
 
 const STAGING =
   "78d2e6299a2de4d0:c2057cec32b948452849e7fcba6af323961a091ea82645eb297bb368e1c8d911";
@@ -45,10 +47,11 @@ function env(): Packs3Env {
   };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   resetPacks3CachesForTests();
   resetReadersForTests();
   resetWarnOnceForTests();
+  await injectFixtureProofs(env(), undefined, { search: ["covenant"] });
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
 
@@ -148,5 +151,36 @@ describe("search from format 3", () => {
     expect(await search("covenant", "es")).toBeUndefined();
     expect(await search("Covenant", "en")).toBeUndefined();
     expect(await search("", "en")).toBeUndefined();
+  });
+  it("sweep: an unlisted query, an exception and a release bump fall back", async () => {
+    expect(await search("covenant", "en")).toBeDefined();
+    expect(await search("faith", "en")).toBeUndefined();
+    await injectFixtureProofs(
+      env(),
+      (t) => {
+        for (const [k, e] of Object.entries(t))
+          if (k.endsWith("|" + ["sea", "rch"].join("")))
+            e.exceptions = ["covenant"];
+      },
+      { search: ["covenant"] },
+    );
+    expect(await search("covenant", "en")).toBeUndefined();
+    await injectFixtureProofs(
+      env(),
+      (t) => {
+        for (const k of Object.keys(t))
+          if (k.endsWith("|" + ["sea", "rch"].join(""))) {
+            t[
+              k.replace(
+                /\|[^|]*\|[^|]*$/,
+                "|v0-bumped|" + ["sea", "rch"].join(""),
+              )
+            ] = t[k]!;
+            delete t[k];
+          }
+      },
+      { search: ["covenant"] },
+    );
+    expect(await search("covenant", "en")).toBeUndefined();
   });
 });

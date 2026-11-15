@@ -270,7 +270,7 @@
       "language": "en"
     },
     "expect": "fallback",
-    "why": "staging catalog differs from the pinned VERIFIED_CATALOGS (unverified-article-catalog)"
+    "why": "the sweep has no entry for this release of the article resource, or no item for this call (unverified-resource)"
   },
   {
     "tool": "th_get_article",

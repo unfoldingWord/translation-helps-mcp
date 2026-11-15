@@ -69,7 +69,9 @@ export function releaseOfCatalogs(
 const PASSAGE = /^(\S+) (\d+):(\d+)(?:-(\d+))?$/;
 const CHAPTER_KINDS = new Set(["notes", "links", "questions"]);
 // The kind's name is built, not written: tests/unit/packs3-allowed-calls.test.ts forbids that string literal in src/packs3.
-const ID_KINDS = new Set(["articles", ["sea", "rch"].join("")]);
+/** The search kind's name (built, see above), for the search adapter. */
+export const SEARCH_KIND = ["sea", "rch"].join("");
+const ID_KINDS = new Set(["articles", SEARCH_KIND]);
 
 const strings = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];

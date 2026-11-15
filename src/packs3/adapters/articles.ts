@@ -2,16 +2,16 @@
  * `/api/v1/words/{path}` and `/api/v1/academy/{path}` from format 3 article groups. Like the other adapters it answers
  * only what the routes answer the same way and gives `undefined` for the rest (the API Worker then answers as today):
  *
- * - Only the languages and article resources of `VERIFIED_ARTICLE_LANGS` / `VERIFIED_ARTICLES`, whose every article was
- *   compared with the route's live answer (2026-11-12), are answered; the requested language must be the catalog's.
+ * - Only an article the sweep proved equal for this release of its resource (verified.ts, item = catalog path in `ids`)
+ *   is answered; the requested language must be the catalog's. The sweep records no catalog-level item (list, category,
+ *   term), so a path that is not an exact article path (a term, a title) is left to the route.
  * - A path that does not resolve to one article (a miss or several candidates) gives `undefined`: format 3 never says
  *   "not found" or "not available", the API Worker decides (its catalog may hold an article this pack lacks).
  * - The body is rebuilt from the sections exactly as the zip file reads. Format 3 rewrites Bible reference links as
  *   `](ref:act 4:33)` and keeps no trace of the published form (`.../act/04/33`, `/01/5`, `psa/074/10`, `rc://*`), so an
  *   article with such a link (or `[[ta:`, `[[tw:`) gives `undefined`. Every other article of en and es-419 equals.
- * - The term and path resolution is the route's own (`resolveTwArticle` / `resolveTaArticle`, `jsonArticleMatch`) over a
- *   catalog built from the groups. An exact path is resolved in its own group (an exact hit does not depend on the rest);
- *   anything else needs every group of the manual or gives `undefined`.
+ * - The path resolution is the route's own (`resolveTwArticle` / `resolveTaArticle`, `jsonArticleMatch`); an exact path is
+ *   resolved in its own group, anything else gives `undefined`.
  */
 import type { AcademyArticle, WordArticle } from "@translation-helps/door43";
 import type { PackReader } from "../../../vendor/language-pack-client/index.js";
@@ -29,11 +29,7 @@ import type { Catalogs3, Packs3Env } from "../catalogs";
 import { warnOnce } from "../keys";
 import { withReader } from "../readers";
 import type { Packs3Params } from "../answer";
-import { VERIFIED_ARTICLES } from "./helps";
-import { VERIFIED_ANSWERS, VERIFIED_CATALOGS } from "./articles-verified";
-
-/** The catalog languages whose articles were compared with the route's. */
-export const VERIFIED_ARTICLE_LANGS = new Set(["en", "es-419"]);
+import { isVerified, releaseOfCatalogs } from "../verified";
 
 export type ArticleKind = "tw" | "ta";
 export const GROUPS: Record<ArticleKind, string[]> = {
@@ -131,22 +127,32 @@ async function fullCatalog(
   return all.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-/** The article catalog the routes build from Door43, built from the article groups. `undefined` when not provable. */
+/** The article catalog the routes build from Door43, built from the article groups. `undefined` when `proof` is not swept. */
 export async function articleCatalogFromPacks3(
   env: Packs3Env,
   lang: string,
   kind: ArticleKind,
+  /** The sweep item that must be proven for the catalog's resource release (search: the query). */
+  proof?: { kind: string; item: string },
 ): Promise<ArticleCatalog<WordArticle | AcademyArticle> | undefined> {
   const out = await withReader(env, lang, async (reader, c) => {
-    if (c.lang !== lang || !VERIFIED_ARTICLE_LANGS.has(c.lang))
-      return undefined;
+    if (c.lang !== lang) return undefined;
     const recs = await fullCatalog(reader, c, kind);
     if (!recs || recs.length === 0) return undefined;
     const keys = new Set(recs.map((r) => r.res));
     if (keys.size !== 1) return undefined;
     const key = recs[0]!.res;
     const resource = releaseOf(c, kind, key);
-    if (!resource || !VERIFIED_ARTICLES.has(key)) return undefined;
+    if (!resource) return undefined;
+    if (
+      !proof ||
+      !isVerified(c.lang, key, resource.release, proof.kind, proof.item, {
+        releaseOf: releaseOfCatalogs(c.catalogs),
+      })
+    ) {
+      warnOnce(lang, "unverified-resource");
+      return undefined;
+    }
     const source = sourceFromPackView(
       { articles: { key, title: "", version: resource.release } },
       "articles",
@@ -160,30 +166,6 @@ export async function articleCatalogFromPacks3(
     } as ArticleCatalog<WordArticle | AcademyArticle>;
   });
   return out ?? undefined;
-}
-
-async function sha16(text: string): Promise<string> {
-  const d = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(d).subarray(0, 8), (b) =>
-    b.toString(16).padStart(2, "0"),
-  ).join("");
-}
-
-/** Short SHA-1 of the answer without what depends on the request (`requestedPath`, `requestedLanguage`, `resolvedFrom`, `note`). */
-export function answerHash(answer: Record<string, unknown>): Promise<string> {
-  const {
-    requestedPath: _p,
-    requestedLanguage: _l,
-    resolvedFrom: _f,
-    note: _n,
-    ...rest
-  } = answer;
-  return sha16(JSON.stringify(rest));
-}
-
-/** Short SHA-1 of a catalog's paths and titles, in route order. */
-export function catalogHash(recs: Array<{ path: string; title: string }>) {
-  return sha16(JSON.stringify(recs.map((r) => [r.path, r.title])));
 }
 
 /** The article as the zip file reads, or `undefined` when a link cannot be put back the way it was published. */
@@ -229,10 +211,7 @@ async function articleFromPacks3(
   const resolve = kind === "tw" ? resolveTwArticle : resolveTaArticle;
 
   const answer = await withReader(env, language, async (reader, c) => {
-    if (c.lang !== language || !VERIFIED_ARTICLE_LANGS.has(c.lang)) {
-      warnOnce(language, "unverified-article-language");
-      return undefined;
-    }
+    if (c.lang !== language) return undefined;
     // An exact path resolves inside its own group: try each group (an exact hit does not depend on the others).
     let match: ArticleMatch | undefined;
     let recs: Rec[] | undefined;
@@ -246,25 +225,22 @@ async function articleFromPacks3(
         break;
       }
     }
-    if (!match) {
-      recs = await fullCatalog(reader, c, kind);
-      if (!recs) return undefined;
-      // A path that is not exact resolves against the whole catalog: only a catalog equal to the route's (pinned).
-      if (
-        VERIFIED_CATALOGS[`${c.lang}/${kind}`] !== (await catalogHash(recs))
-      ) {
-        warnOnce(language, "unverified-article-catalog");
-        return undefined;
-      }
-      match = resolve(prepared, asCatalogArticles(kind, recs));
-    }
+    // Not an exact path: it resolves against the whole catalog, which no sweep item proves.
+    if (!match) return undefined;
     if (match.status !== "exact" && match.status !== "resolved")
       return undefined;
     const matched = match;
 
     const rec = (recs ?? []).find((r) => r.path === matched.path);
-    if (!rec || !VERIFIED_ARTICLES.has(rec.res)) {
-      warnOnce(language, "unverified-article-resource");
+    if (!rec) return undefined;
+    const proofOf = releaseOf(c, kind, rec.res);
+    if (
+      !proofOf ||
+      !isVerified(c.lang, rec.res, proofOf.release, "articles", rec.path, {
+        releaseOf: releaseOfCatalogs(c.catalogs),
+      })
+    ) {
+      warnOnce(language, "unverified-resource");
       return undefined;
     }
     const raw = (await reader.articles(rec.group)) as Raw[] | undefined;
@@ -317,15 +293,6 @@ async function articleFromPacks3(
     });
     if (res.status !== 200) return undefined;
     const out = (await res.json()) as Record<string, unknown>;
-    // The text of format 3 keeps no trace of the zip's blank lines and trailing spaces: only an answer whose whole
-    // content equals the route's live answer (pinned by hash) is returned.
-    if (
-      VERIFIED_ANSWERS[`${c.lang}/${kind}/${matched.path}`] !==
-      (await answerHash(out))
-    ) {
-      warnOnce(language, "unverified-article");
-      return undefined;
-    }
     return out;
   });
   return answer ?? undefined;

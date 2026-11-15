@@ -29,13 +29,6 @@ import type { Packs3Params } from "../answer";
 import { isVerified, releaseOfCatalogs } from "../verified";
 import { BOOKS, FIRST_NT } from "./scripture";
 
-/** The article resources whose titles equal the route's `supportReferenceTitle` / `twTitle`. */
-export const VERIFIED_ARTICLES = new Set([
-  "unfoldingWord/en/ta",
-  "unfoldingWord/en/tw",
-  "es-419_gl/es-419/ta",
-  "es-419_gl/es-419/tw",
-]);
 /**
  * The route's `supportReference` of a row with no article link in format 3 is "" only if the builder did not drop an
  * unresolved reference (it keeps no trace of one). What can be shown from the data: the row has only the known columns
@@ -274,7 +267,6 @@ async function titlesOf(
     if (!articles) return undefined;
     for (const a of articles) {
       if (typeof a.id !== "string") continue;
-      if (!a.res || !VERIFIED_ARTICLES.has(a.res)) continue;
       if (typeof a.title === "string" && a.title) titles.set(a.id, a.title);
     }
   }

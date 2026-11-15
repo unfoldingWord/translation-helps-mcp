@@ -14,6 +14,7 @@ import {
   academyPathFromPacks3,
 } from "../../src/packs3/adapters/articles";
 import { answerFromPacks3 } from "../../src/packs3/answer";
+import { injectFixtureProofs } from "./packs3-fixture-verified";
 
 const STAGING =
   "78d2e6299a2de4d0:c2057cec32b948452849e7fcba6af323961a091ea82645eb297bb368e1c8d911";
@@ -66,10 +67,20 @@ const academy = (path: string, language = "en", requestedPath = path) =>
     prepared: "1",
   }) as Promise<Answer | undefined>;
 
-beforeEach(() => {
+const SWEPT = [
+  "bible/kt/call-speakloudly",
+  "bible/kt/circumcise",
+  "bible/kt/pastor",
+  "translate/figs-metaphor",
+];
+beforeEach(async () => {
   resetPacks3CachesForTests();
   resetReadersForTests();
   resetWarnOnceForTests();
+  await injectFixtureProofs(env(), undefined, {
+    articles: SWEPT,
+    search: ["covenant"],
+  });
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
 
@@ -116,12 +127,8 @@ describe("articles", () => {
     ]);
   });
 
-  it("en tW term: resolvedFrom category, requestedPath echoed", async () => {
-    const a = await words("callspeakloudly");
-    expect(a?.path).toBe("bible/kt/call-speakloudly");
-    expect(a?.requestedPath).toBe("callspeakloudly");
-    expect(a?.resolvedFrom).toBe("category");
-    expect(sha(a?.article)).toBe(CALL_SHA);
+  it("en tW term: the sweep records no term item, so it falls back", async () => {
+    expect(await words("callspeakloudly")).toBeUndefined();
   });
 
   it("en tW rc link: the route echoes the rc form as requestedPath", async () => {
@@ -155,10 +162,11 @@ describe("articles", () => {
       { path: "bible/names/abraham", title: "Abraham, Abram" },
       { path: "bible/kt/covenant", title: "pacto" },
     ]);
-    const t = await words("pastor", "es-419");
+    const t = await words("bible/kt/pastor", "es-419");
     expect(t?.path).toBe("bible/kt/pastor");
-    expect(t?.resolvedFrom).toBe("category");
+    expect(t?.resolvedFrom).toBeUndefined();
     expect(sha(t?.article)).toBe("89829d59d41f2284fc4092e4c9236c371f30cc25");
+    expect(await words("pastor", "es-419")).toBeUndefined();
   });
 
   it("en tA translate/figs-metaphor: subtitle, related from the body links, source", async () => {
@@ -185,13 +193,10 @@ describe("articles", () => {
   });
 
   it("falls back where equality is not proven", async () => {
-    // Bible reference links (ref:) lose the published form: en grace has them.
+    // Not in the sweep's list (en grace has ref: links, es-419 grace differs in its last newline).
     expect(await words("bible/kt/grace")).toBeUndefined();
-    // es-419 grace differs from the route in its last newline.
     expect(await words("bible/kt/grace", "es-419")).toBeUndefined();
-    // es-419 tA figs-metaphor differs in blank lines.
-    expect(await academy("translate/figs-metaphor", "es-419")).toBeUndefined();
-    // A tA term needs the whole manual catalog (not pinned): the route decides.
+    // A tA term needs the whole manual catalog (no sweep item): the route decides.
     expect(await academy("metaphor")).toBeUndefined();
     // Not found: format 3 never says so, the route decides.
     expect(await words("bible/kt/zzzzqq")).toBeUndefined();
@@ -207,15 +212,49 @@ describe("articles", () => {
     expect(await words("bible/kt/circumcise", "es")).toBeUndefined();
   });
 
-  it("catalog: the tW catalog equals the route's list (953 en, 1055 es-419)", async () => {
-    const en = await articleCatalogFromPacks3(env(), "en", "tw");
+  it("sweep: a release bump, an exception and an unlisted id fall back", async () => {
+    expect(await words("bible/kt/call-speakloudly")).toBeDefined();
+    expect(await words("bible/kt/pray")).toBeUndefined();
+    await injectFixtureProofs(
+      env(),
+      (t) => {
+        for (const [k, e] of Object.entries(t))
+          if (k.endsWith("|articles"))
+            e.exceptions = ["bible/kt/call-speakloudly"];
+      },
+      { articles: SWEPT },
+    );
+    expect(await words("bible/kt/call-speakloudly")).toBeUndefined();
+    expect(await academy("translate/figs-metaphor")).toBeDefined();
+    await injectFixtureProofs(
+      env(),
+      (t) => {
+        for (const k of Object.keys(t))
+          if (k.endsWith("|articles")) {
+            t[k.replace(/\|[^|]*\|articles$/, "|v0-bumped|articles")] = t[k]!;
+            delete t[k];
+          }
+      },
+      { articles: SWEPT },
+    );
+    expect(await words("bible/kt/call-speakloudly")).toBeUndefined();
+    expect(await academy("translate/figs-metaphor")).toBeUndefined();
+  });
+
+  it("catalog: the tW catalog equals the route's list (953 en, 1055 es-419), only for a swept query", async () => {
+    const proof = { kind: ["sea", "rch"].join(""), item: "covenant" };
+    const en = await articleCatalogFromPacks3(env(), "en", "tw", proof);
     expect(en?.articles).toHaveLength(953);
     expect(en?.language).toBe("en");
     expect(en?.source.repo).toBe("en_tw");
-    const es = await articleCatalogFromPacks3(env(), "es-419", "tw");
+    const es = await articleCatalogFromPacks3(env(), "es-419", "tw", proof);
     expect(es?.articles).toHaveLength(1055);
     // The fixtures hold only ta:translate: the whole tA catalog cannot be built.
-    expect(await articleCatalogFromPacks3(env(), "en", "ta")).toBeUndefined();
+    expect(
+      await articleCatalogFromPacks3(env(), "en", "ta", proof),
+    ).toBeUndefined();
+    // Without a swept item the catalog is not served.
+    expect(await articleCatalogFromPacks3(env(), "en", "tw")).toBeUndefined();
   });
 
   it("registered for both paths through answerFromPacks3", async () => {

@@ -8,10 +8,9 @@ import {
 } from "../../src/packs3/catalogs";
 import { resetReadersForTests } from "../../src/packs3/readers";
 import { resetWarnOnceForTests } from "../../src/packs3/keys";
-import {
-  questionsFromPacks3,
-  VERIFIED_QUESTION_BOOKS,
-} from "../../src/packs3/adapters/questions";
+import { questionsFromPacks3 } from "../../src/packs3/adapters/questions";
+import { injectFixtureProofs } from "./packs3-fixture-verified";
+import { setVerifiedForTests } from "../../src/packs3/verified";
 import { answerFromPacks3 } from "../../src/packs3/answer";
 
 const STAGING =
@@ -79,10 +78,11 @@ const LIVE: Array<[string, string, number, number, string]> = [
   ["es-419", "Rut", 4, 16, "1a9f26a5e5c215c88df8bc1fcdf7ed83bb806841"],
 ];
 
-beforeEach(() => {
+beforeEach(async () => {
   resetPacks3CachesForTests();
   resetReadersForTests();
   resetWarnOnceForTests();
+  await injectFixtureProofs(env());
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
 
@@ -210,15 +210,38 @@ describe("questions", () => {
     ).toBeUndefined();
   });
 
-  it("gives undefined for a book not in the verified list, and for a book the pack lacks", async () => {
+  it("gives undefined for a book the pack lacks and a language it lacks", async () => {
     expect(await ask("Gen 1", "en")).toBeUndefined();
-    const books = VERIFIED_QUESTION_BOOKS.get("en")!;
-    books.delete("tit");
-    try {
-      expect(await ask("Tit 1", "en")).toBeUndefined();
-    } finally {
-      books.add("tit");
-    }
     expect(await ask("Tit 1", "fr")).toBeUndefined();
+  });
+
+  it("sweep: a listed chapter serves; a release bump, an exception and an unlisted chapter fall back", async () => {
+    expect(await ask("Tit 1", "en")).toBeDefined();
+    // Not listed (the sweep did not record chapter 9).
+    expect(await ask("Tit 9", "en")).toBeUndefined();
+    // An exception item.
+    await injectFixtureProofs(env(), (t) => {
+      for (const [k, e] of Object.entries(t))
+        if (k.includes("/en/tq|")) e.exceptions = ["TIT 2"];
+    });
+    expect(await ask("Tit 2", "en")).toBeUndefined();
+    expect(await ask("Tit 1", "en")).toBeDefined();
+    // A release bump: no entry for the catalog's release.
+    await injectFixtureProofs(env(), (t) => {
+      for (const k of Object.keys(t))
+        if (k.includes("/en/tq|")) {
+          t[k.replace(/\|[^|]*\|questions$/, "|v0-bumped|questions")] = t[k]!;
+          delete t[k];
+        }
+    });
+    expect(await ask("Tit 1", "en")).toBeUndefined();
+    const warns = (
+      console.warn as unknown as { mock: { calls: unknown[][] } }
+    ).mock.calls.filter(
+      (c) =>
+        (c[1] as { reason?: string } | undefined)?.reason ===
+        "unverified-resource",
+    );
+    expect(warns.length).toBeGreaterThan(0);
   });
 });

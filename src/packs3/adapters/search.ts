@@ -2,9 +2,8 @@
  * `/api/v1/search` from format 3 article catalogs. Answers only what is proven equal to the route's live answer
  * (`handleSearch`), `undefined` (the API Worker answers) for everything else:
  *
- * - Each searched catalog (tw, ta) must equal the route's catalog of that language: the hash of its paths and titles is
- *   pinned in `VERIFIED_CATALOGS` (articles-verified.ts). Today only the tW catalogs are pinned (the fixtures hold one
- *   tA group; the tA catalog needs four), so a search over tA, including the default `types=ta,tw`, falls back.
+ * - Only a query the sweep proved equal for this release of the tW resource (verified.ts, the exact query in `ids`) is
+ *   answered. Only tW is searched: a search over tA, including the default `types=ta,tw`, falls back.
  * - The ranking is the route's own (`rankArticles` over candidates ordered ta then tw), then `isSafeArticlePath`.
  * - Only `types=tw`, the default limit (5), the catalog's own language, and a query already in its normalized form (the
  *   route's cache is keyed by the normalized query and echoes the `q` of the first request) are answered.
@@ -14,8 +13,8 @@ import { isSafeArticlePath } from "../../core/articlePath";
 import { normalizeSearchQuery } from "../../api/routes/responseCache";
 import type { Packs3Env } from "../catalogs";
 import type { Packs3Params } from "../answer";
-import { articleCatalogFromPacks3, catalogHash } from "./articles";
-import { VERIFIED_CATALOGS } from "./articles-verified";
+import { SEARCH_KIND } from "../verified";
+import { articleCatalogFromPacks3 } from "./articles";
 
 export type SearchParams = {
   q: string;
@@ -53,11 +52,11 @@ export async function searchFromPacks3(
     return undefined;
   if (q !== normalizeSearchQuery(q)) return undefined;
 
-  const tw = await articleCatalogFromPacks3(env, language, "tw");
+  const tw = await articleCatalogFromPacks3(env, language, "tw", {
+    kind: SEARCH_KIND,
+    item: q,
+  });
   if (!tw || tw.language !== language) return undefined;
-  if (VERIFIED_CATALOGS[`${language}/tw`] !== (await catalogHash(tw.articles)))
-    return undefined;
-
   const candidates: Candidate[] = tw.articles.map((a) => ({
     path: a.path,
     title: a.title,

@@ -2,8 +2,8 @@
  * `/api/v1/questions` from format 3 books. Like the helps adapter it answers only what the route answers the same way and
  * gives `undefined` for the rest:
  *
- * - Only the (language, book) pairs of `VERIFIED_QUESTION_BOOKS`, whose every chapter was compared with the route's live
- *   answer (2026-11-12), are answered. Any other book gives `undefined` (warning "unverified-book").
+ * - Only a chapter the sweep proved equal for this release of the resource (verified.ts, item `BOOK C`) is answered; any
+ *   other gives `undefined` (warning "unverified-resource").
  * - A text with links (format 3 rewrites them as ids and keeps no trace of the original form) or a row whose reference is
  *   not a plain `c:v` / `c:a-b` gives `undefined`.
  * - OBS, study questions, other formats, a whole book or a range across chapters stay with the route.
@@ -18,21 +18,8 @@ import type { Packs3Env } from "../catalogs";
 import { warnOnce } from "../keys";
 import { withReader } from "../readers";
 import type { Packs3Params } from "../answer";
+import { isVerified, releaseOfCatalogs } from "../verified";
 import { LINKED, refOf } from "./helps";
-
-/** The question resources whose rows equal the route's (en TIT, es-419 TIT and RUT, every chapter). */
-export const VERIFIED_QUESTIONS = new Set([
-  "unfoldingWord/en/tq",
-  "es-419_gl/es-419/tq",
-]);
-/**
- * The (language, book) pairs whose every chapter was compared with the route's live answer. A pair is added after Task
- * 10's comparison shows the answers equal for that book. Keys are the catalog's language and the lowercase book code.
- */
-export const VERIFIED_QUESTION_BOOKS = new Map<string, Set<string>>([
-  ["en", new Set(["tit"])],
-  ["es-419", new Set(["tit", "rut"])],
-]);
 
 export type QuestionsParams = {
   reference: string;
@@ -76,10 +63,6 @@ export async function questionsFromPacks3(
   const code = q.book.toLowerCase();
   const answer = await withReader(env, params.language, async (reader, c) => {
     if (!reader.listed(`book:${code}`)) return undefined;
-    if (!VERIFIED_QUESTION_BOOKS.get(c.lang)?.has(code)) {
-      warnOnce(params.language, "unverified-book");
-      return undefined;
-    }
     const own = c.catalogs.find((x) => x.name !== "common");
     const resources = ((own?.catalog as { resources?: Resource[] })
       ?.resources ?? []) as Resource[];
@@ -92,7 +75,16 @@ export async function questionsFromPacks3(
       (r) => r.key === table.res && r.subject === "TSV Translation Questions",
     );
     if (!resource) return undefined;
-    if (!VERIFIED_QUESTIONS.has(resource.key)) {
+    if (
+      !isVerified(
+        c.lang,
+        resource.key,
+        resource.release,
+        "questions",
+        `${q.book.toUpperCase()} ${q.chapter}`,
+        { releaseOf: releaseOfCatalogs(c.catalogs) },
+      )
+    ) {
       warnOnce(params.language, "unverified-resource");
       return undefined;
     }

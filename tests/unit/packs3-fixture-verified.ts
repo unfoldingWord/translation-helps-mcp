@@ -20,6 +20,8 @@ const chaptersOf = (books: Record<string, number>) =>
 export async function injectFixtureProofs(
   env: Packs3Env,
   edit: (table: Record<string, VerifiedEntry>) => void = () => {},
+  /** Items of the articles and search entries (every article resource gets `articles`, tW also gets `search`). */
+  ids: { articles?: string[]; search?: string[] } = {},
 ): Promise<Record<string, VerifiedEntry>> {
   const table: Record<string, VerifiedEntry> = {};
   for (const lang of ["en", "es-419"]) {
@@ -28,6 +30,32 @@ export async function injectFixtureProofs(
     const resources = ((own?.catalog as { resources?: any[] })?.resources ??
       []) as Array<{ key: string; subject: string; release: string }>;
     for (const r of resources) {
+      if (["Translation Words", "Translation Academy"].includes(r.subject)) {
+        table[`${lang}|${r.key}|${r.release}|articles`] = {
+          items: 0,
+          exceptions: [],
+          deps: {},
+          ids: ids.articles ?? [],
+        };
+        if (r.subject === "Translation Words") {
+          table[`${lang}|${r.key}|${r.release}|${["sea", "rch"].join("")}`] = {
+            items: 0,
+            exceptions: [],
+            deps: {},
+            ids: ids.search ?? [],
+          };
+        }
+        continue;
+      }
+      if (r.subject === "TSV Translation Questions") {
+        table[`${lang}|${r.key}|${r.release}|questions`] = {
+          items: 0,
+          exceptions: [],
+          deps: {},
+          chapters: chaptersOf(lang === "en" ? { TIT: 3 } : { TIT: 3, RUT: 4 }),
+        };
+        continue;
+      }
       const kind = ["Aligned Bible", "Bible"].includes(r.subject)
         ? "passage"
         : r.subject === "TSV Translation Notes"

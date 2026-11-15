@@ -20,7 +20,7 @@
  * - TODO (Task 14): the API's own chapter count of a book is not cheaply available, so chapters come from format 3's
  *   book data (text events, helps rows incl. "front"); a chapter only the API has is not an item, and Task 13 must
  *   serve only the `chapters` an entry lists.
- * - The adapters are opened for the sweep (verified.ts `setSweepOpen`, and the questions book list until Task 13b), so
+ * - The adapters are opened for the sweep (verified.ts `setSweepOpen`), so
  *   the sweep says what the adapter does on a book, not that it has no proof yet.
  * Pure parts are exported for tests/unit/packs3-sweep.test.ts.
  */
@@ -371,15 +371,9 @@ async function main() {
   const { BOOKS, FIRST_NT } = await import("../src/packs3/adapters/scripture.ts");
   const { GROUPS, pathOfId } = await import("../src/packs3/adapters/articles.ts");
   const helps = await import("../src/packs3/adapters/helps.ts");
-  const questions = await import("../src/packs3/adapters/questions.ts");
-  // The sweep makes the proofs, so the adapters answer without them (scripture and helps: verified.ts) and without
-  // their hand list of books (questions: Task 13b removes it).
+  // The sweep makes the proofs, so the adapters answer without them (scripture and helps: verified.ts).
   const verified = await import("../src/packs3/verified.ts");
   verified.setSweepOpen(true);
-  for (const [name, m] of [["VERIFIED_QUESTION_BOOKS", questions.VERIFIED_QUESTION_BOOKS]]) {
-    if (m instanceof Map) m.set(lang, new Set(BOOKS));
-    else console.error(`warning: ${name} is not a Map any more; the sweep did not open it (the adapter's own book list applies)`);
-  }
 
   const env = {
     PACKS_V3: "on",
