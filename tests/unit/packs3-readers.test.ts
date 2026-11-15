@@ -89,6 +89,8 @@ import {
   liveReadersForTests,
   resetReadersForTests,
   EXCLUSIVE_BYTE_CAP,
+  EXCLUSIVE_DEADLINE_MS,
+  setReaderClockForTests,
 } from "../../src/packs3/readers";
 import { resetWarnOnceForTests } from "../../src/packs3/keys";
 
@@ -399,10 +401,10 @@ describe("withReader", () => {
     });
 
     it("refuses a book over the exclusive cap (book-too-large)", async () => {
-      expect(EXCLUSIVE_BYTE_CAP).toBe(2.5 * MB);
+      expect(EXCLUSIVE_BYTE_CAP).toBe(1.8 * MB);
       const used = vi.fn(async () => 1);
       expect(
-        await withReader(env, "a", used, { need: () => 2.5 * MB + 1 }),
+        await withReader(env, "a", used, { need: () => 1.8 * MB + 1 }),
       ).toBeNull();
       expect(used).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledWith("packs3 fallback", {
@@ -410,8 +412,49 @@ describe("withReader", () => {
         reason: "book-too-large",
       });
       expect(
-        await withReader(env, "a", async () => 2, { need: () => 2.5 * MB }),
+        await withReader(env, "a", async () => 2, { need: () => 1.8 * MB }),
       ).toBe(2);
+    });
+
+    it("a throw inside an exclusive use clears the slot and the next call is served", async () => {
+      await expect(
+        withReader(
+          env,
+          "a",
+          async () => {
+            throw new Error("boom");
+          },
+          big,
+        ),
+      ).rejects.toThrow("boom");
+      expect(liveReadersForTests()).toBe(0);
+      expect(await withReader(env, "b", async () => 7)).toBe(7);
+    });
+
+    it("an exclusive call past the deadline is abandoned; a late finish does not clear a newer slot", async () => {
+      let t = 1000;
+      setReaderClockForTests(() => t);
+      const old = hold("a", big);
+      await tick();
+      t += EXCLUSIVE_DEADLINE_MS; // exactly at the deadline: still held
+      expect(await withReader(env, "b", async () => 1)).toBeNull();
+      t += 1;
+      expect(await withReader(env, "b", async () => 1)).toBe(1); // abandoned, served
+      const abandonedLogs = () =>
+        warn.mock.calls.filter(
+          (c) => c[0] === "packs3 exclusive reader abandoned",
+        );
+      expect(abandonedLogs()).toHaveLength(1);
+      const fresh = hold("a", big); // a newer exclusive slot
+      await tick();
+      old.release();
+      await old.p; // the old call finishes late
+      expect(await withReader(env, "b", async () => 1)).toBeNull(); // newer slot intact
+      t += EXCLUSIVE_DEADLINE_MS + 1;
+      expect(await withReader(env, "b", async () => 2)).toBe(2);
+      expect(abandonedLogs()).toHaveLength(1); // once per isolate
+      fresh.release();
+      await fresh.p;
     });
 
     it("a need within the budget uses the normal shared reader", async () => {

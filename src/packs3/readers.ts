@@ -21,7 +21,7 @@ export const READER_BYTE_BUDGET = 1 * 1024 * 1024;
  * blocks every other call while it runs (`readers-busy`) and is retired right after its call. Over this cap the call
  * falls back (`book-too-large`). Heap measured in docs/packs3-measurements.md (Task 14a-OT).
  */
-export const EXCLUSIVE_BYTE_CAP = 2.5 * 1024 * 1024;
+export const EXCLUSIVE_BYTE_CAP = 1.8 * 1024 * 1024;
 
 /** What `need` may ask of the reader: the compressed size of units, from the catalogs (no unit is opened). */
 export type SizeProbe = Pick<PackReader, "unitOf" | "size">;
@@ -46,11 +46,22 @@ const live = new Map<string, Entry>();
 const retired = new Set<Entry>();
 /** The exclusive reader while its call runs: no other reader is held meanwhile. */
 let exclusive: Entry | undefined;
+let exclusiveSince = 0;
+let abandonedLogged = false;
+/** Wall time after which an exclusive call that has not returned is treated as abandoned. */
+export const EXCLUSIVE_DEADLINE_MS = 30_000;
+let now: () => number = () => Date.now();
+
+export function setReaderClockForTests(fn: (() => number) | undefined): void {
+  now = fn ?? (() => Date.now());
+}
 
 export function resetReadersForTests(): void {
   live.clear();
   retired.clear();
   exclusive = undefined;
+  abandonedLogged = false;
+  now = () => Date.now();
 }
 
 /** Readers held by this isolate, including recycled ones with calls still running and the exclusive one. */
@@ -152,6 +163,14 @@ export async function withReader<T>(
   const c = await getCatalogs(env, lang);
   if (!c) return null;
   // From here to `use` nothing awaits, so the checks below hold when the reader is handed out.
+  if (exclusive && now() - exclusiveSince > EXCLUSIVE_DEADLINE_MS) {
+    // A hung call must not block every read for the life of the isolate.
+    exclusive = undefined;
+    if (!abandonedLogged) {
+      abandonedLogged = true;
+      console.warn("packs3 exclusive reader abandoned", { lang });
+    }
+  }
   if (exclusive) {
     warnOnce(lang, "readers-busy");
     return null;
@@ -182,12 +201,13 @@ export async function withReader<T>(
     live.clear(); // idle readers only: their memory goes before the big book comes in
     const x = fresh ?? makeEntry(lang, c, env);
     exclusive = x;
+    exclusiveSince = now();
     x.running++;
     try {
       return await use(x.view, c);
     } finally {
       x.running--;
-      exclusive = undefined;
+      if (exclusive === x) exclusive = undefined; // an abandoned call must not clear a newer slot
     }
   }
   if (e) {

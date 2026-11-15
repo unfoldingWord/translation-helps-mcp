@@ -60,7 +60,11 @@ once: it is to be measured in staging step S4 (the exceededMemory tail).
 
 en Psalms (book 1,097,745 + orig 418,898 compressed bytes) and en Genesis (757,575 + 374,287) are over the 1 MB budget.
 They are read in an exclusive reader (readers.ts): opened only when no other reader has a call running, blocking every
-other call meanwhile, retired right after its call, hard cap 2.5 MB compressed.
+other call meanwhile, retired right after its call, hard cap 1.8 MB compressed. Opening it drops the idle live readers (accepted: they
+reopen on their next call); a reader with a call running is never dropped, the exclusive call waits for none and falls
+back with `readers-busy` instead. An exclusive call that has not returned after 30 s of wall time is treated as
+abandoned: the next call clears the slot (logged once per isolate) and a late finish of the old call does not clear a
+newer slot.
 
 Measured with a script that calls `withReader` with `need: bookBytes` from the local staging bucket (no network), Node
 v22, reading `book` then `orig`, in the order PSA, GEN, PSA:
@@ -74,4 +78,6 @@ v22, reading `book` then `orig`, in the order PSA, GEN, PSA:
 
 All three complete. One call takes 0.5-0.85 s (decode only). The sampled peak is heapUsed every 5 ms without gc, so a
 lower bound on the true peak; the 96 MB run completing is the stronger evidence that one exclusive call fits under
-~110 MB. An exclusive book over 2.5 MB compressed (about 100 MB of heap at this rate) falls back.
+~110 MB. The heap is about 45-47 MB per compressed MB (Psalms 1.52 MB measured, peak 80 MB after gc). The cap is 1.8 MB: just
+above the largest measured book, about 85 MB of heap at that rate. A cap of 2.5 MB would be about 129 MB, past the
+128 MB isolate and unmeasured. A book over 1.8 MB compressed falls back (`book-too-large`).
