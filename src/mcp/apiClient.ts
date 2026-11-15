@@ -65,6 +65,19 @@ export interface ApiEnv {
   PACKS_V3_DEBUG?: string;
   /** Set per request by the stateless handler from `x-th-packs3`, only when PACKS_V3_DEBUG is "on". */
   PACKS3_MODE?: string;
+  /** Set per request by the stateless handler only when PACKS_V3_DEBUG is "on": every get records its outcome. */
+  PACKS3_TRACE?: Packs3Trace;
+}
+
+/** One entry per ApiClient.get: served from format 3, or the fallback reason. */
+export type Packs3Outcome = { served: true } | { fallback: string };
+export type Packs3Trace = Packs3Outcome[];
+
+/** The `_packs3` mark of one tool call: the first fallback, else served; none when nothing was read. */
+export function packs3Mark(trace: Packs3Trace): Packs3Outcome | undefined {
+  const fb = trace.find((o): o is { fallback: string } => "fallback" in o);
+  if (fb) return { fallback: fb.fallback };
+  return trace.length ? { served: true } : undefined;
 }
 
 export type ApiClientOptions = { packs3?: Packs3Env & { mode?: Packs3Mode } };
@@ -96,8 +109,10 @@ export class ApiClient {
   private readonly baseUrl: string;
   private readonly fetcher: Fetcher | null;
   private readonly packs3?: Packs3Env & { mode?: Packs3Mode };
+  private readonly trace?: Packs3Trace;
 
   constructor(env: ApiEnv, options?: ApiClientOptions) {
+    this.trace = env.PACKS_V3_DEBUG === "on" ? env.PACKS3_TRACE : undefined;
     this.packs3 =
       options?.packs3 ??
       (env.LANGUAGE_PACKS
@@ -149,10 +164,16 @@ export class ApiClient {
     const mode = p3?.mode ?? "auto";
     if (p3 && mode !== "off") {
       const a = await attemptPacks3(p3, path, params ?? {});
-      if (a.hit) return a.value as T;
+      if (a.hit) {
+        this.trace?.push({ served: true });
+        return a.value as T;
+      }
+      this.trace?.push({ fallback: a.reason });
       if (mode === "only") {
         throw new ApiClientError("PACKS3_FALLBACK", a.reason, 404, false);
       }
+    } else {
+      this.trace?.push({ fallback: p3 ? "mode-off" : "no-packs" });
     }
 
     const url = new URL(`${this.baseUrl}${path}`);

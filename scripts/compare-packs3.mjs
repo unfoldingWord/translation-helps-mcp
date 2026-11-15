@@ -5,7 +5,8 @@
  *  - one base: each call twice, `x-th-packs3: off` against `x-th-packs3: only` (the Worker needs PACKS_V3_DEBUG=on)
  *  - two bases: each call plain on both (A = --base, B = --base-b)
  * Calls go through the stateless MCP endpoint (`<base>/v3/mcp`, tools/call). Exit 1 on any difference not listed in
- * the known-differences file, on a pack call that falls back, or on a fallback call that does not.
+ * the known-differences file, on a pack call that falls back, on a fallback call that does not, or on an `only`
+ * answer without the Worker's `_meta._packs3` mark (served or fallback is read from that mark, never from the text).
  * Pure parts are exported for tests/unit/compare-packs3.test.ts.
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -40,6 +41,12 @@ export function normalize(value) {
     const out = {};
     for (const [k, v] of Object.entries(value)) {
       if (k === "requestId" || k === "cacheStatus") continue; // cacheStatus is cache metadata like meta.cache
+      if (k === "_meta" && v && typeof v === "object" && !Array.isArray(v)) {
+        // _meta._packs3 is the debug mark of where the answer came from, not part of the answer.
+        const { _packs3: _p, ...rest } = v;
+        if (Object.keys(rest).length) out[k] = normalize(rest);
+        continue;
+      }
       if (k === "meta" && v && typeof v === "object" && !Array.isArray(v)) {
         const { timings: _t, cache: _c, ...rest } = v;
         if (Object.keys(rest).length) out[k] = normalize(rest);
@@ -143,41 +150,25 @@ export function validateKnown(known) {
   );
 }
 
-const FALLBACK_REASONS = /^(adapter-undefined|adapter-exception|readers-busy|no-adapter|no-keys|v3-off|[a-z0-9-]+)$/;
-
-/** Under `x-th-packs3: only` a call format 3 cannot answer comes back as PACKS3_FALLBACK, or as RESOURCE_NOT_AVAILABLE
- *  whose message is the fallback reason (the tools map the client error). Returns the reason, or null. */
-export function fallbackReason(result, offResult) {
-  const text = JSON.stringify(result ?? "");
-  const gap = /(?:Translation notes|Word links|OBS notes)[^"]*? (?:are not available|failed to load)/;
-  const offText = JSON.stringify(offResult ?? "");
-  // th_get_passage_index turns a part's fallback (a 404 from the client under `only`) into "not available": a gap
-  // that today's path does not show is a fallback of that part.
-  const g = gap.exec(text);
-  if (offResult !== undefined && g && !offText.includes(g[0])) return "part not available under only (part)";
-  // Some tools (th_get_article) map the client's 404 to their own "not found" answer: an answer that is unavailable
-  // only under `only` fell back.
-  if (
-    offResult !== undefined &&
-    result?.structuredContent?.available === false &&
-    offResult?.structuredContent?.available !== false &&
-    !/^(adapter-|readers-|no-|v3-)/.test(String(result.structuredContent.message ?? ""))
-  ) {
-    return "not available under only";
+/** The Worker's own mark (PACKS_V3_DEBUG=on only): `result._meta._packs3` is `{ served: true }` or
+ *  `{ fallback: "<reason>" }`. Nothing is inferred from the answer text: no mark is `unmarked`, never served. */
+export function packs3Status(result) {
+  const m = result?._meta?._packs3;
+  if (m && typeof m === "object") {
+    if (typeof m.fallback === "string" && m.fallback) return { kind: "fallback", reason: m.fallback };
+    if (m.served === true) return { kind: "served" };
   }
-  const sc = result?.structuredContent;
-  if (sc?.available === false && sc?.code === "RESOURCE_NOT_AVAILABLE" && typeof sc.message === "string" && FALLBACK_REASONS.test(sc.message) && /^(adapter-|readers-|no-|v3-)/.test(sc.message)) {
-    return sc.message;
-  }
-  if (text.includes("PACKS3_FALLBACK")) return "PACKS3_FALLBACK";
-  // A composite answer (th_get_passage_index) where one part fell back carries the reason in its error text.
-  const m = /\b(adapter-undefined|adapter-exception|readers-busy|no-adapter)\b/.exec(text);
-  if (m) return `${m[1]} (part)`;
-  return null;
+  return { kind: "unmarked" };
 }
 
-export function isFallback(result, offResult) {
-  return fallbackReason(result, offResult) !== null;
+/** The marked fallback reason, or null (served or unmarked). */
+export function fallbackReason(result) {
+  const s = packs3Status(result);
+  return s.kind === "fallback" ? s.reason : null;
+}
+
+export function isFallback(result) {
+  return fallbackReason(result) !== null;
 }
 
 /** A text block that carries the JSON answer repeats every structuredContent difference: keep only the latter. */
@@ -269,7 +260,7 @@ async function main() {
     const call = await resolveIds(original, sideA.base, sideA.headers, key);
     const a = await callTool(sideA.base, sideA.headers, call.tool, call.args, key);
     const b = await callTool(sideB.base, sideB.headers, call.tool, call.args, key);
-    const row = { call, msA: a.ms, msB: b.ms, problems: [], skew: [], known: [], failing: [], fallback: null };
+    const row = { call, msA: a.ms, msB: b.ms, problems: [], skew: [], known: [], failing: [], fallback: null, status: null };
     if (/"RATE_LIMITED"/.test(JSON.stringify([a.result, b.result]))) {
       row.problems.push("rate limited: the run says nothing about this call (raise RATE_LIMIT_RPM and rerun)");
       rows.push(row);
@@ -277,12 +268,18 @@ async function main() {
       continue;
     }
     if (!baseB) {
-      row.fallback = fallbackReason(b.result, a.result);
-      const fb = row.fallback !== null;
-      if (call.expect === "pack" && fb) row.problems.push(`expected a pack answer, got a fallback (${row.fallback})`);
-      if (call.expect === "fallback" && !fb) row.problems.push("expected PACKS3_FALLBACK, got an answer");
+      const st = packs3Status(b.result);
+      row.status = st.kind;
+      row.fallback = st.kind === "fallback" ? st.reason : null;
+      if (st.kind === "unmarked") {
+        row.problems.push("UNMARKED: no _meta._packs3 on the `only` answer (is PACKS_V3_DEBUG on?); not counted as served");
+        console.error(`UNMARKED ${call.tool} ${JSON.stringify(call.args)}: the Worker gave no _packs3 mark`);
+      } else {
+        if (call.expect === "pack" && st.kind === "fallback") row.problems.push(`expected a pack answer, got a fallback (${row.fallback})`);
+        if (call.expect === "fallback" && st.kind === "served") row.problems.push("expected a fallback, got a format 3 answer");
+      }
     }
-    if ((call.expect === "pack" && row.fallback === null) || baseB) {
+    if ((call.expect === "pack" && row.status === "served") || baseB) {
       Object.assign(row, classify(dropMirroredText(diffPaths(normalize(a.result), normalize(b.result))), call, known));
     }
     rows.push(row);
@@ -299,7 +296,8 @@ async function main() {
       `Known differences hit: ${rows.reduce((n, r) => n + r.known.length, 0)}. ` +
       `Release skew: ${rows.reduce((n, r) => n + r.skew.length, 0)}.`,
     "",
-    `Fallbacks under \`only\`: ${fbSummary(rows)}.`,
+    `Fallbacks under \`only\` (from the Worker's _meta._packs3 mark): ${fbSummary(rows)}. ` +
+      `Unmarked answers: ${rows.filter((r) => r.status === "unmarked").length}.`,
     "",
     "## Differences",
     "",
@@ -316,7 +314,9 @@ async function main() {
   for (const r of rows) {
     const bad = r.problems.length + r.failing.length;
     const result = bad
-      ? "FAIL"
+      ? r.status === "unmarked"
+        ? "FAIL (unmarked)"
+        : "FAIL"
       : r.fallback
         ? `fallback (${r.fallback})${r.call.why ? `: ${r.call.why}` : ""}`
         : r.known.length

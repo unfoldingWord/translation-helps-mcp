@@ -29,7 +29,7 @@ import { registerTranslationHelpsServer } from "./registerServer.js";
 import { V3_SERVER_INSTRUCTIONS } from "./v3/instructions.js";
 import { registerV3Server } from "./v3/registerServer.js";
 import { V3NormalizingMcpServer } from "./v3/server.js";
-import { packs3ModeFromRequest } from "./apiClient.js";
+import { packs3Mark, packs3ModeFromRequest } from "./apiClient.js";
 import type { Env } from "./agent.js";
 
 const JSON_AND_EVENT_STREAM = "application/json, text/event-stream";
@@ -62,20 +62,61 @@ function withStreamableAccept(request: Request): Request {
   return new Request(request, { headers });
 }
 
-/** The env the tools receive, with the per-request format 3 mode (debug only). */
-function withPacks3Mode(env: Env, request: Request): Env {
+/**
+ * The env the tools receive. Only with PACKS_V3_DEBUG === "on": the per-request
+ * format 3 mode and a fresh trace of every format 3 outcome.
+ */
+function withPacks3Debug(env: Env, request: Request): Env {
+  if (env.PACKS_V3_DEBUG !== "on") return env;
   const mode = packs3ModeFromRequest(request, env);
-  return mode ? { ...env, PACKS3_MODE: mode } : env;
+  return {
+    ...env,
+    ...(mode ? { PACKS3_MODE: mode } : {}),
+    PACKS3_TRACE: [],
+  };
 }
 
-export function handleStatelessMcpRequest(
+/**
+ * Debug only: the tools/call result gets `_meta._packs3` ({ served: true } or
+ * { fallback: reason }) so scripts/compare-packs3.mjs reads the outcome instead
+ * of guessing it from the answer text. `_meta` is the MCP result's own
+ * extension field, so no tool schema changes. Without a trace (debug off) or
+ * with no format 3 outcome (nothing was read) the response is untouched.
+ */
+async function markPacks3(response: Response, env: Env): Promise<Response> {
+  const mark = env.PACKS3_TRACE ? packs3Mark(env.PACKS3_TRACE) : undefined;
+  if (!mark) return response;
+  if (!response.headers.get("content-type")?.includes("application/json")) {
+    return response;
+  }
+  const text = await response.text();
+  let out = text;
+  try {
+    const body = JSON.parse(text) as {
+      result?: { _meta?: Record<string, unknown> };
+    };
+    if (body?.result && typeof body.result === "object") {
+      body.result._meta = { ...(body.result._meta ?? {}), _packs3: mark };
+      out = JSON.stringify(body);
+    }
+  } catch {
+    /* not one JSON-RPC message: leave it */
+  }
+  const headers = new Headers(response.headers);
+  headers.delete("content-length");
+  return new Response(out, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+export async function handleStatelessMcpRequest(
   request: Request,
   env: Env,
 ): Promise<Response> {
-  return serveStateless(
-    openStatelessServer(withPacks3Mode(env, request)),
-    request,
-  );
+  const e = withPacks3Debug(env, request);
+  return markPacks3(await serveStateless(openStatelessServer(e), request), e);
 }
 
 /** /v3/mcp. Stateless only: initialize does not mint a session id. */
@@ -88,14 +129,12 @@ export function openV3StatelessServer(env: Env): V3NormalizingMcpServer {
   return server;
 }
 
-export function handleV3StatelessMcpRequest(
+export async function handleV3StatelessMcpRequest(
   request: Request,
   env: Env,
 ): Promise<Response> {
-  return serveStateless(
-    openV3StatelessServer(withPacks3Mode(env, request)),
-    request,
-  );
+  const e = withPacks3Debug(env, request);
+  return markPacks3(await serveStateless(openV3StatelessServer(e), request), e);
 }
 
 function serveStateless(

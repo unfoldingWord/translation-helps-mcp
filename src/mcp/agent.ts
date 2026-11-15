@@ -31,6 +31,8 @@ export interface Env {
   PACKS_V3_DEBUG?: string;
   /** `off` | `only`, set per request from `x-th-packs3` when PACKS_V3_DEBUG is "on". */
   PACKS3_MODE?: string;
+  /** Per-request format 3 outcomes, only when PACKS_V3_DEBUG is "on" (see stateless.ts). */
+  PACKS3_TRACE?: import("./apiClient.js").Packs3Trace;
   /**
    * Optional waitUntil from the request ExecutionContext. When set (chat/agent
    * Workers path, or the stateless MCP handler), background work like prefetch

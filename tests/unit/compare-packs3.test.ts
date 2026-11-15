@@ -74,32 +74,59 @@ describe("compare-packs3 pure parts", () => {
     expect(c.failing).toHaveLength(1);
   });
 
-  it("detects a fallback answer", () => {
-    expect(
-      s.isFallback({
-        isError: true,
-        content: [{ text: "PACKS3_FALLBACK: x" }],
-      }),
-    ).toBe(true);
-    expect(s.isFallback({ content: [{ text: "ok" }] })).toBe(false);
+  it("reads the Worker's _meta._packs3 mark, never the answer text", () => {
+    const served = {
+      content: [{ text: "PACKS3_FALLBACK adapter-undefined" }],
+      _meta: { _packs3: { served: true } },
+    };
+    expect(s.packs3Status(served)).toEqual({ kind: "served" });
+    expect(s.fallbackReason(served)).toBeNull();
+    expect(s.isFallback(served)).toBe(false);
+
+    const fb = {
+      content: [{ text: "ok" }],
+      _meta: { _packs3: { fallback: "readers-busy" } },
+    };
+    expect(s.packs3Status(fb)).toEqual({
+      kind: "fallback",
+      reason: "readers-busy",
+    });
+    expect(s.fallbackReason(fb)).toBe("readers-busy");
+    expect(s.isFallback(fb)).toBe(true);
+
+    // No mark: unmarked, whatever the text says. Never counted as served, never inferred as a fallback.
+    for (const r of [
+      { isError: true, content: [{ text: "PACKS3_FALLBACK: x" }] },
+      {
+        structuredContent: {
+          available: false,
+          code: "RESOURCE_NOT_AVAILABLE",
+          message: "no-adapter",
+        },
+      },
+      {
+        structuredContent: {
+          notes: [],
+          message: 'Translation notes are not available for language "en".',
+        },
+      },
+      { content: [{ text: "ok" }] },
+      { content: [{ text: "ok" }], _meta: { _packs3: { other: 1 } } },
+      undefined,
+    ]) {
+      expect(s.packs3Status(r)).toEqual({ kind: "unmarked" });
+      expect(s.fallbackReason(r)).toBeNull();
+      expect(s.isFallback(r)).toBe(false);
+    }
   });
 
-  it("sees a fallback the tool turned into 'not available', only when today's path answers", () => {
-    const off = { structuredContent: { title: "grace" } };
-    const only = {
-      structuredContent: { available: false, message: "No article was found" },
-    };
-    expect(s.fallbackReason(only, off)).toBe("not available under only");
-    expect(s.fallbackReason(only, only)).toBeNull();
-    const part = {
-      structuredContent: {
-        notes: [],
-        message: 'Translation notes are not available for language "en".',
-      },
-    };
-    expect(s.fallbackReason(part, { structuredContent: { notes: [1] } })).toBe(
-      "part not available under only (part)",
+  it("normalize drops the _packs3 mark, keeps the rest of _meta", () => {
+    expect(s.normalize({ a: 1, _meta: { _packs3: { served: true } } })).toEqual(
+      { a: 1 },
     );
+    expect(
+      s.normalize({ a: 1, _meta: { _packs3: { fallback: "x" }, k: 2 } }),
+    ).toEqual({ a: 1, _meta: { k: 2 } });
   });
 
   it("drops the text block that mirrors structuredContent differences", () => {
