@@ -322,6 +322,117 @@ describe("withReader", () => {
     }
   });
 
+  describe("bytes held with a call's need", () => {
+    const needOf = (unit: string) => ({
+      need: (r: { size: (u: string) => number }) => r.size(unit),
+    });
+    const holdOn = (
+      lang: string,
+      body: (
+        r: import("../../vendor/language-pack-client/index.js").PackReader,
+      ) => Promise<unknown>,
+      opts?: ReturnType<typeof needOf>,
+    ) => {
+      let release!: () => void;
+      const gate = new Promise<void>((r) => (release = r));
+      const p = withReader(
+        env,
+        lang,
+        async (r) => (await body(r), await gate, fake(r).id),
+        opts,
+      );
+      return { p, release };
+    };
+    let warn: ReturnType<typeof vi.spyOn>;
+    beforeEach(() => {
+      resetWarnOnceForTests();
+      warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    });
+    afterEach(() => warn.mockRestore());
+
+    it("a reader at 0.95 MB is recycled before a call that needs 0.9 MB", async () => {
+      await id("a");
+      opened[0].sizes["book:GEN"] = 0.95 * MB;
+      opened[0].sizes["book:EXO"] = 0.9 * MB;
+      await withReader(env, "a", (r) => r.book("GEN"));
+      const got = await withReader(
+        env,
+        "a",
+        async (r) => (await r.book("EXO"), fake(r).id),
+        needOf("book:EXO"),
+      );
+      expect(got).toBe(1); // a fresh reader, not reader 0 at 1.85 MB
+      expect(liveReadersForTests()).toBe(1); // the idle old one is released
+    });
+
+    it("a unit the reader already opened is not counted again", async () => {
+      await id("a");
+      opened[0].sizes["book:GEN"] = 0.95 * MB;
+      await withReader(env, "a", (r) => r.book("GEN"));
+      expect(
+        await withReader(env, "a", async (r) => fake(r).id, needOf("book:GEN")),
+      ).toBe(0);
+    });
+
+    it("concurrent calls on one reader reserve their need when they start", async () => {
+      await id("a");
+      opened[0].sizes["book:GEN"] = 0.9 * MB;
+      opened[0].sizes["book:EXO"] = 0.9 * MB;
+      const first = holdOn("a", async () => {}, needOf("book:GEN"));
+      await tick();
+      // GEN is reserved but not opened yet: EXO must not join reader 0 (1.8 MB).
+      const second = holdOn("a", async () => {}, needOf("book:EXO"));
+      await tick();
+      expect(opened.length).toBe(2);
+      first.release();
+      second.release();
+      expect(await first.p).toBe(0);
+      expect(await second.p).toBe(1);
+    });
+
+    it("concurrent calls on the same unit share the reader", async () => {
+      await id("a");
+      opened[0].sizes["book:GEN"] = 0.9 * MB;
+      const first = holdOn("a", async () => {}, needOf("book:GEN"));
+      await tick();
+      const second = holdOn("a", async () => {}, needOf("book:GEN"));
+      await tick();
+      first.release();
+      second.release();
+      expect(await first.p).toBe(0);
+      expect(await second.p).toBe(0);
+      expect(opened.length).toBe(1);
+    });
+
+    it("two readers whose combined bytes and need pass the cap do not both open", async () => {
+      await id("a");
+      opened[0].sizes["book:EXO"] = 0.9 * MB;
+      opened[0].sizes["book:LEV"] = 0.6 * MB; // opened past what the need said
+      const first = holdOn(
+        "a",
+        async (r) => (await r.book("EXO"), await r.book("LEV")),
+        needOf("book:EXO"),
+      );
+      await tick();
+      await tick();
+      const used = vi.fn(async () => 1);
+      // b alone would need 0.9 MB: 1.5 + 0.9 = 2.4 MB held at once.
+      expect(
+        await withReader(env, "b", used, { need: () => 0.9 * MB }),
+      ).toBeNull();
+      expect(used).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith("packs3 fallback", {
+        lang: "b",
+        reason: "readers-busy",
+      });
+      first.release();
+      expect(await first.p).toBe(0);
+      expect(
+        await withReader(env, "b", async () => 3, { need: () => 0.9 * MB }),
+      ).toBe(3);
+    });
+  });
+
   describe("exclusive reader (a book over the budget)", () => {
     const big = { need: () => 1.5 * MB };
     const hold = (lang: string, opts?: { need: () => number }) => {

@@ -22,6 +22,13 @@ export const READER_BYTE_BUDGET = 1 * 1024 * 1024;
  * falls back (`book-too-large`). Heap measured in docs/packs3-measurements.md (Task 14a-OT).
  */
 export const EXCLUSIVE_BYTE_CAP = 1.8 * 1024 * 1024;
+/**
+ * Compressed bytes all readers of the isolate may hold together (live and recycled-but-running): opened units, the
+ * needs reserved by running calls, and the new call's need. 2 MB x 41 MB of heap per compressed MB (Task 1) = about
+ * 82 MB, plus the 8 MB segment cache and the isolate's own code, leaves working room in a 128 MB isolate. A call that
+ * would pass it drops idle live readers first, else falls back (`readers-busy`).
+ */
+export const COMBINED_BYTE_BUDGET = 2 * 1024 * 1024;
 
 /** What `need` may ask of the reader: the compressed size of units, from the catalogs (no unit is opened). */
 export type SizeProbe = Pick<PackReader, "unitOf" | "size">;
@@ -36,6 +43,10 @@ type Entry = {
   counted: Set<string>;
   bytes: number;
   running: number;
+  /** Units named by the needs of running calls (count of calls), held until each call ends. */
+  pending: Map<string, number>;
+  /** Need of running calls beyond the sizes of the units they probed. */
+  extra: number;
   /** The wrapper handed to callers: counts bytes, calls only allowed methods. */
   view: PackReader;
 };
@@ -74,6 +85,58 @@ function retire(key: string, e: Entry): void {
   if (e.running > 0) retired.add(e);
 }
 
+/** A call's need, split into the units it probed (by size) and what it asked beyond them. */
+type Claim = { total: number; units: string[]; extra: number };
+
+function measure(need: (r: SizeProbe) => number, reader: PackReader): Claim {
+  const probed = new Set<string>();
+  const total = need({
+    unitOf: (cls, key) => reader.unitOf(cls, key),
+    size: (u) => (probed.add(u), reader.size(u)),
+  });
+  let sized = 0;
+  for (const u of probed) sized += reader.size(u);
+  return { total, units: [...probed], extra: Math.max(0, total - sized) };
+}
+
+/** Bytes the reader holds or has promised: opened units, plus units reserved by running calls and not yet opened. */
+function load(e: Entry): number {
+  let b = e.bytes + e.extra;
+  for (const u of e.pending.keys())
+    if (!e.counted.has(u)) b += e.reader.size(u);
+  return b;
+}
+
+/** Bytes the claim adds to the reader: units neither opened nor reserved there, plus its extra. */
+function added(e: Entry, claim: Claim | undefined): number {
+  if (!claim) return 0;
+  let b = claim.extra;
+  for (const u of claim.units)
+    if (!e.counted.has(u) && !e.pending.has(u)) b += e.reader.size(u);
+  return b;
+}
+
+function combined(): number {
+  let b = 0;
+  for (const x of live.values()) b += load(x);
+  for (const x of retired) b += load(x);
+  return b;
+}
+
+function reserve(e: Entry, claim: Claim): void {
+  for (const u of claim.units) e.pending.set(u, (e.pending.get(u) ?? 0) + 1);
+  e.extra += claim.extra;
+}
+
+function unreserve(e: Entry, claim: Claim): void {
+  for (const u of claim.units) {
+    const n = (e.pending.get(u) ?? 1) - 1;
+    if (n > 0) e.pending.set(u, n);
+    else e.pending.delete(u);
+  }
+  e.extra -= claim.extra;
+}
+
 function makeEntry(lang: string, c: Catalogs3, env: Packs3Env): Entry {
   const reader = openFromSegments({
     lang: c.lang,
@@ -86,6 +149,8 @@ function makeEntry(lang: string, c: Catalogs3, env: Packs3Env): Entry {
     counted: new Set(),
     bytes: 0,
     running: 0,
+    pending: new Map(),
+    extra: 0,
     view: undefined as unknown as PackReader,
   };
   const countUnit = (unit: string | undefined) => {
@@ -153,6 +218,8 @@ function makeEntry(lang: string, c: Catalogs3, env: Packs3Env): Entry {
  * the next call gets a fresh reader; calls already running keep theirs, and a
  * dropped reader is released when its last call ends. `null` without catalogs.
  * With `opts.need` over the budget the call runs in an exclusive reader (EXCLUSIVE_BYTE_CAP).
+ * Otherwise the need is reserved on the reader while the call runs: a reader whose held and reserved bytes plus the
+ * need pass the budget is replaced first, and all readers together stay under COMBINED_BYTE_BUDGET.
  */
 export async function withReader<T>(
   env: Packs3Env,
@@ -181,14 +248,11 @@ export async function withReader<T>(
     if (old.lang === lang && k !== c.key) retire(k, old);
   }
   let e = live.get(c.key);
-  if (e && e.bytes > READER_BYTE_BUDGET) {
-    retire(c.key, e);
-    e = undefined;
-  }
   let fresh: Entry | undefined;
-  const need = opts.need
-    ? opts.need((e ?? (fresh = makeEntry(lang, c, env))).reader)
-    : 0;
+  const claim = opts.need
+    ? measure(opts.need, (e ?? (fresh = makeEntry(lang, c, env))).reader)
+    : undefined;
+  const need = claim?.total ?? 0;
   if (need > EXCLUSIVE_BYTE_CAP) {
     warnOnce(lang, "book-too-large");
     return null;
@@ -210,10 +274,13 @@ export async function withReader<T>(
       if (exclusive === x) exclusive = undefined; // an abandoned call must not clear a newer slot
     }
   }
-  if (e) {
-    live.delete(c.key); // refresh recency
-    live.set(c.key, e);
-  } else {
+  // Past the budget with what it holds, has reserved and this call adds, the reader is replaced
+  // (calls running on it keep it). Units it already opened or reserved are not counted twice.
+  if (e && load(e) + added(e, claim) > READER_BYTE_BUDGET) {
+    retire(c.key, e);
+    e = undefined;
+  }
+  if (!e) {
     // Live and retired readers count together; only an idle live reader can be dropped for a new one.
     while (live.size + retired.size >= MAX_READERS) {
       const idle = [...live].find(([, x]) => x.running === 0);
@@ -223,16 +290,29 @@ export async function withReader<T>(
       }
       live.delete(idle[0]);
     }
-    e = fresh ?? makeEntry(lang, c, env);
-    live.set(c.key, e);
   }
+  const entry = e ?? fresh ?? makeEntry(lang, c, env);
+  // All readers together, with this call's need, stay under COMBINED_BYTE_BUDGET: idle live readers go first
+  // (oldest first). A call that declares nothing new (no need, or its units already held) is not refused here.
+  const add = added(entry, claim);
+  while (add > 0 && combined() + add > COMBINED_BYTE_BUDGET) {
+    const idle = [...live].find(([, x]) => x !== entry && x.running === 0);
+    if (!idle) {
+      warnOnce(lang, "readers-busy");
+      return null;
+    }
+    live.delete(idle[0]);
+  }
+  live.delete(c.key); // refresh recency
+  live.set(c.key, entry);
 
-  const entry = e;
+  if (claim) reserve(entry, claim);
   entry.running++;
   try {
     return await use(entry.view, c);
   } finally {
     entry.running--;
+    if (claim) unreserve(entry, claim);
     if (entry.running === 0) retired.delete(entry);
   }
 }

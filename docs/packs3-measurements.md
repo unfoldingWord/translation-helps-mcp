@@ -53,7 +53,9 @@ and the isolate's own code and temporaries, about 90 MB plus working memory, aga
 
 Caveat: the budget is checked between calls, so a single unit can overshoot it (Psalms alone is about 48 MB), and the
 overshoot happens inside one callback: a reader at 0.9 MB that then reads Psalms reaches about 85 MB alone. Two such
-readers would not fit, which is why they are bounded together. This is an estimate, not a measurement of two readers at
+readers would not fit, which is why they are bounded together: a call's declared need is reserved when it starts, a
+reader whose opened and reserved bytes plus the need pass 1 MB is replaced first, and the bytes of all readers plus the
+need must stay under 2 MB (`COMBINED_BYTE_BUDGET`; idle readers are dropped first, else `readers-busy`). This is an estimate, not a measurement of two readers at
 once: it is to be measured in staging step S4 (the exceededMemory tail).
 
 ## Exclusive reader for big books (Task 14a-OT)
