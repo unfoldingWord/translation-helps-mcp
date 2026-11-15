@@ -12,6 +12,7 @@ import {
   articleCatalogFromPacks3,
   wordsPathFromPacks3,
   academyPathFromPacks3,
+  bodyOf,
 } from "../../src/packs3/adapters/articles";
 import { answerFromPacks3 } from "../../src/packs3/answer";
 import { injectFixtureProofs } from "./packs3-fixture-verified";
@@ -278,5 +279,26 @@ describe("articles", () => {
       },
     );
     expect((a as Answer)?.path).toBe("translate/figs-metaphor");
+  });
+});
+
+describe("bodyOf: Bible links", () => {
+  const art = (md: string) => ({
+    id: "tw:kt/x",
+    res: "r",
+    title: "X",
+    sections: [{ level: 2, title: "Facts", md }],
+  });
+  it("rebuilds the link as the route publishes it", () => {
+    const body = bodyOf(
+      "tw",
+      art("See [Ezra 9:1-2](ref:ezr 9:1) and [Psalm 3:7](ref:psa 3:7)."),
+      "en",
+    );
+    expect(body).toContain("](rc://en/tn/help/ezr/09/01)");
+    expect(body).toContain("](rc://en/tn/help/psa/003/07)");
+  });
+  it("still gives undefined for a link it cannot rebuild", () => {
+    expect(bodyOf("tw", art("see [[ta:translate/x]]"), "en")).toBeUndefined();
   });
 });

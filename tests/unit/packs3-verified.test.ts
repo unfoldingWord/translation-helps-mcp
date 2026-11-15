@@ -97,6 +97,32 @@ describe("isVerified", () => {
     expect(isVerified("en", "u/en/tw", "v1", "search", "faith")).toBe(false);
   });
 
+  it("articles in the compact form: only the listed clean items are served", () => {
+    use("en|u/en/tw|v1|articles", {
+      items: 3,
+      excepted: 1,
+      idDirs: { "bible/kt": "grace,god", "bible/other": "x" },
+    });
+    const a = (id: string) => isVerified("en", "u/en/tw", "v1", "articles", id);
+    expect(a("bible/kt/grace")).toBe(true);
+    expect(a("bible/kt/god")).toBe(true);
+    expect(a("bible/other/x")).toBe(true);
+    // Not listed: excepted, not swept, another directory, a prefix of a name, no name.
+    expect(a("bible/kt/faith")).toBe(false);
+    expect(a("bible/kt/gra")).toBe(false);
+    expect(a("bible/names/grace")).toBe(false);
+    expect(a("bible/kt/")).toBe(false);
+    expect(a("grace")).toBe(false);
+    expect(a("__proto__/x")).toBe(false);
+    // A malformed list makes the entry unusable.
+    use("en|u/en/tw|v1|articles", {
+      idDirs: { "bible/kt": ["grace"] },
+    } as never);
+    expect(a("bible/kt/grace")).toBe(false);
+    use("en|u/en/tw|v1|articles", { idDirs: [] } as never);
+    expect(a("bible/kt/grace")).toBe(false);
+  });
+
   it("the sweep may open it", () => {
     setSweepOpen(true);
     expect(notes("TIT 1")).toBe(true);

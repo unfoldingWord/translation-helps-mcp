@@ -97,7 +97,8 @@ export function listExceptions(results) {
  *     indexChapters: { "TIT": [0, 1] }, indexWholeBooks: ["TIT"],  // notes/links: the `fields=index` items swept
  *                                                           // (their exceptions are listed as "index:TIT 1")
  *                                                           // passage exceptions: one string per chapter, "TIT 1:3,10,1-16"
- *     ids: ["bible/kt/grace"],                              // articles and search: the exact items swept
+ *     ids: ["bible/kt/grace"],                              // search: the exact items swept
+ *     idDirs: { "bible/kt": "grace,god" }, excepted: 3,     // articles: the clean items per directory, the exceptions as a count
  *     skippedBooks: ["GEN"] }                               // books listed but not swept (a sweep no longer writes it)
  * Task 13 serves an item only if it is in that list, is not an exception, and every `deps` release equals the catalog's.
  */
@@ -274,8 +275,29 @@ export function groupPassageExceptions(list) {
   });
 }
 
+/**
+ * An articles entry in the compact form verified.ts reads: only the clean items are listed, per directory
+ * (`idDirs: { "bible/kt": "grace,god" }`, the item is `<dir>/<name>`), and the exceptions are a count (`excepted`): an
+ * item that is not listed is never served, so an excepted one needs no line. A path that was not swept is not listed
+ * either, so it still falls back. `ids` and `exceptions` are what `buildEntry` + `coverageOf` made.
+ */
+export function compactArticles(entry) {
+  const bad = new Set(entry.exceptions ?? []);
+  const dirs = {};
+  for (const id of entry.ids ?? []) {
+    if (bad.has(id)) continue;
+    const i = id.lastIndexOf("/");
+    const dir = i < 0 ? "" : id.slice(0, i);
+    (dirs[dir] ??= []).push(id.slice(i + 1));
+  }
+  const idDirs = Object.fromEntries(Object.keys(dirs).sort().map((d) => [d, dirs[d].sort().join(",")]));
+  const { ids, exceptions, ...rest } = entry;
+  return { ...rest, excepted: bad.size, idDirs };
+}
+
 /** How many items an entry excepts (a passage exception string groups a chapter's items). */
 export function exceptionCount(entry, kind) {
+  if (typeof entry.excepted === "number") return entry.excepted;
   const list = entry.exceptions ?? [];
   return kind === "passage" ? list.reduce((n, x) => n + x.split(",").length, 0) : list.length;
 }
@@ -560,7 +582,7 @@ async function main() {
       deps: depsFor(kind, r.key, catList, { alignedKey, usedKeys }),
       ...coverageOf(own),
     });
-    entries[key] = kind === "passage" ? compactPassage(entry, own) : entry;
+    entries[key] = kind === "passage" ? compactPassage(entry, own) : kind === "articles" ? compactArticles(entry) : entry;
     const bad = mine.filter((x) => x.status !== "equal");
     const by = {};
     for (const x of bad) {

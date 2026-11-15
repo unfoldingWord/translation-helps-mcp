@@ -388,6 +388,33 @@ describe("sweep-packs3 pure parts", () => {
   });
 });
 
+describe("compactArticles", () => {
+  it("lists the clean items per directory and counts the exceptions", () => {
+    const entry = {
+      items: 4,
+      exceptions: ["bible/kt/god", "translate/b"],
+      swept: "d",
+      deps: {},
+      ids: [
+        "bible/kt/god",
+        "bible/kt/grace",
+        "bible/other/x",
+        "translate/b",
+        "translate/a",
+      ],
+    };
+    expect(s.compactArticles(entry)).toEqual({
+      items: 4,
+      swept: "d",
+      deps: {},
+      excepted: 2,
+      idDirs: { "bible/kt": "grace", "bible/other": "x", translate: "a" },
+    });
+    expect(s.exceptionCount(s.compactArticles(entry), "articles")).toBe(2);
+    expect(entry.ids).toHaveLength(5);
+  });
+});
+
 describe("compactPassage", () => {
   it("drops a chapter whose every item is an exception, with its exceptions (it is not listed, so never served)", () => {
     const items = [

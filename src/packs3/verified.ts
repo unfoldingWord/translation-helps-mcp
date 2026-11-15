@@ -9,7 +9,8 @@
  *   makes the whole entry unusable.
  * - notes, links: `BOOK C` (`chapters`) for the default shape; `fields=index` items (whole book and chapter) are
  *   `indexWholeBooks` / `indexChapters`, their exceptions `index:BOOK C`. questions: items `BOOK` (`wholeBooks`) and `BOOK C` (`chapters`, "front" and 0 included).
- * - articles and the search kind: the exact item in `ids`.
+ * - the search kind: the exact item in `ids`. articles: the exact item in `idDirs` (clean items only, per directory;
+ *   `ids` is read too), or in `ids` and not in `exceptions`.
  * `exceptions` lists the items whose answers did not equal today's; `deps` the other resources (`"<catalog>|<key>"`)
  * with the release the answers were made from; `skippedBooks` the books of a passage entry that were not swept.
  */
@@ -23,6 +24,10 @@ export type VerifiedEntry = {
   chapters?: Record<string, Array<number | string>>;
   wholeBooks?: string[];
   ids?: string[];
+  /** Articles (compact): the clean items per directory, `{ "bible/kt": "grace,god" }` is `bible/kt/grace`, `bible/kt/god`. */
+  idDirs?: Record<string, string>;
+  /** Articles (compact): how many swept items were not equal (they are not listed, so never served). */
+  excepted?: number;
   skippedBooks?: string[];
   /** notes/links `fields=index` proofs: chapters per book and whole books (their exceptions are `index:<item>`). */
   indexChapters?: Record<string, Array<number | string>>;
@@ -113,6 +118,11 @@ function wellFormed(e: VerifiedEntry): boolean {
     if (!isPlain(v)) return false;
     if (!Object.values(v).every((l) => Array.isArray(l))) return false;
   }
+  if (o.idDirs !== undefined) {
+    if (!isPlain(o.idDirs)) return false;
+    if (!Object.values(o.idDirs).every((l) => typeof l === "string"))
+      return false;
+  }
   if (o.deps !== undefined) {
     if (!isPlain(o.deps)) return false;
     if (!Object.values(o.deps).every((d) => typeof d === "string"))
@@ -132,13 +142,28 @@ function chapterListed(
   return Array.isArray(list) && list.some((c) => String(c) === String(chapter));
 }
 
+/** `item` is `<dir>/<name>` and `name` is in the dir's comma list. */
+function dirListed(dirs: unknown, item: string): boolean {
+  if (!isPlain(dirs)) return false;
+  const i = item.lastIndexOf("/");
+  const dir = i < 0 ? "" : item.slice(0, i);
+  if (!Object.hasOwn(dirs, dir)) return false;
+  const list = dirs[dir];
+  return (
+    typeof list === "string" &&
+    item.length > i + 1 &&
+    list.split(",").includes(item.slice(i + 1))
+  );
+}
+
 function itemListed(
   e: VerifiedEntry,
   kind: string,
   item: string,
   index: boolean,
 ): boolean {
-  if (ID_KINDS.has(kind)) return strings(e.ids).includes(item);
+  if (ID_KINDS.has(kind))
+    return strings(e.ids).includes(item) || dirListed(e.idDirs, item);
   if (CHAPTER_KINDS.has(kind)) {
     const m = /^(\S+)(?: (\S+))?$/.exec(item);
     if (!m) return false;

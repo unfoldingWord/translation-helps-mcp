@@ -8,8 +8,8 @@
  * - A path that does not resolve to one article (a miss or several candidates) gives `undefined`: format 3 never says
  *   "not found" or "not available", the API Worker decides (its catalog may hold an article this pack lacks).
  * - The body is rebuilt from the sections exactly as the zip file reads. Format 3 rewrites Bible reference links as
- *   `](ref:act 4:33)` and keeps no trace of the published form (`.../act/04/33`, `/01/5`, `psa/074/10`, `rc://*`), so an
- *   article with such a link (or `[[ta:`, `[[tw:`) gives `undefined`. Every other article of en and es-419 equals.
+ *   `](ref:act 4:33)` and keeps no trace of the published form; the canonical `rc://<lang>/tn/help/act/04/33` is rebuilt
+ *   and the sweep proves it per article (one published otherwise is an exception). `[[ta:`, `[[tw:` gives `undefined`.
  * - The path resolution is the route's own (`resolveTwArticle` / `resolveTaArticle`, `jsonArticleMatch`); an exact path is
  *   resolved in its own group, anything else gives `undefined`.
  */
@@ -169,7 +169,11 @@ export async function articleCatalogFromPacks3(
 }
 
 /** The article as the zip file reads, or `undefined` when a link cannot be put back the way it was published. */
-export function bodyOf(kind: ArticleKind, art: Raw): string | undefined {
+export function bodyOf(
+  kind: ArticleKind,
+  art: Raw,
+  lang: string,
+): string | undefined {
   const blocks: string[] = [];
   if (kind === "tw") blocks.push(`# ${art.title}`);
   for (const s of art.sections) {
@@ -177,9 +181,15 @@ export function bodyOf(kind: ArticleKind, art: Raw): string | undefined {
     if (s.title !== undefined) blocks.push(`${"#".repeat(s.level)} ${s.title}`);
     if (s.md !== "") blocks.push(s.md);
   }
-  const body = blocks.join("\n\n") + "\n";
-  // Format 3 rewrites a Bible reference link as `](ref:act 4:33)` and keeps no trace of the published form
-  // (`rc://en/tn/help/act/04/33`, `/01/5`, `psa/074/10`, `rc://*/tn/help/...`): the route's text cannot be rebuilt.
+  // Format 3 rewrites a Bible reference link as `](ref:act 4:33)` and keeps no trace of the published form. It is
+  // rebuilt in the canonical form (`rc://<lang>/tn/help/act/04/33`, psalms 3-digit chapter); the sweep proves each
+  // article, and one published otherwise (`/01/5`, `rc://*`, a verse range) differs and stays an exception.
+  const pad = (n: string, w: number) => n.padStart(w, "0");
+  const body = (blocks.join("\n\n") + "\n").replace(
+    /\]\(ref:([a-z0-9]{3}) (\d+):(\d+)\)/g,
+    (_m, bk: string, c: string, v: string) =>
+      `](rc://${lang}/tn/help/${bk}/${pad(c, bk === "psa" ? 3 : 2)}/${pad(v, 2)})`,
+  );
   if (/\]\(ref:|\[\[(?:ta|tw):/.test(body)) return undefined;
   return body;
 }
@@ -246,7 +256,7 @@ async function articleFromPacks3(
     const raw = (await reader.articles(rec.group)) as Raw[] | undefined;
     const art = raw?.find((a) => pathOfId(a.id) === rec.path);
     if (!art) return undefined;
-    const article = bodyOf(kind, art);
+    const article = bodyOf(kind, art, c.lang);
     if (article === undefined) return undefined;
     const resource = releaseOf(c, kind, rec.res);
     if (!resource) return undefined;
