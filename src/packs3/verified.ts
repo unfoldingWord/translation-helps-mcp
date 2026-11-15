@@ -6,7 +6,8 @@
  * What the sweep writes per kind (and what `isVerified` reads):
  * - passage: items `BOOK C:V` for every verse and `BOOK C:1-N` per chapter; `chapters: { BOOK: [c, ...] }`. Its
  *   exceptions are grouped per chapter, `BOOK C:v,v,a-b` (the items `BOOK C:v` and `BOOK C:a-b`); one it cannot read
- *   makes the whole entry unusable.
+ *   makes the whole entry unusable. With `--range-windows`, `joins: { BOOK: "c:v,a-b;c:v" }`: the verse boundaries
+ *   a swept 2-3 verse window proved (see `isVerified`).
  * - notes, links: `BOOK C` (`chapters`) for the default shape; `fields=index` items (whole book and chapter) are
  *   `indexWholeBooks` / `indexChapters`, their exceptions `index:BOOK C`. questions: items `BOOK` (`wholeBooks`) and `BOOK C` (`chapters`, "front" and 0 included).
  * - the search kind: the exact item in `ids`. articles: the exact item in `idDirs` (clean items only, per directory;
@@ -32,6 +33,11 @@ export type VerifiedEntry = {
   /** notes/links `fields=index` proofs: chapters per book and whole books (their exceptions are `index:<item>`). */
   indexChapters?: Record<string, Array<number | string>>;
   indexWholeBooks?: string[];
+  /**
+   * Passage: the boundaries a swept range window proved, per book, `"c:v,a-b;c:v"` (`v` joins verses v and v+1 with
+   * one space in the route's range). A range in a chapter with a range exception is served only over these.
+   */
+  joins?: Record<string, string>;
 };
 
 export type VerifiedOpts = {
@@ -86,6 +92,35 @@ function passageExceptions(list: string[]): Set<string> | undefined {
   }
   return out;
 }
+const JOINS_CHAPTER = /^(\d+):(\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)$/;
+
+/**
+ * The proven boundaries of `chapter` (`v` is the boundary between verses v and v+1) from a passage entry's `joins`
+ * (`{ "TIT": "1:1-4,6;3:4" }`), or `undefined` when there are none or the book's string cannot be read (fail closed).
+ */
+function joinsOf(
+  joins: unknown,
+  book: string,
+  chapter: string,
+): Set<number> | undefined {
+  if (!isPlain(joins) || !Object.hasOwn(joins, book)) return undefined;
+  const line = joins[book];
+  if (typeof line !== "string") return undefined;
+  let out: Set<number> | undefined;
+  for (const part of line.split(";")) {
+    const m = JOINS_CHAPTER.exec(part);
+    if (!m) return undefined;
+    if (m[1] !== String(chapter)) continue;
+    out ??= new Set();
+    for (const run of m[2]!.split(",")) {
+      const [x, y = x] = run.split("-").map(Number);
+      if (y! < x! || y! - x! > 1000) return undefined;
+      for (let v = x!; v <= y!; v++) out.add(v);
+    }
+  }
+  return out;
+}
+
 const CHAPTER_KINDS = new Set(["notes", "links", "questions"]);
 // The kind's name is built, not written: tests/unit/packs3-allowed-calls.test.ts forbids that string literal in src/packs3.
 /** The search kind's name (built, see above), for the search adapter. */
@@ -118,10 +153,11 @@ function wellFormed(e: VerifiedEntry): boolean {
     if (!isPlain(v)) return false;
     if (!Object.values(v).every((l) => Array.isArray(l))) return false;
   }
-  if (o.idDirs !== undefined) {
-    if (!isPlain(o.idDirs)) return false;
-    if (!Object.values(o.idDirs).every((l) => typeof l === "string"))
-      return false;
+  for (const f of ["idDirs", "joins"]) {
+    const v = o[f];
+    if (v === undefined) continue;
+    if (!isPlain(v)) return false;
+    if (!Object.values(v).every((l) => typeof l === "string")) return false;
   }
   if (o.deps !== undefined) {
     if (!isPlain(o.deps)) return false;
@@ -212,17 +248,26 @@ export function isVerified(
     const [, book, chapter, a, b] = m;
     if (strings(e.skippedBooks).includes(book!)) return false;
     if (!chapterListed(e.chapters, book!, chapter!)) return false;
-    // A verse is served when its chapter is listed and it is no exception. The sweep compares only one range per
-    // chapter, the whole chapter `C:1-N`: a range is served when that comparison held (the chapter has no range
-    // exception) and every verse in it is clean. Clean verses alone do not prove a range: the route may join them
-    // differently (es-419 TIT 1:4-5 keeps a line break the verses do not show).
+    // A verse is served when its chapter is listed and it is no exception. A range needs every verse in it clean and
+    // every boundary between two of its verses proven: the route's range is its single verses joined by a glue that
+    // depends only on the raw USFM at each boundary (a blank line, `\ts\*`, a closing `\qs*` glue them differently:
+    // es-419 TIT 1:4-5 keeps a line break), and format 3 does not keep that. A boundary is proven when the whole
+    // chapter `C:1-N` was equal (the chapter has no range exception) or a swept window over it was (`joins`).
     if (b === undefined) return true;
-    const prefix = `${book} ${chapter}:`;
-    for (const x of excepted) {
-      if (x.startsWith(prefix) && x.includes("-", prefix.length)) return false;
-    }
     for (let v = Number(a); v <= Number(b); v++) {
       if (excepted.has(`${book} ${chapter}:${v}`)) return false;
+    }
+    const prefix = `${book} ${chapter}:`;
+    let chapterProven = true;
+    for (const x of excepted) {
+      if (x.startsWith(prefix) && x.includes("-", prefix.length))
+        chapterProven = false;
+    }
+    if (chapterProven) return true;
+    const joined = joinsOf(e.joins, book!, chapter!);
+    if (!joined) return false;
+    for (let v = Number(a); v < Number(b); v++) {
+      if (!joined.has(v)) return false;
     }
     return true;
   }

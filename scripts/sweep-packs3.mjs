@@ -7,7 +7,7 @@
  *
  * Usage (the adapters are TypeScript, so run it with tsx, which the repo already has):
  *   npx tsx scripts/sweep-packs3.mjs --lang en|es-419 --kind passage|notes|links|questions|articles|search \
- *     --bucket <dir> --api <url> [--api-index <local url>] [--books tit,rut] [--resume] [--max-age-hours 24] [--out-dir <dir>] [--cache <dir>] [--keys <id:hex>]
+ *     --bucket <dir> --api <url> [--api-index <local url>] [--books tit,rut] [--resume] [--max-age-hours 24] [--out-dir <dir>] [--cache <dir>] [--keys <id:hex>] [--range-windows N]
  *
  * - `--bucket` is a local copy of the staging bucket (a folder with `v3/catalog`, `v3/seg`); catalogs are verified with
  *   the trusted key as the Worker does (`--keys`, default the staging key of wrangler.toml).
@@ -22,6 +22,9 @@
  * - TODO (Task 14): the API's own chapter count of a book is not cheaply available, so chapters come from format 3's
  *   book data (text events, helps rows incl. "front"); a chapter only the API has is not an item, and Task 13 must
  *   serve only the `chapters` an entry lists.
+ * - `--range-windows N` (passage): also sweeps the first N range windows of every chapter (1-3, 3-5, …; a window that
+ *   is not equal is swept again as its two 2-verse windows). The equal ones are written as the entry's `joins` (the
+ *   verse boundaries they prove, verified.ts); windows are not items and never exceptions. 0 (default) sweeps none.
  * - The adapters are opened for the sweep (verified.ts `setSweepOpen`), so
  *   the sweep says what the adapter does on a book, not that it has no proof yet.
  * Pure parts are exported for tests/unit/packs3-sweep.test.ts.
@@ -228,12 +231,98 @@ export function verseMap(eventLists) {
   );
 }
 
-/** Passage items of a book: `BOOK C:V` for every verse and one `BOOK C:1-N` range per chapter (N > 1). */
-export function passageItems(book, verses) {
+/**
+ * Passage items of a book: `BOOK C:V` for every verse and one `BOOK C:1-N` range per chapter (N > 1). With
+ * `windows` (`--range-windows N`), also the first N range windows of each chapter (`rangeWindows`), marked `window`.
+ */
+export function passageItems(book, verses, { windows = 0 } = {}) {
   const out = [];
   for (const [c, vs] of Object.entries(verses)) {
     for (const v of vs) out.push({ item: `${book} ${c}:${v}`, book, chapter: Number(c) });
     if (vs.length > 1) out.push({ item: `${book} ${c}:1-${vs[vs.length - 1]}`, book, chapter: Number(c) });
+    for (const [a, b] of rangeWindows(vs, windows)) {
+      out.push({ item: `${book} ${c}:${a}-${b}`, book, chapter: Number(c), window: true });
+    }
+  }
+  return out;
+}
+
+/**
+ * The range windows of a chapter's verses (ascending): 3-verse windows from the first verse that share their ends
+ * (1-3, 3-5, 5-7, …; the last may hold 2 verses), the first `n`. Each equal window proves the boundaries inside it,
+ * so the first N windows prove the chapter's first 2N boundaries: deterministic, and contiguous from verse 1.
+ */
+export function rangeWindows(verses, n) {
+  const out = [];
+  for (let i = 0; i + 1 < verses.length && out.length < n; i += 2) {
+    out.push([verses[i], verses[Math.min(i + 2, verses.length - 1)]]);
+  }
+  return out;
+}
+
+/**
+ * `joins` without the chapters that do not need them (verified.json is bundled): a chapter the entry does not list
+ * serves nothing, and one with no range exception already serves its ranges on the whole-chapter proof.
+ */
+export function pruneJoins(joins, entry) {
+  const rangeExcepted = new Set();
+  for (const x of entry.exceptions ?? []) {
+    const m = /^(\S+ \d+):(.*)$/.exec(x);
+    if (m && m[2].includes("-")) rangeExcepted.add(m[1]);
+  }
+  const out = {};
+  for (const [book, line] of Object.entries(joins)) {
+    const listed = new Set((entry.chapters?.[book] ?? []).map(String));
+    const parts = line.split(";").filter((p) => {
+      const c = p.split(":")[0];
+      return listed.has(c) && rangeExcepted.has(`${book} ${c}`);
+    });
+    if (parts.length) out[book] = parts.join(";");
+  }
+  return out;
+}
+
+/** The two 2-verse windows of a 3-verse window item (swept again when the 3-verse one was not equal), else none. */
+export function splitWindow(item) {
+  const m = /^(\S+ \d+):(\d+)-(\d+)$/.exec(item.item);
+  if (!m || Number(m[3]) - Number(m[2]) !== 2) return [];
+  const a = Number(m[2]);
+  return [
+    { ...item, item: `${m[1]}:${a}-${a + 1}` },
+    { ...item, item: `${m[1]}:${a + 1}-${a + 2}` },
+  ];
+}
+
+/**
+ * The `joins` field of a passage entry from one resource's results: for each equal window `C:a-b`, the boundaries
+ * a..b-1 (`v` joins verses v and v+1). `{ BOOK: "c:v,a-b;c:v" }`, chapters and runs ascending.
+ */
+export function windowJoins(results) {
+  const per = new Map();
+  for (const r of results) {
+    if (!r.window || r.status !== "equal") continue;
+    const m = /^(\S+) (\d+):(\d+)-(\d+)$/.exec(r.item);
+    if (!m) continue;
+    if (!per.has(m[1])) per.set(m[1], new Map());
+    const chapters = per.get(m[1]);
+    const c = Number(m[2]);
+    if (!chapters.has(c)) chapters.set(c, new Set());
+    for (let v = Number(m[3]); v < Number(m[4]); v++) chapters.get(c).add(v);
+  }
+  const out = {};
+  for (const book of [...per.keys()].sort()) {
+    const parts = [];
+    for (const [c, set] of [...per.get(book)].sort((x, y) => x[0] - y[0])) {
+      const vs = [...set].sort((x, y) => x - y);
+      const runs = [];
+      for (const v of vs) {
+        const last = runs[runs.length - 1];
+        if (last && v === last[1] + 1) last[1] = v;
+        else runs.push([v, v]);
+      }
+      parts.push(`${c}:${runs.map(([x, y]) => (x === y ? `${x}` : `${x}-${y}`)).join(",")}`);
+    }
+    out[book] = parts.join(";");
   }
   return out;
 }
@@ -483,6 +572,11 @@ async function main() {
   const only = arg("books")?.toLowerCase().split(",").filter(Boolean);
   const maxAgeHours = Number(arg("max-age-hours") ?? 24);
   const writeVerified = shouldWriteVerified({ books: only });
+  const rangeWindowCount = Number(arg("range-windows") ?? 0);
+  if (!Number.isInteger(rangeWindowCount) || rangeWindowCount < 0 || (rangeWindowCount && kind !== "passage")) {
+    console.error("--range-windows N: a whole number, passage only");
+    process.exit(2);
+  }
 
   const { getCatalogs } = await import("../src/packs3/catalogs.ts");
   const { withReader } = await import("../src/packs3/readers.ts");
@@ -546,7 +640,7 @@ async function main() {
         return { chapters: unionChapters(lists), verses: verseMap(textEvents) };
       });
       if (kind === "passage") {
-        for (const p of passageItems(B, found?.verses ?? {})) items.push({ ...p, sub: kind, res });
+        for (const p of passageItems(B, found?.verses ?? {}, { windows: rangeWindowCount })) items.push({ ...p, sub: kind, res });
       } else {
         // notes/links: the default whole-book request is not valid on the route, so a whole book is an index item only.
         if (withBook) items.push({ sub: kind, item: indexItem(B), book: B, res, index: true, bare: B });
@@ -577,7 +671,7 @@ async function main() {
   };
   let done = 0;
   const cache = { dir: cacheDir, resume: flag("resume"), catalogKey: cats.key, maxAgeHours };
-  const results = await pool(items, 4, async (it) => {
+  const sweepOne = async (it) => {
     const req = requestOf(it.sub, lang, it.index ? it.bare : it.item, { index: !!it.index });
     const body = await apiGet(apiTarget(it, { api, apiIndex }), req, cache);
     const attempt = await runAdapter(req.path, req.params);
@@ -585,23 +679,35 @@ async function main() {
     const r = { ...it, ...classifyItem(attempt, body), ...(used ? { used } : {}) };
     if (++done % 100 === 0) console.log(`${done}/${items.length}`);
     return r;
-  });
+  };
+  const results = await pool(items, 4, sweepOne);
+  // A 3-verse window that was not equal may still hold one good boundary: its two 2-verse windows are swept too.
+  const retry = results.filter((r) => r.window && r.status !== "equal").flatMap((r) => splitWindow({ item: r.item, book: r.book, chapter: r.chapter, window: true, sub: r.sub, res: r.res }));
+  if (retry.length) {
+    console.log(`${retry.length} 2-verse windows`);
+    results.push(...(await pool(retry, 4, sweepOne)));
+  }
 
   const swept = new Date().toISOString();
   const entries = {};
   const lines = [`# Sweep differences: ${lang} ${kind}`, "", `Swept ${swept}, API ${api}${apiIndex ? `, index shape from ${apiIndex}` : ""}, catalog ${cats.key}.`, ""];
   const alignedKey = helps.ALIGNED_TEXT.get(lang);
   for (const r of resources) {
-    const mine = resultsForResource(r.key, results);
+    const all = resultsForResource(r.key, results);
+    // Range windows are not items of the entry: the equal ones become its `joins`, the others are not recorded.
+    const mine = all.filter((x) => !x.window);
     if (!mine.length) continue; // only a narrowed run gets here with none
     const key = sweepKey(lang, r.key, r.release, kind);
-    const usedKeys = [...new Set(mine.flatMap((x) => x.used ?? []))];
-    const own = items.filter((it) => it.res.includes(r.key));
+    const usedKeys = [...new Set(all.flatMap((x) => x.used ?? []))];
+    const own = items.filter((it) => it.res.includes(r.key) && !it.window);
     const entry = buildEntry(mine, swept, {
       deps: depsFor(kind, r.key, catList, { alignedKey, usedKeys }),
       ...coverageOf(own),
     });
+    const joins = kind === "passage" ? windowJoins(all) : {};
     entries[key] = kind === "passage" ? compactPassage(entry, own) : kind === "articles" ? compactArticles(entry) : entry;
+    const kept = pruneJoins(joins, entries[key]);
+    if (Object.keys(kept).length) entries[key].joins = kept;
     const bad = mine.filter((x) => x.status !== "equal");
     const by = {};
     for (const x of bad) {
@@ -611,6 +717,10 @@ async function main() {
     lines.push(`## ${key}`, "", `Items ${entries[key].items}, exceptions ${exceptionCount(entries[key], kind)}` +
       (bad.length ? ` (${Object.entries(by).map(([k, n]) => `${k} ${n}`).join(", ")})` : "") +
       (writeVerified ? "" : " (narrowed run: not written to verified.json)"), "");
+    if (rangeWindowCount) {
+      const w = all.filter((x) => x.window);
+      lines.push(`Range windows ${w.length}, equal ${w.filter((x) => x.status === "equal").length}`, "");
+    }
     let listed = 0;
     for (const x of bad) {
       if (x.status === "not-in-answer") continue; // counted above, too many to list
