@@ -282,6 +282,122 @@ describe("articles", () => {
   });
 });
 
+/** The fixture proofs plus `terms` on the articles entry of one language and kind (`edit` changes that entry more). */
+const withTerms = (
+  lang: string,
+  kind: "tw" | "ta",
+  terms: unknown,
+  edit: (e: Record<string, unknown>) => void = () => {},
+) =>
+  injectFixtureProofs(
+    env(),
+    (t) => {
+      for (const [k, e] of Object.entries(t))
+        if (
+          k.startsWith(`${lang}|`) &&
+          k.endsWith("|articles") &&
+          k.includes(`/${kind}|`)
+        ) {
+          (e as Record<string, unknown>).terms = terms;
+          edit(e as Record<string, unknown>);
+        }
+    },
+    { articles: SWEPT },
+  );
+
+describe("articles by term and title (sweep `terms`)", () => {
+  it("serves a swept term that resolves to its recorded, clean article", async () => {
+    await withTerms("en", "tw", {
+      "bible/kt": "call-speakloudly:callspeakloudly",
+    });
+    const a = await words("callspeakloudly");
+    expect(a?.path).toBe("bible/kt/call-speakloudly");
+    expect(a?.resolvedFrom).toBe("category");
+    expect(a?.requestedPath).toBe("callspeakloudly");
+    expect(a?.title).toBe(CALL.title);
+    expect(sha(a?.article)).toBe(CALL_SHA);
+    // The term key is case-folded (the resolvers fold case); the route's echo is the caller's own.
+    const b = await words("CallSpeakLoudly", "en", "CallSpeakLoudly");
+    expect(b?.path).toBe("bible/kt/call-speakloudly");
+    expect(b?.requestedPath).toBe("CallSpeakLoudly");
+  });
+
+  it("`=` stands for the article's own name; es-419 has its own proof", async () => {
+    await withTerms("es-419", "tw", { "bible/kt": "pastor:=" });
+    const t = await words("pastor", "es-419");
+    expect(t?.path).toBe("bible/kt/pastor");
+    expect(t?.resolvedFrom).toBe("category");
+    expect(sha(t?.article)).toBe("89829d59d41f2284fc4092e4c9236c371f30cc25");
+  });
+
+  it("an unswept term falls back", async () => {
+    await withTerms("en", "tw", {
+      "bible/kt": "call-speakloudly:callspeakloudly",
+    });
+    expect(await words("circumcise")).toBeUndefined();
+    expect(await words("pastor")).toBeUndefined();
+  });
+
+  it("a term listed under another article than it resolves to falls back", async () => {
+    await withTerms("en", "tw", { "bible/kt": "pastor:callspeakloudly" });
+    expect(await words("callspeakloudly")).toBeUndefined();
+  });
+
+  it("a term whose article is an exception (or not a clean item) falls back", async () => {
+    await withTerms(
+      "en",
+      "tw",
+      { "bible/kt": "call-speakloudly:callspeakloudly,pray:=" },
+      (e) => {
+        e.exceptions = ["bible/kt/call-speakloudly"];
+      },
+    );
+    expect(await words("callspeakloudly")).toBeUndefined();
+    // bible/kt/pray is not a swept item
+    expect(await words("pray")).toBeUndefined();
+  });
+
+  it("the proof of one language or resource cannot serve another", async () => {
+    await withTerms("en", "tw", { "bible/kt": "pastor:=" });
+    expect(await words("pastor", "es-419")).toBeUndefined();
+    await withTerms("es-419", "tw", {
+      "bible/kt": "call-speakloudly:callspeakloudly",
+    });
+    expect(await words("callspeakloudly")).toBeUndefined();
+    // tW terms recorded on the tA entry
+    await withTerms("en", "ta", {
+      "bible/kt": "call-speakloudly:callspeakloudly",
+    });
+    expect(await words("callspeakloudly")).toBeUndefined();
+  });
+
+  it("a tA term needs the whole manual catalog (the fixtures hold only ta:translate): falls back", async () => {
+    await withTerms("en", "ta", { translate: "figs-metaphor:metaphor" });
+    expect(await academy("metaphor")).toBeUndefined();
+  });
+
+  it("a path with a slash is never a term item", async () => {
+    await withTerms("en", "tw", {
+      "bible/kt": "call-speakloudly:callspeakloudly",
+    });
+    expect(await words("kt/callspeakloudly")).toBeUndefined();
+  });
+
+  it("malformed `terms` makes the whole entry unusable (fails closed)", async () => {
+    for (const bad of [
+      { "bible/kt": "call-speakloudly" },
+      { "bible/kt": "call-speakloudly:" },
+      { "bible/kt": ["call-speakloudly:callspeakloudly"] },
+      { "bible/kt": "call-speakloudly:a||b" },
+      "bible/kt",
+    ]) {
+      await withTerms("en", "tw", bad);
+      expect(await words("callspeakloudly")).toBeUndefined();
+      expect(await words("bible/kt/call-speakloudly")).toBeUndefined();
+    }
+  });
+});
+
 describe("bodyOf: Bible links", () => {
   const art = (md: string) => ({
     id: "tw:kt/x",

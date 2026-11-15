@@ -517,18 +517,69 @@ export function groupPassageExceptions(list) {
  * item that is not listed is never served, so an excepted one needs no line. A path that was not swept is not listed
  * either, so it still falls back. `ids` and `exceptions` are what `buildEntry` + `coverageOf` made.
  */
-export function compactArticles(entry) {
+export function compactArticles(entry, resolved = {}) {
   const bad = new Set(entry.exceptions ?? []);
   const dirs = {};
+  const clean = new Set();
   for (const id of entry.ids ?? []) {
-    if (bad.has(id)) continue;
+    if (bad.has(id) || id.startsWith(TERM_PREFIX)) continue;
+    clean.add(id);
     const i = id.lastIndexOf("/");
     const dir = i < 0 ? "" : id.slice(0, i);
     (dirs[dir] ??= []).push(id.slice(i + 1));
   }
   const idDirs = Object.fromEntries(Object.keys(dirs).sort().map((d) => [d, dirs[d].sort().join(",")]));
+  // Term items (`term:<term>`): an equal one is listed under the article it resolved to, only when that article is a
+  // clean item too (verified.ts `isVerifiedTerm`). `=` is the article's own name. One without a path is never listed.
+  const byPath = new Map();
+  for (const id of entry.ids ?? []) {
+    if (bad.has(id) || !id.startsWith(TERM_PREFIX)) continue;
+    const path = Object.hasOwn(resolved, id) ? resolved[id] : undefined;
+    if (!path || !clean.has(path)) continue;
+    if (!byPath.has(path)) byPath.set(path, []);
+    byPath.get(path).push(id.slice(TERM_PREFIX.length));
+  }
+  const termDirs = {};
+  for (const path of [...byPath.keys()].sort()) {
+    const i = path.lastIndexOf("/");
+    const dir = i < 0 ? "" : path.slice(0, i);
+    const name = path.slice(i + 1);
+    const ts = byPath.get(path).map((t) => (t === name ? "=" : t)).sort((a, b) => (a === "=" ? -1 : b === "=" ? 1 : a.localeCompare(b)));
+    (termDirs[dir] ??= []).push(`${name}:${ts.join("|")}`);
+  }
+  const terms = Object.fromEntries(Object.keys(termDirs).sort().map((d) => [d, termDirs[d].join(",")]));
   const { ids, exceptions, ...rest } = entry;
-  return { ...rest, excepted: bad.size, idDirs };
+  return { ...rest, excepted: bad.size, idDirs, ...(Object.keys(terms).length ? { terms } : {}) };
+}
+
+/** A term or title asked as a bare article path (`/words/<term>`): its item in an articles entry. */
+export const TERM_PREFIX = "term:";
+
+/**
+ * The term items of one article resource: every title part (tW titles list alternate names after commas) or title (tA),
+ * as th_get_article prepares it (`prepareArticlePath`), in lower case (the resolvers fold case), and how the route's
+ * resolver resolves it over the whole catalog: `{ item, status, path? }`. A title the preparation refuses (not ASCII)
+ * or that keeps a `/` is not a term. `resolve` is `src/core/articleResolve`.
+ */
+export function articleTerms(sub, articles, resolve) {
+  const resolver = sub === "tw" ? resolve.resolveTwArticle : resolve.resolveTaArticle;
+  const terms = new Set();
+  for (const a of articles) {
+    const parts = sub === "tw" ? a.title.split(",").map((p) => p.trim()).filter(Boolean) : [a.title.trim()];
+    for (const part of parts) {
+      let t;
+      try {
+        t = resolve.prepareArticlePath(part).toLowerCase();
+      } catch {
+        continue;
+      }
+      if (t && !/[/:|,=]/.test(t)) terms.add(t);
+    }
+  }
+  return [...terms].sort().map((t) => {
+    const m = resolver(t, articles);
+    return { item: `${TERM_PREFIX}${t}`, status: m.status, ...(m.path && m.status === "resolved" ? { path: m.path } : {}) };
+  });
 }
 
 /** How many items an entry excepts (a passage exception string groups a chapter's items). */
@@ -592,11 +643,14 @@ export function requestOf(kind, language, item, { index = false } = {}) {
     case "questions":
       return { path: "/api/v1/questions", params: { reference: item, language } };
     case "tw":
-    case "ta":
+    case "ta": {
+      // A term item (`term:<term>`, see `articleTerms`) is asked as the bare term, as th_get_article asks a title.
+      const p = item.startsWith(TERM_PREFIX) ? item.slice(TERM_PREFIX.length) : item;
       return {
-        path: `/api/v1/${kind === "tw" ? "words" : "academy"}/${item.split("/").map(encodeURIComponent).join("/")}`,
-        params: { language, requestedPath: item, prepared: "1" },
+        path: `/api/v1/${kind === "tw" ? "words" : "academy"}/${p.split("/").map(encodeURIComponent).join("/")}`,
+        params: { language, requestedPath: p, prepared: "1" },
       };
+    }
     case "search": {
       const { types, q } = parseSearchItem(item);
       return { path: "/api/v1/search", params: { q, language, types, limit: "5" } };
@@ -723,7 +777,8 @@ async function main() {
   const { withReader } = await import("../src/packs3/readers.ts");
   const { attemptPacks3 } = await import("../src/packs3/answer.ts");
   const { BOOKS } = await import("../src/packs3/adapters/scripture.ts");
-  const { GROUPS, pathOfId } = await import("../src/packs3/adapters/articles.ts");
+  const { GROUPS, pathOfId, articleCatalogFromPacks3 } = await import("../src/packs3/adapters/articles.ts");
+  const articleResolve = await import("../src/core/articleResolve.ts");
   const helps = await import("../src/packs3/adapters/helps.ts");
   // The sweep makes the proofs, so the adapters answer without them (scripture and helps: verified.ts).
   const verified = await import("../src/packs3/verified.ts");
@@ -767,6 +822,22 @@ async function main() {
         }
       }
     });
+    // Terms and titles (th_get_article by title or alternate name): resolved over the resource's whole catalog. A term
+    // resolving to one article is swept; an ambiguous one is recorded as an exception without asking (the adapter never
+    // answers it); a miss or an exact path is not an item.
+    for (const sub of ["tw", "ta"]) {
+      const res = resources.filter((r) => SUBJECTS[sub].includes(r.subject)).map((r) => r.key);
+      if (!res.length) continue;
+      const cat = await articleCatalogFromPacks3(env, lang, sub, { kind: "articles" });
+      if (!cat) {
+        console.log(`${lang} ${sub}: whole catalog not readable: no term items`);
+        continue;
+      }
+      for (const t of articleTerms(sub, cat.articles, articleResolve)) {
+        if (t.status === "resolved") items.push({ sub, item: t.item, res, termPath: t.path });
+        else if (t.status === "ambiguous") items.push({ sub, item: t.item, res, skip: "ambiguous" });
+      }
+    }
   } else {
     const hasBit = (r, i) => ((r.books?.[i >> 3] ?? 0) & (1 << (i & 7))) !== 0;
     const withBook = kind === "notes" || kind === "links";
@@ -826,6 +897,7 @@ async function main() {
   let done = 0;
   const cache = { dir: cacheDir, resume: flag("resume"), catalogKey: cats.key, maxAgeHours };
   const sweepOne = async (it) => {
+    if (it.skip) return { ...it, status: it.skip };
     const req = requestOf(it.sub, lang, it.index ? it.bare : it.item, { index: !!it.index });
     const body = await apiGet(apiTarget(it, { api, apiIndex }), req, cache);
     const attempt = await runAdapter(req.path, req.params);
@@ -859,7 +931,8 @@ async function main() {
       ...coverageOf(own),
     });
     const joins = kind === "passage" ? windowJoins(all) : {};
-    entries[key] = kind === "passage" ? compactPassage(entry, own) : kind === "articles" ? compactArticles(entry) : entry;
+    const termPaths = Object.fromEntries(own.filter((it) => it.termPath).map((it) => [it.item, it.termPath]));
+    entries[key] = kind === "passage" ? compactPassage(entry, own) : kind === "articles" ? compactArticles(entry, termPaths) : entry;
     const kept = pruneJoins(joins, entries[key]);
     if (Object.keys(kept).length) entries[key].joins = kept;
     const bad = mine.filter((x) => x.status !== "equal");

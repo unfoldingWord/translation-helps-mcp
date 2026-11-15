@@ -434,6 +434,100 @@ describe("compactArticles", () => {
     expect(s.exceptionCount(s.compactArticles(entry), "articles")).toBe(2);
     expect(entry.ids).toHaveLength(5);
   });
+
+  it("term items go to `terms` under their resolved clean article; `=` is the article's own name", () => {
+    const entry = {
+      items: 7,
+      exceptions: ["bible/kt/god", "term:sin"],
+      swept: "d",
+      deps: {},
+      ids: [
+        "bible/kt/god",
+        "bible/kt/grace",
+        "bible/kt/sin",
+        "term:grace",
+        "term:favor",
+        "term:god",
+        "term:sin",
+      ],
+    };
+    const resolved = {
+      "term:grace": "bible/kt/grace",
+      "term:favor": "bible/kt/grace",
+      "term:god": "bible/kt/god",
+      "term:sin": "bible/kt/sin",
+    };
+    expect(s.compactArticles(entry, resolved)).toEqual({
+      items: 7,
+      swept: "d",
+      deps: {},
+      excepted: 2,
+      idDirs: { "bible/kt": "grace,sin" },
+      // term:god resolves to an exception and term:sin is one: neither is listed
+      terms: { "bible/kt": "grace:=|favor" },
+    });
+  });
+
+  it("a term item without a resolved path is never listed", () => {
+    const entry = {
+      items: 2,
+      exceptions: [],
+      deps: {},
+      ids: ["bible/kt/grace", "term:grace"],
+    };
+    expect(s.compactArticles(entry).terms).toBeUndefined();
+  });
+});
+
+describe("articleTerms", () => {
+  it("title parts (tW) or the title (tA), prepared and case-folded, with how each resolves", async () => {
+    const r = await import("../../src/core/articleResolve");
+    const tw = [
+      { path: "bible/kt/grace", title: "grace, gracious" },
+      { path: "bible/kt/god", title: "God" },
+      { path: "bible/kt/godly", title: "godly, godliness" },
+      { path: "bible/other/x", title: "Espíritu" },
+      { path: "bible/other/y", title: "a/b" },
+    ];
+    const out = s.articleTerms("tw", tw, r);
+    expect(out).toEqual(
+      expect.arrayContaining([
+        { item: "term:grace", status: "resolved", path: "bible/kt/grace" },
+        { item: "term:gracious", status: "resolved", path: "bible/kt/grace" },
+        { item: "term:god", status: "resolved", path: "bible/kt/god" },
+      ]),
+    );
+    // unsafe (non-ASCII) and slash titles are not terms
+    expect(out.map((x: { item: string }) => x.item)).not.toContain(
+      "term:espíritu",
+    );
+    expect(out.map((x: { item: string }) => x.item)).not.toContain("term:a/b");
+    const ta = s.articleTerms(
+      "ta",
+      [
+        { path: "translate/figs-metaphor", title: "Metaphor" },
+        { path: "translate/figs-simile", title: "Simile, Metaphor" },
+      ],
+      r,
+    );
+    expect(
+      ta.find((x: { item: string }) => x.item === "term:metaphor"),
+    ).toEqual({
+      item: "term:metaphor",
+      status: "resolved",
+      path: "translate/figs-metaphor",
+    });
+  });
+
+  it("requestOf sends a term item as the bare term, with the term as requestedPath", () => {
+    expect(s.requestOf("tw", "en", "term:covenant")).toEqual({
+      path: "/api/v1/words/covenant",
+      params: { language: "en", requestedPath: "covenant", prepared: "1" },
+    });
+    expect(s.requestOf("ta", "en", "term:metaphor").path).toBe(
+      "/api/v1/academy/metaphor",
+    );
+  });
 });
 
 describe("compactPassage", () => {

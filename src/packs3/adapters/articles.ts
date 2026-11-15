@@ -3,15 +3,16 @@
  * only what the routes answer the same way and gives `undefined` for the rest (the API Worker then answers as today):
  *
  * - Only an article the sweep proved equal for this release of its resource (verified.ts, item = catalog path in `ids`)
- *   is answered; the requested language must be the catalog's. The sweep records no catalog-level item (list, category,
- *   term), so a path that is not an exact article path (a term, a title) is left to the route.
+ *   is answered; the requested language must be the catalog's. A bare term or title (no `/`) that is not an exact path
+ *   resolves against the resource's whole catalog and is answered only as a swept term item (`terms`, `isVerifiedTerm`):
+ *   equal for this release, resolving to the article recorded for it, which is itself a clean item.
  * - A path that does not resolve to one article (a miss or several candidates) gives `undefined`: format 3 never says
  *   "not found" or "not available", the API Worker decides (its catalog may hold an article this pack lacks).
  * - The body is rebuilt from the sections exactly as the zip file reads. Format 3 rewrites Bible reference links as
  *   `](ref:act 4:33)` and keeps no trace of the published form; the canonical `rc://<lang>/tn/help/act/04/33` is rebuilt
  *   and the sweep proves it per article (one published otherwise is an exception). `[[ta:`, `[[tw:` gives `undefined`.
  * - The path resolution is the route's own (`resolveTwArticle` / `resolveTaArticle`, `jsonArticleMatch`); an exact path is
- *   resolved in its own group, anything else gives `undefined`.
+ *   resolved in its own group, a bare term in the whole catalog; anything else gives `undefined`.
  */
 import type { AcademyArticle, WordArticle } from "@translation-helps/door43";
 import type { PackReader } from "../../../vendor/language-pack-client/index.js";
@@ -29,7 +30,7 @@ import type { Catalogs3, Packs3Env } from "../catalogs";
 import { warnOnce } from "../keys";
 import { withReader } from "../readers";
 import type { Packs3Params } from "../answer";
-import { isVerified, releaseOfCatalogs } from "../verified";
+import { isVerified, isVerifiedTerm, releaseOfCatalogs } from "../verified";
 
 export type ArticleKind = "tw" | "ta";
 export const GROUPS: Record<ArticleKind, string[]> = {
@@ -235,8 +236,20 @@ async function articleFromPacks3(
         break;
       }
     }
-    // Not an exact path: it resolves against the whole catalog, which no sweep item proves.
-    if (!match) return undefined;
+    // Not an exact path: a bare term or title resolves against the whole catalog of its resource. It is served only as a
+    // swept term item (`isVerifiedTerm`): equal for this release, resolving to the article recorded for it, a clean item.
+    let term: string | undefined;
+    if (!match) {
+      if (prepared.includes("/")) return undefined;
+      const all = await fullCatalog(reader, c, kind);
+      if (!all || all.length === 0) return undefined;
+      if (new Set(all.map((r) => r.res)).size !== 1) return undefined;
+      const m = resolve(prepared, asCatalogArticles(kind, all));
+      if (m.status !== "resolved") return undefined;
+      match = m;
+      recs = all;
+      term = prepared.toLowerCase();
+    }
     if (match.status !== "exact" && match.status !== "resolved")
       return undefined;
     const matched = match;
@@ -244,11 +257,26 @@ async function articleFromPacks3(
     const rec = (recs ?? []).find((r) => r.path === matched.path);
     if (!rec) return undefined;
     const proofOf = releaseOf(c, kind, rec.res);
+    const opts = { releaseOf: releaseOfCatalogs(c.catalogs) };
     if (
       !proofOf ||
-      !isVerified(c.lang, rec.res, proofOf.release, "articles", rec.path, {
-        releaseOf: releaseOfCatalogs(c.catalogs),
-      })
+      !(term === undefined
+        ? isVerified(
+            c.lang,
+            rec.res,
+            proofOf.release,
+            "articles",
+            rec.path,
+            opts,
+          )
+        : isVerifiedTerm(
+            c.lang,
+            rec.res,
+            proofOf.release,
+            term,
+            rec.path,
+            opts,
+          ))
     ) {
       warnOnce(language, "unverified-resource");
       return undefined;

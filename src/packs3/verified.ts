@@ -13,7 +13,8 @@
  * - the search kind: the exact item in `ids`. The search catalog kind (`SEARCH_CATALOG_KIND`, no item): `catalog: "equal"`
  *   and no `differs` (the ids that differed) when the article catalog format 3 ranks over equals the route's, so any
  *   query ranks the same (adapters/search.ts). articles: the exact item in `idDirs` (clean items only, per directory;
- *   `ids` is read too), or in `ids` and not in `exceptions`.
+ *   `ids` is read too), or in `ids` and not in `exceptions`. A bare term or title (`/words/covenant`): `terms`, by the
+ *   clean article it resolved to (`isVerifiedTerm`).
  * `exceptions` lists the items whose answers did not equal today's; `deps` the other resources (`"<catalog>|<key>"`)
  * with the release the answers were made from; `skippedBooks` the books of a passage entry that were not swept.
  */
@@ -29,6 +30,12 @@ export type VerifiedEntry = {
   ids?: string[];
   /** Articles (compact): the clean items per directory, `{ "bible/kt": "grace,god" }` is `bible/kt/grace`, `bible/kt/god`. */
   idDirs?: Record<string, string>;
+  /**
+   * Articles: the swept terms and titles (`/words/<term>`, `/academy/<term>`, see `isVerifiedTerm`) that were equal, by
+   * the clean article they resolved to: `{ "bible/kt": "covenant:=|pact" }` is `covenant` and `pact` resolving to
+   * `bible/kt/covenant` (`=` is the article's own name). A term is the prepared term in lower case.
+   */
+  terms?: Record<string, string>;
   /** Articles (compact): how many swept items were not equal (they are not listed, so never served). */
   excepted?: number;
   skippedBooks?: string[];
@@ -98,6 +105,8 @@ function passageExceptions(list: string[]): Set<string> | undefined {
   }
   return out;
 }
+/** One article of a `terms` line: `name:term|term` (no separators inside a name or a term). */
+const TERMS_PART = /^[^:|,]+:[^:|,]+(?:\|[^:|,]+)*$/;
 const JOINS_CHAPTER = /^(\d+):(\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)$/;
 
 /** Whether every part of a book's `joins` string (`1:1-4,6;3:4`) parses: one that does not makes the entry unusable. */
@@ -175,7 +184,7 @@ function wellFormed(e: VerifiedEntry): boolean {
     if (!isPlain(v)) return false;
     if (!Object.values(v).every((l) => Array.isArray(l))) return false;
   }
-  for (const f of ["idDirs", "joins"]) {
+  for (const f of ["idDirs", "joins", "terms"]) {
     const v = o[f];
     if (v === undefined) continue;
     if (!isPlain(v)) return false;
@@ -185,6 +194,13 @@ function wellFormed(e: VerifiedEntry): boolean {
   if (isPlain(o.joins)) {
     for (const book of Object.keys(o.joins)) {
       if (!joinsParses(o.joins[book] as string)) return false;
+    }
+  }
+  // every directory's terms string must parse (`name:t|t,name:=`), or the whole entry is unusable
+  if (isPlain(o.terms)) {
+    for (const line of Object.values(o.terms)) {
+      if (!(line as string).split(",").every((p) => TERMS_PART.test(p)))
+        return false;
     }
   }
   if (o.catalog !== undefined && typeof o.catalog !== "string") return false;
@@ -318,6 +334,40 @@ export function isVerified(
   const m = /^(\S+)/.exec(item);
   if (m && strings(e.skippedBooks).includes(m[1]!)) return false;
   return itemListed(e, kind, item, index);
+}
+
+/**
+ * Was the term (or title) `term` swept equal for this articles release, resolving to `path`, and is `path` itself a
+ * clean article item of the same entry. `term` is the prepared term in lower case and holds no `/` (a path with a slash
+ * is never a term item). The entry must be well formed (its `terms` lines included) and its deps hold.
+ */
+export function isVerifiedTerm(
+  lang: string,
+  resourceKey: string,
+  release: string,
+  term: string,
+  path: string,
+  opts: VerifiedOpts = {},
+): boolean {
+  if (open) return true;
+  if (!term || /[/:|,=]/.test(term) || term !== term.toLowerCase())
+    return false;
+  if (!isVerified(lang, resourceKey, release, "articles", path, opts))
+    return false;
+  const e = table[`${lang}|${resourceKey}|${release}|articles`]!;
+  const i = path.lastIndexOf("/");
+  const dir = i < 0 ? "" : path.slice(0, i);
+  const name = path.slice(i + 1);
+  if (!isPlain(e.terms) || !Object.hasOwn(e.terms, dir)) return false;
+  for (const part of String(e.terms[dir]).split(",")) {
+    const c = part.indexOf(":");
+    if (part.slice(0, c) !== name) continue;
+    return part
+      .slice(c + 1)
+      .split("|")
+      .some((t) => (t === "=" ? name : t) === term);
+  }
+  return false;
 }
 
 /**
