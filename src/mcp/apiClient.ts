@@ -70,13 +70,21 @@ export interface ApiEnv {
 }
 
 /** One entry per ApiClient.get: served from format 3, or the fallback reason. */
-export type Packs3Outcome = { served: true } | { fallback: string };
+export type Packs3Outcome =
+  | { served: true }
+  | { fallback: string; detail?: string };
 export type Packs3Trace = Packs3Outcome[];
 
-/** The `_packs3` mark of one tool call: the first fallback, else served; none when nothing was read. */
+/** The `_packs3` mark of one tool call: the first fallback (with its inner `detail`, if any), else served. */
 export function packs3Mark(trace: Packs3Trace): Packs3Outcome | undefined {
-  const fb = trace.find((o): o is { fallback: string } => "fallback" in o);
-  if (fb) return { fallback: fb.fallback };
+  const fb = trace.find(
+    (o): o is { fallback: string; detail?: string } => "fallback" in o,
+  );
+  if (fb)
+    return {
+      fallback: fb.fallback,
+      ...(fb.detail ? { detail: fb.detail } : {}),
+    };
   return trace.length ? { served: true } : undefined;
 }
 
@@ -184,7 +192,10 @@ export class ApiClient {
         if (a.status !== undefined) throw apiErrorOf(a.status, a.value);
         return a.value as T;
       }
-      this.trace?.push({ fallback: a.reason });
+      this.trace?.push({
+        fallback: a.reason,
+        ...(a.detail ? { detail: a.detail } : {}),
+      });
       if (mode === "only") {
         throw new ApiClientError("PACKS3_FALLBACK", a.reason, 404, false);
       }

@@ -1,4 +1,4 @@
-import { parseTrustedKeys, warnOnce } from "./keys";
+import { parseTrustedKeys, takeNotedReason, warnOnce } from "./keys";
 import type { Packs3Env } from "./catalogs";
 import {
   academyPathFromPacks3,
@@ -85,7 +85,7 @@ export const ADAPTERS: Packs3Adapter[] = [
  */
 export type Packs3Attempt =
   | { hit: true; value: unknown; status?: number }
-  | { hit: false; reason: string };
+  | { hit: false; reason: string; detail?: string };
 
 function langOf(params: Packs3Params): string {
   const l = params.language ?? params.lang;
@@ -105,10 +105,17 @@ export async function attemptPacks3(
   const adapter = ADAPTERS.find((a) => a.match(path));
   if (!adapter) return { hit: false, reason: "no-adapter" };
   try {
+    takeNotedReason();
     const value = await adapter.run(env, path, params);
     if (value === undefined) {
+      // The adapter's own last logged reason (debug only; another call overlapping this one may have set it).
+      const detail = takeNotedReason();
       warnOnce(langOf(params), "adapter-undefined");
-      return { hit: false, reason: "adapter-undefined" };
+      return {
+        hit: false,
+        reason: "adapter-undefined",
+        ...(detail ? { detail } : {}),
+      };
     }
     // An adapter answers a route error as the route's own `Response` (only a 404, the proven miss of a term lookup).
     if (value instanceof Response) {

@@ -3,6 +3,7 @@ import { handleV3StatelessMcpRequest } from "../../src/mcp/stateless";
 import type { Env } from "../../src/mcp/agent";
 import { ADAPTERS } from "../../src/packs3/answer";
 import { resetPacks3CachesForTests } from "../../src/packs3/catalogs";
+import { warnOnce } from "../../src/packs3/keys";
 
 const KEY =
   "78d2e6299a2de4d0:c2057cec32b948452849e7fcba6af323961a091ea82645eb297bb368e1c8d911";
@@ -79,6 +80,29 @@ describe("packs3 marks under PACKS_V3_DEBUG", () => {
     const { body } = await call(env({ PACKS_V3_DEBUG: "on" }));
     expect(body.result._meta._packs3).toEqual({ served: true });
     expect(body.result.structuredContent.results[0].score).toBe(2);
+  });
+
+  it("adapter-undefined carries the adapter's own inner reason as detail when it logged one", async () => {
+    adapter(async () => {
+      warnOnce("en", "unverified-resource");
+      return undefined;
+    });
+    const r = await call(env({ PACKS_V3_DEBUG: "on" }));
+    expect(r.body.result._meta._packs3).toEqual({
+      fallback: "adapter-undefined",
+      detail: "unverified-resource",
+    });
+    // the inner reason is noted even when its log line was already written once
+    const again = await call(env({ PACKS_V3_DEBUG: "on" }));
+    expect(again.body.result._meta._packs3.detail).toBe("unverified-resource");
+    // a reason logged before the adapter ran is not this call's detail
+    ADAPTERS.length = 0;
+    warnOnce("en", "readers-busy");
+    adapter(async () => undefined);
+    const plain = await call(env({ PACKS_V3_DEBUG: "on" }));
+    expect(plain.body.result._meta._packs3).toEqual({
+      fallback: "adapter-undefined",
+    });
   });
 
   it("a fallback carries the reason", async () => {

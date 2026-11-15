@@ -5,9 +5,19 @@
  */
 
 const warned = new Set<string>();
+/** The last reason passed to `warnOnce`, logged or not: the debug mark's `detail` (approximate under overlapping calls). */
+let noted: string | undefined;
+
+/** The reason noted since the last take, cleared. */
+export function takeNotedReason(): string | undefined {
+  const r = noted;
+  noted = undefined;
+  return r;
+}
 
 /** Logs a line once per isolate for a `(lang, reason)` pair. */
 export function warnOnce(lang: string, reason: string): void {
+  noted = reason;
   const k = `${lang}\u0000${reason}`;
   if (warned.has(k)) return;
   warned.add(k);
