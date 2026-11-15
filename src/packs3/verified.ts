@@ -86,6 +86,7 @@ export function setVerifiedForTests(
   t: Record<string, VerifiedEntry> | undefined,
 ): void {
   table = t ?? (raw as Record<string, VerifiedEntry>);
+  parsed = new WeakMap();
 }
 
 /** The sweep only: the adapters answer without a proof, so the sweep can say what they do (`false` closes it). */
@@ -171,6 +172,33 @@ function joinsOf(
   return out;
 }
 
+/** `joinsOf`, from the entry's parse: each book's string is read once (a usable entry's strings all parse). */
+function joinsAt(
+  p: Parsed,
+  joins: unknown,
+  book: string,
+  chapter: string,
+): Set<number> | undefined {
+  if (!isPlain(joins) || !Object.hasOwn(joins, book)) return undefined;
+  p.joins ??= new Map();
+  let byChapter = p.joins.get(book);
+  if (!byChapter) {
+    byChapter = new Map();
+    const line = joins[book];
+    if (typeof line === "string") {
+      for (const part of line.split(";")) {
+        const c = JOINS_CHAPTER.exec(part)?.[1];
+        if (c !== undefined && !byChapter.has(c)) {
+          const s = joinsOf(joins, book, c);
+          if (s) byChapter.set(c, s);
+        }
+      }
+    }
+    p.joins.set(book, byChapter);
+  }
+  return byChapter.get(chapter);
+}
+
 const CHAPTER_KINDS = new Set(["notes", "links", "questions"]);
 // The kind's name is built, not written: tests/unit/packs3-allowed-calls.test.ts forbids that string literal in src/packs3.
 /** The search kind's name (built, see above), for the search adapter. */
@@ -189,6 +217,7 @@ const isStrings = (v: unknown): boolean =>
 
 /** A present field of the wrong type makes the whole entry unusable (absent = empty): a bad proof never serves. */
 function wellFormed(e: VerifiedEntry): boolean {
+  counts.entries++;
   const o = e as Record<string, unknown>;
   for (const f of [
     "exceptions",
@@ -255,6 +284,86 @@ function wellFormed(e: VerifiedEntry): boolean {
   return true;
 }
 
+/**
+ * What one raw table entry object parses to, computed once per object and read by every call (`parsedOf`): the well
+ * formed verdict, the resolved entry per key (with the pointer target's raw object, so a swapped target misses), and the
+ * lookup structures built lazily from its own lists. Keyed on the raw `table[k]` object by identity, so an entry swapped
+ * for another object (`setVerifiedForTests`, the sweep, a test replacing `table[k]`) is parsed anew. An entry object
+ * mutated in place after a call is NOT supported: the cache would keep answering from what it parsed first.
+ */
+type Parsed = {
+  ok: boolean;
+  /** The last resolution of this object: under `key`, with `target` the raw object its pointer read (if any). */
+  resolved?: { key: string; target: unknown; entry: Usable | undefined };
+  /** Its own `exceptions` as a set (an entry pointing elsewhere reads its target's). */
+  exceptions?: Set<string>;
+  /** Its own `exceptions` as passage items, and the `BOOK C:` prefixes with a range exception; `null`: unreadable. */
+  passage?: { items: Set<string>; rangeChapters: Set<string> } | null;
+  /** `joins` per book, then per chapter (as written), the proven boundaries. */
+  joins?: Map<string, Map<string, Set<number>>>;
+  /** `terms` per directory, then per article name (the first part wins), its terms. */
+  terms?: Map<string, Map<string, string[]>>;
+  misses?: Set<string>;
+  ids?: Set<string>;
+  idDirs?: Map<string, Set<string>>;
+};
+/** A usable entry (`entryAt`): `e` as before, `own` the parse of its raw object, `ex` that of its exceptions' owner. */
+type Usable = {
+  e: VerifiedEntry;
+  own: Parsed;
+  ex: Parsed;
+  exRaw: VerifiedEntry;
+};
+
+let parsed = new WeakMap<object, Parsed>();
+const counts = { entries: 0, exceptions: 0 };
+
+/** Tests only: how many times an entry was checked (`wellFormed`) and an exceptions list parsed, since load. */
+export function parseCountsForTests(): {
+  entries: number;
+  exceptions: number;
+} {
+  return { ...counts };
+}
+
+function parsedOf(e: VerifiedEntry): Parsed {
+  let p = parsed.get(e);
+  if (!p) {
+    p = { ok: wellFormed(e) };
+    parsed.set(e, p);
+  }
+  return p;
+}
+
+function exceptionSet(p: Parsed, owner: VerifiedEntry): Set<string> {
+  if (!p.exceptions) {
+    counts.exceptions++;
+    p.exceptions = new Set(strings(owner.exceptions));
+  }
+  return p.exceptions;
+}
+
+function passageOf(
+  p: Parsed,
+  owner: VerifiedEntry,
+): { items: Set<string>; rangeChapters: Set<string> } | null {
+  if (p.passage === undefined) {
+    const list = strings(owner.exceptions);
+    const items = passageExceptions(list);
+    if (!items) p.passage = null;
+    else {
+      // `BOOK C:` of every line with a range (the same as an item `BOOK C:a-b` among `items`)
+      const rangeChapters = new Set<string>();
+      for (const x of list) {
+        const m = PASSAGE_EXCEPTION.exec(x)!;
+        if (m[2]!.includes("-")) rangeChapters.add(`${m[1]}:`);
+      }
+      p.passage = { items, rangeChapters };
+    }
+  }
+  return p.passage;
+}
+
 /** `"<lang>|<key>|<release>|<kind>"` without the resource key (entries that may share one exceptions list). */
 function sameAsGroup(k: string): string | undefined {
   const p = k.split("|");
@@ -268,22 +377,50 @@ function sameAsGroup(k: string): string | undefined {
  * Anything else makes the whole entry unusable (`undefined`), like any malformed field.
  */
 function entryAt(k: string): VerifiedEntry | undefined {
+  return usableAt(k)?.e;
+}
+
+/** `entryAt` with the parsed structures, cached per raw entry object (see `Parsed`). */
+function usableAt(k: string): Usable | undefined {
   const e = Object.hasOwn(table, k) ? table[k] : undefined;
-  if (typeof e !== "object" || e === null || !wellFormed(e)) return undefined;
+  if (typeof e !== "object" || e === null) return undefined;
+  const own = parsedOf(e);
+  if (!own.ok) return undefined;
   const to = (e as Record<string, unknown>).exceptionsSameAs;
-  if (to === undefined) return e;
+  if (to === undefined) return { e, own, ex: own, exRaw: e };
+  // the target is looked up on every call: a cached resolution holds only for the same key and target object
+  const t =
+    typeof to === "string" && Object.hasOwn(table, to) ? table[to] : undefined;
+  const r = own.resolved;
+  if (r && r.key === k && r.target === t) return r.entry;
+  const entry = resolve(k, e, own, to, t);
+  own.resolved = { key: k, target: t, entry };
+  return entry;
+}
+
+function resolve(
+  k: string,
+  e: VerifiedEntry,
+  own: Parsed,
+  to: unknown,
+  t: VerifiedEntry | undefined,
+): Usable | undefined {
   if (typeof to !== "string" || e.exceptions !== undefined || to === k)
     return undefined;
   const group = sameAsGroup(k);
   if (group === undefined || sameAsGroup(to) !== group) return undefined;
-  const t = Object.hasOwn(table, to) ? table[to] : undefined;
-  if (typeof t !== "object" || t === null || !wellFormed(t)) return undefined;
+  if (typeof t !== "object" || t === null || !parsedOf(t).ok) return undefined;
   if (
     (t as Record<string, unknown>).exceptionsSameAs !== undefined ||
     !Array.isArray(t.exceptions)
   )
     return undefined;
-  return { ...e, exceptions: t.exceptions };
+  return {
+    e: { ...e, exceptions: t.exceptions },
+    own,
+    ex: parsedOf(t),
+    exRaw: t,
+  };
 }
 
 function chapterListed(
@@ -298,27 +435,34 @@ function chapterListed(
 }
 
 /** `item` is `<dir>/<name>` and `name` is in the dir's comma list. */
-function dirListed(dirs: unknown, item: string): boolean {
+function dirListed(p: Parsed, dirs: unknown, item: string): boolean {
   if (!isPlain(dirs)) return false;
+  if (!p.idDirs) {
+    p.idDirs = new Map();
+    for (const [dir, list] of Object.entries(dirs)) {
+      if (typeof list === "string") p.idDirs.set(dir, new Set(list.split(",")));
+    }
+  }
   const i = item.lastIndexOf("/");
   const dir = i < 0 ? "" : item.slice(0, i);
   if (!Object.hasOwn(dirs, dir)) return false;
-  const list = dirs[dir];
+  const names = p.idDirs.get(dir);
   return (
-    typeof list === "string" &&
-    item.length > i + 1 &&
-    list.split(",").includes(item.slice(i + 1))
+    names !== undefined && item.length > i + 1 && names.has(item.slice(i + 1))
   );
 }
 
 function itemListed(
-  e: VerifiedEntry,
+  u: Usable,
   kind: string,
   item: string,
   index: boolean,
 ): boolean {
-  if (ID_KINDS.has(kind))
-    return strings(e.ids).includes(item) || dirListed(e.idDirs, item);
+  const e = u.e;
+  if (ID_KINDS.has(kind)) {
+    u.own.ids ??= new Set(strings(e.ids));
+    return u.own.ids.has(item) || dirListed(u.own, e.idDirs, item);
+  }
   if (CHAPTER_KINDS.has(kind)) {
     const m = /^(\S+)(?: (\S+))?$/.exec(item);
     if (!m) return false;
@@ -351,8 +495,9 @@ export function isVerified(
     kind !== SEARCH_CATALOG_KIND
   )
     return false;
-  const e = entryAt(`${lang}|${resourceKey}|${release}|${kind}`);
-  if (!e) return false;
+  const u = usableAt(`${lang}|${resourceKey}|${release}|${kind}`);
+  if (!u) return false;
+  const e = u.e;
   const deps = e.deps ?? {};
   for (const [depKey, depRelease] of Object.entries(deps)) {
     const have = opts.releaseOf?.(depKey);
@@ -363,13 +508,15 @@ export function isVerified(
     return item === undefined && catalogExcept(e)?.length === 0;
   if (item === undefined) return !ID_KINDS.has(kind);
   const index = opts.index === true && CHAPTER_KINDS.has(kind);
-  const exceptions = strings(e.exceptions);
-  if (exceptions.includes(index ? `index:${item}` : item)) return false;
+  const exceptions = exceptionSet(u.ex, u.exRaw);
+  if (exceptions.has(index ? `index:${item}` : item)) return false;
   if (kind === "passage") {
     const m = PASSAGE.exec(item);
     if (!m) return false;
-    const excepted = passageExceptions(exceptions);
-    if (!excepted || excepted.has(item)) return false;
+    const passage = passageOf(u.ex, u.exRaw);
+    if (!passage) return false;
+    const excepted = passage.items;
+    if (excepted.has(item)) return false;
     const [, book, chapter, a, b] = m;
     if (strings(e.skippedBooks).includes(book!)) return false;
     if (!chapterListed(e.chapters, book!, chapter!)) return false;
@@ -382,14 +529,9 @@ export function isVerified(
     for (let v = Number(a); v <= Number(b); v++) {
       if (excepted.has(`${book} ${chapter}:${v}`)) return false;
     }
-    const prefix = `${book} ${chapter}:`;
-    let chapterProven = true;
-    for (const x of excepted) {
-      if (x.startsWith(prefix) && x.includes("-", prefix.length))
-        chapterProven = false;
-    }
-    if (chapterProven) return true;
-    const joined = joinsOf(e.joins, book!, chapter!);
+    // the chapter is proven when none of its exceptions is a range (`passageOf` keeps the chapters that have one)
+    if (!passage.rangeChapters.has(`${book} ${chapter}:`)) return true;
+    const joined = joinsAt(u.own, e.joins, book!, chapter!);
     if (!joined) return false;
     for (let v = Number(a); v < Number(b); v++) {
       if (!joined.has(v)) return false;
@@ -398,7 +540,7 @@ export function isVerified(
   }
   const m = /^(\S+)/.exec(item);
   if (m && strings(e.skippedBooks).includes(m[1]!)) return false;
-  return itemListed(e, kind, item, index);
+  return itemListed(u, kind, item, index);
 }
 
 /** The ids a usable catalog verdict excepts (`[]` for `equal`), or `undefined` when it proves nothing. */
@@ -460,15 +602,23 @@ export function isVerifiedTerm(
   const dir = i < 0 ? "" : path.slice(0, i);
   const name = path.slice(i + 1);
   if (!isPlain(e.terms) || !Object.hasOwn(e.terms, dir)) return false;
-  for (const part of String(e.terms[dir]).split(",")) {
-    const c = part.indexOf(":");
-    if (part.slice(0, c) !== name) continue;
-    return part
-      .slice(c + 1)
-      .split("|")
-      .some((t) => (t === "=" ? name : t) === term);
+  const p = parsedOf(e);
+  if (!p.terms) {
+    p.terms = new Map();
+    for (const [d, line] of Object.entries(e.terms)) {
+      const byName = new Map<string, string[]>();
+      for (const part of String(line).split(",")) {
+        const c = part.indexOf(":");
+        const n = part.slice(0, c);
+        if (!byName.has(n)) byName.set(n, part.slice(c + 1).split("|"));
+      }
+      p.terms.set(d, byName);
+    }
   }
-  return false;
+  const terms = p.terms.get(dir)?.get(name);
+  return (
+    terms !== undefined && terms.some((t) => (t === "=" ? name : t) === term)
+  );
 }
 
 /**
@@ -487,15 +637,17 @@ export function isVerifiedMiss(
 ): boolean {
   if (open) return true;
   if (!MISS_TERM.test(term)) return false;
-  const e = entryAt(`${lang}|${resourceKey}|${release}|articles`);
-  if (!e) return false;
+  const u = usableAt(`${lang}|${resourceKey}|${release}|articles`);
+  if (!u) return false;
+  const e = u.e;
   for (const [depKey, depRelease] of Object.entries(e.deps ?? {})) {
     const have = opts.releaseOf?.(depKey);
     if (have === undefined || have !== depRelease) return false;
   }
-  if (strings(e.exceptions).includes(`miss:${term}`)) return false;
-  if (typeof e.misses !== "string" || !e.misses.split(",").includes(term))
-    return false;
+  if (exceptionSet(u.ex, u.exRaw).has(`miss:${term}`)) return false;
+  if (typeof e.misses !== "string") return false;
+  u.own.misses ??= new Set(e.misses.split(","));
+  if (!u.own.misses.has(term)) return false;
   const except = searchCatalogExcept(lang, resourceKey, release, opts);
   if (except === undefined) return false;
   return !except.some(

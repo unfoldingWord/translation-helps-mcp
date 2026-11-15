@@ -4,6 +4,8 @@ import * as sweep from "../../scripts/sweep-packs3.mjs";
 import {
   isVerified,
   isVerifiedMiss,
+  isVerifiedTerm,
+  parseCountsForTests,
   isVerifiedRange,
   searchCatalogExcept,
   releaseOfCatalogs,
@@ -537,5 +539,147 @@ describe("search catalog verdict equalExcept (case-only id differences)", () => 
       [ART]: { items: 1, misses: "nothing" },
     });
     expect(isVerifiedMiss("en", "u/en/ta", "v9", "nothing", {})).toBe(false);
+  });
+});
+
+describe("each proof entry is parsed once (per raw entry object)", () => {
+  const ULT = "en|u/en/ult|v9|passage";
+  const UST = "en|u/en/ust|v9|passage";
+  const ART = "en|u/en/tw|v9|articles";
+  const pass = (extra: VerifiedEntry = {}): VerifiedEntry => ({
+    items: 3,
+    chapters: { TIT: [1, 2, 3] },
+    ...extra,
+  });
+  const ult = (item: string) =>
+    isVerified("en", "u/en/ult", "v9", "passage", item);
+  const ust = (item: string) =>
+    isVerified("en", "u/en/ust", "v9", "passage", item);
+  // a long list, as en ult/ust have: every second verse of chapters 2 and 3, and a range in chapter 1
+  const long = [
+    "TIT 1:5-6",
+    `TIT 2:${Array.from({ length: 200 }, (_, i) => 2 * i + 1).join(",")}`,
+    `TIT 3:${Array.from({ length: 200 }, (_, i) => 2 * i + 1).join(",")}`,
+  ];
+  const queries = [
+    "TIT 1:1",
+    "TIT 1:5",
+    "TIT 1:1-3",
+    "TIT 1:3-5",
+    "TIT 1:6-8",
+    "TIT 2:1",
+    "TIT 2:2",
+    "TIT 3:4",
+    "TIT 3:4-5",
+    "TIT 1:7-9",
+  ];
+
+  it("gives the same answers across repeated calls", () => {
+    setVerifiedForTests({
+      [ULT]: pass({ exceptions: long, joins: { TIT: "1:1-2,7-8" } }),
+    });
+    const first = queries.map(ult);
+    expect(first).toEqual([
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+    ]);
+    for (let i = 0; i < 5; i++) expect(queries.map(ult)).toEqual(first);
+  });
+
+  it("answers anew when setVerifiedForTests swaps the entry", () => {
+    setVerifiedForTests({ [ULT]: pass({ exceptions: ["TIT 1:3"] }) });
+    expect(ult("TIT 1:3")).toBe(false);
+    expect(ult("TIT 1:3")).toBe(false);
+    setVerifiedForTests({ [ULT]: pass({ exceptions: [] }) });
+    expect(ult("TIT 1:3")).toBe(true);
+    setVerifiedForTests({ [ULT]: pass({ exceptions: 3 as never }) });
+    expect(ult("TIT 1:1")).toBe(false);
+  });
+
+  it("a pointer target swap invalidates the pointing entry", () => {
+    const ustRaw = pass({ exceptionsSameAs: ULT });
+    const t: Record<string, VerifiedEntry> = {
+      [ULT]: pass({ exceptions: ["TIT 1:3"] }),
+      [UST]: ustRaw,
+    };
+    setVerifiedForTests(t);
+    expect(ust("TIT 1:3")).toBe(false);
+    // the same table and the same pointing object, a new target object (no setVerifiedForTests)
+    t[ULT] = pass({ exceptions: [] });
+    expect(ust("TIT 1:3")).toBe(true);
+    // a target that can no longer be followed makes the pointing entry unusable
+    t[ULT] = pass({ exceptionsSameAs: UST });
+    expect(ust("TIT 1:1")).toBe(false);
+    delete t[ULT];
+    expect(ust("TIT 1:1")).toBe(false);
+    t[ULT] = pass({ exceptions: ["TIT 1:1"] });
+    expect(ust("TIT 1:1")).toBe(false);
+    expect(ust("TIT 1:2")).toBe(true);
+    // via setVerifiedForTests, the same pointing object
+    setVerifiedForTests({ [ULT]: pass({ exceptions: [] }), [UST]: ustRaw });
+    expect(ust("TIT 1:1")).toBe(true);
+  });
+
+  it("the same raw object under another key is checked for that key", () => {
+    const shared = pass({ exceptionsSameAs: ULT });
+    setVerifiedForTests({
+      [ULT]: pass({ exceptions: [] }),
+      [UST]: shared,
+      "en|u/en/t4t|v9|passage": shared,
+    });
+    expect(ust("TIT 1:1")).toBe(true);
+    // under the t4t key the pointer is still in the group, so it reads ULT too
+    expect(isVerified("en", "u/en/t4t", "v9", "passage", "TIT 1:1")).toBe(true);
+    // under ULT's own key it would point at itself: unusable
+    setVerifiedForTests({ [ULT]: shared });
+    expect(ult("TIT 1:1")).toBe(false);
+  });
+
+  it("parses a long exceptions list once for N calls, shared by its pointer", () => {
+    setVerifiedForTests({
+      [ULT]: pass({ exceptions: long, joins: { TIT: "1:1-2,7-8" } }),
+      [UST]: pass({ exceptionsSameAs: ULT }),
+    });
+    const before = parseCountsForTests();
+    for (let i = 0; i < 50; i++) {
+      queries.map(ult);
+      queries.map(ust);
+    }
+    const after = parseCountsForTests();
+    expect(after.entries - before.entries).toBe(2);
+    expect(after.exceptions - before.exceptions).toBe(1);
+  });
+
+  it("parses terms and misses once for N calls", () => {
+    setVerifiedForTests({
+      [ART]: {
+        items: 2,
+        exceptions: ["miss:gone"],
+        idDirs: { "bible/kt": "grace,covenant" },
+        terms: { "bible/kt": "covenant:=|pact,grace:=" },
+        misses: "nothing,gone",
+      },
+    });
+    const before = parseCountsForTests();
+    for (let i = 0; i < 20; i++) {
+      expect(
+        isVerifiedTerm("en", "u/en/tw", "v9", "pact", "bible/kt/covenant"),
+      ).toBe(true);
+      expect(
+        isVerifiedTerm("en", "u/en/tw", "v9", "pact", "bible/kt/grace"),
+      ).toBe(false);
+      expect(isVerifiedMiss("en", "u/en/tw", "v9", "gone")).toBe(false);
+    }
+    const after = parseCountsForTests();
+    expect(after.entries - before.entries).toBe(1);
+    expect(after.exceptions - before.exceptions).toBe(1);
   });
 });
