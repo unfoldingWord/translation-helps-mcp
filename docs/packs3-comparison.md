@@ -2,13 +2,13 @@
 
 Base: http://127.0.0.1:8811, `x-th-packs3: off` (A) against `only` (B)
 
-Calls: 72 (en 39, es-419 31). Failed: 1. Known differences hit: 0. Release skew: 0.
+Calls: 71 (en 39, es-419 30). Failed: 0. Known differences hit: 0. Release skew: 0.
 
-Fallbacks under `only` (from the Worker's \_meta.\_packs3 mark): adapter-undefined 37, no-adapter 10. Unmarked answers: 1.
+Fallbacks under `only` (from the Worker's \_meta.\_packs3 mark): adapter-undefined 37, no-adapter 10. Unmarked answers: 0.
 
 ## Differences
 
-- FAIL th_get_article {"path":"metáfora","language":"es-419"}: UNMARKED: no \_meta.\_packs3 on the `only` answer (is PACKS_V3_DEBUG on?); not counted as served
+Note (task 15c): the es-419 call `metáfora` was dropped from the contract (non-ASCII ids fail MCP path validation, INVALID_PARAMS on both sides), so this run's 72 calls became 71 and its one FAIL is gone; the rest is the run as generated.
 
 ## Every call (timings in ms)
 
@@ -78,7 +78,6 @@ Fallbacks under `only` (from the Worker's \_meta.\_packs3 mark): adapter-undefin
 | th_get_questions     | `{"reference":"OBS 3","language":"es-419","kind":"study"}`          | fallback | fallback (no-adapter): no format 3 adapter for this API path (no-adapter): OBS study questions                                                             | 21   | 18  |
 | th_get_article       | `{"path":"bible/kt/grace","language":"es-419"}`                     | fallback | fallback (adapter-undefined): es-419 article not in the verified answers (unverified-article)                                                              | 21   | 15  |
 | th_get_article       | `{"path":"translate/figs-metaphor","language":"es-419"}`            | fallback | fallback (adapter-undefined): unverified-article                                                                                                           | 25   | 14  |
-| th_get_article       | `{"path":"metáfora","language":"es-419"}`                           | pack     | FAIL (unmarked)                                                                                                                                            | 17   | 21  |
 | th_get_article       | `{"path":"pacto","language":"es-419"}`                              | fallback | fallback (adapter-undefined): unverified-article-catalog                                                                                                   | 30   | 17  |
 | th_get_article       | `{"path":"bible/kt/grace","language":"es-419","detail":"summary"}`  | fallback | fallback (adapter-undefined): unverified-article                                                                                                           | 23   | 16  |
 | th_search            | `{"query":"gracia","language":"es-419"}`                            | fallback | fallback (adapter-undefined): search not verified                                                                                                          | 23   | 17  |

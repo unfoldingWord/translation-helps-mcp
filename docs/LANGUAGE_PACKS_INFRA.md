@@ -567,14 +567,16 @@ The MCP tools can answer from format 3 instead of calling the API Worker (`src/p
 - **Keys.** `PACKS_V3_TRUSTED_KEYS` is `<keyId>:<hex public key>` (comma separated for more). A catalog
   (`v3/catalog/{lang}.seg`, `v3/catalog/common.seg`) whose signature no listed key verifies is not used. Production
   needs the production key here, with Abel's yes.
-- **Fallback.** Any call format 3 cannot answer exactly as today goes to the API Worker. The reasons are logged once
-  per isolate and language as `packs3 fallback { lang, reason }`: `v3-off`, `no-keys`, `no-adapter` (no format 3 adapter
-  for that API path: OBS, `th_list_resources`), `adapter-undefined` (the adapter declined: an unverified book,
-  resource or article catalog, Old Testament text, a whole chapter, `format: "usfm"`, a note that links an article,
-  lost whitespace), `adapter-exception`, `readers-busy`, plus finer ones (`no-catalog`, `unverified-book`,
-  `note-links`, `unverified-article`, `unverified-article-catalog`, `unverified-resource`). Allowlists (helps
-  `VERIFIED_BOOKS`, `articles-verified.ts`, the search and questions sets, scripture `VERIFIED`) widen only after a
-  whole-answer equal comparison.
+- **Fallback.** Format 3 serves a call only when (lang, resource key, release, kind) is in the bundled `verified.json`
+  proof (written by `scripts/sweep-packs3.mjs`) and the item is not an exception. A new release, or a shape the sweep did
+  not cover (passage ranges, an article by term or title, searches outside the 40 swept queries), falls back to the API
+  Worker. The reasons are logged once per isolate and language as `packs3 fallback { lang, reason }`, and under
+  `PACKS_V3_DEBUG` each answer carries them in `result._meta._packs3`: `v3-off`/`mode-off`, `no-keys`, `no-packs`,
+  `no-adapter` (no format 3 adapter for that API path: OBS, `th_list_resources`), `adapter-undefined` (the adapter
+  declined: no sweep entry for the release or item, Old Testament text, a whole chapter, `format: "usfm"`, a note that
+  links an article, lost whitespace), `adapter-exception`, `readers-busy`, plus finer ones (`no-catalog`,
+  `unverified-resource`, `note-links`). The local wrangler route used for the index sweep may differ from the deployed
+  API Worker commit; record it when sweeping (the sweep run's code commit is not known today).
 - **Budget.** A reader keeps at most **1 MB** of compressed segments; at most **2 readers** per isolate, live and
   retired together; a third concurrent call falls back with reason `readers-busy`. The decoded segment LRU holds at
   most **8 MB** (`SEGMENT_CACHE_MAX_BYTES`). Why: about 41 MB of heap per compressed MB was measured, inside a 128 MB

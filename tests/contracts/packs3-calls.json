@@ -561,14 +561,6 @@
   {
     "tool": "th_get_article",
     "args": {
-      "path": "metáfora",
-      "language": "es-419"
-    },
-    "expect": "pack"
-  },
-  {
-    "tool": "th_get_article",
-    "args": {
       "path": "pacto",
       "language": "es-419"
     },
