@@ -70,10 +70,21 @@ export async function injectFixtureProofs(
           : lang === "en"
             ? { TIT: 3 }
             : { TIT: 3, RUT: 4 };
+      // as the sweep records: notes take titles from tA, links from tW
+      const helper =
+        kind === "notes"
+          ? "Translation Academy"
+          : kind === "links"
+            ? "Translation Words"
+            : undefined;
       table[`${lang}|${r.key}|${r.release}|${kind}`] = {
         items: 0,
         exceptions: [],
-        deps: {},
+        deps: Object.fromEntries(
+          resources
+            .filter((x) => x.subject === helper)
+            .map((x) => [`${lang}|${x.key}`, x.release]),
+        ),
         chapters: chaptersOf(books),
         ...(kind === "passage"
           ? {}

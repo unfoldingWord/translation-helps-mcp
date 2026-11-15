@@ -26,7 +26,7 @@ import type { Packs3Env } from "../catalogs";
 import { warnOnce } from "../keys";
 import { withReader } from "../readers";
 import type { Packs3Params } from "../answer";
-import { isVerified, releaseOfCatalogs } from "../verified";
+import { depsCover, isVerified, releaseOfCatalogs } from "../verified";
 import { BOOKS, FIRST_NT } from "./scripture";
 
 /**
@@ -251,14 +251,20 @@ function inQuery(p: Placed, q: Query, notes: boolean): boolean {
   return verseOverlapsQueryRange(p.verse, q.verseStart, q.verseEnd);
 }
 
-type Titles = Map<string, string>;
+type Titles = Map<string, string> & { resources?: Set<string> };
 
-/** Titles of the articles the concepts point to, from the groups they belong to, or `undefined` when one is missing. */
+/**
+ * Titles of the articles the concepts point to, from the groups they belong to, or `undefined` when one is missing.
+ * `resources` is every article resource a used title came from (it must be proven, see `prepare`).
+ */
 async function titlesOf(
   reader: PackReader,
   concepts: string[],
 ): Promise<Titles | undefined> {
   const titles: Titles = new Map();
+  const used = new Set(concepts);
+  const resources = new Set<string>();
+  titles.resources = resources;
   const groups = new Set(concepts.map((c) => c.slice(0, c.lastIndexOf("/"))));
   for (const group of groups) {
     const articles = (await reader.articles(group)) as
@@ -267,7 +273,13 @@ async function titlesOf(
     if (!articles) return undefined;
     for (const a of articles) {
       if (typeof a.id !== "string") continue;
-      if (typeof a.title === "string" && a.title) titles.set(a.id, a.title);
+      if (typeof a.title === "string" && a.title) {
+        if (used.has(a.id)) {
+          if (typeof a.res !== "string") return undefined;
+          resources.add(a.res);
+        }
+        titles.set(a.id, a.title);
+      }
     }
   }
   return concepts.every((c) => titles.has(c)) ? titles : undefined;
@@ -433,9 +445,22 @@ async function prepare(
     if (!link.startsWith(notes ? "ta:" : "tw:")) return undefined;
     concepts.push(link);
   }
-  const titles =
+  const titles: Titles | undefined =
     concepts.length === 0 ? new Map() : await titlesOf(ctx.reader, concepts);
   if (!titles) return undefined;
+  if (
+    !depsCover(
+      ctx.lang,
+      ctx.resource.key,
+      ctx.resource.release,
+      notes ? "notes" : "links",
+      titles.resources ?? [],
+      ctx.releaseOf,
+    )
+  ) {
+    warnOnce(ctx.lang, "unproven-article-resource");
+    return undefined;
+  }
   if (ctx.q.indexMode) return { chosen, titles };
   // Aligned words: New Testament only, from the verified text.
   if (BOOKS.indexOf(ctx.book.toLowerCase()) < FIRST_NT) return undefined;

@@ -594,6 +594,50 @@ describe("fix round 1: shapes, quotes, books, references, texts", () => {
     }
   });
 
+  it("article titles are served only from article resources the proof lists at the catalog's release", async () => {
+    const args = { reference: "Tit", language: "en", fields: "index" };
+    const twl = (t: Record<string, any>) =>
+      Object.entries(t).filter(
+        ([k]) => k.startsWith("en|") && k.endsWith("|links"),
+      );
+    const tas = (t: Record<string, any>) =>
+      Object.entries(t).filter(
+        ([k]) => k.startsWith("en|") && k.endsWith("|notes"),
+      );
+    // the helper resource is missing from deps: no answer
+    await injectFixtureProofs(env(), (t) => {
+      for (const [, e] of [...twl(t), ...tas(t)]) e.deps = {};
+    });
+    try {
+      resetReadersForTests();
+      expect(await wordLinksFromPacks3(env(), args)).toBeUndefined();
+      expect(await notesFromPacks3(env(), args)).toBeUndefined();
+      expect(console.warn).toHaveBeenCalledWith(
+        "packs3 fallback",
+        expect.objectContaining({ reason: "unproven-article-resource" }),
+      );
+    } finally {
+      setVerifiedForTests(undefined);
+    }
+    // listed at another release: no answer
+    await injectFixtureProofs(env(), (t) => {
+      for (const [, e] of [...twl(t), ...tas(t)])
+        for (const k of Object.keys(e.deps)) e.deps[k] = "v0";
+    });
+    try {
+      resetReadersForTests();
+      expect(await wordLinksFromPacks3(env(), args)).toBeUndefined();
+      expect(await notesFromPacks3(env(), args)).toBeUndefined();
+    } finally {
+      setVerifiedForTests(undefined);
+    }
+    // listed at the catalog's release: served
+    await injectFixtureProofs(env());
+    resetReadersForTests();
+    expect(await wordLinksFromPacks3(env(), args)).toBeDefined();
+    expect(await notesFromPacks3(env(), args)).toBeDefined();
+  });
+
   it("a row without an article link is accepted only when nothing in it looks like a dropped reference", () => {
     const cols = (note: string) => ({
       note,

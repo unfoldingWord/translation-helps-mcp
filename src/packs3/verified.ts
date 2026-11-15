@@ -184,6 +184,33 @@ export function isVerified(
   return itemListed(e, kind, item, index);
 }
 
+/**
+ * Does the entry's `deps` list every resource in `keys` (resource keys of the language's own catalog, recorded as
+ * `"<lang>|<key>"`) at the release the catalog has now. `isVerified` only checks the deps an entry lists, so a resource
+ * that contributed to an answer but is not listed (added to the catalog after the sweep) needs this. Fail-closed.
+ */
+export function depsCover(
+  lang: string,
+  resourceKey: string,
+  release: string,
+  kind: string,
+  keys: Iterable<string>,
+  releaseOf: (depKey: string) => string | undefined,
+): boolean {
+  if (open) return true;
+  const k = `${lang}|${resourceKey}|${release}|${kind}`;
+  const e = Object.hasOwn(table, k) ? table[k] : undefined;
+  if (typeof e !== "object" || e === null || !wellFormed(e)) return false;
+  const deps = e.deps ?? {};
+  for (const key of keys) {
+    const depKey = `${lang}|${key}`;
+    if (!Object.hasOwn(deps, depKey)) return false;
+    const have = releaseOf(depKey);
+    if (have === undefined || have !== deps[depKey]) return false;
+  }
+  return true;
+}
+
 /** A passage range `BOOK C:first-last` (or a single verse when equal): see `isVerified`. */
 export function isVerifiedRange(
   lang: string,
