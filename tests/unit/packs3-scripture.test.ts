@@ -217,6 +217,20 @@ describe("scriptureFromPacks3", () => {
   });
 });
 
+describe("verse range bounds", () => {
+  const ask = (reference: string) =>
+    scriptureFromPacks3(env(), { reference, language: "en" } as any);
+
+  it("an unbounded or equal-end range falls back, fast", async () => {
+    const t0 = Date.now();
+    expect(await ask("Tit 1:1-99999999999999999999")).toBeUndefined();
+    expect(await ask("Tit 1:0-3")).toBeUndefined();
+    expect(await ask("Tit 1:3-3")).toBeUndefined();
+    expect(await ask("Tit 1:5-3")).toBeUndefined();
+    expect(Date.now() - t0).toBeLessThan(5000);
+  });
+});
+
 describe("verified resources", () => {
   it("falls back, warning once, when a picked resource has no proof", async () => {
     await injectFixtureProofs(env(), (t) => {

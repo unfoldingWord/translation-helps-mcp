@@ -7,12 +7,43 @@ import {
   type Packs3Env,
 } from "../../src/packs3/catalogs";
 import { resetReadersForTests } from "../../src/packs3/readers";
+
+const mismatch = vi.hoisted(() => ({ on: false }));
+vi.mock("../../src/packs3/readers", async (orig) => {
+  const m = await orig<typeof import("../../src/packs3/readers")>();
+  return {
+    ...m,
+    withReader: (env: any, lang: string, fn: any) =>
+      m.withReader(env, lang, (reader: any, c: any) =>
+        fn(
+          mismatch.on
+            ? {
+                ...reader,
+                listed: (u: string) => reader.listed(u),
+                articles: async (g: string) => {
+                  const rs = (await reader.articles(g)) as any[];
+                  return g === "tw:kt"
+                    ? rs?.map((r, i) =>
+                        i === 0
+                          ? { ...r, id: r.id.replace("tw:kt/", "tw:other/") }
+                          : r,
+                      )
+                    : rs;
+                },
+              }
+            : reader,
+          c,
+        ),
+      ),
+  };
+});
 import { resetWarnOnceForTests } from "../../src/packs3/keys";
 import {
   articleCatalogFromPacks3,
   wordsPathFromPacks3,
   academyPathFromPacks3,
   bodyOf,
+  resetArticleGroupsForTests,
 } from "../../src/packs3/adapters/articles";
 import { answerFromPacks3, attemptPacks3 } from "../../src/packs3/answer";
 import { jsonArticleMatch } from "../../src/api/routes/articleResponse";
@@ -127,6 +158,21 @@ describe("articles", () => {
       "related",
       "source",
     ]);
+  });
+
+  it("a group whose ids sit in another directory is unusable: falls back", async () => {
+    expect((await words("bible/kt/call-speakloudly"))?.path).toBe(
+      "bible/kt/call-speakloudly",
+    );
+    mismatch.on = true;
+    try {
+      resetPacks3CachesForTests();
+      resetReadersForTests();
+      resetArticleGroupsForTests();
+      expect(await words("bible/kt/call-speakloudly")).toBeUndefined();
+    } finally {
+      mismatch.on = false;
+    }
   });
 
   it("en tW term: the sweep records no term item, so it falls back", async () => {

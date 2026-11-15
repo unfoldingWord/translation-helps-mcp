@@ -72,6 +72,11 @@ export function pathOfId(id: string): string {
 const groupCache = new Map<string, Rec[]>();
 const MAX_CACHED_GROUPS = 24;
 
+/** Tests only: forget the cached group records. */
+export function resetArticleGroupsForTests(): void {
+  groupCache.clear();
+}
+
 async function loadGroup(
   reader: PackReader,
   c: Catalogs3,
@@ -88,7 +93,9 @@ async function loadGroup(
     if (
       typeof a?.id !== "string" ||
       typeof a.title !== "string" ||
-      typeof a.res !== "string"
+      typeof a.res !== "string" ||
+      // the category comes from the group, the path from the id: the route takes the category from the path
+      !a.id.startsWith(`${group}/`)
     )
       return undefined;
     recs.push({ path: pathOfId(a.id), title: a.title, res: a.res, group });

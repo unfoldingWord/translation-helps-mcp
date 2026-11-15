@@ -229,6 +229,10 @@ export async function scriptureFromPacks3(
   const first = Number(verseStart);
   const last = verseEnd ? Number(verseEnd) : first;
   if (!Number.isInteger(first) || !Number.isInteger(last)) return undefined;
+  // No chapter has more than 176 verses: nothing loops over an unbounded value. A range with equal ends (`3-3`) was
+  // never swept, and the answer would echo "3-3".
+  if (first < 1 || last > 200) return undefined;
+  if (verseEnd && last <= first) return undefined;
   const verseStr = verseEnd ? `${verseStart}-${verseEnd}` : verseStart;
 
   const answer = await withReader(

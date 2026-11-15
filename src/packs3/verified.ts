@@ -526,6 +526,9 @@ export function isVerified(
     // es-419 TIT 1:4-5 keeps a line break), and format 3 does not keep that. A boundary is proven when the whole
     // chapter `C:1-N` was equal (the chapter has no range exception) or a swept window over it was (`joins`).
     if (b === undefined) return true;
+    // No chapter has more than 176 verses: a bound past 200 (or a reversed or zero one) is no verse range, and the
+    // loops below must never run on an unbounded value.
+    if (Number(a) < 1 || Number(b) < Number(a) || Number(b) > 200) return false;
     for (let v = Number(a); v <= Number(b); v++) {
       if (excepted.has(`${book} ${chapter}:${v}`)) return false;
     }

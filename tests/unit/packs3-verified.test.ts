@@ -227,6 +227,19 @@ describe("passage rules", () => {
     expect(p("TIT 2:3-4")).toBe(true);
   });
 
+  it("a range with a huge, zero or reversed bound is refused fast (no walk over the verses)", () => {
+    use(KEY, entry({ chapters: { TIT: [1] }, exceptions: [] }));
+    const t0 = Date.now();
+    expect(p("TIT 1:1-99999999999999999999")).toBe(false);
+    expect(p("TIT 1:1-9007199254740993")).toBe(false);
+    expect(p("TIT 1:0-3")).toBe(false);
+    expect(p("TIT 1:5-3")).toBe(false);
+    expect(p("TIT 1:1-201")).toBe(false);
+    expect(p("TIT 1:1-200")).toBe(true);
+    expect(p("TIT 1:1-176")).toBe(true);
+    expect(Date.now() - t0).toBeLessThan(1000);
+  });
+
   it("a passage exception it cannot read makes the whole entry unusable", () => {
     for (const bad of [
       "TIT 1:x",
