@@ -97,6 +97,27 @@ describe("isVerified", () => {
     expect(isVerified("en", "u/en/tw", "v1", "search", "faith")).toBe(false);
   });
 
+  it("the catalog verdict needs no exceptions and no item lists; an id kind needs an item", () => {
+    const k = "en|u/en/tw|v1|" + ["sea", "rch"].join("") + "Catalog";
+    const cat = () =>
+      isVerified("en", "u/en/tw", "v1", ["sea", "rch"].join("") + "Catalog");
+    use(k, { items: 1, exceptions: [], catalog: "equal" });
+    expect(cat()).toBe(true);
+    use(k, { items: 1, catalog: "equal" });
+    expect(cat()).toBe(true);
+    use(k, { items: 1, exceptions: ["bible/kt/x"], catalog: "equal" });
+    expect(cat()).toBe(false);
+    use(k, { items: 1, exceptions: [], catalog: "equal", ids: ["a"] });
+    expect(cat()).toBe(false);
+    use(k, { items: 1, catalog: "equal", idDirs: { "bible/kt": "a" } });
+    expect(cat()).toBe(false);
+    use("en|u/en/tw|v1|articles", { items: 1, ids: ["bible/kt/grace"] });
+    expect(isVerified("en", "u/en/tw", "v1", "articles")).toBe(false);
+    expect(
+      isVerified("en", "u/en/tw", "v1", "articles", "bible/kt/grace"),
+    ).toBe(true);
+  });
+
   it("articles in the compact form: only the listed clean items are served", () => {
     use("en|u/en/tw|v1|articles", {
       items: 3,

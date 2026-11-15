@@ -537,6 +537,81 @@ describe("search catalog proof", () => {
     expect(s.SEARCH_CATALOG_ALL).toBeGreaterThan(100000 - 1);
   });
 
+  it("probes: `/` at two limits plus every one-character query at the all limit; a slash-less route path is not equal", async () => {
+    const chars = s.SEARCH_CATALOG_CHAR_QUERIES as string[];
+    expect(chars).toHaveLength(38);
+    expect(chars).toEqual(
+      expect.arrayContaining(["a", "z", "0", "9", "-", "_"]),
+    );
+    // our catalog; the route holds one more article, `x`, whose path and title have no `/`
+    const ours = [
+      {
+        path: "bible/kt/grace",
+        title: "grace",
+        category: "kt",
+        resourceType: "tw",
+      },
+    ];
+    const rank = (c: typeof ours, q: string) =>
+      c
+        .filter((a) => `${a.path} ${a.title}`.includes(q))
+        .map((a) => ({
+          path: a.path,
+          title: a.title,
+          resourceType: "tw",
+          score: 1,
+        }));
+    const route = [
+      ...ours,
+      { path: "x", title: "x", category: "", resourceType: "tw" },
+    ];
+    const asked: Array<{ q: string; limit: string }> = [];
+    const fetchApi = async (req: { params: { q: string; limit: string } }) => {
+      asked.push({ q: req.params.q, limit: req.params.limit });
+      return { language: "en", results: rank(route, req.params.q) };
+    };
+    const probes = await s.searchCatalogProbes({
+      type: "tw",
+      lang: "en",
+      candidates: ours,
+      rank,
+      fetchApi,
+    });
+    expect(asked).toHaveLength(2 + 38);
+    expect(asked[0]).toEqual({ q: "/", limit: "1" });
+    expect(asked[1]).toEqual({ q: "/", limit: String(s.SEARCH_CATALOG_ALL) });
+    expect(
+      asked.slice(2).every((a) => a.limit === String(s.SEARCH_CATALOG_ALL)),
+    ).toBe(true);
+    const e = s.searchCatalogEntry({
+      lang: "en",
+      problems: [],
+      probes,
+      swept: "T",
+    });
+    expect(e.catalog).toBe("differs");
+    expect(e.differs).toEqual(["x"]);
+    // the same route without the extra article is equal
+    const same = await s.searchCatalogProbes({
+      type: "tw",
+      lang: "en",
+      candidates: ours,
+      rank,
+      fetchApi: async (req: { params: { q: string } }) => ({
+        language: "en",
+        results: rank(ours, req.params.q),
+      }),
+    });
+    expect(
+      s.searchCatalogEntry({
+        lang: "en",
+        problems: [],
+        probes: same,
+        swept: "T",
+      }).catalog,
+    ).toBe("equal");
+  });
+
   it("shape problems: an unsafe path, a path the probe cannot see, a category the route would not derive", () => {
     const safe = (p: string) => !p.includes("..");
     expect(

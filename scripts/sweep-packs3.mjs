@@ -60,16 +60,45 @@ SUBJECTS.searchCatalog = [...SUBJECTS.ta, ...SUBJECTS.tw];
  * It is asked at two limits and compared with the route's own ranking (`rankCandidates`) over our catalog:
  * - the catalog's own count: an unsafe path the route drops after ranking would show as a missing article;
  * - `SEARCH_CATALOG_ALL`: an extra article of the route would show.
+ * - one-character queries (a-z, 0-9, `-`, `_`) at `SEARCH_CATALOG_ALL`: every route path is non-empty and safe, so it
+ *   holds at least one of them, and an article whose path and title have no `/` (tA's parser can give `x` from
+ *   `repo/x/01.md`) still shows.
  * What the probe cannot show is checked on our side (`searchCatalogShapeProblems`): every path safe and holding a `/`,
- * and the category the route derives from the path. Left unseen: an unsafe route path sorting after our last one.
+ * and the category the route derives from the path. Accepted residual, left unproven: an unsafe route path (one the
+ * route drops after ranking) sorting after our last path; unlikely with real slugs.
  */
 export const SEARCH_CATALOG_PROBE = "/";
 export const SEARCH_CATALOG_ALL = 100000;
-export function searchCatalogRequest(type, language, limit) {
-  return { path: "/api/v1/search", params: { q: SEARCH_CATALOG_PROBE, language, types: type, limit: String(limit) } };
+export function searchCatalogRequest(type, language, limit, q = SEARCH_CATALOG_PROBE) {
+  return { path: "/api/v1/search", params: { q, language, types: type, limit: String(limit) } };
 }
 export function searchCatalogLimits(count) {
   return [count, SEARCH_CATALOG_ALL];
+}
+/** One-character queries, each at `SEARCH_CATALOG_ALL`: a route path holding no `/` is still seen by the one it contains. */
+export const SEARCH_CATALOG_CHAR_QUERIES = [..."abcdefghijklmnopqrstuvwxyz0123456789-_"];
+
+/**
+ * All probes of one resource: `/` at two limits and each one-character query at `SEARCH_CATALOG_ALL`, 2 + 38 = 40 API
+ * calls per (lang, type), four at a time. `rank(candidates, q, limit)` is the route's ranking over our catalog;
+ * `fetchApi(request)` the route's answer (undefined on error).
+ */
+export async function searchCatalogProbes({ type, lang, candidates, rank, fetchApi }) {
+  const asks = [
+    ...searchCatalogLimits(candidates.length).map((limit) => ({ q: SEARCH_CATALOG_PROBE, limit })),
+    ...SEARCH_CATALOG_CHAR_QUERIES.map((q) => ({ q, limit: SEARCH_CATALOG_ALL })),
+  ];
+  const probes = new Array(asks.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < asks.length) {
+      const i = next++;
+      const { q, limit } = asks[i];
+      probes[i] = { expected: rank(candidates, q, limit), api: await fetchApi(searchCatalogRequest(type, lang, limit, q)) };
+    }
+  };
+  await Promise.all([worker(), worker(), worker(), worker()]);
+  return probes;
 }
 
 /** The route's category of a path (door43 catalogParsers): tA its first segment, tW the segment after `bible`. */
@@ -908,11 +937,13 @@ async function sweepSearchCatalog({ env, lang, api, cats, resources, outDir, wri
       continue;
     }
     const candidates = cat.articles.map((a) => ({ path: a.path, title: a.title, category: a.category, resourceType: type }));
-    const probes = [];
-    for (const limit of searchCatalogLimits(candidates.length)) {
-      const body = await apiGet({ base: api, headers: { accept: "application/json" } }, searchCatalogRequest(type, lang, limit), cache);
-      probes.push({ expected: rankCandidates(candidates, SEARCH_CATALOG_PROBE, limit), api: body });
-    }
+    const probes = await searchCatalogProbes({
+      type,
+      lang,
+      candidates,
+      rank: rankCandidates,
+      fetchApi: (req) => apiGet({ base: api, headers: { accept: "application/json" } }, req, cache),
+    });
     const problems = searchCatalogShapeProblems(type, cat.articles, isSafeArticlePath);
     entries[key] = searchCatalogEntry({ lang, problems, probes, swept });
     lines.push(`## ${key}`, "", `Articles ${candidates.length}, catalog ${entries[key].catalog}`, "");

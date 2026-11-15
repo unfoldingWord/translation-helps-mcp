@@ -275,9 +275,12 @@ export function isVerified(
     return (
       item === undefined &&
       e.catalog === "equal" &&
-      (e.differs === undefined || e.differs.length === 0)
+      (e.differs === undefined || e.differs.length === 0) &&
+      strings(e.exceptions).length === 0 &&
+      e.ids === undefined &&
+      e.idDirs === undefined
     );
-  if (item === undefined) return true;
+  if (item === undefined) return !ID_KINDS.has(kind);
   const index = opts.index === true && CHAPTER_KINDS.has(kind);
   const exceptions = strings(e.exceptions);
   if (exceptions.includes(index ? `index:${item}` : item)) return false;
