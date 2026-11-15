@@ -38,6 +38,8 @@ import {
   isVerifiedMiss,
   isVerifiedTerm,
   releaseOfCatalogs,
+  SEARCH_CATALOG_KIND,
+  searchCatalogExcept,
 } from "../verified";
 
 export type ArticleKind = "tw" | "ta";
@@ -136,14 +138,20 @@ async function fullCatalog(
   return all.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-/** The article catalog the routes build from Door43, built from the article groups. `undefined` when `proof` is not swept. */
+/**
+ * The article catalog the routes build from Door43, built from the article groups. `undefined` when `proof` is not swept.
+ * Under the search catalog kind it carries `except`: the ids its verdict excepts (`searchCatalogExcept`, `[]` if equal).
+ */
 export async function articleCatalogFromPacks3(
   env: Packs3Env,
   lang: string,
   kind: ArticleKind,
   /** The sweep item that must be proven for the catalog's resource release (search: the query; the search catalog kind: none). */
   proof?: { kind: string; item?: string },
-): Promise<ArticleCatalog<WordArticle | AcademyArticle> | undefined> {
+): Promise<
+  | (ArticleCatalog<WordArticle | AcademyArticle> & { except?: string[] })
+  | undefined
+> {
   const out = await withReader(env, lang, async (reader, c) => {
     if (c.lang !== lang) return undefined;
     const recs = await fullCatalog(reader, c, kind);
@@ -153,11 +161,23 @@ export async function articleCatalogFromPacks3(
     const key = recs[0]!.res;
     const resource = releaseOf(c, kind, key);
     if (!resource) return undefined;
+    const opts = { releaseOf: releaseOfCatalogs(c.catalogs) };
+    const except =
+      proof?.kind === SEARCH_CATALOG_KIND && proof.item === undefined
+        ? searchCatalogExcept(c.lang, key, resource.release, opts)
+        : undefined;
     if (
       !proof ||
-      !isVerified(c.lang, key, resource.release, proof.kind, proof.item, {
-        releaseOf: releaseOfCatalogs(c.catalogs),
-      })
+      (proof.kind === SEARCH_CATALOG_KIND
+        ? except === undefined
+        : !isVerified(
+            c.lang,
+            key,
+            resource.release,
+            proof.kind,
+            proof.item,
+            opts,
+          ))
     ) {
       warnOnce(lang, "unverified-resource");
       return undefined;
@@ -172,7 +192,8 @@ export async function articleCatalogFromPacks3(
       zipUrl: "",
       articles: asCatalogArticles(kind, recs),
       source,
-    } as ArticleCatalog<WordArticle | AcademyArticle>;
+      ...(except !== undefined ? { except } : {}),
+    } as ArticleCatalog<WordArticle | AcademyArticle> & { except?: string[] };
   });
   return out ?? undefined;
 }

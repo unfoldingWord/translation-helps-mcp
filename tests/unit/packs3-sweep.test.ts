@@ -958,6 +958,124 @@ describe("search catalog proof", () => {
     expect(e.differs).toHaveLength(51);
     expect(e.differs.at(-1)).toBe("(and 30 more)");
   });
+
+  it("entry: ids that differ only in case are equalExcept, with the lowercased ids", () => {
+    const ours = [
+      res("translate/figs-ordergrk", "Order of Greek"),
+      res("translate/figs-orderheb", "Order of Hebrew"),
+      res("translate/figs-simile", "Simile"),
+    ];
+    const theirs = [
+      res("translate/figs-orderGrk", "Order of Greek"),
+      res("translate/figs-orderHeb", "Order of Hebrew"),
+      res("translate/figs-simile", "Simile"),
+    ];
+    const e = s.searchCatalogEntry({
+      lang: "en",
+      problems: [],
+      probes: [
+        { expected: ours, api: { language: "en", results: theirs } },
+        // a one-character probe sees the route-case id too
+        {
+          expected: [ours[0]],
+          api: { language: "en", results: [theirs[0]] },
+        },
+      ],
+      swept: "T",
+    });
+    expect(e).toEqual({
+      items: 2,
+      exceptions: [],
+      swept: "T",
+      catalog: "equalExcept",
+      except: ["translate/figs-ordergrk", "translate/figs-orderheb"],
+    });
+    expect(s.entryWellFormed(e)).toBe(true);
+  });
+
+  it("entry: a case-only id with another title, or any other difference, stays differs", () => {
+    const ours = [res("translate/figs-ordergrk", "Order of Greek")];
+    const retitled = s.searchCatalogEntry({
+      lang: "en",
+      problems: [],
+      probes: [
+        {
+          expected: ours,
+          api: {
+            language: "en",
+            results: [res("translate/figs-orderGrk", "Greek order")],
+          },
+        },
+      ],
+      swept: "T",
+    });
+    expect(retitled.catalog).toBe("differs");
+    expect(retitled.except).toBeUndefined();
+    const plusMissing = s.searchCatalogEntry({
+      lang: "en",
+      problems: [],
+      probes: [
+        {
+          expected: [...ours, res("translate/figs-simile", "Simile")],
+          api: {
+            language: "en",
+            results: [res("translate/figs-orderGrk", "Order of Greek")],
+          },
+        },
+      ],
+      swept: "T",
+    });
+    expect(plusMissing.catalog).toBe("differs");
+    expect(plusMissing.differs).toContain("translate/figs-simile");
+    expect(plusMissing.except).toBeUndefined();
+    // a differing id that is not a case variant never becomes equalExcept
+    const other = s.searchCatalogEntry({
+      lang: "en",
+      problems: [],
+      probes: [
+        {
+          expected: ours,
+          api: {
+            language: "en",
+            results: [res("translate/figs-orderGrkX", "Order of Greek")],
+          },
+        },
+      ],
+      swept: "T",
+    });
+    expect(other.catalog).toBe("differs");
+    // a shape problem keeps it differs too
+    const shaped = s.searchCatalogEntry({
+      lang: "en",
+      problems: ["x"],
+      probes: [
+        {
+          expected: ours,
+          api: {
+            language: "en",
+            results: [res("translate/figs-orderGrk", "Order of Greek")],
+          },
+        },
+      ],
+      swept: "T",
+    });
+    expect(shaped.catalog).toBe("differs");
+  });
+
+  it("entryWellFormed: `except` must be a non-empty list of lowercase safe ids, only under equalExcept", () => {
+    const ok = { catalog: "equalExcept", except: ["translate/figs-ordergrk"] };
+    expect(s.entryWellFormed(ok)).toBe(true);
+    for (const bad of [
+      { catalog: "equalExcept" },
+      { catalog: "equalExcept", except: [] },
+      { catalog: "equalExcept", except: "translate/figs-ordergrk" },
+      { catalog: "equalExcept", except: ["translate/figs-orderGrk"] },
+      { catalog: "equalExcept", except: ["../x"] },
+      { catalog: "equalExcept", except: [1] },
+      { catalog: "equal", except: ["translate/figs-ordergrk"] },
+    ])
+      expect(s.entryWellFormed(bad)).toBe(false);
+  });
 });
 
 describe("compactVerified / expandVerified / nextVerified", () => {
@@ -1030,6 +1148,31 @@ describe("compactVerified / expandVerified / nextVerified", () => {
       s.compactVerified({ [TA]: art, [TACAT]: { catalog: "equal" } })[TA]
         .misses,
     ).toBe("foo,bar");
+  });
+
+  it("keeps misses under an equalExcept verdict, not under a malformed one", () => {
+    const art = { items: 2, idDirs: { "bible/kt": "god" }, misses: "foo,bar" };
+    expect(
+      s.compactVerified({
+        [TA]: art,
+        [TACAT]: {
+          catalog: "equalExcept",
+          except: ["translate/figs-ordergrk"],
+        },
+      })[TA].misses,
+    ).toBe("foo,bar");
+    for (const bad of [
+      { catalog: "equalExcept" },
+      { catalog: "equalExcept", except: ["translate/figs-orderGrk"] },
+      {
+        catalog: "equalExcept",
+        except: ["translate/figs-ordergrk"],
+        differs: ["x"],
+      },
+    ])
+      expect(
+        s.compactVerified({ [TA]: art, [TACAT]: bad })[TA].misses,
+      ).toBeUndefined();
   });
 
   it("a new sweep entry replaces the target without breaking the entry that pointed at it", () => {

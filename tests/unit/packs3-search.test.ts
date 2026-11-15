@@ -45,6 +45,8 @@ vi.mock("../../src/packs3/adapters/articles", async (orig) => {
             },
           ],
           source: {},
+          // a catalog proof carries its verdict's excepted ids (none here)
+          ...(proof?.kind.endsWith("Catalog") ? { except: [] } : {}),
         };
       }
       return (real.articleCatalogFromPacks3 as any)(env, lang, kind, proof);
@@ -359,5 +361,45 @@ describe("search for any query by catalog proof", () => {
     // the query's `ta|` is no proof key here: only the catalog proof was asked, and the query ranks as any other
     expect(taStub.items).toEqual([""]);
     expect(r.results.map((x) => x.path)).toEqual(["translate/figs-metaphor"]);
+  });
+});
+
+describe("search catalog proof equalExcept (ids differing from the route only in case)", () => {
+  const excepting = (except: unknown) =>
+    withCatalogProof((e) => {
+      e.catalog = "equalExcept";
+      e.except = except;
+    });
+  it("a query whose results hold an excepted id falls back; another query is served", async () => {
+    await excepting(["bible/kt/covenant"]);
+    expect(await search("covenant", "en")).toBeUndefined();
+    const faith = (await search("faith", "en")) as {
+      results: Array<{ path: string }>;
+    };
+    expect(faith).toBeDefined();
+    expect(faith.results.length).toBeGreaterThan(0);
+    expect(faith.results.map((r) => r.path)).not.toContain("bible/kt/covenant");
+  });
+  it("the excepted query still serves by its own 40-query proof", async () => {
+    await withCatalogProof(
+      (e) => {
+        e.catalog = "equalExcept";
+        e.except = ["bible/kt/covenant"];
+      },
+      ["covenant"],
+    );
+    expect(await search("covenant", "en")).toEqual(LIVE_EN);
+  });
+  it("guard: a malformed `except` makes the proof unusable", async () => {
+    for (const bad of [
+      undefined,
+      [],
+      "bible/kt/covenant",
+      ["bible/kt/Covenant"],
+      ["../x"],
+    ]) {
+      await excepting(bad);
+      expect(await search("faith", "en")).toBeUndefined();
+    }
   });
 });

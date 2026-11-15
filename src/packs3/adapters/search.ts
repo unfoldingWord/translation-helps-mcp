@@ -6,7 +6,8 @@
  *   `SEARCH_CATALOG_KIND`): the catalog the ranking reads was equal to the route's. The ranking (`rankArticles`) reads
  *   only each candidate's path, title (and the comma-separated alternate names in it), category and resource type, the
  *   candidates' order (ties: score, then path) and the query; nothing from article bodies. So an equal catalog ranks
- *   every query the same.
+ *   every query the same. A proof `equalExcept` (ids that differ from the route's only in case) serves a query only
+ *   when its ranked results hold none of the excepted ids (compared lowercased); otherwise the query proof below.
  * - Otherwise only a query the sweep proved equal for this release of every resource the types set reads (verified.ts,
  *   the exact item in `ids`: `q` for tw, `ta|q`, `ta,tw|q`) is answered. A types set not swept falls back. The two
  *   proofs are never mixed in one answer.
@@ -68,7 +69,11 @@ export async function searchFromPacks3(
   const byCatalog = await candidatesOf(env, language, types, {
     kind: SEARCH_CATALOG_KIND,
   });
-  if (byCatalog) return answer(q, language, byCatalog);
+  if (byCatalog) {
+    const served = answer(q, language, byCatalog.candidates);
+    if (!served.results.some((r) => byCatalog.except.has(r.path.toLowerCase())))
+      return served;
+  }
 
   // `|` is the separator of the proof keys (`ta|q`, `ta,tw|q`): a query holding one could name another set's item.
   if (q.includes("|")) return undefined;
@@ -76,7 +81,7 @@ export async function searchFromPacks3(
     kind: SEARCH_KIND,
     item: proofItem(types, q),
   });
-  return byQuery ? answer(q, language, byQuery) : undefined;
+  return byQuery ? answer(q, language, byQuery.candidates) : undefined;
 }
 
 const answer = (q: string, language: string, candidates: Candidate[]) => ({
@@ -86,18 +91,27 @@ const answer = (q: string, language: string, candidates: Candidate[]) => ({
   results: rankCandidates(candidates, q, 5),
 });
 
-/** Every resource the types set needs, each proven by `proof`; candidates ordered ta then tw. `undefined` if one is not. */
+/**
+ * Every resource the types set needs, each proven by `proof`; candidates ordered ta then tw. `undefined` if one is not.
+ * `except`: under the search catalog kind, the ids every catalog's verdict excepts (lowercased); a catalog proof that
+ * does not say them (no `except` list) is no proof.
+ */
 async function candidatesOf(
   env: Packs3Env,
   language: string,
   types: string,
   proof: { kind: string; item?: string },
-): Promise<Candidate[] | undefined> {
+): Promise<{ candidates: Candidate[]; except: Set<string> } | undefined> {
   const candidates: Candidate[] = [];
+  const except = new Set<string>();
   for (const kind of ["ta", "tw"] as const) {
     if (!types.split(",").includes(kind)) continue;
     const cat = await articleCatalogFromPacks3(env, language, kind, proof);
     if (!cat || cat.language !== language) return undefined;
+    if (proof.kind === SEARCH_CATALOG_KIND) {
+      if (!Array.isArray(cat.except)) return undefined;
+      for (const id of cat.except) except.add(String(id).toLowerCase());
+    }
     for (const a of cat.articles)
       candidates.push({
         path: a.path,
@@ -106,7 +120,7 @@ async function candidatesOf(
         resourceType: kind,
       });
   }
-  return candidates;
+  return { candidates, except };
 }
 
 export const searchAdapterParams = (params: Packs3Params): SearchParams => ({

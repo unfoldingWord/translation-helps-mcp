@@ -123,26 +123,69 @@ export function searchCatalogShapeProblems(type, articles, isSafe) {
 
 const CATALOG_DIFFERS_MAX = 50;
 
+/** verified.ts `EXCEPT_ID`: a lowercase article path with a `/`, each segment starting with a letter or digit. */
+const EXCEPT_ID_V = /^[a-z0-9][a-z0-9_-]*(?:\/[a-z0-9][a-z0-9_-]*)+$/;
+const exceptIdOk = (x) => typeof x === "string" && x.length <= 256 && EXCEPT_ID_V.test(x);
+
 /**
  * The verified.json entry of one resource: `catalog: "equal"`, or `"differs"` with the differing ids (paths missing,
  * extra, or with another title, type or score; `(order)`, `(language x)`, `(api-error)`), at most 50 then a count.
+ * `"equalExcept"` with `except` (sorted, lowercased) when the only differences are ids that match case-insensitively:
+ * in every probe, a path of ours missing from the route's answer has exactly one route path equal to it lowercased
+ * (and that one is not ours), with the same title, type and score, and the order agrees lowercased. Any other
+ * difference keeps it `differs`, listing every differing path (the case variants too).
  * `probes`: `[{ expected: rankCandidates(our catalog, "/", limit), api: the route's answer }]`.
  */
 export function searchCatalogEntry({ lang, problems, probes, swept }) {
   const ids = new Set(problems);
+  const caseOnly = new Set(); // lowercased ids that differ only in case
+  const caseSeen = new Set(); // the paths behind them, both sides (listed if the verdict is differs)
+  const val = (r) => JSON.stringify([r.title, r.resourceType, r.score]);
   for (const { expected, api } of probes) {
     if (!api || !Array.isArray(api.results)) {
       ids.add("(api-error)");
       continue;
     }
     if (api.language !== lang) ids.add(`(language ${api.language})`);
-    const ours = new Map(expected.map((r) => [r.path, JSON.stringify([r.title, r.resourceType, r.score])]));
-    const theirs = new Map(api.results.map((r) => [r.path, JSON.stringify([r.title, r.resourceType, r.score])]));
+    const ours = new Map(expected.map((r) => [r.path, val(r)]));
+    const theirs = new Map(api.results.map((r) => [r.path, val(r)]));
+    const lowerOf = (m) => {
+      const out = new Map();
+      for (const p of m.keys()) out.set(p.toLowerCase(), [...(out.get(p.toLowerCase()) ?? []), p]);
+      return out;
+    };
+    const oursLow = lowerOf(ours);
+    const theirsLow = lowerOf(theirs);
     let same = ours.size === theirs.size && expected.length === api.results.length;
-    for (const [p, v] of ours) if (theirs.get(p) !== v) (ids.add(p), (same = false));
-    for (const p of theirs.keys()) if (!ours.has(p)) (ids.add(p), (same = false));
-    if (same && expected.some((r, i) => r.path !== api.results[i].path)) ids.add("(order)");
+    // A path on one side only whose single other-case twin is on the other side only, with the same value.
+    const twin = (p, mine, other, otherLow) => {
+      const low = p.toLowerCase();
+      const cands = (otherLow.get(low) ?? []).filter((q) => q !== p && !mine.has(q));
+      return cands.length === 1 && (oursLow.get(low) ?? []).length === 1 && (theirsLow.get(low) ?? []).length === 1 &&
+        other.get(cands[0]) === mine.get(p)
+        ? cands[0]
+        : undefined;
+    };
+    for (const [p, v] of ours) {
+      if (theirs.get(p) === v) continue;
+      const t = theirs.has(p) ? undefined : twin(p, ours, theirs, theirsLow);
+      if (t !== undefined) (caseOnly.add(p.toLowerCase()), caseSeen.add(p), caseSeen.add(t));
+      else (ids.add(p), (same = false));
+    }
+    for (const p of theirs.keys()) {
+      if (ours.has(p)) continue;
+      const t = twin(p, theirs, ours, oursLow);
+      if (t !== undefined) (caseOnly.add(p.toLowerCase()), caseSeen.add(p), caseSeen.add(t));
+      else (ids.add(p), (same = false));
+    }
+    if (same && expected.some((r, i) => r.path.toLowerCase() !== api.results[i].path.toLowerCase())) ids.add("(order)");
   }
+  const except = [...caseOnly].sort();
+  if (!ids.size && except.length && except.every(exceptIdOk)) {
+    return { items: probes.length, exceptions: [], swept, catalog: "equalExcept", except };
+  }
+  // Not a case-only verdict: every case variant is listed as differing too.
+  for (const p of caseSeen) ids.add(p);
   const list = [...ids].sort();
   const differs = list.length > CATALOG_DIFFERS_MAX
     ? [...list.slice(0, CATALOG_DIFFERS_MAX), `(and ${list.length - CATALOG_DIFFERS_MAX} more)`]
@@ -682,6 +725,8 @@ export function entryWellFormed(e) {
   if (e.misses !== undefined && (typeof e.misses !== "string" || !e.misses.split(",").every((t) => MISS_TERM_V.test(t))))
     return false;
   if (e.catalog !== undefined && typeof e.catalog !== "string") return false;
+  if ((e.except !== undefined) !== (e.catalog === "equalExcept")) return false;
+  if (e.except !== undefined && (!Array.isArray(e.except) || !e.except.length || !e.except.every(exceptIdOk))) return false;
   if (e.exceptionsSameAs !== undefined && typeof e.exceptionsSameAs !== "string") return false;
   if (e.deps !== undefined && (!isPlainV(e.deps) || !Object.values(e.deps).every((d) => typeof d === "string")))
     return false;
@@ -739,8 +784,9 @@ export function expandVerified(table) {
 
 /**
  * The bundled form of a table (verified.json is in the Worker), saying the same for every served item:
- * - an articles entry's `misses` go when the same release's search catalog verdict is not `"equal"` with nothing
- *   differing (verified.ts serves a miss only under that verdict); a later articles sweep writes them again;
+ * - an articles entry's `misses` go when the same release's search catalog verdict is not a well formed `"equal"` or
+ *   `"equalExcept"` with nothing differing (verified.ts serves a miss only under those); a later articles sweep writes
+ *   them again;
  * - entries of one (lang, release, kind) with the same non-empty `exceptions` keep the list once: the first key in
  *   order holds it, the others say `exceptionsSameAs: "<that key>"` (one hop, verified.ts).
  * Pointers verified.ts follows are expanded first, so it is idempotent. It never widens what is served: an entry that
@@ -776,7 +822,9 @@ export function compactVerified(table, { blocked: earlier } = {}) {
     }
     if (k.endsWith("|articles") && e.misses !== undefined) {
       const cat = full[k.slice(0, -"articles".length) + "searchCatalog"];
-      const equal = cat?.catalog === "equal" && (cat.differs === undefined || cat.differs.length === 0);
+      const equal =
+        (cat?.catalog === "equal" || (cat?.catalog === "equalExcept" && entryWellFormed(cat))) &&
+        (cat.differs === undefined || cat.differs.length === 0);
       if (!equal) {
         const { misses, ...rest } = e;
         e = rest;
@@ -1271,6 +1319,7 @@ async function sweepSearchCatalog({ env, lang, api, cats, resources, outDir, wri
     entries[key] = searchCatalogEntry({ lang, problems, probes, swept });
     lines.push(`## ${key}`, "", `Articles ${candidates.length}, catalog ${entries[key].catalog}`, "");
     for (const id of entries[key].differs ?? []) lines.push(`- ${id}`);
+    for (const id of entries[key].except ?? []) lines.push(`- ${id} (case only; a query whose results hold it falls back)`);
     lines.push("");
     console.log(`${key}: ${entries[key].catalog}`);
   }

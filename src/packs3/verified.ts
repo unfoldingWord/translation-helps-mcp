@@ -12,7 +12,9 @@
  *   `indexWholeBooks` / `indexChapters`, their exceptions `index:BOOK C`. questions: items `BOOK` (`wholeBooks`) and `BOOK C` (`chapters`, "front" and 0 included).
  * - the search kind: the exact item in `ids`. The search catalog kind (`SEARCH_CATALOG_KIND`, no item): `catalog: "equal"`
  *   and no `differs` (the ids that differed) when the article catalog format 3 ranks over equals the route's, so any
- *   query ranks the same (adapters/search.ts). articles: the exact item in `idDirs` (clean items only, per directory;
+ *   query ranks the same (adapters/search.ts); `catalog: "equalExcept"` with `except` (lowercase ids) when the only
+ *   differences were ids that match case-insensitively (`searchCatalogExcept`): a query whose results hold none of them
+ *   ranks the same. articles: the exact item in `idDirs` (clean items only, per directory;
  *   `ids` is read too), or in `ids` and not in `exceptions`. A bare term or title (`/words/covenant`): `terms`, by the
  *   clean article it resolved to (`isVerifiedTerm`); `misses`: the terms whose route answer was the 404 miss.
  * `exceptions` lists the items whose answers did not equal today's; `deps` the other resources (`"<catalog>|<key>"`)
@@ -58,8 +60,13 @@ export type VerifiedEntry = {
    * one space in the route's range). A range in a chapter with a range exception is served only over these.
    */
   joins?: Record<string, string>;
-  /** Search catalog: `"equal"` when the catalog the ranking reads was equal to the route's, else `"differs"`. */
+  /**
+   * Search catalog: `"equal"` when the catalog the ranking reads was equal to the route's, `"equalExcept"` when it was
+   * equal but for ids that differ only in case (`except`), else `"differs"`.
+   */
   catalog?: string;
+  /** Search catalog, `equalExcept` only: the ids (lowercased article paths) whose case differs from the route's. */
+  except?: string[];
   /** Search catalog: the ids (article paths, or `(order)`, `(language …)`) that differed. */
   differs?: string[];
 };
@@ -116,6 +123,8 @@ function passageExceptions(list: string[]): Set<string> | undefined {
   }
   return out;
 }
+/** One id of an `except` list: a lowercase article path with a `/`, each segment starting with a letter or digit. */
+const EXCEPT_ID = /^[a-z0-9][a-z0-9_-]*(?:\/[a-z0-9][a-z0-9_-]*)+$/;
 /** One term of a `misses` string: lower case, no separator (`/:|,=`). */
 const MISS_TERM = /^[^/:|,=A-Z]+$/;
 /** One article of a `terms` line: `name:term|term` (no separators inside a name or a term). */
@@ -222,6 +231,17 @@ function wellFormed(e: VerifiedEntry): boolean {
     if (!o.misses.split(",").every((t) => MISS_TERM.test(t))) return false;
   }
   if (o.catalog !== undefined && typeof o.catalog !== "string") return false;
+  // `except`: present exactly under `equalExcept`, a non-empty list of lowercase safe ids, or the entry is unusable
+  if ((o.except !== undefined) !== (o.catalog === "equalExcept")) return false;
+  if (o.except !== undefined) {
+    if (!Array.isArray(o.except) || o.except.length === 0) return false;
+    if (
+      !o.except.every(
+        (x) => typeof x === "string" && x.length <= 256 && EXCEPT_ID.test(x),
+      )
+    )
+      return false;
+  }
   if (
     o.exceptionsSameAs !== undefined &&
     typeof o.exceptionsSameAs !== "string"
@@ -340,14 +360,7 @@ export function isVerified(
   }
   // The catalog verdict has no items: it holds only as "equal" with nothing listed as differing.
   if (kind === SEARCH_CATALOG_KIND)
-    return (
-      item === undefined &&
-      e.catalog === "equal" &&
-      (e.differs === undefined || e.differs.length === 0) &&
-      strings(e.exceptions).length === 0 &&
-      e.ids === undefined &&
-      e.idDirs === undefined
-    );
+    return item === undefined && catalogExcept(e)?.length === 0;
   if (item === undefined) return !ID_KINDS.has(kind);
   const index = opts.index === true && CHAPTER_KINDS.has(kind);
   const exceptions = strings(e.exceptions);
@@ -388,6 +401,42 @@ export function isVerified(
   return itemListed(e, kind, item, index);
 }
 
+/** The ids a usable catalog verdict excepts (`[]` for `equal`), or `undefined` when it proves nothing. */
+function catalogExcept(e: VerifiedEntry): string[] | undefined {
+  if (
+    (e.differs !== undefined && e.differs.length > 0) ||
+    strings(e.exceptions).length > 0 ||
+    e.ids !== undefined ||
+    e.idDirs !== undefined
+  )
+    return undefined;
+  if (e.catalog === "equal") return [];
+  if (e.catalog === "equalExcept") return [...strings(e.except)];
+  return undefined;
+}
+
+/**
+ * The search catalog proof of this resource release: `[]` when the route's catalog equals ours, the lowercased ids that
+ * differ only in case under `equalExcept` (a ranking whose results hold none of them is the route's), `undefined` when
+ * there is no usable proof (absent, malformed, differs, deps not holding). `isVerified` with `SEARCH_CATALOG_KIND`
+ * stays the strict gate: it holds only for `equal`.
+ */
+export function searchCatalogExcept(
+  lang: string,
+  resourceKey: string,
+  release: string,
+  opts: VerifiedOpts = {},
+): string[] | undefined {
+  if (open) return [];
+  const e = entryAt(`${lang}|${resourceKey}|${release}|${SEARCH_CATALOG_KIND}`);
+  if (!e) return undefined;
+  for (const [depKey, depRelease] of Object.entries(e.deps ?? {})) {
+    const have = opts.releaseOf?.(depKey);
+    if (have === undefined || have !== depRelease) return undefined;
+  }
+  return catalogExcept(e);
+}
+
 /**
  * Was the term (or title) `term` swept equal for this articles release, resolving to `path`, and is `path` itself a
  * clean article item of the same entry. `term` is the prepared term in lower case and holds no `/` (a path with a slash
@@ -425,7 +474,8 @@ export function isVerifiedTerm(
 /**
  * Was the term (or title) `term` swept as a miss for this articles release: the route answered the lookup's 404 and the
  * adapter's resolution found nothing too. Holds only with an equal search catalog proof of the same resource release
- * (the route's article catalog equals ours, so the lookup resolves the same). `term` is the prepared term in lower case
+ * (the route's article catalog equals ours, so the lookup resolves the same), or an `equalExcept` one when the term is
+ * none of its excepted ids nor the name (last segment) of one: the route may resolve such a term to its other-case id. `term` is the prepared term in lower case
  * without `/`. The entry must be well formed (its `misses` included), its deps hold, and `miss:<term>` no exception.
  */
 export function isVerifiedMiss(
@@ -446,13 +496,10 @@ export function isVerifiedMiss(
   if (strings(e.exceptions).includes(`miss:${term}`)) return false;
   if (typeof e.misses !== "string" || !e.misses.split(",").includes(term))
     return false;
-  return isVerified(
-    lang,
-    resourceKey,
-    release,
-    SEARCH_CATALOG_KIND,
-    undefined,
-    opts,
+  const except = searchCatalogExcept(lang, resourceKey, release, opts);
+  if (except === undefined) return false;
+  return !except.some(
+    (id) => id === term || id.slice(id.lastIndexOf("/") + 1) === term,
   );
 }
 

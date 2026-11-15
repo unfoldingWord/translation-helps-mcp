@@ -3,7 +3,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import * as sweep from "../../scripts/sweep-packs3.mjs";
 import {
   isVerified,
+  isVerifiedMiss,
   isVerifiedRange,
+  searchCatalogExcept,
   releaseOfCatalogs,
   setVerifiedForTests,
   setSweepOpen,
@@ -468,5 +470,72 @@ describe("exceptionsSameAs (one shared exceptions list)", () => {
       [UST]: pass({ exceptionsSameAs: ULT }),
     });
     expect(ust("TIT 1:2")).toBe(false);
+  });
+});
+
+describe("search catalog verdict equalExcept (case-only id differences)", () => {
+  const CAT = "en|u/en/ta|v9|searchCatalog";
+  const ART = "en|u/en/ta|v9|articles";
+  const except = ["translate/figs-ordergrk", "translate/figs-orderheb"];
+  const verdict = (extra: Record<string, unknown> = {}) =>
+    ({
+      items: 2,
+      exceptions: [],
+      catalog: "equalExcept",
+      except,
+      ...extra,
+    }) as VerifiedEntry;
+  const cat = () => searchCatalogExcept("en", "u/en/ta", "v9", {});
+
+  it("an equal verdict excepts nothing; equalExcept gives its ids; differs is no proof", () => {
+    use(CAT, { items: 2, exceptions: [], catalog: "equal" });
+    expect(cat()).toEqual([]);
+    use(CAT, verdict());
+    expect(cat()).toEqual(except);
+    use(CAT, { items: 2, exceptions: [], catalog: "differs", differs: ["x"] });
+    expect(cat()).toBeUndefined();
+    // the plain isVerified gate stays strict: only "equal" passes it
+    use(CAT, verdict());
+    expect(isVerified("en", "u/en/ta", "v9", "searchCatalog")).toBe(false);
+  });
+
+  it("a malformed `except` makes the whole entry unusable", () => {
+    for (const bad of [
+      { except: undefined },
+      { except: [] },
+      { except: "translate/figs-ordergrk" },
+      { except: ["translate/figs-orderGrk"] },
+      { except: ["../etc"] },
+      { except: [3] },
+      { differs: ["translate/figs-ordergrk"] },
+    ]) {
+      use(CAT, verdict(bad));
+      expect(cat()).toBeUndefined();
+    }
+    use(CAT, { items: 2, exceptions: [], catalog: "equal", except });
+    expect(cat()).toBeUndefined();
+  });
+
+  it("a miss is served under equalExcept, except a term naming an excepted id", () => {
+    setVerifiedForTests({
+      [CAT]: verdict(),
+      [ART]: { items: 1, misses: "figs-ordergrk,nothing,translate" },
+    });
+    expect(isVerifiedMiss("en", "u/en/ta", "v9", "nothing", {})).toBe(true);
+    expect(isVerifiedMiss("en", "u/en/ta", "v9", "figs-ordergrk", {})).toBe(
+      false,
+    );
+    setVerifiedForTests({
+      [CAT]: verdict({ except: ["translate/figs-ordergrk"] }),
+      [ART]: { items: 1, misses: "figs-orderheb" },
+    });
+    expect(isVerifiedMiss("en", "u/en/ta", "v9", "figs-orderheb", {})).toBe(
+      true,
+    );
+    setVerifiedForTests({
+      [CAT]: verdict({ except: [] }),
+      [ART]: { items: 1, misses: "nothing" },
+    });
+    expect(isVerifiedMiss("en", "u/en/ta", "v9", "nothing", {})).toBe(false);
   });
 });
