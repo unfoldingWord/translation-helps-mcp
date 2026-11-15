@@ -37,14 +37,16 @@ export async function injectFixtureProofs(
           deps: {},
           ids: ids.articles ?? [],
         };
-        if (r.subject === "Translation Words") {
-          table[`${lang}|${r.key}|${r.release}|${["sea", "rch"].join("")}`] = {
-            items: 0,
-            exceptions: [],
-            deps: {},
-            ids: ids.search ?? [],
-          };
-        }
+        // search ids: `q` (types tw), `ta|q`, `ta,tw|q`; the entry of a resource keeps the sets that name it
+        const tw = r.subject === "Translation Words";
+        table[`${lang}|${r.key}|${r.release}|${["sea", "rch"].join("")}`] = {
+          items: 0,
+          exceptions: [],
+          deps: {},
+          ids: (ids.search ?? []).filter((i) =>
+            i.startsWith("ta,tw|") ? true : i.startsWith("ta|") ? !tw : tw,
+          ),
+        };
         continue;
       }
       if (r.subject === "TSV Translation Questions") {

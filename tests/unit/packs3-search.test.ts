@@ -134,16 +134,26 @@ describe("search from format 3", () => {
       }),
     ).toEqual(LIVE_EN);
   });
-  it("falls back when a tA catalog is needed (not pinned): figures of speech, abstract nouns, metáfora", async () => {
-    expect(
-      await searchFromPacks3(env(), { q: "figures of speech", language: "en" }),
-    ).toBeUndefined();
+  it("guard: ta and ta,tw search need a proof of every resource for that types set", async () => {
+    // only the tw proof of `covenant` exists: ta and the default ta,tw fall back
     expect(
       await search("abstract nouns", "en", { types: "ta" }),
     ).toBeUndefined();
+    expect(await search("covenant", "en", { types: "ta" })).toBeUndefined();
+    expect(await search("covenant", "en", { types: "ta,tw" })).toBeUndefined();
     expect(
-      await searchFromPacks3(env(), { q: "metáfora", language: "es-419" }),
+      await searchFromPacks3(env(), { q: "covenant", language: "en" }),
     ).toBeUndefined();
+    // a ta,tw proof alone (no ta catalog in the fixture to answer from) never makes a partial answer
+    await injectFixtureProofs(env(), undefined, { search: ["ta,tw|covenant"] });
+    expect(await search("covenant", "en")).toBeUndefined();
+    const r = await search("covenant", "en", { types: "ta,tw" });
+    if (r !== undefined) {
+      const res = (r as { results: Array<{ resourceType: string }> }).results;
+      expect(res.every((x) => ["ta", "tw"].includes(x.resourceType))).toBe(
+        true,
+      );
+    }
   });
   it("falls back for limit, other types, other languages, a q not normalized", async () => {
     expect(await search("covenant", "en", { limit: 3 })).toBeUndefined();

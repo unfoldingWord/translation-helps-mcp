@@ -23,10 +23,10 @@ describe("sweep-packs3 pure parts", () => {
     expect(
       s.resourcesOfKind("passage", resources).map((r: any) => r.key),
     ).toEqual(["a/en/ult"]);
-    // search is served from tw only: no ta entry
+    // search covers ta and tw (each type set names its resources in its items)
     expect(
       s.resourcesOfKind("search", resources).map((r: any) => r.key),
-    ).toEqual(["a/en/tw"]);
+    ).toEqual(["a/en/ta", "a/en/tw"]);
     expect(
       s.resourcesOfKind("articles", resources).map((r: any) => r.key),
     ).toEqual(["a/en/ta", "a/en/tw"]);
@@ -165,6 +165,27 @@ describe("sweep-packs3 pure parts", () => {
       path: "/api/v1/search",
       params: { q: "grace", language: "en", types: "tw", limit: "5" },
     });
+  });
+
+  it("sweeps search per types set: tw plain, ta and ta,tw prefixed", () => {
+    expect(s.SEARCH_TYPES).toEqual(["tw", "ta", "ta,tw"]);
+    expect(s.searchItem("tw", "grace")).toBe("grace");
+    expect(s.searchItem("ta", "grace")).toBe("ta|grace");
+    expect(s.searchItem("ta,tw", "grace")).toBe("ta,tw|grace");
+    expect(s.parseSearchItem("ta,tw|grace")).toEqual({
+      types: "ta,tw",
+      q: "grace",
+    });
+    expect(s.parseSearchItem("grace")).toEqual({ types: "tw", q: "grace" });
+    expect(s.requestOf("search", "en", "ta|grace").params).toEqual({
+      q: "grace",
+      language: "en",
+      types: "ta",
+      limit: "5",
+    });
+    expect(s.requestOf("search", "en", "ta,tw|grace").params.types).toBe(
+      "ta,tw",
+    );
   });
 
   it("writes verified.json only for a whole run, never a narrowed one", () => {

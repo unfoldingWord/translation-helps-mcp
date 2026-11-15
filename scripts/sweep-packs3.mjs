@@ -43,10 +43,21 @@ const SUBJECTS = {
   tw: ["Translation Words"],
   ta: ["Translation Academy"],
 };
-// `articles` covers both article resources, in the order ta, tw. `search` covers tw only: that is all
-// adapters/search.ts serves (types=tw), so a ta entry would claim a proof nothing made.
+// `articles` covers both article resources, in the order ta, tw. `search` covers both, per types set (see
+// `searchItem`): an entry only claims the type sets its items name.
 SUBJECTS.articles = [...SUBJECTS.ta, ...SUBJECTS.tw];
-SUBJECTS.search = SUBJECTS.tw;
+SUBJECTS.search = [...SUBJECTS.ta, ...SUBJECTS.tw];
+
+/** The swept types sets. `tw` keeps the plain query as its item; the others are `"<types>|<query>"`. */
+export const SEARCH_TYPES = ["tw", "ta", "ta,tw"];
+export function searchItem(types, q) {
+  return types === "tw" ? q : `${types}|${q}`;
+}
+/** `{ types, q }` of a search item. */
+export function parseSearchItem(item) {
+  const m = /^(ta,tw|ta)\|(.*)$/s.exec(item);
+  return m ? { types: m[1], q: m[2] } : { types: "tw", q: item };
+}
 
 const STAGING_KEY = "78d2e6299a2de4d0:c2057cec32b948452849e7fcba6af323961a091ea82645eb297bb368e1c8d911";
 
@@ -361,8 +372,10 @@ export function requestOf(kind, language, item, { index = false } = {}) {
         path: `/api/v1/${kind === "tw" ? "words" : "academy"}/${item.split("/").map(encodeURIComponent).join("/")}`,
         params: { language, requestedPath: item, prepared: "1" },
       };
-    case "search":
-      return { path: "/api/v1/search", params: { q: item, language, types: "tw", limit: "5" } };
+    case "search": {
+      const { types, q } = parseSearchItem(item);
+      return { path: "/api/v1/search", params: { q, language, types, limit: "5" } };
+    }
     default:
       throw new Error(`unknown kind ${kind}`);
   }
@@ -496,7 +509,13 @@ async function main() {
   // Items: { res (resource keys they count for), sub (request kind), item, book?, chapter? }.
   const items = [];
   if (kind === "search") {
-    for (const q of searchQueries(lang)) items.push({ sub: "search", item: q, res: resources.map((r) => r.key) });
+    for (const q of searchQueries(lang)) {
+      for (const types of SEARCH_TYPES) {
+        const need = types.split(",").map((t) => SUBJECTS[t][0]);
+        const res = resources.filter((r) => need.includes(r.subject)).map((r) => r.key);
+        items.push({ sub: "search", item: searchItem(types, q), res });
+      }
+    }
   } else if (kind === "articles") {
     await withReader(env, lang, async (reader) => {
       for (const sub of ["tw", "ta"]) {
