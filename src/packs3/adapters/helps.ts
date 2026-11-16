@@ -123,6 +123,14 @@ export function verseItem(
   return verseEnd && verseEnd !== verseStart ? `${at}-${verseEnd}` : at;
 }
 
+/**
+ * A range whose end equals its start (`Tit 1:1-1`). The sweep never compares one (its samples are verses and ranges
+ * with a later end), so notes, links and questions leave it to the route instead of serving it as the verse.
+ */
+export function equalEnd(verseStart?: string, verseEnd?: string): boolean {
+  return !!verseStart && !!verseEnd && Number(verseEnd) === Number(verseStart);
+}
+
 function queryOf(params: HelpsParams): Query | undefined {
   try {
     const url = new URL("https://packs3.invalid/api/v1/notes");
@@ -134,6 +142,7 @@ function queryOf(params: HelpsParams): Query | undefined {
     // A range across chapters stays with the route.
     if (q.endChapter) return undefined;
     if (!isCanonicalUsfmBook(q.book)) return undefined;
+    if (equalEnd(q.verseStart, q.verseEnd)) return undefined;
     return {
       reference: q.reference,
       book: q.book,

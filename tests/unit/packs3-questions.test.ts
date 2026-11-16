@@ -182,6 +182,11 @@ describe("questions", () => {
     expect(got).toMatchObject({ verse: "2", verseEnd: null });
   });
 
+  it("an equal-end range (never swept) falls back", async () => {
+    expect(await ask("Tit 1:1", "en")).toBeDefined();
+    expect(await ask("Tit 1:1-1", "en")).toBeUndefined();
+  });
+
   it("is answered through answerFromPacks3", async () => {
     const got = (await answerFromPacks3(env(), "/api/v1/questions", {
       reference: "Tit 1:1",
@@ -273,7 +278,7 @@ describe("questions", () => {
     expect(await ask("Tit 1:1-3", "en")).toBeUndefined();
     expect(await ask("Tit 1", "en")).toBeDefined();
     expect(await ask("Tit 2:1", "en")).toBeDefined();
-  });
+  }, 60_000); // about 6 s when other files run beside it
 
   it("a comma list reference keeps its tail like the route", () => {
     const row = (ref: string, from: number, to: number) =>

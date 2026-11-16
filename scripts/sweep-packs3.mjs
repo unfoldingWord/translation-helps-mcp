@@ -48,6 +48,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { diffPaths, normalize } from "./compare-packs3.mjs";
 import { INTERNAL_INDEX_HEADER, INTERNAL_INDEX_VALUE, isTrustedIndexHost } from "../src/core/internalIndex.ts";
+import { versionsNoteKeys } from "../src/packs3/versionsNote.ts";
 
 export const KINDS = ["passage", "notes", "links", "questions", "articles", "search", "searchCatalog"];
 
@@ -262,7 +263,9 @@ export function listExceptions(results) {
 /**
  * A verified.json entry (key `"<lang>|<resource key>|<release>|<kind>"`):
  *   { items: N, exceptions: [item, ...], swept: ISO date,
- *     deps: { "<catalog>|<resource key>": "<release>" },   // every other resource the answers depended on
+ *     deps: { "<catalog>|<resource key>": "<release>" },   // every other resource the answers depended on (passage:
+ *                                                           // also every Bible resource of the own catalog, which the
+ *                                                           // versions note reads; the adapter requires them all)
  *     chapters: { "TIT": [0, 1, 2, "front"] },             // books/chapters swept (passage: items are verses + ranges)
  *     wholeBooks: ["TIT"],                                  // questions: the whole-book item was swept
  *     samples: { "TIT": "1:16,2-3:15" },                    // notes/links/questions: sampled chapters, each with its last verse
@@ -275,6 +278,8 @@ export function listExceptions(results) {
  *     idDirs: { "bible/kt": "grace,god" }, excepted: 3,     // articles: the clean items per directory, the exceptions as a count
  *     skippedBooks: ["GEN"] }                               // books listed but not swept (a sweep no longer writes it)
  * Task 13 serves an item only if it is in that list, is not an exception, and every `deps` release equals the catalog's.
+ * A passage is served only when its `deps` list every Bible resource of the catalog (`depsCover`): an entry swept
+ * before that rule falls back until it is swept again.
  */
 export function buildEntry(results, swept, extra = {}) {
   return { items: new Set(results.map((r) => r.item)).size, exceptions: listExceptions(results), swept, ...extra };
@@ -324,20 +329,22 @@ const ORIGINALS = ["Greek New Testament", "Hebrew Old Testament"];
 /**
  * The other resources an answer depended on: `{ "<catalog>|<resource key>": "<release>" }`.
  * `catalogs` is `[{ name, resources }]` (own catalog first, then common). passage: the resources the answers were made of
- * (`usedKeys`); notes/links: the aligned text, the originals and the article resource they take titles from;
- * questions, articles and search stand alone.
+ * (`usedKeys`) and every resource of the own catalog the versions note reads, picked or not (src/packs3/versionsNote.ts
+ * `versionsNoteKeys`, the set the adapter requires with `depsCover`); notes/links: the aligned text, the originals and
+ * the article resource they take titles from; questions, articles and search stand alone.
  */
 export function depsFor(kind, selfKey, catalogs, { alignedKey, usedKeys = [] } = {}) {
-  const wanted = (r) => {
+  const noteKeys = kind === "passage" ? versionsNoteKeys(catalogs[0]?.resources ?? []) : [];
+  const wanted = (r, c) => {
     if (r.key === selfKey) return false;
-    if (kind === "passage") return usedKeys.includes(r.key);
+    if (kind === "passage") return usedKeys.includes(r.key) || (c === catalogs[0] && noteKeys.includes(r.key));
     if (kind === "notes" || kind === "links") {
       return r.key === alignedKey || ORIGINALS.includes(r.subject) || r.subject === HELPER[kind];
     }
     return false;
   };
   const out = {};
-  for (const c of catalogs) for (const r of c.resources ?? []) if (wanted(r)) out[`${c.name}|${r.key}`] = r.release;
+  for (const c of catalogs) for (const r of c.resources ?? []) if (wanted(r, c)) out[`${c.name}|${r.key}`] = r.release;
   return Object.fromEntries(Object.keys(out).sort().map((k) => [k, out[k]]));
 }
 

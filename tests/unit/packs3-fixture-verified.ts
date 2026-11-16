@@ -3,6 +3,7 @@ import {
   setVerifiedForTests,
   type VerifiedEntry,
 } from "../../src/packs3/verified";
+import { versionsNoteKeys } from "../../src/packs3/versionsNote";
 
 const chaptersOf = (books: Record<string, number>) =>
   Object.fromEntries(
@@ -86,19 +87,25 @@ export async function injectFixtureProofs(
           : lang === "en"
             ? { TIT: 3 }
             : { TIT: 3, RUT: 4 };
-      // as the sweep records: notes take titles from tA, links from tW
+      // as the sweep records: notes take titles from tA, links from tW; a passage's versions note reads every Bible
+      // resource of the catalog (the originals' deps are left out: the adapter does not require them)
       const helper =
         kind === "notes"
           ? "Translation Academy"
           : kind === "links"
             ? "Translation Words"
             : undefined;
+      const noteKeys = kind === "passage" ? versionsNoteKeys(resources) : [];
       table[`${lang}|${r.key}|${r.release}|${kind}`] = {
         items: 0,
         exceptions: [],
         deps: Object.fromEntries(
           resources
-            .filter((x) => x.subject === helper)
+            .filter(
+              (x) =>
+                x.subject === helper ||
+                (x.key !== r.key && noteKeys.includes(x.key)),
+            )
             .map((x) => [`${lang}|${x.key}`, x.release]),
         ),
         chapters: chaptersOf(books),

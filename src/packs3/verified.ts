@@ -25,7 +25,8 @@
  *   `ids` is read too), or in `ids` and not in `exceptions`. A bare term or title (`/words/covenant`): `terms`, by the
  *   clean article it resolved to (`isVerifiedTerm`); `misses`: the terms whose route answer was the 404 miss.
  * `exceptions` lists the items whose answers did not equal today's; `deps` the other resources (`"<catalog>|<key>"`)
- * with the release the answers were made from; `skippedBooks` the books of a passage entry that were not swept.
+ * with the release the answers were made from (passage: every Bible resource the versions note reads, see
+ * versionsNote.ts); `skippedBooks` the books of a passage entry that were not swept.
  * `exceptionsSameAs: "<key>"` instead of `exceptions`: the exceptions of that entry (same lang, release and kind; one hop,
  * the target must hold its own list), stored once when equal (en ult and ust); a pointer it cannot follow makes the
  * entry unusable.

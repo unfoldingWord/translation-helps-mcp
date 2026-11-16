@@ -17,7 +17,8 @@ import { scriptureVersionsForBook } from "../../api/routes/scripture";
 import type { Packs3Env } from "../catalogs";
 import { warnOnce } from "../keys";
 import { EXCLUSIVE_BYTE_CAP, type SizeProbe, withReader } from "../readers";
-import { isVerifiedRange, releaseOfCatalogs } from "../verified";
+import { depsCover, isVerifiedRange, releaseOfCatalogs } from "../verified";
+import { versionsNoteKeys } from "../versionsNote";
 import type { Packs3Params } from "../answer";
 
 export type ScriptureApiResponse = {
@@ -244,9 +245,10 @@ export async function scriptureFromPacks3(
 
       const common = catalogs.catalogs.find((c) => c.name === "common");
       const own = catalogs.catalogs.find((c) => c.name !== "common");
-      const resources = resourcesOf(own?.catalog).filter(
-        (r) => r.subject === "Aligned Bible" || r.subject === "Bible",
-      );
+      const ownResources = resourcesOf(own?.catalog);
+      // Every resource the versions note reads, picked or not (versionsNote.ts).
+      const noteKeys = versionsNoteKeys(ownResources);
+      const resources = ownResources.filter((r) => noteKeys.includes(r.key));
       // A resource that lists no book at all would count as "may have it" in the route.
       if (resources.some((r) => Array.from(r.books ?? []).every((b) => !b)))
         return undefined;
@@ -264,17 +266,29 @@ export async function scriptureFromPacks3(
         return undefined;
       if (decision.picked.length === 0) return undefined;
       const releaseOf = releaseOfCatalogs(catalogs.catalogs);
+      // The note names the resources it did not pick, so each proof must list every one of them at the catalog's
+      // release: one added after the sweep, or a new release of one not picked, can change the note.
       const unverified = decision.picked.some((e) => {
         const r = resources[entries.indexOf(e)];
-        return !isVerifiedRange(
-          language,
-          r.key,
-          r.release,
-          code.toUpperCase(),
-          chapter,
-          first,
-          last,
-          { releaseOf },
+        return (
+          !isVerifiedRange(
+            language,
+            r.key,
+            r.release,
+            code.toUpperCase(),
+            chapter,
+            first,
+            last,
+            { releaseOf },
+          ) ||
+          !depsCover(
+            language,
+            r.key,
+            r.release,
+            "passage",
+            noteKeys.filter((k) => k !== r.key),
+            releaseOf,
+          )
         );
       });
       if (unverified) {

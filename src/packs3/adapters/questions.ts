@@ -19,7 +19,7 @@ import { warnOnce } from "../keys";
 import { withReader } from "../readers";
 import type { Packs3Params } from "../answer";
 import { isVerified, releaseOfCatalogs } from "../verified";
-import { LINKED, verseItem } from "./helps";
+import { LINKED, equalEnd, verseItem } from "./helps";
 
 const QREF = /^(\d+):(\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)$/;
 
@@ -73,6 +73,8 @@ function queryOf(params: QuestionsParams) {
     if (q.endChapter) return undefined;
     if (!isCanonicalUsfmBook(q.book) || !/^\d+$/.test(q.chapter))
       return undefined;
+    // `Tit 1:1-1` was never swept (helps.ts `equalEnd`).
+    if (equalEnd(q.verseStart, q.verseEnd)) return undefined;
     return q;
   } catch {
     return undefined;

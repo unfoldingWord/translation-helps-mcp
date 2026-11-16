@@ -297,9 +297,41 @@ describe("sweep-packs3 pure parts", () => {
       s.depsFor("passage", "o/en/ult", cats, {
         usedKeys: ["o/en/ult", "o/en/ust", "o/el/ugnt"],
       }),
-    ).toEqual({ "common|o/el/ugnt": "v6", "en|o/en/ust": "v3" });
+    ).toEqual({ "common|o/el/ugnt": "v6", "en|o/en/ust": "v3" }); // ust: used, and a Bible the note reads
     expect(s.depsFor("questions", "o/en/tq", cats)).toEqual({});
     expect(s.depsFor("articles", "o/en/ta", cats)).toEqual({});
+  });
+
+  it("passage deps hold every Bible resource of the own catalog the versions note reads, picked or not", () => {
+    const cats = [
+      {
+        name: "en",
+        resources: [
+          { key: "o/en/ult", subject: "Aligned Bible", release: "v2" },
+          { key: "o/en/ust", subject: "Aligned Bible", release: "v3" },
+          { key: "w/en/bsb", subject: "Aligned Bible", release: "v7" },
+          { key: "o/en/t4t", subject: "Bible", release: "v8" },
+          { key: "o/en/tn", subject: "TSV Translation Notes", release: "v1" },
+        ],
+      },
+      {
+        name: "common",
+        resources: [
+          { key: "o/el/ugnt", subject: "Greek New Testament", release: "v6" },
+          { key: "o/x/other", subject: "Bible", release: "v9" },
+        ],
+      },
+    ];
+    expect(
+      s.depsFor("passage", "o/en/ult", cats, {
+        usedKeys: ["o/en/ult", "o/en/ust", "o/el/ugnt"],
+      }),
+    ).toEqual({
+      "common|o/el/ugnt": "v6",
+      "en|o/en/t4t": "v8",
+      "en|o/en/ust": "v3",
+      "en|w/en/bsb": "v7",
+    });
   });
 
   it("says exactly which items an entry covers", () => {

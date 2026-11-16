@@ -749,6 +749,24 @@ describe("fallbacks", () => {
     expect(await notesFromPacks3(env(), params)).toBeUndefined();
   });
 
+  // A range whose end equals its start (`Tit 1:1-1`) was never swept: it falls back, in both shapes.
+  it("an equal-end range falls back (notes, links)", async () => {
+    const at = (reference: string, fields?: string) => ({
+      reference,
+      language: "en",
+      ...(fields ? { fields } : {}),
+    });
+    for (const fields of [undefined, "index"]) {
+      expect(await notesFromPacks3(env(), at("Tit 1:1", fields))).toBeDefined();
+      expect(
+        await notesFromPacks3(env(), at("Tit 1:1-1", fields)),
+      ).toBeUndefined();
+      expect(
+        await wordLinksFromPacks3(env(), at("Tit 1:1-1", fields)),
+      ).toBeUndefined();
+    }
+  }, 60_000);
+
   it("a verse or range needs its chapter's swept samples; a sampled exception falls back (notes, links)", async () => {
     const at = (reference: string) => ({ reference, language: "en" });
     const both = async (reference: string) => [

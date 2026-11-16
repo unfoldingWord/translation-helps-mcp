@@ -303,6 +303,47 @@ describe("verified resources", () => {
     }
   });
 
+  // The versions note reads every Bible resource of the catalog (en bsb, t4t are never picked), so a passage proof
+  // must list each of them at the catalog's release.
+  it("is served only when the proof's deps cover every Bible resource the versions note reads", async () => {
+    const ask = () =>
+      scriptureFromPacks3(env(), { reference: "Tit 1:1", language: "en" });
+    const ultUst = (t: Record<string, any>) =>
+      Object.entries(t).filter(
+        ([k]) =>
+          /^en\|unfoldingWord\/en\/u[ls]t\|/.test(k) && k.endsWith("|passage"),
+      );
+    // covered: served
+    const got = await ask();
+    expect(got?.versions.map((v) => v.resourceType)).toEqual([
+      "ult",
+      "ust",
+      "ugnt",
+    ]);
+    try {
+      // the catalog has a Bible resource (bsb) the proof does not list (an old entry, or one added later): no answer
+      await injectFixtureProofs(env(), (t) => {
+        for (const [, e] of ultUst(t)) delete e.deps["en|Worldview/en/bsb"];
+      });
+      resetReadersForTests();
+      expect(await ask()).toBeUndefined();
+      // an entry with no deps at all (swept before this rule): no answer
+      await injectFixtureProofs(env(), (t) => {
+        for (const [, e] of ultUst(t)) e.deps = {};
+      });
+      resetReadersForTests();
+      expect(await ask()).toBeUndefined();
+      // a not-picked Bible (t4t) at another release than the proof's: no answer
+      await injectFixtureProofs(env(), (t) => {
+        for (const [, e] of ultUst(t)) e.deps["en|unfoldingWord/en/t4t"] = "v0";
+      });
+      resetReadersForTests();
+      expect(await ask()).toBeUndefined();
+    } finally {
+      setVerifiedForTests(undefined);
+    }
+  });
+
   it("uses the table abbreviation where it differs from the resource id", async () => {
     const got = await scriptureFromPacks3(env(), {
       reference: "Tit 1:1",
