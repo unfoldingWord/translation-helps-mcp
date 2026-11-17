@@ -1,12 +1,12 @@
 # Sweep differences: es-419 passage
 
-Swept 2026-11-15T11:46:22.105Z, API https://translation-helps-api-v2.unfoldingword.workers.dev, catalog 591bf89c2a9d048cf06d111d969267a0ed976e916f699b5db4b92a7f13d6fd0a+e47a3e63650cd4fb394034bfb71e5bf52806df055d83dd581f00ad147082f196.
+Swept 2026-11-16T13:15:09.749Z, API https://translation-helps-api-v2.unfoldingword.workers.dev, catalog 2128ef558b5dec55575096c52ad979d41242bef5ab576fe7d13c73b7f3a98b50+e47a3e63650cd4fb394034bfb71e5bf52806df055d83dd581f00ad147082f196.
 
 ## es-419|es-419_gl/es-419/glt|v42|passage
 
-Items 802, exceptions 77 (differs 53, fallback adapter-undefined 37, api-error 417)
+Items 802, exceptions 58 (differs 35, fallback adapter-undefined 36, api-error 417)
 
-Range windows 309, equal 121
+Range windows 258, equal 119
 
 - RUT 1:1: differs
   - $.versions[2].text: today `"1 וַ⁠יְהִ֗י בִּ⁠ימֵי֙ שְׁפֹ֣ט הַ⁠שֹּׁפְטִ֔ים וַ⁠יְהִ֥י רָעָ֖ב בָּ⁠אָ֑רֶץ וַ⁠יֵּ֨לֶךְ אִ֜ישׁ מִ⁠בֵּ֧ית לֶ֣חֶם\n יְהוּדָ֗ה לָ⁠גוּר֙ בִּ⁠שְׂדֵ` format 3 `"1 וַ⁠יְהִ֗י בִּ⁠ימֵי֙ שְׁפֹ֣ט הַ⁠שֹּׁפְטִ֔ים וַ⁠יְהִ֥י רָעָ֖ב בָּ⁠אָ֑רֶץ וַ⁠יֵּ֨לֶךְ אִ֜ישׁ מִ⁠בֵּ֧ית לֶ֣חֶם יְהוּדָ֗ה לָ⁠גוּר֙ בִּ⁠שְׂדֵ֣י`
@@ -16,7 +16,7 @@ Range windows 309, equal 121
   - $.versions[2].text: today `"6 וַ⁠תָּ֤קָם הִיא֙ וְ⁠כַלֹּתֶ֔י⁠הָ וַ⁠תָּ֖שָׁב מִ⁠שְּׂדֵ֣י מוֹאָ֑ב כִּ֤י שָֽׁמְעָה֙ בִּ⁠שְׂדֵ֣ה מוֹאָ֔ב כִּֽי־פָקַ֤ד יְהוָה֙ אֶת־עַמּ֔⁠וֹ\n` format 3 `"6 וַ⁠תָּ֤קָם הִיא֙ וְ⁠כַלֹּתֶ֔י⁠הָ וַ⁠תָּ֖שָׁב מִ⁠שְּׂדֵ֣י מוֹאָ֑ב כִּ֤י שָֽׁמְעָה֙ בִּ⁠שְׂדֵ֣ה מוֹאָ֔ב כִּֽי־פָקַ֤ד יְהוָה֙ אֶת־עַמּ֔⁠וֹ ל`
 - RUT 1:8: fallback (adapter-undefined)
 - RUT 1:11: differs
-  - $.versions[0].text: today `"11 Pero Noemí dijo: \"¡Regresen, hijas mías! ¿Por qué irían conmigo? ¿Todavía (tengo) para mi\n hijos en mi vientre que puedan convertirse ` format 3 `"11 Pero Noemí dijo: \"¡Regresen, hijas mías! ¿Por qué irían conmigo? ¿Todavía(tengo) para mi hijos en mi vientre que puedan convertirse en `
+  - $.versions[0].text: today `"11 Pero Noemí dijo: \"¡Regresen, hijas mías! ¿Por qué irían conmigo? ¿Todavía (tengo) para mi\n hijos en mi vientre que puedan convertirse ` format 3 `"11 Pero Noemí dijo: \"¡Regresen, hijas mías! ¿Por qué irían conmigo? ¿Todavía (tengo) para mi hijos en mi vientre que puedan convertirse en`
 - RUT 1:19: differs
   - $.versions[2].text: today `"19 וַ⁠תֵּלַ֣כְנָה שְׁתֵּי⁠הֶ֔ם עַד־בֹּאָ֖⁠נָה בֵּ֣ית לָ֑חֶם\n וַ⁠יְהִ֗י כְּ⁠בֹאָ֨⁠נָה֙ בֵּ֣ית לֶ֔חֶם\n וַ⁠תֵּהֹ֤ם כָּל־הָ⁠עִיר֙ עֲלֵי⁠הֶ֔ן ` format 3 `"19 וַ⁠תֵּלַ֣כְנָה שְׁתֵּי⁠הֶ֔ם עַד־בֹּאָ֖⁠נָה בֵּ֣ית לָ֑חֶם וַ⁠יְהִ֗י כְּ⁠בֹאָ֨⁠נָה֙ בֵּ֣ית לֶ֔חֶם וַ⁠תֵּהֹ֤ם כָּל־הָ⁠עִיר֙ עֲלֵי⁠הֶ֔ן וַ⁠ת`
 - RUT 1:20: differs
@@ -25,9 +25,9 @@ Range windows 309, equal 121
   - $.versions[2].text: today `"22 וַ⁠תָּ֣שָׁב נָעֳמִ֗י וְ⁠ר֨וּת הַ⁠מּוֹאֲבִיָּ֤ה כַלָּתָ⁠הּ֙ עִמָּ֔⁠הּ הַ⁠שָּׁ֖בָה מִ⁠שְּׂדֵ֣י מוֹאָ֑ב וְ⁠הֵ֗מָּה בָּ֚אוּ בֵּ֣ית לֶ֔חֶם\n ` format 3 `"22 וַ⁠תָּ֣שָׁב נָעֳמִ֗י וְ⁠ר֨וּת הַ⁠מּוֹאֲבִיָּ֤ה כַלָּתָ⁠הּ֙ עִמָּ֔⁠הּ הַ⁠שָּׁ֖בָה מִ⁠שְּׂדֵ֣י מוֹאָ֑ב וְ⁠הֵ֗מָּה בָּ֚אוּ בֵּ֣ית לֶ֔חֶם בּ`
 - RUT 1:1-22: fallback (adapter-undefined)
 - RUT 2:1: fallback (adapter-undefined)
-- RUT 2:2: differs
-  - $.versions[1].text: today `"2 Rut (la mujer de Moab) le dijo a Noemí: \"Déjame ir al campo y recoger el grano que los segadores dejan detrás. Iré detrás de cada segado` format 3 `"2 Rut(la mujer de Moab) le dijo a Noemí: \"Déjame ir al campo y recoger el grano que los segadores dejan detrás. Iré detrás de cada segador`
-- RUT 2:4: fallback (adapter-undefined)
+- RUT 2:4: differs
+  - $.versions[1].text: today `"4 Entonces, Booz regresó de la ciudad. Él saludó a los segadores diciendo: \"!Que Jehová esté con ustedes!\" Ellos respondieron: \"¡Que Jeh` format 3 `"4 Entonces, Booz regresó de la ciudad. Él saludó a los segadores diciendo: \"! Que Jehová esté con ustedes!\" Ellos respondieron: \"¡Que Je`
+  - $.versions[2].text: today `"4 וְ⁠הִנֵּה־בֹ֗עַז בָּ֚א מִ⁠בֵּ֣ית לֶ֔חֶם\n וַ⁠יֹּ֥אמֶר לַ⁠קּוֹצְרִ֖ים יְהוָ֣ה עִמָּ⁠כֶ֑ם וַ⁠יֹּ֥אמְרוּ ל֖⁠וֹ יְבָרֶכְ⁠ךָ֥ יְהוָֽה׃"` format 3 `"4 וְ⁠הִנֵּה־בֹ֗עַז בָּ֚א מִ⁠בֵּ֣ית לֶ֔חֶם וַ⁠יֹּ֥אמֶר לַ⁠קּוֹצְרִ֖ים יְהוָ֣ה עִמָּ⁠כֶ֑ם וַ⁠יֹּ֥אמְרוּ ל֖⁠וֹ יְבָרֶכְ⁠ךָ֥ יְהוָֽה׃"`
 - RUT 2:1-23: fallback (adapter-undefined)
 - RUT 3:3: fallback (adapter-undefined)
 - RUT 3:4: fallback (adapter-undefined)
@@ -217,13 +217,14 @@ Range windows 309, equal 121
 - NEH 7:44: api-error
 - NEH 7:45: api-error
 - NEH 7:46: api-error
+- NEH 7:47: api-error
 - and more (see the counts above)
 
 ## es-419|es-419_gl/es-419/gst|v40|passage
 
-Items 206, exceptions 38 (differs 32, fallback adapter-undefined 17)
+Items 206, exceptions 37 (differs 32, fallback adapter-undefined 16)
 
-Range windows 164, equal 68
+Range windows 164, equal 69
 
 - RUT 1:1: differs
   - $.versions[2].text: today `"1 וַ⁠יְהִ֗י בִּ⁠ימֵי֙ שְׁפֹ֣ט הַ⁠שֹּׁפְטִ֔ים וַ⁠יְהִ֥י רָעָ֖ב בָּ⁠אָ֑רֶץ וַ⁠יֵּ֨לֶךְ אִ֜ישׁ מִ⁠בֵּ֧ית לֶ֣חֶם\n יְהוּדָ֗ה לָ⁠גוּר֙ בִּ⁠שְׂדֵ` format 3 `"1 וַ⁠יְהִ֗י בִּ⁠ימֵי֙ שְׁפֹ֣ט הַ⁠שֹּׁפְטִ֔ים וַ⁠יְהִ֥י רָעָ֖ב בָּ⁠אָ֑רֶץ וַ⁠יֵּ֨לֶךְ אִ֜ישׁ מִ⁠בֵּ֧ית לֶ֣חֶם יְהוּדָ֗ה לָ⁠גוּר֙ בִּ⁠שְׂדֵ֣י`
@@ -233,7 +234,7 @@ Range windows 164, equal 68
   - $.versions[2].text: today `"6 וַ⁠תָּ֤קָם הִיא֙ וְ⁠כַלֹּתֶ֔י⁠הָ וַ⁠תָּ֖שָׁב מִ⁠שְּׂדֵ֣י מוֹאָ֑ב כִּ֤י שָֽׁמְעָה֙ בִּ⁠שְׂדֵ֣ה מוֹאָ֔ב כִּֽי־פָקַ֤ד יְהוָה֙ אֶת־עַמּ֔⁠וֹ\n` format 3 `"6 וַ⁠תָּ֤קָם הִיא֙ וְ⁠כַלֹּתֶ֔י⁠הָ וַ⁠תָּ֖שָׁב מִ⁠שְּׂדֵ֣י מוֹאָ֑ב כִּ֤י שָֽׁמְעָה֙ בִּ⁠שְׂדֵ֣ה מוֹאָ֔ב כִּֽי־פָקַ֤ד יְהוָה֙ אֶת־עַמּ֔⁠וֹ ל`
 - RUT 1:8: fallback (adapter-undefined)
 - RUT 1:11: differs
-  - $.versions[0].text: today `"11 Pero Noemí dijo: \"¡Regresen, hijas mías! ¿Por qué irían conmigo? ¿Todavía (tengo) para mi\n hijos en mi vientre que puedan convertirse ` format 3 `"11 Pero Noemí dijo: \"¡Regresen, hijas mías! ¿Por qué irían conmigo? ¿Todavía(tengo) para mi hijos en mi vientre que puedan convertirse en `
+  - $.versions[0].text: today `"11 Pero Noemí dijo: \"¡Regresen, hijas mías! ¿Por qué irían conmigo? ¿Todavía (tengo) para mi\n hijos en mi vientre que puedan convertirse ` format 3 `"11 Pero Noemí dijo: \"¡Regresen, hijas mías! ¿Por qué irían conmigo? ¿Todavía (tengo) para mi hijos en mi vientre que puedan convertirse en`
 - RUT 1:19: differs
   - $.versions[2].text: today `"19 וַ⁠תֵּלַ֣כְנָה שְׁתֵּי⁠הֶ֔ם עַד־בֹּאָ֖⁠נָה בֵּ֣ית לָ֑חֶם\n וַ⁠יְהִ֗י כְּ⁠בֹאָ֨⁠נָה֙ בֵּ֣ית לֶ֔חֶם\n וַ⁠תֵּהֹ֤ם כָּל־הָ⁠עִיר֙ עֲלֵי⁠הֶ֔ן ` format 3 `"19 וַ⁠תֵּלַ֣כְנָה שְׁתֵּי⁠הֶ֔ם עַד־בֹּאָ֖⁠נָה בֵּ֣ית לָ֑חֶם וַ⁠יְהִ֗י כְּ⁠בֹאָ֨⁠נָה֙ בֵּ֣ית לֶ֔חֶם וַ⁠תֵּהֹ֤ם כָּל־הָ⁠עִיר֙ עֲלֵי⁠הֶ֔ן וַ⁠ת`
 - RUT 1:20: differs
@@ -242,9 +243,9 @@ Range windows 164, equal 68
   - $.versions[2].text: today `"22 וַ⁠תָּ֣שָׁב נָעֳמִ֗י וְ⁠ר֨וּת הַ⁠מּוֹאֲבִיָּ֤ה כַלָּתָ⁠הּ֙ עִמָּ֔⁠הּ הַ⁠שָּׁ֖בָה מִ⁠שְּׂדֵ֣י מוֹאָ֑ב וְ⁠הֵ֗מָּה בָּ֚אוּ בֵּ֣ית לֶ֔חֶם\n ` format 3 `"22 וַ⁠תָּ֣שָׁב נָעֳמִ֗י וְ⁠ר֨וּת הַ⁠מּוֹאֲבִיָּ֤ה כַלָּתָ⁠הּ֙ עִמָּ֔⁠הּ הַ⁠שָּׁ֖בָה מִ⁠שְּׂדֵ֣י מוֹאָ֑ב וְ⁠הֵ֗מָּה בָּ֚אוּ בֵּ֣ית לֶ֔חֶם בּ`
 - RUT 1:1-22: fallback (adapter-undefined)
 - RUT 2:1: fallback (adapter-undefined)
-- RUT 2:2: differs
-  - $.versions[1].text: today `"2 Rut (la mujer de Moab) le dijo a Noemí: \"Déjame ir al campo y recoger el grano que los segadores dejan detrás. Iré detrás de cada segado` format 3 `"2 Rut(la mujer de Moab) le dijo a Noemí: \"Déjame ir al campo y recoger el grano que los segadores dejan detrás. Iré detrás de cada segador`
-- RUT 2:4: fallback (adapter-undefined)
+- RUT 2:4: differs
+  - $.versions[1].text: today `"4 Entonces, Booz regresó de la ciudad. Él saludó a los segadores diciendo: \"!Que Jehová esté con ustedes!\" Ellos respondieron: \"¡Que Jeh` format 3 `"4 Entonces, Booz regresó de la ciudad. Él saludó a los segadores diciendo: \"! Que Jehová esté con ustedes!\" Ellos respondieron: \"¡Que Je`
+  - $.versions[2].text: today `"4 וְ⁠הִנֵּה־בֹ֗עַז בָּ֚א מִ⁠בֵּ֣ית לֶ֔חֶם\n וַ⁠יֹּ֥אמֶר לַ⁠קּוֹצְרִ֖ים יְהוָ֣ה עִמָּ⁠כֶ֑ם וַ⁠יֹּ֥אמְרוּ ל֖⁠וֹ יְבָרֶכְ⁠ךָ֥ יְהוָֽה׃"` format 3 `"4 וְ⁠הִנֵּה־בֹ֗עַז בָּ֚א מִ⁠בֵּ֣ית לֶ֔חֶם וַ⁠יֹּ֥אמֶר לַ⁠קּוֹצְרִ֖ים יְהוָ֣ה עִמָּ⁠כֶ֑ם וַ⁠יֹּ֥אמְרוּ ל֖⁠וֹ יְבָרֶכְ⁠ךָ֥ יְהוָֽה׃"`
 - RUT 2:1-23: fallback (adapter-undefined)
 - RUT 3:3: fallback (adapter-undefined)
 - RUT 3:4: fallback (adapter-undefined)

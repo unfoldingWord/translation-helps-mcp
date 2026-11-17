@@ -1,0 +1,115 @@
+# Sweep differences: es-419 notes
+
+Swept 2026-11-16T13:15:34.158Z, API https://translation-helps-api-v2.unfoldingword.workers.dev, index shape from http://localhost:8788, catalog 2128ef558b5dec55575096c52ad979d41242bef5ab576fe7d13c73b7f3a98b50+e47a3e63650cd4fb394034bfb71e5bf52806df055d83dd581f00ad147082f196.
+
+## es-419|es-419_gl/es-419/tn|v66|notes
+
+Items 124, exceptions 8 (differs 36)
+
+Samples: 12 chapters; books without samples: none
+
+- RUT 1: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 1:1: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 1:11: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 1:22: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 1:10-12: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 2: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 2:1: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 2:12: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 2:23: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 2:11-13: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 3: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 3:1: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 3:9: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 3:18: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 3:8-10: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 4: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 4:1: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 4:11: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 4:22: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- RUT 4:10-12: differs
+  - $.notes[0].note: today `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. ` format 3 `"# Introducción a Rut\n\n## Parte 1: Introducción General\n\n### Esquema general de Rut\n\n1. Cómo Rut llegó a Belén con Noemí (1:1-22)\n2. `
+- JON 1: differs
+  - $.notes[39].note: today `"Tanto en el TPL como en el TPS, las palabras “desgracia” y “terrible” se refieren a la tormenta la cual les causa daños. Traducción alterna` format 3 `" Tanto en el TPL como en el TPS, las palabras “desgracia” y “terrible” se refieren a la tormenta la cual les causa daños. Traducción altern`
+- TIT 1: differs
+  - $.notes[0].note: today `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi` format 3 `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi`
+  - $.notes[2].note: today `"**Fe** es un sustantivo abstracto. Aquí se refiere al creer o al confiar en Jesús. Si está más claro en su idioma, puede traducirlo usando ` format 3 `"**Fe** es un sustantivo abstracto. Aquí se refiere al creer o al confiar en Jesús. Si está más claro en su idioma, puede traducirlo usando `
+  - $.notes[3].note: today `"**«Conocimiento»** es un sustantivo abstracto. Si está más claro en su idioma, puede usar un verbo como «saber», como en el TPS. Pablo quie` format 3 `"**«Conocimiento»** es un sustantivo abstracto. Si está más claro en su idioma, puede usar un verbo como «saber», como en el TPS. Pablo quie`
+  - and 39 more
+- TIT 1:1: differs
+  - $.notes[0].note: today `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi` format 3 `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi`
+  - $.notes[2].note: today `"**Fe** es un sustantivo abstracto. Aquí se refiere al creer o al confiar en Jesús. Si está más claro en su idioma, puede traducirlo usando ` format 3 `"**Fe** es un sustantivo abstracto. Aquí se refiere al creer o al confiar en Jesús. Si está más claro en su idioma, puede traducirlo usando `
+  - $.notes[3].note: today `"**«Conocimiento»** es un sustantivo abstracto. Si está más claro en su idioma, puede usar un verbo como «saber», como en el TPS. Pablo quie` format 3 `"**«Conocimiento»** es un sustantivo abstracto. Si está más claro en su idioma, puede usar un verbo como «saber», como en el TPS. Pablo quie`
+  - and 3 more
+- TIT 1:8: differs
+  - $.notes[0].note: today `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi` format 3 `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi`
+  - $.notes[2].note: today `"La palabra de conexión «**sino**» introduce un contraste entre las cosas que un anciano no debe ser (que Pablo ya dijo) y aquellas cosas qu` format 3 `"La palabra de conexión «**sino**» introduce un contraste entre las cosas que un anciano no debe ser (que Pablo ya dijo) y aquellas cosas qu`
+  - $.notes[4].note: today `"Estos dos términos son muy similares en significado y pueden ser traducidos como un solo término si el idioma destino no tiene dos términos` format 3 `"Estos dos términos son muy similares en significado y pueden ser traducidos como un solo término si el idioma destino no tiene dos términos`
+  - and 1 more
+- TIT 1:16: differs
+  - $.notes[0].note: today `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi` format 3 `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi`
+  - $.notes[2].note: today `"La palabra de conexión **«pero»** introduce un contraste entre lo que dicen estas personas corruptas (dicen que conocen a Dios) y sus accio` format 3 `"La palabra de conexión **«pero»** introduce un contraste entre lo que dicen estas personas corruptas (dicen que conocen a Dios) y sus accio`
+- TIT 1:7-9: differs
+  - $.notes[0].note: today `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi` format 3 `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi`
+  - $.notes[3].note: today `"En esta metáfora; Pablo habla de la Iglesia como si fuera la casa de Dios, y del supervisor como si fuera un sirviente a cargo de administr` format 3 `"En esta metáfora; Pablo habla de la Iglesia como si fuera la casa de Dios, y del supervisor como si fuera un sirviente a cargo de administr`
+  - $.notes[6].note: today `"La palabra de conexión «**sino**» introduce un contraste entre las cosas que un anciano no debe ser (que Pablo ya dijo) y aquellas cosas qu` format 3 `"La palabra de conexión «**sino**» introduce un contraste entre las cosas que un anciano no debe ser (que Pablo ya dijo) y aquellas cosas qu`
+  - and 4 more
+- TIT 2: differs
+  - $.notes[0].note: today `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi` format 3 `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi`
+  - $.notes[3].note: today `"El pronombre **«tú»** o **«usted»** refiriéndose a una segunda persona, aquí es singular y se refiere a Tito. En otras palabras Pablo le es` format 3 `"El pronombre **«tú»** o **«usted»** refiriéndose a una segunda persona, aquí es singular y se refiere a Tito. En otras palabras Pablo le es`
+  - $.notes[5].note: today `"Traducción alternativa: «Enseña a los hombres ancianos a ser» o como en el TPS. (ver: [[rc://es-419/ta/man/translate/figs-ellipsis]])."` format 3 `"Traducción alternativa: «Enseña a los hombres ancianos a ser» o como en el TPS. (ver: [[rc://*/ta/man/translate/figs-ellipsis]])."`
+  - and 32 more
+- TIT 2:1: differs
+  - $.notes[0].note: today `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi` format 3 `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi`
+  - $.notes[3].note: today `"El pronombre **«tú»** o **«usted»** refiriéndose a una segunda persona, aquí es singular y se refiere a Tito. En otras palabras Pablo le es` format 3 `"El pronombre **«tú»** o **«usted»** refiriéndose a una segunda persona, aquí es singular y se refiere a Tito. En otras palabras Pablo le es`
+- TIT 2:8: differs
+  - $.notes[0].note: today `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi` format 3 `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi`
+  - $.notes[3].note: today `"Aquí se presenta una situación hipotética en la que alguien se opone a Tito y luego se avergüenza de haberlo hecho. Traducción alternativa:` format 3 `"Aquí se presenta una situación hipotética en la que alguien se opone a Tito y luego se avergüenza de haberlo hecho. Traducción alternativa:`
+  - $.notes[4].note: today `"La forma de **«nosotros»** en este caso es inclusiva. Esto incluye a Pablo, Tito y a todos los cristianos. Puede usar como traducción alter` format 3 `"La forma de **«nosotros»** en este caso es inclusiva. Esto incluye a Pablo, Tito y a todos los cristianos. Puede usar como traducción alter`
+- TIT 2:15: differs
+  - $.notes[0].note: today `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi` format 3 `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi`
+  - $.notes[3].note: today `"Si es útil, las personas a las que Tito debería corregir pueden hacerse explícitas. Traducción alternativa: «corrige con toda autoridad a a` format 3 `"Si es útil, las personas a las que Tito debería corregir pueden hacerse explícitas. Traducción alternativa: «corrige con toda autoridad a a`
+  - $.notes[5].note: today `"Esto se puede afirmar de manera positiva: «Asegúrate de que todos te escuchen» o como en el TPS. (ver: [[rc://es-419/ta/man/translate/figs-` format 3 `"Esto se puede afirmar de manera positiva: «Asegúrate de que todos te escuchen» o como en el TPS. (ver: [[rc://*/ta/man/translate/figs-doubl`
+  - and 1 more
+- TIT 2:7-9: differs
+  - $.notes[0].note: today `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi` format 3 `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi`
+  - $.notes[6].note: today `"Aquí se presenta una situación hipotética en la que alguien se opone a Tito y luego se avergüenza de haberlo hecho. Traducción alternativa:` format 3 `"Aquí se presenta una situación hipotética en la que alguien se opone a Tito y luego se avergüenza de haberlo hecho. Traducción alternativa:`
+  - $.notes[7].note: today `"La forma de **«nosotros»** en este caso es inclusiva. Esto incluye a Pablo, Tito y a todos los cristianos. Puede usar como traducción alter` format 3 `"La forma de **«nosotros»** en este caso es inclusiva. Esto incluye a Pablo, Tito y a todos los cristianos. Puede usar como traducción alter`
+  - and 1 more
+- TIT 3: differs
+  - $.notes[0].note: today `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi` format 3 `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi`
+  - $.notes[5].note: today `"Estas palabras tienen significados similares y ambas se refieren a cualquiera que tenga autoridad en el gobierno. Si su idioma materno tien` format 3 `"Estas palabras tienen significados similares y ambas se refieren a cualquiera que tenga autoridad en el gobierno. Si su idioma materno tien`
+  - $.notes[6].note: today `"Estas palabras tienen significados similares y ambas se refieren a hacer lo que alguien te dice que hagas. Si tu idioma materno, tiene solo` format 3 `"Estas palabras tienen significados similares y ambas se refieren a hacer lo que alguien te dice que hagas. Si tu idioma materno, tiene solo`
+  - and 24 more
+- TIT 3:1: differs
+  - $.notes[0].note: today `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi` format 3 `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi`
+  - $.notes[5].note: today `"Estas palabras tienen significados similares y ambas se refieren a cualquiera que tenga autoridad en el gobierno. Si su idioma materno tien` format 3 `"Estas palabras tienen significados similares y ambas se refieren a cualquiera que tenga autoridad en el gobierno. Si su idioma materno tien`
+  - $.notes[6].note: today `"Estas palabras tienen significados similares y ambas se refieren a hacer lo que alguien te dice que hagas. Si tu idioma materno, tiene solo` format 3 `"Estas palabras tienen significados similares y ambas se refieren a hacer lo que alguien te dice que hagas. Si tu idioma materno, tiene solo`
+- TIT 3:8: differs
+  - $.notes[0].note: today `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi` format 3 `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi`
+- TIT 3:15: differs
+  - $.notes[0].note: today `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi` format 3 `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi`
+  - $.notes[6].note: today `"Aquí, **«nosotros»** es probablemente exclusivo y se refiere a Pablo y el grupo de cristianos que están con él. Pablo está enviando saludos` format 3 `"Aquí, **«nosotros»** es probablemente exclusivo y se refiere a Pablo y el grupo de cristianos que están con él. Pablo está enviando saludos`
+- TIT 3:7-9: differs
+  - $.notes[0].note: today `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi` format 3 `"# Introducción a Tito\n\n## Parte 1: Introducción general\n\n### Esquema del libro de Tito\n\n1. Pablo instruye a Tito a nombrar líderes pi`
+  - $.notes[2].note: today `"Esto se puede indicar en forma activa. Traducción alternativa: «ya que Dios nos ha declarado libres de pecado» o como en el TPS. (ver: [[rc` format 3 `"Esto se puede indicar en forma activa. Traducción alternativa: «ya que Dios nos ha declarado libres de pecado» o como en el TPS. (ver: [[rc`
+  - $.notes[3].note: today `"Se habla de las personas a las que Dios ha hecho promesas como si fueran a heredar las cosas prometidas, así como una persona hereda propie` format 3 `"Se habla de las personas a las que Dios ha hecho promesas como si fueran a heredar las cosas prometidas, así como una persona hereda propie`

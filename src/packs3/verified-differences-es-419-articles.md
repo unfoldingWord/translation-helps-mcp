@@ -1,6 +1,6 @@
 # Sweep differences: es-419 articles
 
-Swept 2026-11-15T17:19:20.226Z, API https://translation-helps-api-v2.unfoldingword.workers.dev, catalog 591bf89c2a9d048cf06d111d969267a0ed976e916f699b5db4b92a7f13d6fd0a+e47a3e63650cd4fb394034bfb71e5bf52806df055d83dd581f00ad147082f196.
+Swept 2026-11-16T13:07:23.261Z, API https://translation-helps-api-v2.unfoldingword.workers.dev, catalog 2128ef558b5dec55575096c52ad979d41242bef5ab576fe7d13c73b7f3a98b50+e47a3e63650cd4fb394034bfb71e5bf52806df055d83dd581f00ad147082f196.
 
 ## es-419|es-419_gl/es-419/ta|v4|articles
 
@@ -403,7 +403,7 @@ Items 1784, exceptions 205 (differs 192, ambiguous 13)
 
 ## es-419|es-419_gl/es-419/tw|v37|articles
 
-Items 2605, exceptions 875 (differs 778, fallback adapter-undefined 4, ambiguous 93)
+Items 2605, exceptions 876 (differs 778, fallback adapter-undefined 4, ambiguous 93, api-error 1)
 
 - bible/kt/abomination: differs
   - $.article: today `"# abominación, abominable\n\n## Definición\n\nEl término “abominación” es utilizado para referirse a algo que causa disgusto o extremo disg` format 3 `"# abominación, abominable\n\n## Definición\n\nEl término “abominación” es utilizado para referirse a algo que causa disgusto o extremo disg`
