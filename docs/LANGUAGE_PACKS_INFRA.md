@@ -603,16 +603,19 @@ The MCP tools can answer from format 3 instead of calling the API Worker (`src/p
 - **Comparison.** `node scripts/compare-packs3.mjs --base <url>` runs `tests/contracts/packs3-calls.json` with `off`
   against `only` (or plain against plain with `--base-b`) and writes `docs/packs3-comparison.md`. A local run:
   `node scripts/fetch-packs3-fixtures.mjs --all --out <folder>` (the staging bucket's `v3/` keys), put them into a
-  local R2 persist folder (`getPlatformProxy` with `persist: { path: "<persist>/v3" }`), then
+  local R2 persist folder (`getPlatformProxy` with `persist: { path: "<persist>/v3" }`; await each `put` in turn and
+  list the bucket before `dispose()`: puts still pending at `dispose()` are lost, and every call then falls back with
+  detail `no-catalog`), then
   `npx wrangler dev --port 8811 --persist-to <persist> --var API_BASE_URL:https://translation-helps-api-v2.unfoldingword.workers.dev --var RATE_LIMIT_RPM:100000`
   (the default 90 rpm limit cuts a run short; the script reports `RATE_LIMITED` calls as failures). The local API
   Worker needs `--var RATE_LIMIT_RPM:100000` too, or the `off` side of the later calls fails.
-  Final run (72 calls, 0 failed): 33 served and equal (including the 6 searches, each equal to the live route, and
-  the en PSA 23 index this time); 21 planned fallbacks (OBS 5, `format: "usfm"` 1, `th_list_resources` 5, `fr` 1,
+  Final run (2026-11-17, packs en rev 5, es-419 rev 5, sweeps of that date; 72 calls, 0 failed): 32 served and equal
+  (including the 6 default-limit searches, each equal to the live route); 1 fallback allowed either way (the en PSA 23
+  index, `expect: "either"`: served in the run before, fallen back in this one); 21 planned fallbacks (OBS 5, `format: "usfm"` 1, `th_list_resources` 5, `fr` 1,
   es-419 books the pack lacks 9); 18 swept exceptions (en PSA 23, PSA 119, MAT 5, JON 1:1-3, ROM 8:28 passages and
   the ROM 8 index; es-419 RUT 1:1, TIT 1 and RUT 1 indexes, JON 1:3 notes with and without ids, TIT 1:1 "siervo"
   notes; en article "covenant" and the 5 es-419 articles, whose reason is S0 data, not re-verified here); 0 other
-  fallbacks. 33 + 21 + 18 = 72.
+  fallbacks. 32 + 1 + 21 + 18 = 72.
   The "off" side needs the local API Worker on 8788 for the index shape (`--var API_BASE_URL:http://localhost:8788`):
   the deployed one answers index calls differently. docs/packs3-comparison.md is that run's generated output.
 
