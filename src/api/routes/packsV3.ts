@@ -29,7 +29,13 @@ import {
 } from "./packs.js";
 
 type V3Target =
-  | { route: "catalog"; lang: string; key: string }
+  | {
+      route: "catalog";
+      lang: string;
+      key: string;
+      /** Served when `key` is missing: `es` has no pack of its own and falls to `es-419`. */
+      alias?: { lang: string; key: string };
+    }
   | { route: "seg"; id: string; key: string };
 
 type Outcome =
@@ -45,7 +51,8 @@ type Outcome =
   | "v3-off"
   | "error";
 
-type Served = { response: Response; outcome: Outcome };
+/** `lang`: the language whose catalog answered, when it was the alias of the one asked for. */
+type Served = { response: Response; outcome: Outcome; lang?: string };
 
 const CATALOG_CACHE_CONTROL = "no-cache, no-transform";
 const SEGMENT_CACHE_CONTROL =
@@ -75,6 +82,17 @@ export function parseV3Path(path: string): V3Target | null {
   }
   const lang = normalizePackLanguage(first);
   if (!lang) return null;
+  // A code with an alias (VARIANTS) is asked for as itself first: `ar` has its own format 3 pack, and `ar-x-strong` is
+  // another one. Only a code that is a VARIANTS key differs from its alias, so `exact` is a plain code.
+  const exact = first.toLowerCase();
+  if (exact !== lang) {
+    return {
+      route: "catalog",
+      lang: exact,
+      key: `v3/catalog/${exact}.seg`,
+      alias: { lang, key: `v3/catalog/${lang}.seg` },
+    };
+  }
   return { route: "catalog", lang, key: `v3/catalog/${lang}.seg` };
 }
 
@@ -246,6 +264,13 @@ async function respond(
 
   const served = await serve(request, bucket, target);
   if (served) return served;
+  if (target.route === "catalog" && target.alias) {
+    const aliased = await serve(request, bucket, {
+      route: "catalog",
+      ...target.alias,
+    });
+    if (aliased) return { ...aliased, lang: target.alias.lang };
+  }
   return target.route === "catalog"
     ? plain(404, "missing", { error: "catalog not found" })
     : plain(404, "missing", { error: "segment not found" });
@@ -261,6 +286,7 @@ export async function handlePacksV3Request(
   const started = Date.now();
   const target = parseV3Path(path);
   let outcome: Outcome = "error";
+  let servedLang: string | undefined;
   // HEAD gives the headers of the GET it stands for with no body, errors included.
   const bodiless = (res: Response): Response =>
     request.method === "HEAD" && res.body
@@ -269,6 +295,7 @@ export async function handlePacksV3Request(
   try {
     const served = await respond(request, env, target);
     outcome = served.outcome;
+    servedLang = served.lang;
     return bodiless(served.response);
   } catch (err) {
     console.error(`[packs-v3] ${request.method} ${path} failed:`, err);
@@ -281,7 +308,7 @@ export async function handlePacksV3Request(
         blobs: [
           "pack",
           target ? `v3-${target.route}` : "invalid",
-          target?.route === "catalog" ? target.lang : "",
+          target?.route === "catalog" ? (servedLang ?? target.lang) : "",
           outcome,
         ],
         doubles: [Date.now() - started],

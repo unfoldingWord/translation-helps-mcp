@@ -163,6 +163,12 @@ describe("parseV3Path", () => {
   it("parses the three forms", () => {
     expect(parseV3Path("es/catalog")).toEqual({
       route: "catalog",
+      lang: "es",
+      key: "v3/catalog/es.seg",
+      alias: { lang: "es-419", key: "v3/catalog/es-419.seg" },
+    });
+    expect(parseV3Path("es-419/catalog")).toEqual({
+      route: "catalog",
       lang: "es-419",
       key: "v3/catalog/es-419.seg",
     });
@@ -209,7 +215,34 @@ describe("GET /v3/packs/<lang>/catalog", () => {
     const { call, gets } = setup();
     const res = await call("es/catalog");
     expect(res.status).toBe(200);
-    expect(gets[0]?.key).toBe("v3/catalog/es-419.seg");
+    expect(gets.map((g) => g.key)).toEqual([
+      "v3/catalog/es.seg",
+      "v3/catalog/es-419.seg",
+    ]);
+    expect(await bytes(res)).toEqual(CAT_BYTES);
+  });
+
+  it("a code with its own pack is served before its alias (ar, not ar-x-strong)", async () => {
+    const { call, gets } = setup({
+      objects: {
+        "v3/catalog/ar.seg": {
+          bytes: CAT_BYTES,
+          etag: "a1",
+          contentType: "application/octet-stream",
+        },
+      },
+    });
+    const res = await call("ar/catalog");
+    expect(res.status).toBe(200);
+    expect(gets.map((g) => g.key)).toEqual(["v3/catalog/ar.seg"]);
+    expect(await bytes(res)).toEqual(CAT_BYTES);
+  });
+
+  it("a code with no pack and no alias pack is missing", async () => {
+    const { call } = setup({ objects: {} });
+    const res = await call("ar/catalog");
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "catalog not found" });
   });
 
   it("ES-419 is lowercased", async () => {
