@@ -30,6 +30,8 @@
  * `exceptionsSameAs: "<key>"` instead of `exceptions`: the exceptions of that entry (same lang, release and kind; one hop,
  * the target must hold its own list), stored once when equal (en ult and ust); a pointer it cannot follow makes the
  * entry unusable.
+ * `joinsSameAs: "<key>"` instead of `joins`: the same, for the range joins (en ult and ust hold equal ones); the target
+ * must hold its own `joins`, and an entry with both, a pointer to itself, a chain or a target it cannot follow is unusable.
  */
 import raw from "./verified.json";
 
@@ -38,6 +40,8 @@ export type VerifiedEntry = {
   exceptions?: string[];
   /** The key of an entry of the same lang, release and kind whose `exceptions` are this entry's (see `entryAt`). */
   exceptionsSameAs?: string;
+  /** The key of an entry of the same lang, release and kind whose `joins` are this entry's (see `entryAt`). */
+  joinsSameAs?: string;
   swept?: string;
   deps?: Record<string, string>;
   chapters?: Record<string, Array<number | string>>;
@@ -325,6 +329,8 @@ function wellFormed(e: VerifiedEntry): boolean {
     typeof o.exceptionsSameAs !== "string"
   )
     return false;
+  if (o.joinsSameAs !== undefined && typeof o.joinsSameAs !== "string")
+    return false;
   if (o.deps !== undefined) {
     if (!isPlain(o.deps)) return false;
     if (!Object.values(o.deps).every((d) => typeof d === "string"))
@@ -343,7 +349,12 @@ function wellFormed(e: VerifiedEntry): boolean {
 type Parsed = {
   ok: boolean;
   /** The last resolution of this object: under `key`, with `target` the raw object its pointer read (if any). */
-  resolved?: { key: string; target: unknown; entry: Usable | undefined };
+  resolved?: {
+    key: string;
+    target: unknown;
+    target2: unknown;
+    entry: Usable | undefined;
+  };
   /** Its own `exceptions` as a set (an entry pointing elsewhere reads its target's). */
   exceptions?: Set<string>;
   /** Its own `exceptions` as passage items, and the `BOOK C:` prefixes with a range exception; `null`: unreadable. */
@@ -366,6 +377,8 @@ type Usable = {
   own: Parsed;
   ex: Parsed;
   exRaw: VerifiedEntry;
+  /** The parse of its `joins` owner (itself, or the `joinsSameAs` target). */
+  jn: Parsed;
 };
 
 let parsed = new WeakMap<object, Parsed>();
@@ -424,10 +437,11 @@ function sameAsGroup(k: string): string | undefined {
 }
 
 /**
- * The usable entry at `k`: present, well formed, and with `exceptionsSameAs` replaced by the target's `exceptions`.
- * The pointer is followed one hop only: the target must be another well formed entry of the same lang, release and kind
- * with its own `exceptions` (no pointer of its own, so no chains or cycles), and the entry must not list its own.
- * Anything else makes the whole entry unusable (`undefined`), like any malformed field.
+ * The usable entry at `k`: present, well formed, with `exceptionsSameAs` replaced by the target's `exceptions` and
+ * `joinsSameAs` by the target's `joins`. Each pointer is followed one hop only: the target must be another well formed
+ * entry of the same lang, release and kind with its own list (no pointer of its own for that field, so no chains or
+ * cycles), and the entry must not list its own. Anything else makes the whole entry unusable (`undefined`), like any
+ * malformed field.
  */
 function entryAt(k: string): VerifiedEntry | undefined {
   return usableAt(k)?.e;
@@ -439,41 +453,71 @@ function usableAt(k: string): Usable | undefined {
   if (typeof e !== "object" || e === null) return undefined;
   const own = parsedOf(e);
   if (!own.ok) return undefined;
-  const to = (e as Record<string, unknown>).exceptionsSameAs;
-  if (to === undefined) return { e, own, ex: own, exRaw: e };
-  // the target is looked up on every call: a cached resolution holds only for the same key and target object
-  const t =
+  const o = e as Record<string, unknown>;
+  const exTo = o.exceptionsSameAs;
+  const jnTo = o.joinsSameAs;
+  if (exTo === undefined && jnTo === undefined)
+    return { e, own, ex: own, exRaw: e, jn: own };
+  // the targets are looked up on every call: a cached resolution holds only for the same key and target objects
+  const at = (to: unknown): VerifiedEntry | undefined =>
     typeof to === "string" && Object.hasOwn(table, to) ? table[to] : undefined;
+  const t = at(exTo);
+  const t2 = at(jnTo);
   const r = own.resolved;
-  if (r && r.key === k && r.target === t) return r.entry;
-  const entry = resolve(k, e, own, to, t);
-  own.resolved = { key: k, target: t, entry };
+  if (r && r.key === k && r.target === t && r.target2 === t2) return r.entry;
+  const entry = resolve(k, e, own, exTo, t, jnTo, t2);
+  own.resolved = { key: k, target: t, target2: t2, entry };
   return entry;
+}
+
+/** The target of one pointer when it can be followed (same group, one hop, holding its own `field`), else undefined. */
+function followable(
+  k: string,
+  to: unknown,
+  t: VerifiedEntry | undefined,
+  pointer: "exceptionsSameAs" | "joinsSameAs",
+  field: "exceptions" | "joins",
+): VerifiedEntry | undefined {
+  if (typeof to !== "string" || to === k) return undefined;
+  const group = sameAsGroup(k);
+  if (group === undefined || sameAsGroup(to) !== group) return undefined;
+  if (typeof t !== "object" || t === null || !parsedOf(t).ok) return undefined;
+  const tr = t as Record<string, unknown>;
+  if (tr[pointer] !== undefined) return undefined;
+  if (field === "exceptions" ? !Array.isArray(t.exceptions) : !isPlain(t.joins))
+    return undefined;
+  return t;
 }
 
 function resolve(
   k: string,
   e: VerifiedEntry,
   own: Parsed,
-  to: unknown,
-  t: VerifiedEntry | undefined,
+  exTo: unknown,
+  exT: VerifiedEntry | undefined,
+  jnTo: unknown,
+  jnT: VerifiedEntry | undefined,
 ): Usable | undefined {
-  if (typeof to !== "string" || e.exceptions !== undefined || to === k)
-    return undefined;
-  const group = sameAsGroup(k);
-  if (group === undefined || sameAsGroup(to) !== group) return undefined;
-  if (typeof t !== "object" || t === null || !parsedOf(t).ok) return undefined;
-  if (
-    (t as Record<string, unknown>).exceptionsSameAs !== undefined ||
-    !Array.isArray(t.exceptions)
-  )
-    return undefined;
-  return {
-    e: { ...e, exceptions: t.exceptions },
-    own,
-    ex: parsedOf(t),
-    exRaw: t,
-  };
+  const out: VerifiedEntry = { ...e };
+  let ex = own;
+  let exRaw = e;
+  let jn = own;
+  if (exTo !== undefined) {
+    if (e.exceptions !== undefined) return undefined;
+    const t = followable(k, exTo, exT, "exceptionsSameAs", "exceptions");
+    if (!t) return undefined;
+    out.exceptions = t.exceptions;
+    ex = parsedOf(t);
+    exRaw = t;
+  }
+  if (jnTo !== undefined) {
+    if (e.joins !== undefined) return undefined;
+    const t = followable(k, jnTo, jnT, "joinsSameAs", "joins");
+    if (!t) return undefined;
+    out.joins = t.joins;
+    jn = parsedOf(t);
+  }
+  return { e: out, own, ex, exRaw, jn };
 }
 
 function chapterListed(
@@ -587,7 +631,7 @@ export function isVerified(
     }
     // the chapter is proven when none of its exceptions is a range (`passageOf` keeps the chapters that have one)
     if (!passage.rangeChapters.has(`${book} ${chapter}:`)) return true;
-    const joined = joinsAt(u.own, e.joins, book!, chapter!);
+    const joined = joinsAt(u.jn, e.joins, book!, chapter!);
     if (!joined) return false;
     for (let v = Number(a); v < Number(b); v++) {
       if (!joined.has(v)) return false;

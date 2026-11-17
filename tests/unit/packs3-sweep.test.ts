@@ -428,7 +428,7 @@ describe("sweep-packs3 pure parts", () => {
     });
   });
 
-  // verified.json is bundled in the Worker: it stays small (ruling: ceiling 200 KB; it is 182 KB), and every passage exception is one verified.ts can read
+  // verified.json is bundled in the Worker: it stays small (ruling: ceiling 200 KB; it is 184 KB), and every passage exception is one verified.ts can read
   // (one it cannot read would make its whole entry unusable).
   it("ships a small verified.json whose passage exceptions are all readable", () => {
     const f = new URL("../../src/packs3/verified.json", import.meta.url);
@@ -1502,6 +1502,46 @@ describe("compactVerified / expandVerified / nextVerified", () => {
     expect(next[ULT].exceptions).toEqual(["TIT 1:1"]);
     expect(next[UST].exceptions).toEqual(long);
     expect(next[UST].exceptionsSameAs).toBeUndefined();
+  });
+
+  it("stores identical range joins once (joinsSameAs) and expands them back", () => {
+    const joins = { TIT: "1:1,2,3,4,5,6,7,8,9;2:3,4,5,6,7,8,9,10,11,12,13" };
+    const t = {
+      [ULT]: { items: 2, exceptions: [...long], joins, chapters: { TIT: [1] } },
+      [UST]: { items: 2, exceptions: [...long], joins: { ...joins } },
+      [GLT]: { items: 2, joins: { ...joins } },
+    };
+    const out = s.compactVerified(t);
+    expect(out[ULT].joins).toEqual(joins);
+    expect(out[UST].joins).toBeUndefined();
+    expect(out[UST].joinsSameAs).toBe(ULT);
+    expect(out[UST].exceptionsSameAs).toBe(ULT);
+    expect(out[GLT].joins).toEqual(joins);
+    expect(out[GLT].joinsSameAs).toBeUndefined();
+    expect(s.expandVerified(out)).toEqual(t);
+    expect(s.formatVerified(s.compactVerified(out))).toBe(
+      s.formatVerified(out),
+    );
+  });
+
+  it("leaves different or empty joins alone, and a pointer it cannot follow", () => {
+    const t = {
+      [ULT]: { joins: { TIT: "1:1" } },
+      [UST]: { joins: { TIT: "1:2" } },
+      "en|u/en/bsb|v9|passage": { joins: {} },
+      "en|u/en/t4t|v9|passage": { joins: {} },
+      "en|u/en/x|v9|passage": { joinsSameAs: "en|u/en/missing|v9|passage" },
+    };
+    expect(s.compactVerified(t)).toEqual(t);
+  });
+
+  it("a new sweep entry replaces the joins target without breaking the entry that pointed at it", () => {
+    const joins = { TIT: "1:1,2" };
+    const old = s.compactVerified({ [ULT]: { joins }, [UST]: { joins } });
+    const next = s.nextVerified(old, { [ULT]: { joins: { TIT: "1:5" } } });
+    expect(next[ULT].joins).toEqual({ TIT: "1:5" });
+    expect(next[UST].joins).toEqual(joins);
+    expect(next[UST].joinsSameAs).toBeUndefined();
   });
 
   it("a later equal verdict keeps the misses an articles sweep writes", () => {

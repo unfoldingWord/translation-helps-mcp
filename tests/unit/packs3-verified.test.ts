@@ -657,6 +657,155 @@ describe("exceptionsSameAs (one shared exceptions list)", () => {
   });
 });
 
+describe("joinsSameAs (one shared range joins)", () => {
+  const ULT = "en|u/en/ult|v9|passage";
+  const UST = "en|u/en/ust|v9|passage";
+  const T4T = "en|u/en/t4t|v9|passage";
+  const pass = (extra: VerifiedEntry = {}): VerifiedEntry => ({
+    items: 3,
+    chapters: { TIT: [1] },
+    exceptions: ["TIT 1:1-16"],
+    ...extra,
+  });
+  const ust = (item: string) =>
+    isVerified("en", "u/en/ust", "v9", "passage", item);
+  const ult = (item: string) =>
+    isVerified("en", "u/en/ult", "v9", "passage", item);
+  const joins = { TIT: "1:1,2" };
+
+  it("reads the target's joins", () => {
+    setVerifiedForTests({
+      [ULT]: pass({ joins }),
+      [UST]: pass({ joinsSameAs: ULT }),
+    });
+    for (const f of [ust, ult]) {
+      expect(f("TIT 1:1-3")).toBe(true);
+      expect(f("TIT 1:2-4")).toBe(false);
+    }
+  });
+
+  it("combines with exceptionsSameAs", () => {
+    setVerifiedForTests({
+      [ULT]: pass({ joins }),
+      [UST]: {
+        items: 3,
+        chapters: { TIT: [1] },
+        exceptionsSameAs: ULT,
+        joinsSameAs: ULT,
+      },
+    });
+    expect(ust("TIT 1:1-3")).toBe(true);
+    expect(ust("TIT 1:2-4")).toBe(false);
+  });
+
+  const unusable = (t: Record<string, VerifiedEntry>) => {
+    setVerifiedForTests(t);
+    expect(ust("TIT 1:1")).toBe(false);
+    expect(ust("TIT 1:1-3")).toBe(false);
+  };
+
+  it("is unusable when the target is missing or holds no joins (or a bad one)", () => {
+    unusable({ [UST]: pass({ joinsSameAs: ULT }) });
+    unusable({ [ULT]: pass(), [UST]: pass({ joinsSameAs: ULT }) });
+    unusable({
+      [ULT]: pass({ joins: "1:1" as unknown as Record<string, string> }),
+      [UST]: pass({ joinsSameAs: ULT }),
+    });
+  });
+
+  it("is unusable on a cycle, a self reference or a chain", () => {
+    unusable({
+      [ULT]: pass({ joinsSameAs: UST }),
+      [UST]: pass({ joinsSameAs: ULT }),
+    });
+    unusable({ [UST]: pass({ joinsSameAs: UST }) });
+    unusable({
+      [T4T]: pass({ joins }),
+      [ULT]: pass({ joinsSameAs: T4T }),
+      [UST]: pass({ joinsSameAs: ULT }),
+    });
+  });
+
+  it("is unusable beside its own joins, with a non-string value, or across lang, release or kind", () => {
+    unusable({
+      [ULT]: pass({ joins }),
+      [UST]: pass({ joins, joinsSameAs: ULT }),
+    });
+    unusable({
+      [ULT]: pass({ joins }),
+      [UST]: pass({ joinsSameAs: 3 as unknown as string }),
+    });
+    for (const other of [
+      "es|u/en/ult|v9|passage",
+      "en|u/en/ult|v8|passage",
+      "en|u/en/ult|v9|notes",
+    ]) {
+      unusable({
+        [other]: pass({ joins }),
+        [UST]: pass({ joinsSameAs: other }),
+      });
+    }
+  });
+
+  it("is unusable when the target entry itself is malformed", () => {
+    unusable({
+      [ULT]: pass({
+        joins,
+        chapters: "TIT" as unknown as Record<string, number[]>,
+      }),
+      [UST]: pass({ joinsSameAs: ULT }),
+    });
+  });
+});
+
+describe("joinsSameAs in the real verified.json", () => {
+  it("serves range windows exactly as the expanded table does", async () => {
+    const real = (await import("../../src/packs3/verified.json"))
+      .default as Record<string, VerifiedEntry>;
+    const expanded = sweep.expandVerified(real) as Record<
+      string,
+      VerifiedEntry
+    >;
+    const pointers = Object.entries(real).filter(([, e]) => e.joinsSameAs);
+    expect(pointers.length).toBeGreaterThan(0);
+    let served = 0;
+    let refused = 0;
+    for (const [k, e] of pointers) {
+      expect(expanded[k]!.joins).toEqual(real[e.joinsSameAs!]!.joins);
+      const [lang, rk, rel, kind] = k.split("|") as [
+        string,
+        string,
+        string,
+        string,
+      ];
+      const deps = (d: string) => (expanded[k]!.deps ?? {})[d];
+      const opts = { releaseOf: deps };
+      const items: string[] = [];
+      for (const [book, chs] of Object.entries(expanded[k]!.chapters ?? {})) {
+        for (const c of chs) {
+          for (let v = 1; v <= 40; v++) {
+            items.push(
+              `${book} ${c}:${v}-${v + 1}`,
+              `${book} ${c}:${v}-${v + 2}`,
+            );
+          }
+        }
+      }
+      const answer = (table: Record<string, VerifiedEntry>) => {
+        setVerifiedForTests(table);
+        return items.map((i) => isVerified(lang, rk, rel, kind, i, opts));
+      };
+      const before = answer(expanded);
+      const after = answer(real);
+      expect(after).toEqual(before);
+      served += after.filter(Boolean).length;
+      refused += after.filter((x) => !x).length;
+    }
+    expect(served).toBeGreaterThan(0);
+    expect(refused).toBeGreaterThan(0);
+  });
+});
+
 describe("search catalog verdict equalExcept (case-only id differences)", () => {
   const CAT = "en|u/en/ta|v9|searchCatalog";
   const ART = "en|u/en/ta|v9|articles";
