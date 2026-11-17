@@ -570,7 +570,7 @@ The MCP tools can answer from format 3 instead of calling the API Worker (`src/p
 - **Fallback.** Format 3 serves a call only when (lang, resource key, release, kind) is in the bundled `verified.json`
   proof (written by `scripts/sweep-packs3.mjs`) and the item is not an exception. Proof kinds: `passage` (with join
   windows), `notes`, `links`, `questions`, `articles` (with `terms` and `misses`), `search` (40 queries) and
-  `searchCatalog` (`equal` or `equalExcept`); an entry may say `exceptionsSameAs` another. `verified.json` is 182 KB
+  `searchCatalog` (`equal` or `equalExcept`); an entry may say `exceptionsSameAs` or `joinsSameAs` another. `verified.json` is 184 KB
   (ceiling 200 KB, asserted by tests/unit/packs3-sweep.test.ts).
   Search: under the `searchCatalog` proof any query is served when `limit` is absent or a plain number
   (`^[1-9][0-9]{0,2}$`); the 40 swept queries are no longer a limit. The `tw` catalog is `equal`; the `ta` catalog
