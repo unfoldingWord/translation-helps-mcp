@@ -1,0 +1,278 @@
+# Sweep differences: en links
+
+Swept 2026-11-17T07:29:21.521Z, API https://translation-helps-api-v2.unfoldingword.workers.dev, index shape from http://localhost:8788, catalog ed619cd5428e7f63cae9c1ec1c94435b18dd482da6e5e6b33b6900b9464a3c8d+e47a3e63650cd4fb394034bfb71e5bf52806df055d83dd581f00ad147082f196.
+
+## en|unfoldingWord/en/twl|v91|links
+
+Items 9157, exceptions 41 (fallback adapter-undefined 7, differs 77, api-error 1)
+
+Samples: 910 chapters; books without samples: none
+
+- index:2SA: fallback (adapter-undefined)
+- 2SA 6: fallback (adapter-undefined)
+- 2SA 6:12: fallback (adapter-undefined)
+- 2SA 6:11-13: fallback (adapter-undefined)
+- index:2SA 6:12: fallback (adapter-undefined)
+- index:2SA 6:11-13: fallback (adapter-undefined)
+- index:2SA 6: fallback (adapter-undefined)
+- 2KI 18: differs
+  - $.wordLinks[60].gatewayQuote.aligned: today `"Samaria … against it"` format 3 `"Samaria"`
+- PSA 33: differs
+  - $.wordLinks[6].gatewayQuote.aligned: today `""` format 3 `"with the harp"`
+  - $.wordLinks[7].gatewayQuote.aligned: today `""` format 3 `"with a lyre"`
+  - $.wordLinks[40].gatewayQuote.aligned: today `""` format 3 `"the one understanding"`
+  - and 5 more
+- PSA 34: differs
+  - $.wordLinks[5].gatewayQuote.aligned: today `""` format 3 `"In Yahweh"`
+  - $.wordLinks[6].gatewayQuote.aligned: today `""` format 3 `"my soul"`
+  - $.wordLinks[7].gatewayQuote.aligned: today `""` format 3 `"will boast"`
+  - and 13 more
+- PSA 34:11: differs
+  - $.wordLinks[2].gatewayQuote.aligned: today `""` format 3 `"I will teach you"`
+- PSA 34:10-12: differs
+  - $.wordLinks[6].gatewayQuote.aligned: today `""` format 3 `"I will teach you"`
+- PSA 36: differs
+  - $.wordLinks[32].gatewayQuote.aligned: today `""` format 3 `"your covenant faithfulness"`
+  - $.wordLinks[35].gatewayQuote.aligned: today `""` format 3 `"to the upright of"`
+- PSA 37: differs
+  - $.wordLinks[8].gatewayQuote.aligned: today `""` format 3 `"And delight yourself"`
+  - $.wordLinks[26].gatewayQuote.aligned: today `""` format 3 `"and will delight themselves"`
+  - $.wordLinks[27].gatewayQuote.aligned: today `""` format 3 `"peace"`
+  - and 15 more
+- PSA 38: differs
+  - $.wordLinks[6].gatewayQuote.aligned: today `""` format 3 `"peace"`
+  - $.wordLinks[7].gatewayQuote.aligned: today `""` format 3 `"my sin"`
+  - $.wordLinks[13].gatewayQuote.aligned: today `""` format 3 `"from the groaning of"`
+  - and 3 more
+- PSA 38:22: differs
+  - $.wordLinks[1].gatewayQuote.aligned: today `""` format 3 `"my salvation"`
+- PSA 39: differs
+  - $.wordLinks[7].gatewayQuote.aligned: today `""` format 3 `"was stirred up"`
+- PSA 40: differs
+  - $.wordLinks[46].gatewayQuote.aligned: today `""` format 3 `"your covenant faithfulness"`
+  - $.wordLinks[47].gatewayQuote.aligned: today `""` format 3 `"and your trustworthiness"`
+  - $.wordLinks[53].gatewayQuote.aligned: today `""` format 3 `"to rescue me"`
+- PSA 78: differs
+  - $.wordLinks[138].gatewayQuote.aligned: today `""` format 3 `"the tribes"`
+  - $.wordLinks[139].gatewayQuote.aligned: today `""` format 3 `"of Israel"`
+  - $.wordLinks[140].gatewayQuote.aligned: today `""` format 3 `"in their tents"`
+  - and 17 more
+- PSA 78:72: differs
+  - $.wordLinks[0].gatewayQuote.aligned: today `""` format 3 `"And he shepherded them"`
+  - $.wordLinks[1].gatewayQuote.aligned: today `""` format 3 `"according to the integrity"`
+- PSA 119: differs
+  - $.wordLinks[241].gatewayQuote.aligned: today `""` format 3 `"I might keep"`
+  - $.wordLinks[246].gatewayQuote.aligned: today `""` format 3 `"I have sworn"`
+  - $.wordLinks[247].gatewayQuote.aligned: today `""` format 3 `"and I will confirm it"`
+  - and 13 more
+- PSA 120: differs
+  - $.wordLinks[4].gatewayQuote.aligned: today `""` format 3 `"deliver"`
+  - $.wordLinks[5].gatewayQuote.aligned: today `""` format 3 `"my soul"`
+  - $.wordLinks[6].gatewayQuote.aligned: today `""` format 3 `"from a lip of falsehood"`
+  - and 5 more
+- PSA 120:7: differs
+  - $.wordLinks[0].gatewayQuote.aligned: today `""` format 3 `"am peace"`
+- PSA 120:3-5: differs
+  - $.wordLinks[1].gatewayQuote.aligned: today `""` format 3 `"deceit"`
+- PSA 121: differs
+  - $.wordLinks[11].gatewayQuote.aligned: today `""` format 3 `"will keep you"`
+  - $.wordLinks[13].gatewayQuote.aligned: today `""` format 3 `"will keep you"`
+  - $.wordLinks[16].gatewayQuote.aligned: today `""` format 3 `"will keep"`
+- PSA 121:8: differs
+  - $.wordLinks[1].gatewayQuote.aligned: today `""` format 3 `"will keep"`
+- PSA 122: differs
+  - $.wordLinks[6].gatewayQuote.aligned: today `""` format 3 `"Jerusalem"`
+  - $.wordLinks[16].gatewayQuote.aligned: today `""` format 3 `"the peace of"`
+  - $.wordLinks[17].gatewayQuote.aligned: today `""` format 3 `"Jerusalem"`
+  - and 8 more
+- PSA 122:9: differs
+  - $.wordLinks[0].gatewayQuote.aligned: today `"Yahweh"` format 3 `"the house of Yahweh"`
+  - $.wordLinks[2].gatewayQuote.aligned: today `""` format 3 `"let me seek"`
+- PSA 122:4-6: differs
+  - $.wordLinks[9].gatewayQuote.aligned: today `""` format 3 `"the peace of"`
+  - $.wordLinks[10].gatewayQuote.aligned: today `""` format 3 `"Jerusalem"`
+  - $.wordLinks[12].gatewayQuote.aligned: today `""` format 3 `"may … prosper"`
+- PSA 124: differs
+  - $.wordLinks[4].gatewayQuote.aligned: today `""` format 3 `"our soul"`
+  - $.wordLinks[14].gatewayQuote.aligned: today `""` format 3 `"the maker of"`
+  - $.wordLinks[15].gatewayQuote.aligned: today `""` format 3 `"heaven"`
+- PSA 124:4: differs
+  - $.wordLinks[0].gatewayQuote.aligned: today `""` format 3 `"our soul"`
+- PSA 124:8: differs
+  - $.wordLinks[1].gatewayQuote.aligned: today `""` format 3 `"the maker of"`
+  - $.wordLinks[2].gatewayQuote.aligned: today `""` format 3 `"heaven"`
+- PSA 124:3-5: differs
+  - $.wordLinks[0].gatewayQuote.aligned: today `""` format 3 `"our soul"`
+- PSA 125: differs
+  - $.wordLinks[17].gatewayQuote.aligned: today `""` format 3 `"and to the upright"`
+- PSA 125:2-4: differs
+  - $.wordLinks[11].gatewayQuote.aligned: today `""` format 3 `"and to the upright"`
+- PSA 126: differs
+  - $.wordLinks[13].gatewayQuote.aligned: today `""` format 3 `"in the Negev"`
+  - $.wordLinks[14].gatewayQuote.aligned: today `""` format 3 `"The ones sowing"`
+  - $.wordLinks[16].gatewayQuote.aligned: today `""` format 3 `"in a shout of joy"`
+- PSA 126:2-4: differs
+  - $.wordLinks[9].gatewayQuote.aligned: today `""` format 3 `"in the Negev"`
+- PSA 127: differs
+  - $.wordLinks[14].gatewayQuote.aligned: today `""` format 3 `"a reward"`
+  - $.wordLinks[15].gatewayQuote.aligned: today `""` format 3 `"is the fruit of"`
+  - $.wordLinks[16].gatewayQuote.aligned: today `""` format 3 `"the womb"`
+  - and 1 more
+- PSA 127:3: differs
+  - $.wordLinks[2].gatewayQuote.aligned: today `""` format 3 `"a reward"`
+  - $.wordLinks[3].gatewayQuote.aligned: today `""` format 3 `"is the fruit of"`
+  - $.wordLinks[4].gatewayQuote.aligned: today `""` format 3 `"the womb"`
+- PSA 127:2-4: differs
+  - $.wordLinks[7].gatewayQuote.aligned: today `""` format 3 `"a reward"`
+  - $.wordLinks[8].gatewayQuote.aligned: today `""` format 3 `"is the fruit of"`
+  - $.wordLinks[9].gatewayQuote.aligned: today `""` format 3 `"the womb"`
+  - and 1 more
+- PSA 129: differs
+  - $.wordLinks[3].gatewayQuote.aligned: today `""` format 3 `"the plowers"`
+  - $.wordLinks[6].gatewayQuote.aligned: today `""` format 3 `"is righteous"`
+  - $.wordLinks[7].gatewayQuote.aligned: today `""` format 3 `"the wicked"`
+  - and 1 more
+- PSA 129:4: differs
+  - $.wordLinks[1].gatewayQuote.aligned: today `""` format 3 `"is righteous"`
+  - $.wordLinks[2].gatewayQuote.aligned: today `""` format 3 `"the wicked"`
+- PSA 129:3-5: differs
+  - $.wordLinks[0].gatewayQuote.aligned: today `""` format 3 `"the plowers"`
+  - $.wordLinks[3].gatewayQuote.aligned: today `""` format 3 `"is righteous"`
+  - $.wordLinks[4].gatewayQuote.aligned: today `""` format 3 `"the wicked"`
+- PSA 132: differs
+  - $.wordLinks[20].gatewayQuote.aligned: today `""` format 3 `"of your strength"`
+  - $.wordLinks[41].gatewayQuote.aligned: today `""` format 3 `"Blessing"`
+  - $.wordLinks[53].gatewayQuote.aligned: today `""` format 3 `"for my anointed one"`
+  - and 1 more
+- PSA 132:18: differs
+  - $.wordLinks[1].gatewayQuote.aligned: today `""` format 3 `"with shame"`
+- PSA 132:8-10: differs
+  - $.wordLinks[2].gatewayQuote.aligned: today `""` format 3 `"of your strength"`
+- PSA 134: differs
+  - $.wordLinks[0].gatewayQuote.aligned: today `""` format 3 `"bless"`
+  - $.wordLinks[4].gatewayQuote.aligned: today `"Yahweh"` format 3 `"in the house of Yahweh"`
+  - $.wordLinks[10].gatewayQuote.aligned: today `""` format 3 `"from Zion"`
+  - and 2 more
+- PSA 134:1: differs
+  - $.wordLinks[0].gatewayQuote.aligned: today `""` format 3 `"bless"`
+  - $.wordLinks[4].gatewayQuote.aligned: today `"Yahweh"` format 3 `"in the house of Yahweh"`
+- PSA 134:3: differs
+  - $.wordLinks[2].gatewayQuote.aligned: today `""` format 3 `"from Zion"`
+  - $.wordLinks[3].gatewayQuote.aligned: today `""` format 3 `"the maker of"`
+  - $.wordLinks[4].gatewayQuote.aligned: today `""` format 3 `"heaven"`
+- PSA 134:1-3: differs
+  - $.wordLinks[0].gatewayQuote.aligned: today `""` format 3 `"bless"`
+  - $.wordLinks[4].gatewayQuote.aligned: today `"Yahweh"` format 3 `"in the house of Yahweh"`
+  - $.wordLinks[10].gatewayQuote.aligned: today `""` format 3 `"from Zion"`
+  - and 2 more
+- PSA 137: differs
+  - $.wordLinks[3].gatewayQuote.aligned: today `""` format 3 `"we hung"`
+  - $.wordLinks[4].gatewayQuote.aligned: today `""` format 3 `"our harps"`
+  - $.wordLinks[12].gatewayQuote.aligned: today `""` format 3 `"Jerusalem"`
+- PSA 137:5: differs
+  - $.wordLinks[0].gatewayQuote.aligned: today `""` format 3 `"Jerusalem"`
+- PSA 137:4-6: differs
+  - $.wordLinks[3].gatewayQuote.aligned: today `""` format 3 `"Jerusalem"`
+- PSA 139: differs
+  - $.wordLinks[8].gatewayQuote.aligned: today `""` format 3 `"on my tongue"`
+  - $.wordLinks[10].gatewayQuote.aligned: today `""` format 3 `"you know"`
+- LAM 1: differs
+  - $.wordLinks[1].gatewayQuote.aligned: today `""` format 3 `"The princess"`
+  - $.wordLinks[2].gatewayQuote.aligned: today `""` format 3 `"among the provinces"`
+  - $.wordLinks[16].gatewayQuote.aligned: today `""` format 3 `"her gates"`
+  - and 17 more
+- LAM 1:1: differs
+  - $.wordLinks[1].gatewayQuote.aligned: today `""` format 3 `"The princess"`
+  - $.wordLinks[2].gatewayQuote.aligned: today `""` format 3 `"among the provinces"`
+- LAM 1:10-12: differs
+  - $.wordLinks[2].gatewayQuote.aligned: today `""` format 3 `"her sanctuary"`
+- LAM 3: differs
+  - $.wordLinks[1].gatewayQuote.aligned: today `""` format 3 `"by the rod of"`
+  - $.wordLinks[5].gatewayQuote.aligned: today `""` format 3 `"and call for help"`
+  - $.wordLinks[6].gatewayQuote.aligned: today `""` format 3 `"my prayer"`
+  - and 25 more
+- LAM 3:1: differs
+  - $.wordLinks[1].gatewayQuote.aligned: today `""` format 3 `"by the rod of"`
+- LAM 4: differs
+  - $.wordLinks[10].gatewayQuote.aligned: today `""` format 3 `"are desolate"`
+  - $.wordLinks[16].gatewayQuote.aligned: today `""` format 3 `"than snow"`
+  - $.wordLinks[25].gatewayQuote.aligned: today `""` format 3 `"in Zion"`
+  - and 11 more
+- LAM 4:11: differs
+  - $.wordLinks[2].gatewayQuote.aligned: today `""` format 3 `"in Zion"`
+  - $.wordLinks[3].gatewayQuote.aligned: today `""` format 3 `"and it consumed"`
+- LAM 4:22: differs
+  - $.wordLinks[5].gatewayQuote.aligned: today `""` format 3 `"sins"`
+- LAM 4:10-12: differs
+  - $.wordLinks[3].gatewayQuote.aligned: today `""` format 3 `"in Zion"`
+  - $.wordLinks[4].gatewayQuote.aligned: today `""` format 3 `"and it consumed"`
+  - $.wordLinks[11].gatewayQuote.aligned: today `""` format 3 `"the gates of"`
+  - and 1 more
+- LAM 5: differs
+  - $.wordLinks[3].gatewayQuote.aligned: today `""` format 3 `"our houses"`
+  - $.wordLinks[5].gatewayQuote.aligned: today `""` format 3 `"for silver"`
+  - $.wordLinks[13].gatewayQuote.aligned: today `""` format 3 `"rule"`
+  - and 8 more
+- LAM 5:10-12: differs
+  - $.wordLinks[4].gatewayQuote.aligned: today `""` format 3 `"Princes"`
+  - $.wordLinks[7].gatewayQuote.aligned: today `""` format 3 `"honored"`
+- HOS 8: differs
+  - $.wordLinks[10].gatewayQuote.aligned: today `""` format 3 `"Israel"`
+  - $.wordLinks[32].gatewayQuote.aligned: today `""` format 3 `"Israel"`
+  - $.wordLinks[35].gatewayQuote.aligned: today `""` format 3 `"to Assyria"`
+  - and 1 more
+- HOS 8:6-8: differs
+  - $.wordLinks[7].gatewayQuote.aligned: today `""` format 3 `"Israel"`
+- HOS 9: differs
+  - $.wordLinks[6].gatewayQuote.aligned: today `""` format 3 `"The threshing floor"`
+  - $.wordLinks[69].gatewayQuote.aligned: today `""` format 3 `"is in Gilgal"`
+  - $.wordLinks[70].gatewayQuote.aligned: today `""` format 3 `"out of my house"`
+  - and 1 more
+- HOS 13: differs
+  - $.wordLinks[42].gatewayQuote.aligned: today `""` format 3 `"his sin"`
+- HOS 14: differs
+  - $.wordLinks[15].gatewayQuote.aligned: today `""` format 3 `"to Israel"`
+  - $.wordLinks[16].gatewayQuote.aligned: today `""` format 3 `"like Lebanon"`
+- HOS 14:5: differs
+  - $.wordLinks[0].gatewayQuote.aligned: today `""` format 3 `"to Israel"`
+  - $.wordLinks[1].gatewayQuote.aligned: today `""` format 3 `"like Lebanon"`
+- HOS 14:4-6: differs
+  - $.wordLinks[1].gatewayQuote.aligned: today `""` format 3 `"to Israel"`
+  - $.wordLinks[2].gatewayQuote.aligned: today `""` format 3 `"like Lebanon"`
+- MIC 2: differs
+  - $.wordLinks[5].gatewayQuote.aligned: today `""` format 3 `"and houses"`
+- HAB 3: differs
+  - $.wordLinks[20].gatewayQuote.aligned: today `""` format 3 `"plague"`
+  - $.wordLinks[30].gatewayQuote.aligned: today `""` format 3 `"trembled"`
+  - $.wordLinks[36].gatewayQuote.aligned: today `""` format 3 `"Your bow"`
+  - and 11 more
+- HAB 3:9-11: differs
+  - $.wordLinks[0].gatewayQuote.aligned: today `""` format 3 `"Your bow"`
+  - $.wordLinks[1].gatewayQuote.aligned: today `""` format 3 `"the oaths sworn to"`
+- ZEC 1: differs
+  - $.wordLinks[42].gatewayQuote.aligned: today `""` format 3 `"70 years"`
+- ZEC 1:10-12: differs
+  - $.wordLinks[10].gatewayQuote.aligned: today `""` format 3 `"70 years"`
+- ZEC 2: differs
+  - $.wordLinks[1].gatewayQuote.aligned: today `""` format 3 `"the angel"`
+  - $.wordLinks[39].gatewayQuote.aligned: today `""` format 3 `"his holiness"`
+- ZEC 2:13: differs
+  - $.wordLinks[1].gatewayQuote.aligned: today `""` format 3 `"his holiness"`
+- ZEC 3: differs
+  - $.wordLinks[12].gatewayQuote.aligned: today `""` format 3 `"And Joshua"`
+  - $.wordLinks[13].gatewayQuote.aligned: today `""` format 3 `"the angel"`
+  - $.wordLinks[24].gatewayQuote.aligned: today `""` format 3 `"Joshua"`
+  - and 1 more
+- ZEC 4: differs
+  - $.wordLinks[3].gatewayQuote.aligned: today `""` format 3 `"the angel"`
+- ZEC 5: differs
+  - $.wordLinks[0].gatewayQuote.aligned: today `""` format 3 `"a … scroll"`
+  - $.wordLinks[1].gatewayQuote.aligned: today `""` format 3 `"a flying scroll"`
+  - $.wordLinks[4].gatewayQuote.aligned: today `""` format 3 `"who is swearing"`
+  - and 3 more
+- ZEC 5:1: differs
+  - $.wordLinks[0].gatewayQuote.aligned: today `""` format 3 `"a … scroll"`
+- ZEC 5:11: differs
+  - $.wordLinks[1].gatewayQuote.aligned: today `""` format 3 `"in the land of"`
+  - $.wordLinks[2].gatewayQuote.aligned: today `""` format 3 `"Shinar"`
+- 1TH 4:8-10: api-error

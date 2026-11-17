@@ -70,6 +70,10 @@ export interface Env extends DispatchEnv {
   PACKS_PARTS_DISPATCH?: string;
   /** "on" serves /v3/packs (format 3); anything else answers 404 v3-off. */
   PACKS_V3?: string;
+  /** Trusted format 3 catalog keys, "<keyId>:<64 hex>,...". Empty: no format 3 reads. */
+  PACKS_V3_TRUSTED_KEYS?: string;
+  /** "on" honours the `x-th-packs3: off | only` request header (comparisons). Never set in production. */
+  PACKS_V3_DEBUG?: string;
   /** Counted parts dispatches a day, apart from f1.1's cap of 20. Default 20; 0 = none. */
   PACKS_PARTS_DAILY_CAP?: string;
   /** `parts`: the cron never runs the f1.1 sweep (staging). Unset sweeps f1.1 at 06 UTC as before. */

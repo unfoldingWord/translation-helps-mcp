@@ -1,0 +1,995 @@
+# Sweep differences: en passage
+
+Swept 2026-11-17T06:31:17.828Z, API https://translation-helps-api-v2.unfoldingword.workers.dev, catalog ed619cd5428e7f63cae9c1ec1c94435b18dd482da6e5e6b33b6900b9464a3c8d+e47a3e63650cd4fb394034bfb71e5bf52806df055d83dd581f00ad147082f196.
+
+## en|Worldview/en/bsb|v1|passage
+
+Items 32293, exceptions 0 (not-in-answer 20888, fallback adapter-undefined 11404, api-error 1)
+
+Range windows 26846, equal 0
+
+- GEN 1:14: fallback (adapter-undefined)
+- GEN 1:16: fallback (adapter-undefined)
+- GEN 1:18: fallback (adapter-undefined)
+- GEN 1:30: fallback (adapter-undefined)
+- GEN 1:1-31: fallback (adapter-undefined)
+- GEN 2:3: fallback (adapter-undefined)
+- GEN 2:10: fallback (adapter-undefined)
+- GEN 2:1-25: fallback (adapter-undefined)
+- GEN 3:1-24: fallback (adapter-undefined)
+- GEN 4:16: fallback (adapter-undefined)
+- GEN 4:24: fallback (adapter-undefined)
+- GEN 4:1-26: fallback (adapter-undefined)
+- GEN 5:1: fallback (adapter-undefined)
+- GEN 5:2: fallback (adapter-undefined)
+- GEN 5:1-32: fallback (adapter-undefined)
+- GEN 6:8: fallback (adapter-undefined)
+- GEN 6:1-22: fallback (adapter-undefined)
+- GEN 7:23: fallback (adapter-undefined)
+- GEN 7:1-24: fallback (adapter-undefined)
+- GEN 8:17: fallback (adapter-undefined)
+- GEN 8:19: fallback (adapter-undefined)
+- GEN 8:1-22: fallback (adapter-undefined)
+- GEN 9:17: fallback (adapter-undefined)
+- GEN 9:1-29: fallback (adapter-undefined)
+- GEN 10:1: fallback (adapter-undefined)
+- GEN 10:5: fallback (adapter-undefined)
+- GEN 10:20: fallback (adapter-undefined)
+- GEN 10:1-32: fallback (adapter-undefined)
+- GEN 11:9: fallback (adapter-undefined)
+- GEN 11:26: fallback (adapter-undefined)
+- GEN 11:1-32: fallback (adapter-undefined)
+- GEN 12:9: fallback (adapter-undefined)
+- GEN 12:1-20: fallback (adapter-undefined)
+- GEN 13:3: fallback (adapter-undefined)
+- GEN 13:13: fallback (adapter-undefined)
+- GEN 13:1-18: fallback (adapter-undefined)
+- GEN 14:2: fallback (adapter-undefined)
+- GEN 14:8: fallback (adapter-undefined)
+- GEN 14:16: fallback (adapter-undefined)
+- GEN 14:1-24: fallback (adapter-undefined)
+- GEN 15:1-21: fallback (adapter-undefined)
+- GEN 16:6: fallback (adapter-undefined)
+- GEN 16:1-16: fallback (adapter-undefined)
+- GEN 17:1-27: fallback (adapter-undefined)
+- GEN 18:15: fallback (adapter-undefined)
+- GEN 18:1-33: fallback (adapter-undefined)
+- GEN 19:29: fallback (adapter-undefined)
+- GEN 19:1-38: fallback (adapter-undefined)
+- GEN 20:1-18: fallback (adapter-undefined)
+- GEN 21:7: fallback (adapter-undefined)
+- GEN 21:21: fallback (adapter-undefined)
+- GEN 21:1-34: fallback (adapter-undefined)
+- GEN 22:3: fallback (adapter-undefined)
+- GEN 22:7: fallback (adapter-undefined)
+- GEN 22:19: fallback (adapter-undefined)
+- GEN 22:1-24: fallback (adapter-undefined)
+- GEN 23:1-20: fallback (adapter-undefined)
+- GEN 24:33: fallback (adapter-undefined)
+- GEN 24:1-67: fallback (adapter-undefined)
+- GEN 25:6: fallback (adapter-undefined)
+- GEN 25:11: fallback (adapter-undefined)
+- GEN 25:18: fallback (adapter-undefined)
+- GEN 25:23: fallback (adapter-undefined)
+- GEN 25:26: fallback (adapter-undefined)
+- GEN 25:1-34: fallback (adapter-undefined)
+- GEN 26:5: fallback (adapter-undefined)
+- GEN 26:11: fallback (adapter-undefined)
+- GEN 26:33: fallback (adapter-undefined)
+- GEN 26:1-35: fallback (adapter-undefined)
+- GEN 27:3: fallback (adapter-undefined)
+- GEN 27:29: fallback (adapter-undefined)
+- GEN 27:40: fallback (adapter-undefined)
+- GEN 27:1-46: fallback (adapter-undefined)
+- GEN 28:5: fallback (adapter-undefined)
+- GEN 28:9: fallback (adapter-undefined)
+- GEN 28:1-22: fallback (adapter-undefined)
+- GEN 29:14: fallback (adapter-undefined)
+- GEN 29:30: fallback (adapter-undefined)
+- GEN 29:1-35: fallback (adapter-undefined)
+- GEN 30:24: fallback (adapter-undefined)
+- GEN 30:1-43: fallback (adapter-undefined)
+- GEN 31:21: fallback (adapter-undefined)
+- GEN 31:42: fallback (adapter-undefined)
+- GEN 31:54: fallback (adapter-undefined)
+- GEN 31:1-55: fallback (adapter-undefined)
+- GEN 32:21: fallback (adapter-undefined)
+- GEN 32:1-32: fallback (adapter-undefined)
+- GEN 33:1-20: fallback (adapter-undefined)
+- GEN 34:1-31: fallback (adapter-undefined)
+- GEN 35:15: fallback (adapter-undefined)
+- GEN 35:20: fallback (adapter-undefined)
+- GEN 35:26: fallback (adapter-undefined)
+- GEN 35:1-29: fallback (adapter-undefined)
+- GEN 36:2: fallback (adapter-undefined)
+- GEN 36:5: fallback (adapter-undefined)
+- GEN 36:14: fallback (adapter-undefined)
+- GEN 36:19: fallback (adapter-undefined)
+- GEN 36:30: fallback (adapter-undefined)
+- GEN 36:1-43: fallback (adapter-undefined)
+- GEN 37:11: fallback (adapter-undefined)
+- GEN 37:1-36: fallback (adapter-undefined)
+- GEN 38:1-30: fallback (adapter-undefined)
+- GEN 39:20: fallback (adapter-undefined)
+- GEN 39:1-23: fallback (adapter-undefined)
+- GEN 40:1-23: fallback (adapter-undefined)
+- GEN 41:36: fallback (adapter-undefined)
+- GEN 41:1-57: fallback (adapter-undefined)
+- GEN 42:1-38: fallback (adapter-undefined)
+- GEN 43:28: fallback (adapter-undefined)
+- GEN 43:1-34: fallback (adapter-undefined)
+- GEN 44:17: fallback (adapter-undefined)
+- GEN 44:1-34: fallback (adapter-undefined)
+- GEN 45:1-28: fallback (adapter-undefined)
+- GEN 46:27: fallback (adapter-undefined)
+- GEN 46:1-34: fallback (adapter-undefined)
+- GEN 47:12: fallback (adapter-undefined)
+- GEN 47:20: fallback (adapter-undefined)
+- GEN 47:26: fallback (adapter-undefined)
+- GEN 47:1-31: fallback (adapter-undefined)
+- GEN 48:1-22: fallback (adapter-undefined)
+- GEN 49:10: fallback (adapter-undefined)
+- GEN 49:11: fallback (adapter-undefined)
+- GEN 49:28: fallback (adapter-undefined)
+- GEN 49:1-33: fallback (adapter-undefined)
+- GEN 50:14: fallback (adapter-undefined)
+- GEN 50:21: fallback (adapter-undefined)
+- GEN 50:1-26: fallback (adapter-undefined)
+- EXO 1:1-22: fallback (adapter-undefined)
+- EXO 2:1-25: fallback (adapter-undefined)
+- EXO 3:1-22: fallback (adapter-undefined)
+- EXO 4:1-31: fallback (adapter-undefined)
+- EXO 5:1-23: fallback (adapter-undefined)
+- EXO 6:1-30: fallback (adapter-undefined)
+- EXO 7:1-25: fallback (adapter-undefined)
+- EXO 8:4: fallback (adapter-undefined)
+- EXO 8:1-32: fallback (adapter-undefined)
+- EXO 9:1-35: fallback (adapter-undefined)
+- EXO 10:1-29: fallback (adapter-undefined)
+- EXO 11:1-10: fallback (adapter-undefined)
+- EXO 12:1-51: fallback (adapter-undefined)
+- EXO 13:1-22: fallback (adapter-undefined)
+- EXO 14:1-31: fallback (adapter-undefined)
+- EXO 15:21: fallback (adapter-undefined)
+- EXO 15:1-27: fallback (adapter-undefined)
+- EXO 16:2: fallback (adapter-undefined)
+- EXO 16:7: fallback (adapter-undefined)
+- EXO 16:1-36: fallback (adapter-undefined)
+- EXO 17:1-16: fallback (adapter-undefined)
+- EXO 18:1-27: fallback (adapter-undefined)
+- EXO 19:1-25: fallback (adapter-undefined)
+- EXO 20:1-26: fallback (adapter-undefined)
+- EXO 21:8: fallback (adapter-undefined)
+- EXO 21:1-36: fallback (adapter-undefined)
+- EXO 22:1: fallback (adapter-undefined)
+- EXO 22:5: fallback (adapter-undefined)
+- EXO 22:27: fallback (adapter-undefined)
+- EXO 22:1-31: fallback (adapter-undefined)
+- EXO 23:1-33: fallback (adapter-undefined)
+- EXO 24:1-18: fallback (adapter-undefined)
+- EXO 25:1-40: fallback (adapter-undefined)
+- EXO 26:1-37: fallback (adapter-undefined)
+- EXO 27:11: fallback (adapter-undefined)
+- EXO 27:1-21: fallback (adapter-undefined)
+- EXO 28:28: fallback (adapter-undefined)
+- EXO 28:1-43: fallback (adapter-undefined)
+- EXO 29:1-46: fallback (adapter-undefined)
+- EXO 30:1-38: fallback (adapter-undefined)
+- EXO 31:1-18: fallback (adapter-undefined)
+- EXO 32:19: fallback (adapter-undefined)
+- EXO 32:1-35: fallback (adapter-undefined)
+- EXO 33:1: fallback (adapter-undefined)
+- EXO 33:2: fallback (adapter-undefined)
+- EXO 33:3: fallback (adapter-undefined)
+- EXO 33:4: fallback (adapter-undefined)
+- EXO 33:5: fallback (adapter-undefined)
+- EXO 33:6: fallback (adapter-undefined)
+- EXO 33:7: fallback (adapter-undefined)
+- EXO 33:8: fallback (adapter-undefined)
+- EXO 33:9: fallback (adapter-undefined)
+- EXO 33:10: fallback (adapter-undefined)
+- EXO 33:11: fallback (adapter-undefined)
+- EXO 33:12: fallback (adapter-undefined)
+- EXO 33:13: fallback (adapter-undefined)
+- EXO 33:14: fallback (adapter-undefined)
+- EXO 33:15: fallback (adapter-undefined)
+- EXO 33:16: fallback (adapter-undefined)
+- EXO 33:17: fallback (adapter-undefined)
+- EXO 33:18: fallback (adapter-undefined)
+- EXO 33:19: fallback (adapter-undefined)
+- EXO 33:20: fallback (adapter-undefined)
+- EXO 33:21: fallback (adapter-undefined)
+- EXO 33:22: fallback (adapter-undefined)
+- EXO 33:23: fallback (adapter-undefined)
+- EXO 33:1-23: fallback (adapter-undefined)
+- EXO 34:1-35: fallback (adapter-undefined)
+- EXO 35:5: fallback (adapter-undefined)
+- EXO 35:11: fallback (adapter-undefined)
+- EXO 35:1-35: fallback (adapter-undefined)
+- EXO 36:1-38: fallback (adapter-undefined)
+- EXO 37:8: fallback (adapter-undefined)
+- and more (see the counts above)
+
+## en|unfoldingWord/en/t4t|v1|passage
+
+Items 32293, exceptions 0 (not-in-answer 20888, fallback adapter-undefined 11404, api-error 1)
+
+Range windows 26846, equal 0
+
+- GEN 1:14: fallback (adapter-undefined)
+- GEN 1:16: fallback (adapter-undefined)
+- GEN 1:18: fallback (adapter-undefined)
+- GEN 1:30: fallback (adapter-undefined)
+- GEN 1:1-31: fallback (adapter-undefined)
+- GEN 2:3: fallback (adapter-undefined)
+- GEN 2:10: fallback (adapter-undefined)
+- GEN 2:1-25: fallback (adapter-undefined)
+- GEN 3:1-24: fallback (adapter-undefined)
+- GEN 4:16: fallback (adapter-undefined)
+- GEN 4:24: fallback (adapter-undefined)
+- GEN 4:1-26: fallback (adapter-undefined)
+- GEN 5:1: fallback (adapter-undefined)
+- GEN 5:2: fallback (adapter-undefined)
+- GEN 5:1-32: fallback (adapter-undefined)
+- GEN 6:8: fallback (adapter-undefined)
+- GEN 6:1-22: fallback (adapter-undefined)
+- GEN 7:23: fallback (adapter-undefined)
+- GEN 7:1-24: fallback (adapter-undefined)
+- GEN 8:17: fallback (adapter-undefined)
+- GEN 8:19: fallback (adapter-undefined)
+- GEN 8:1-22: fallback (adapter-undefined)
+- GEN 9:17: fallback (adapter-undefined)
+- GEN 9:1-29: fallback (adapter-undefined)
+- GEN 10:1: fallback (adapter-undefined)
+- GEN 10:5: fallback (adapter-undefined)
+- GEN 10:20: fallback (adapter-undefined)
+- GEN 10:1-32: fallback (adapter-undefined)
+- GEN 11:9: fallback (adapter-undefined)
+- GEN 11:26: fallback (adapter-undefined)
+- GEN 11:1-32: fallback (adapter-undefined)
+- GEN 12:9: fallback (adapter-undefined)
+- GEN 12:1-20: fallback (adapter-undefined)
+- GEN 13:3: fallback (adapter-undefined)
+- GEN 13:13: fallback (adapter-undefined)
+- GEN 13:1-18: fallback (adapter-undefined)
+- GEN 14:2: fallback (adapter-undefined)
+- GEN 14:8: fallback (adapter-undefined)
+- GEN 14:16: fallback (adapter-undefined)
+- GEN 14:1-24: fallback (adapter-undefined)
+- GEN 15:1-21: fallback (adapter-undefined)
+- GEN 16:6: fallback (adapter-undefined)
+- GEN 16:1-16: fallback (adapter-undefined)
+- GEN 17:1-27: fallback (adapter-undefined)
+- GEN 18:15: fallback (adapter-undefined)
+- GEN 18:1-33: fallback (adapter-undefined)
+- GEN 19:29: fallback (adapter-undefined)
+- GEN 19:1-38: fallback (adapter-undefined)
+- GEN 20:1-18: fallback (adapter-undefined)
+- GEN 21:7: fallback (adapter-undefined)
+- GEN 21:21: fallback (adapter-undefined)
+- GEN 21:1-34: fallback (adapter-undefined)
+- GEN 22:3: fallback (adapter-undefined)
+- GEN 22:7: fallback (adapter-undefined)
+- GEN 22:19: fallback (adapter-undefined)
+- GEN 22:1-24: fallback (adapter-undefined)
+- GEN 23:1-20: fallback (adapter-undefined)
+- GEN 24:33: fallback (adapter-undefined)
+- GEN 24:1-67: fallback (adapter-undefined)
+- GEN 25:6: fallback (adapter-undefined)
+- GEN 25:11: fallback (adapter-undefined)
+- GEN 25:18: fallback (adapter-undefined)
+- GEN 25:23: fallback (adapter-undefined)
+- GEN 25:26: fallback (adapter-undefined)
+- GEN 25:1-34: fallback (adapter-undefined)
+- GEN 26:5: fallback (adapter-undefined)
+- GEN 26:11: fallback (adapter-undefined)
+- GEN 26:33: fallback (adapter-undefined)
+- GEN 26:1-35: fallback (adapter-undefined)
+- GEN 27:3: fallback (adapter-undefined)
+- GEN 27:29: fallback (adapter-undefined)
+- GEN 27:40: fallback (adapter-undefined)
+- GEN 27:1-46: fallback (adapter-undefined)
+- GEN 28:5: fallback (adapter-undefined)
+- GEN 28:9: fallback (adapter-undefined)
+- GEN 28:1-22: fallback (adapter-undefined)
+- GEN 29:14: fallback (adapter-undefined)
+- GEN 29:30: fallback (adapter-undefined)
+- GEN 29:1-35: fallback (adapter-undefined)
+- GEN 30:24: fallback (adapter-undefined)
+- GEN 30:1-43: fallback (adapter-undefined)
+- GEN 31:21: fallback (adapter-undefined)
+- GEN 31:42: fallback (adapter-undefined)
+- GEN 31:54: fallback (adapter-undefined)
+- GEN 31:1-55: fallback (adapter-undefined)
+- GEN 32:21: fallback (adapter-undefined)
+- GEN 32:1-32: fallback (adapter-undefined)
+- GEN 33:1-20: fallback (adapter-undefined)
+- GEN 34:1-31: fallback (adapter-undefined)
+- GEN 35:15: fallback (adapter-undefined)
+- GEN 35:20: fallback (adapter-undefined)
+- GEN 35:26: fallback (adapter-undefined)
+- GEN 35:1-29: fallback (adapter-undefined)
+- GEN 36:2: fallback (adapter-undefined)
+- GEN 36:5: fallback (adapter-undefined)
+- GEN 36:14: fallback (adapter-undefined)
+- GEN 36:19: fallback (adapter-undefined)
+- GEN 36:30: fallback (adapter-undefined)
+- GEN 36:1-43: fallback (adapter-undefined)
+- GEN 37:11: fallback (adapter-undefined)
+- GEN 37:1-36: fallback (adapter-undefined)
+- GEN 38:1-30: fallback (adapter-undefined)
+- GEN 39:20: fallback (adapter-undefined)
+- GEN 39:1-23: fallback (adapter-undefined)
+- GEN 40:1-23: fallback (adapter-undefined)
+- GEN 41:36: fallback (adapter-undefined)
+- GEN 41:1-57: fallback (adapter-undefined)
+- GEN 42:1-38: fallback (adapter-undefined)
+- GEN 43:28: fallback (adapter-undefined)
+- GEN 43:1-34: fallback (adapter-undefined)
+- GEN 44:17: fallback (adapter-undefined)
+- GEN 44:1-34: fallback (adapter-undefined)
+- GEN 45:1-28: fallback (adapter-undefined)
+- GEN 46:27: fallback (adapter-undefined)
+- GEN 46:1-34: fallback (adapter-undefined)
+- GEN 47:12: fallback (adapter-undefined)
+- GEN 47:20: fallback (adapter-undefined)
+- GEN 47:26: fallback (adapter-undefined)
+- GEN 47:1-31: fallback (adapter-undefined)
+- GEN 48:1-22: fallback (adapter-undefined)
+- GEN 49:10: fallback (adapter-undefined)
+- GEN 49:11: fallback (adapter-undefined)
+- GEN 49:28: fallback (adapter-undefined)
+- GEN 49:1-33: fallback (adapter-undefined)
+- GEN 50:14: fallback (adapter-undefined)
+- GEN 50:21: fallback (adapter-undefined)
+- GEN 50:1-26: fallback (adapter-undefined)
+- EXO 1:1-22: fallback (adapter-undefined)
+- EXO 2:1-25: fallback (adapter-undefined)
+- EXO 3:1-22: fallback (adapter-undefined)
+- EXO 4:1-31: fallback (adapter-undefined)
+- EXO 5:1-23: fallback (adapter-undefined)
+- EXO 6:1-30: fallback (adapter-undefined)
+- EXO 7:1-25: fallback (adapter-undefined)
+- EXO 8:4: fallback (adapter-undefined)
+- EXO 8:1-32: fallback (adapter-undefined)
+- EXO 9:1-35: fallback (adapter-undefined)
+- EXO 10:1-29: fallback (adapter-undefined)
+- EXO 11:1-10: fallback (adapter-undefined)
+- EXO 12:1-51: fallback (adapter-undefined)
+- EXO 13:1-22: fallback (adapter-undefined)
+- EXO 14:1-31: fallback (adapter-undefined)
+- EXO 15:21: fallback (adapter-undefined)
+- EXO 15:1-27: fallback (adapter-undefined)
+- EXO 16:2: fallback (adapter-undefined)
+- EXO 16:7: fallback (adapter-undefined)
+- EXO 16:1-36: fallback (adapter-undefined)
+- EXO 17:1-16: fallback (adapter-undefined)
+- EXO 18:1-27: fallback (adapter-undefined)
+- EXO 19:1-25: fallback (adapter-undefined)
+- EXO 20:1-26: fallback (adapter-undefined)
+- EXO 21:8: fallback (adapter-undefined)
+- EXO 21:1-36: fallback (adapter-undefined)
+- EXO 22:1: fallback (adapter-undefined)
+- EXO 22:5: fallback (adapter-undefined)
+- EXO 22:27: fallback (adapter-undefined)
+- EXO 22:1-31: fallback (adapter-undefined)
+- EXO 23:1-33: fallback (adapter-undefined)
+- EXO 24:1-18: fallback (adapter-undefined)
+- EXO 25:1-40: fallback (adapter-undefined)
+- EXO 26:1-37: fallback (adapter-undefined)
+- EXO 27:11: fallback (adapter-undefined)
+- EXO 27:1-21: fallback (adapter-undefined)
+- EXO 28:28: fallback (adapter-undefined)
+- EXO 28:1-43: fallback (adapter-undefined)
+- EXO 29:1-46: fallback (adapter-undefined)
+- EXO 30:1-38: fallback (adapter-undefined)
+- EXO 31:1-18: fallback (adapter-undefined)
+- EXO 32:19: fallback (adapter-undefined)
+- EXO 32:1-35: fallback (adapter-undefined)
+- EXO 33:1: fallback (adapter-undefined)
+- EXO 33:2: fallback (adapter-undefined)
+- EXO 33:3: fallback (adapter-undefined)
+- EXO 33:4: fallback (adapter-undefined)
+- EXO 33:5: fallback (adapter-undefined)
+- EXO 33:6: fallback (adapter-undefined)
+- EXO 33:7: fallback (adapter-undefined)
+- EXO 33:8: fallback (adapter-undefined)
+- EXO 33:9: fallback (adapter-undefined)
+- EXO 33:10: fallback (adapter-undefined)
+- EXO 33:11: fallback (adapter-undefined)
+- EXO 33:12: fallback (adapter-undefined)
+- EXO 33:13: fallback (adapter-undefined)
+- EXO 33:14: fallback (adapter-undefined)
+- EXO 33:15: fallback (adapter-undefined)
+- EXO 33:16: fallback (adapter-undefined)
+- EXO 33:17: fallback (adapter-undefined)
+- EXO 33:18: fallback (adapter-undefined)
+- EXO 33:19: fallback (adapter-undefined)
+- EXO 33:20: fallback (adapter-undefined)
+- EXO 33:21: fallback (adapter-undefined)
+- EXO 33:22: fallback (adapter-undefined)
+- EXO 33:23: fallback (adapter-undefined)
+- EXO 33:1-23: fallback (adapter-undefined)
+- EXO 34:1-35: fallback (adapter-undefined)
+- EXO 35:5: fallback (adapter-undefined)
+- EXO 35:11: fallback (adapter-undefined)
+- EXO 35:1-35: fallback (adapter-undefined)
+- EXO 36:1-38: fallback (adapter-undefined)
+- EXO 37:8: fallback (adapter-undefined)
+- and more (see the counts above)
+
+## en|unfoldingWord/en/ult|v91|passage
+
+Items 24811, exceptions 2565 (fallback adapter-undefined 3922, differs 2251, api-error 1)
+
+Range windows 26846, equal 7505
+
+- GEN 1:14: fallback (adapter-undefined)
+- GEN 1:16: fallback (adapter-undefined)
+- GEN 1:18: fallback (adapter-undefined)
+- GEN 1:30: fallback (adapter-undefined)
+- GEN 1:1-31: fallback (adapter-undefined)
+- GEN 2:3: fallback (adapter-undefined)
+- GEN 2:10: fallback (adapter-undefined)
+- GEN 2:22: differs
+  - $.versions[1].text: today `"22 Next Yahweh God made a woman from the rib which he had taken out of the man{’s body}, and he took her to the man."` format 3 `"22 Next Yahweh God made a woman from the rib which he had taken out of the man {’s body}, and he took her to the man."`
+- GEN 2:1-25: fallback (adapter-undefined)
+- GEN 3:6: differs
+  - $.versions[1].text: today `"6 The woman saw that the tree{’s fruit} {looked} good to eat and that the tree {itself} was {very} beautiful. She also wanted {to eat} the ` format 3 `"6 The woman saw that the tree {’s fruit} {looked} good to eat and that the tree {itself} was {very} beautiful. She also wanted {to eat} the`
+- GEN 3:1-24: fallback (adapter-undefined)
+- GEN 4:16: fallback (adapter-undefined)
+- GEN 4:24: fallback (adapter-undefined)
+- GEN 4:26: differs
+  - $.versions[0].text: today `"26 And to Seth also a son was born, and he called his name Enosh.\n Then {people} began to call on the name of Yahweh."` format 3 `"26 And to Seth also a son was born, and he called his name Enosh. Then {people} began to call on the name of Yahweh."`
+  - $.versions[1].text: today `"26 Seth also had a son, and he named him Enosh.\n During that time people began to worship {God} by using His name Yahweh."` format 3 `"26 Seth also had a son, and he named him Enosh. During that time people began to worship {God} by using His name Yahweh."`
+- GEN 4:1-26: fallback (adapter-undefined)
+- GEN 5:1: fallback (adapter-undefined)
+- GEN 5:2: fallback (adapter-undefined)
+- GEN 5:1-32: fallback (adapter-undefined)
+- GEN 6:8: fallback (adapter-undefined)
+- GEN 6:1-22: fallback (adapter-undefined)
+- GEN 7:23: fallback (adapter-undefined)
+- GEN 7:1-24: fallback (adapter-undefined)
+- GEN 8:17: fallback (adapter-undefined)
+- GEN 8:19: fallback (adapter-undefined)
+- GEN 8:21: differs
+  - $.versions[1].text: today `"21 Yahweh smelled the aroma {of the offerings} and was pleased, and he thought to himself, “Never again will I curse the ground because of ` format 3 `"21 Yahweh smelled the aroma {of the offerings} and was pleased, and he thought to himself, “Never again will I curse the ground because of `
+- GEN 8:1-22: fallback (adapter-undefined)
+- GEN 9:17: fallback (adapter-undefined)
+- GEN 9:1-29: fallback (adapter-undefined)
+- GEN 10:1: fallback (adapter-undefined)
+- GEN 10:5: fallback (adapter-undefined)
+- GEN 10:20: fallback (adapter-undefined)
+- GEN 10:1-32: fallback (adapter-undefined)
+- GEN 11:9: fallback (adapter-undefined)
+- GEN 11:10: differs
+  - $.versions[0].text: today `"10 These {are} the generations of Shem:\n Shem {was} the son of 100 years, then he fathered Arpachshad two years after the flood."` format 3 `"10 These {are} the generations of Shem: Shem {was} the son of 100 years, then he fathered Arpachshad two years after the flood."`
+  - $.versions[1].text: today `"10 This is the record of Shem’s descendants:\n Two years after the flood {began}, when Shem was 100 years old, he had {a son named} Arpachs` format 3 `"10 This is the record of Shem’s descendants: Two years after the flood {began}, when Shem was 100 years old, he had {a son named} Arpachsha`
+- GEN 11:26: fallback (adapter-undefined)
+- GEN 11:1-32: fallback (adapter-undefined)
+- GEN 12:9: fallback (adapter-undefined)
+- GEN 12:1-20: fallback (adapter-undefined)
+- GEN 13:3: fallback (adapter-undefined)
+- GEN 13:13: fallback (adapter-undefined)
+- GEN 13:1-18: fallback (adapter-undefined)
+- GEN 14:2: fallback (adapter-undefined)
+- GEN 14:8: fallback (adapter-undefined)
+- GEN 14:16: fallback (adapter-undefined)
+- GEN 14:20: differs
+  - $.versions[0].text: today `"20 And praised be God Most High, who delivered your enemies into your hand!”\n Then he gave to him a tenth of everything."` format 3 `"20 And praised be God Most High, who delivered your enemies into your hand!” Then he gave to him a tenth of everything."`
+  - $.versions[1].text: today `"20 Praise the greatest God, because he enabled you to defeat your enemies!”\n Then Abram gave {King} Melchizedek ten percent of everything ` format 3 `"20 Praise the greatest God, because he enabled you to defeat your enemies!” Then Abram gave {King} Melchizedek ten percent of everything {t`
+- GEN 14:1-24: fallback (adapter-undefined)
+- GEN 15:1-21: fallback (adapter-undefined)
+- GEN 16:6: fallback (adapter-undefined)
+- GEN 16:1-16: fallback (adapter-undefined)
+- GEN 17:1-27: fallback (adapter-undefined)
+- GEN 18:15: fallback (adapter-undefined)
+- GEN 18:1-33: fallback (adapter-undefined)
+- GEN 19:29: fallback (adapter-undefined)
+- GEN 19:1-38: fallback (adapter-undefined)
+- GEN 20:1-18: fallback (adapter-undefined)
+- GEN 21:7: fallback (adapter-undefined)
+- GEN 21:21: fallback (adapter-undefined)
+- GEN 21:1-34: fallback (adapter-undefined)
+- GEN 22:3: fallback (adapter-undefined)
+- GEN 22:6: differs
+  - $.versions[1].text: today `"6 Then Abraham took the wood for the burnt offering {off the donkey} and loaded {it} on his son Isaac{’s shoulder} {to carry}. He {himself}` format 3 `"6 Then Abraham took the wood for the burnt offering {off the donkey} and loaded {it} on his son Isaac {’s shoulder} {to carry}. He {himself`
+- GEN 22:7: fallback (adapter-undefined)
+- GEN 22:9: differs
+  - $.versions[1].text: today `"9 When they reached the place that God had told him {to go to}, Abraham built a {stone} altar there and put the wood {on top of it}. Then h` format 3 `"9 When they reached the place that God had told him {to go to}, Abraham built a {stone} altar there and put the wood {on top of it}. Then h`
+- GEN 22:19: fallback (adapter-undefined)
+- GEN 22:1-24: fallback (adapter-undefined)
+- GEN 23:1-20: fallback (adapter-undefined)
+- GEN 24:33: fallback (adapter-undefined)
+- GEN 24:1-67: fallback (adapter-undefined)
+- GEN 25:6: fallback (adapter-undefined)
+- GEN 25:11: fallback (adapter-undefined)
+- GEN 25:18: fallback (adapter-undefined)
+- GEN 25:23: fallback (adapter-undefined)
+- GEN 25:26: fallback (adapter-undefined)
+- GEN 25:1-34: fallback (adapter-undefined)
+- GEN 26:5: fallback (adapter-undefined)
+- GEN 26:11: fallback (adapter-undefined)
+- GEN 26:33: fallback (adapter-undefined)
+- GEN 26:1-35: fallback (adapter-undefined)
+- GEN 27:3: fallback (adapter-undefined)
+- GEN 27:29: fallback (adapter-undefined)
+- GEN 27:36: differs
+  - $.versions[0].text: today `"36 Then he said, “Is it because his name is called Jacob that he has defrauded me these two times? He took my birthright, and behold, now h` format 3 `"36 Then he said, “Is it because his name is called Jacob that he has defrauded me these two times? He took my birthright, and behold, now h`
+  - $.versions[1].text: today `"36 Then Esau exclaimed, “The name Jacob fits him exactly, because he has tricked me like this two times {now}! {First} he stole my rights a` format 3 `"36 Then Esau exclaimed, “The name Jacob fits him exactly, because he has tricked me like this two times {now}! {First} he stole my rights a`
+- GEN 27:40: fallback (adapter-undefined)
+- GEN 27:1-46: fallback (adapter-undefined)
+- GEN 28:5: fallback (adapter-undefined)
+- GEN 28:9: fallback (adapter-undefined)
+- GEN 28:1-22: fallback (adapter-undefined)
+- GEN 29:14: fallback (adapter-undefined)
+- GEN 29:30: fallback (adapter-undefined)
+- GEN 29:1-35: fallback (adapter-undefined)
+- GEN 30:24: fallback (adapter-undefined)
+- GEN 30:1-43: fallback (adapter-undefined)
+- GEN 31:21: fallback (adapter-undefined)
+- GEN 31:42: fallback (adapter-undefined)
+- GEN 31:54: fallback (adapter-undefined)
+- GEN 31:55: differs
+  - $.versions[2].text: today `"55 32:1וַ⁠יַּשְׁכֵּ֨ם לָבָ֜ן בַּ⁠בֹּ֗קֶר וַ⁠יְנַשֵּׁ֧ק לְ⁠בָנָ֛י⁠ו וְ⁠לִ⁠בְנוֹתָ֖י⁠ו וַ⁠יְבָ֣רֶךְ אֶתְ⁠הֶ֑ם וַ⁠יֵּ֛לֶךְ וַ⁠יָּ֥שָׁב לָבָ֖ן ` format 3 `"55 וַ⁠יַּשְׁכֵּ֨ם לָבָ֜ן בַּ⁠בֹּ֗קֶר וַ⁠יְנַשֵּׁ֧ק לְ⁠בָנָ֛י⁠ו וְ⁠לִ⁠בְנוֹתָ֖י⁠ו וַ⁠יְבָ֣רֶךְ אֶתְ⁠הֶ֑ם וַ⁠יֵּ֛לֶךְ וַ⁠יָּ֥שָׁב לָבָ֖ן לִ⁠מ`
+- GEN 31:1-55: fallback (adapter-undefined)
+- GEN 32:1: differs
+  - $.versions[2].text: today `"1 2וְ⁠יַעֲקֹ֖ב הָלַ֣ךְ לְ⁠דַרְכּ֑⁠וֹ וַ⁠יִּפְגְּעוּ־ב֖⁠וֹ מַלְאֲכֵ֥י אֱלֹהִֽים׃"` format 3 `"1 וְ⁠יַעֲקֹ֖ב הָלַ֣ךְ לְ⁠דַרְכּ֑⁠וֹ וַ⁠יִּפְגְּעוּ־ב֖⁠וֹ מַלְאֲכֵ֥י אֱלֹהִֽים׃"`
+- GEN 32:2: differs
+  - $.versions[2].text: today `"2 3וַ⁠יֹּ֤אמֶר יַעֲקֹב֙ כַּ⁠אֲשֶׁ֣ר רָאָ֔⁠ם מַחֲנֵ֥ה אֱלֹהִ֖ים זֶ֑ה וַ⁠יִּקְרָ֛א שֵֽׁם־הַ⁠מָּק֥וֹם הַ⁠ה֖וּא מַֽחֲנָֽיִם׃פ"` format 3 `"2 וַ⁠יֹּ֤אמֶר יַעֲקֹב֙ כַּ⁠אֲשֶׁ֣ר רָאָ֔⁠ם מַחֲנֵ֥ה אֱלֹהִ֖ים זֶ֑ה וַ⁠יִּקְרָ֛א שֵֽׁם־הַ⁠מָּק֥וֹם הַ⁠ה֖וּא מַֽחֲנָֽיִם׃פ"`
+- GEN 32:3: differs
+  - $.versions[2].text: today `"3 4וַ⁠יִּשְׁלַ֨ח יַעֲקֹ֤ב מַלְאָכִים֙ לְ⁠פָנָ֔י⁠ו אֶל־עֵשָׂ֖ו אָחִ֑י⁠ו אַ֥רְצָ⁠ה שֵׂעִ֖יר שְׂדֵ֥ה אֱדֽוֹם׃"` format 3 `"3 וַ⁠יִּשְׁלַ֨ח יַעֲקֹ֤ב מַלְאָכִים֙ לְ⁠פָנָ֔י⁠ו אֶל־עֵשָׂ֖ו אָחִ֑י⁠ו אַ֥רְצָ⁠ה שֵׂעִ֖יר שְׂדֵ֥ה אֱדֽוֹם׃"`
+- GEN 32:4: differs
+  - $.versions[2].text: today `"4 5וַ⁠יְצַ֤ו אֹתָ⁠ם֙ לֵ⁠אמֹ֔ר כֹּ֣ה תֹאמְר֔וּ⁠ן לַֽ⁠אדֹנִ֖⁠י לְ⁠עֵשָׂ֑ו כֹּ֤ה אָמַר֙ עַבְדְּ⁠ךָ֣ יַעֲקֹ֔ב עִם־לָבָ֣ן גַּ֔רְתִּי וָ⁠אֵחַ֖ר ע` format 3 `"4 וַ⁠יְצַ֤ו אֹתָ⁠ם֙ לֵ⁠אמֹ֔ר כֹּ֣ה תֹאמְר֔וּ⁠ן לַֽ⁠אדֹנִ֖⁠י לְ⁠עֵשָׂ֑ו כֹּ֤ה אָמַר֙ עַבְדְּ⁠ךָ֣ יַעֲקֹ֔ב עִם־לָבָ֣ן גַּ֔רְתִּי וָ⁠אֵחַ֖ר עַ`
+- GEN 32:5: differs
+  - $.versions[2].text: today `"5 6וַֽ⁠יְהִי־לִ⁠י֙ שׁ֣וֹר וַ⁠חֲמ֔וֹר צֹ֖אן וְ⁠עֶ֣בֶד וְ⁠שִׁפְחָ֑ה וָֽ⁠אֶשְׁלְחָ⁠ה֙ לְ⁠הַגִּ֣יד לַֽ⁠אדֹנִ֔⁠י לִ⁠מְצֹא־חֵ֖ן בְּ⁠עֵינֶֽי⁠ךָ׃"` format 3 `"5 וַֽ⁠יְהִי־לִ⁠י֙ שׁ֣וֹר וַ⁠חֲמ֔וֹר צֹ֖אן וְ⁠עֶ֣בֶד וְ⁠שִׁפְחָ֑ה וָֽ⁠אֶשְׁלְחָ⁠ה֙ לְ⁠הַגִּ֣יד לַֽ⁠אדֹנִ֔⁠י לִ⁠מְצֹא־חֵ֖ן בְּ⁠עֵינֶֽי⁠ךָ׃"`
+- GEN 32:6: differs
+  - $.versions[2].text: today `"6 7וַ⁠יָּשֻׁ֨בוּ֙ הַ⁠מַּלְאָכִ֔ים אֶֽל־יַעֲקֹ֖ב לֵ⁠אמֹ֑ר בָּ֤אנוּ אֶל־אָחִ֨י⁠ךָ֙ אֶל־עֵשָׂ֔ו וְ⁠גַם֙ הֹלֵ֣ךְ לִ⁠קְרָֽאתְ⁠ךָ֔ וְ⁠אַרְבַּע־מֵ` format 3 `"6 וַ⁠יָּשֻׁ֨בוּ֙ הַ⁠מַּלְאָכִ֔ים אֶֽל־יַעֲקֹ֖ב לֵ⁠אמֹ֑ר בָּ֤אנוּ אֶל־אָחִ֨י⁠ךָ֙ אֶל־עֵשָׂ֔ו וְ⁠גַם֙ הֹלֵ֣ךְ לִ⁠קְרָֽאתְ⁠ךָ֔ וְ⁠אַרְבַּע־מֵא`
+- GEN 32:7: differs
+  - $.versions[2].text: today `"7 8וַ⁠יִּירָ֧א יַעֲקֹ֛ב מְאֹ֖ד וַ⁠יֵּ֣צֶר ל֑⁠וֹ וַ⁠יַּ֜חַץ אֶת־הָ⁠עָ֣ם אֲשֶׁר־אִתּ֗⁠וֹ וְ⁠אֶת־הַ⁠צֹּ֧אן וְ⁠אֶת־הַ⁠בָּקָ֛ר וְ⁠הַ⁠גְּמַלִּ֖ים` format 3 `"7 וַ⁠יִּירָ֧א יַעֲקֹ֛ב מְאֹ֖ד וַ⁠יֵּ֣צֶר ל֑⁠וֹ וַ⁠יַּ֜חַץ אֶת־הָ⁠עָ֣ם אֲשֶׁר־אִתּ֗⁠וֹ וְ⁠אֶת־הַ⁠צֹּ֧אן וְ⁠אֶת־הַ⁠בָּקָ֛ר וְ⁠הַ⁠גְּמַלִּ֖ים `
+- GEN 32:8: differs
+  - $.versions[2].text: today `"8 9וַ⁠יֹּ֕אמֶר אִם־יָב֥וֹא עֵשָׂ֛ו אֶל־הַ⁠מַּחֲנֶ֥ה הָ⁠אַחַ֖ת וְ⁠הִכָּ֑⁠הוּ וְ⁠הָיָ֛ה הַ⁠מַּחֲנֶ֥ה הַ⁠נִּשְׁאָ֖ר לִ⁠פְלֵיטָֽה׃"` format 3 `"8 וַ⁠יֹּ֕אמֶר אִם־יָב֥וֹא עֵשָׂ֛ו אֶל־הַ⁠מַּחֲנֶ֥ה הָ⁠אַחַ֖ת וְ⁠הִכָּ֑⁠הוּ וְ⁠הָיָ֛ה הַ⁠מַּחֲנֶ֥ה הַ⁠נִּשְׁאָ֖ר לִ⁠פְלֵיטָֽה׃"`
+- GEN 32:9: differs
+  - $.versions[2].text: today `"9 10וַ⁠יֹּאמֶר֮ יַעֲקֹב֒ אֱלֹהֵי֙ אָבִ֣⁠י אַבְרָהָ֔ם וֵ⁠אלֹהֵ֖י אָבִ֣⁠י יִצְחָ֑ק יְהוָ֞ה הָ⁠אֹמֵ֣ר אֵלַ֗⁠י שׁ֧וּב לְ⁠אַרְצְ⁠ךָ֛ וּ⁠לְ⁠מוֹלַ` format 3 `"9 וַ⁠יֹּאמֶר֮ יַעֲקֹב֒ אֱלֹהֵי֙ אָבִ֣⁠י אַבְרָהָ֔ם וֵ⁠אלֹהֵ֖י אָבִ֣⁠י יִצְחָ֑ק יְהוָ֞ה הָ⁠אֹמֵ֣ר אֵלַ֗⁠י שׁ֧וּב לְ⁠אַרְצְ⁠ךָ֛ וּ⁠לְ⁠מוֹלַדְ`
+- GEN 32:10: differs
+  - $.versions[2].text: today `"10 11קָטֹ֜נְתִּי מִ⁠כֹּ֤ל הַ⁠חֲסָדִים֙ וּ⁠מִ⁠כָּל־הָ֣⁠אֱמֶ֔ת אֲשֶׁ֥ר עָשִׂ֖יתָ אֶת־עַבְדֶּ֑⁠ךָ כִּ֣י בְ⁠מַקְלִ֗⁠י עָבַ֨רְתִּי֙ אֶת־הַ⁠יַּרְ` format 3 `"10 קָטֹ֜נְתִּי מִ⁠כֹּ֤ל הַ⁠חֲסָדִים֙ וּ⁠מִ⁠כָּל־הָ֣⁠אֱמֶ֔ת אֲשֶׁ֥ר עָשִׂ֖יתָ אֶת־עַבְדֶּ֑⁠ךָ כִּ֣י בְ⁠מַקְלִ֗⁠י עָבַ֨רְתִּי֙ אֶת־הַ⁠יַּרְדּ`
+- GEN 32:11: differs
+  - $.versions[2].text: today `"11 12הַצִּילֵ֥⁠נִי נָ֛א מִ⁠יַּ֥ד אָחִ֖⁠י מִ⁠יַּ֣ד עֵשָׂ֑ו כִּֽי־יָרֵ֤א אָנֹכִי֙ אֹת֔⁠וֹ פֶּן־יָב֣וֹא וְ⁠הִכַּ֔⁠נִי אֵ֖ם עַל־בָּנִֽים׃"` format 3 `"11 הַצִּילֵ֥⁠נִי נָ֛א מִ⁠יַּ֥ד אָחִ֖⁠י מִ⁠יַּ֣ד עֵשָׂ֑ו כִּֽי־יָרֵ֤א אָנֹכִי֙ אֹת֔⁠וֹ פֶּן־יָב֣וֹא וְ⁠הִכַּ֔⁠נִי אֵ֖ם עַל־בָּנִֽים׃"`
+- GEN 32:12: differs
+  - $.versions[2].text: today `"12 13וְ⁠אַתָּ֣ה אָמַ֔רְתָּ הֵיטֵ֥ב אֵיטִ֖יב עִמָּ֑⁠ךְ וְ⁠שַׂמְתִּ֤י אֶֽת־זַרְעֲ⁠ךָ֙ כְּ⁠ח֣וֹל הַ⁠יָּ֔ם אֲשֶׁ֥ר לֹא־יִסָּפֵ֖ר מֵ⁠רֹֽב׃"` format 3 `"12 וְ⁠אַתָּ֣ה אָמַ֔רְתָּ הֵיטֵ֥ב אֵיטִ֖יב עִמָּ֑⁠ךְ וְ⁠שַׂמְתִּ֤י אֶֽת־זַרְעֲ⁠ךָ֙ כְּ⁠ח֣וֹל הַ⁠יָּ֔ם אֲשֶׁ֥ר לֹא־יִסָּפֵ֖ר מֵ⁠רֹֽב׃"`
+- GEN 32:13: differs
+  - $.versions[2].text: today `"13 14וַ⁠יָּ֥לֶן שָׁ֖ם בַּ⁠לַּ֣יְלָה הַ⁠ה֑וּא וַ⁠יִּקַּ֞ח מִן־הַ⁠בָּ֧א בְ⁠יָד֛⁠וֹ מִנְחָ֖ה לְ⁠עֵשָׂ֥ו אָחִֽי⁠ו׃"` format 3 `"13 וַ⁠יָּ֥לֶן שָׁ֖ם בַּ⁠לַּ֣יְלָה הַ⁠ה֑וּא וַ⁠יִּקַּ֞ח מִן־הַ⁠בָּ֧א בְ⁠יָד֛⁠וֹ מִנְחָ֖ה לְ⁠עֵשָׂ֥ו אָחִֽי⁠ו׃"`
+- GEN 32:14: differs
+  - $.versions[2].text: today `"14 15עִזִּ֣ים מָאתַ֔יִם וּ⁠תְיָשִׁ֖ים עֶשְׂרִ֑ים רְחֵלִ֥ים מָאתַ֖יִם וְ⁠אֵילִ֥ים עֶשְׂרִֽים׃"` format 3 `"14 עִזִּ֣ים מָאתַ֔יִם וּ⁠תְיָשִׁ֖ים עֶשְׂרִ֑ים רְחֵלִ֥ים מָאתַ֖יִם וְ⁠אֵילִ֥ים עֶשְׂרִֽים׃"`
+- GEN 32:15: differs
+  - $.versions[2].text: today `"15 16גְּמַלִּ֧ים מֵינִיק֛וֹת וּ⁠בְנֵי⁠הֶ֖ם שְׁלֹשִׁ֑ים פָּר֤וֹת אַרְבָּעִים֙ וּ⁠פָרִ֣ים עֲשָׂרָ֔ה אֲתֹנֹ֣ת עֶשְׂרִ֔ים וַ⁠עְיָרִ֖ם עֲשָׂרָֽה` format 3 `"15 גְּמַלִּ֧ים מֵינִיק֛וֹת וּ⁠בְנֵי⁠הֶ֖ם שְׁלֹשִׁ֑ים פָּר֤וֹת אַרְבָּעִים֙ וּ⁠פָרִ֣ים עֲשָׂרָ֔ה אֲתֹנֹ֣ת עֶשְׂרִ֔ים וַ⁠עְיָרִ֖ם עֲשָׂרָֽה׃"`
+- GEN 32:16: differs
+  - $.versions[2].text: today `"16 17וַ⁠יִּתֵּן֙ בְּ⁠יַד־עֲבָדָ֔י⁠ו עֵ֥דֶר עֵ֖דֶר לְ⁠בַדּ֑⁠וֹ וַ֤⁠יֹּאמֶר אֶל־עֲבָדָי⁠ו֙ עִבְר֣וּ לְ⁠פָנַ֔⁠י וְ⁠רֶ֣וַח תָּשִׂ֔ימוּ בֵּ֥ין ע` format 3 `"16 וַ⁠יִּתֵּן֙ בְּ⁠יַד־עֲבָדָ֔י⁠ו עֵ֥דֶר עֵ֖דֶר לְ⁠בַדּ֑⁠וֹ וַ֤⁠יֹּאמֶר אֶל־עֲבָדָי⁠ו֙ עִבְר֣וּ לְ⁠פָנַ֔⁠י וְ⁠רֶ֣וַח תָּשִׂ֔ימוּ בֵּ֥ין עֵ֖`
+- GEN 32:17: differs
+  - $.versions[2].text: today `"17 18וַ⁠יְצַ֥ו אֶת־הָ⁠רִאשׁ֖וֹן לֵ⁠אמֹ֑ר כִּ֣י יִֽפְגָּשְׁ⁠ךָ֞ עֵשָׂ֣ו אָחִ֗⁠י וִ⁠שְׁאֵֽלְ⁠ךָ֙ לֵ⁠אמֹ֔ר לְ⁠מִי־אַ֨תָּה֙ וְ⁠אָ֣נָה תֵלֵ֔ךְ ו` format 3 `"17 וַ⁠יְצַ֥ו אֶת־הָ⁠רִאשׁ֖וֹן לֵ⁠אמֹ֑ר כִּ֣י יִֽפְגָּשְׁ⁠ךָ֞ עֵשָׂ֣ו אָחִ֗⁠י וִ⁠שְׁאֵֽלְ⁠ךָ֙ לֵ⁠אמֹ֔ר לְ⁠מִי־אַ֨תָּה֙ וְ⁠אָ֣נָה תֵלֵ֔ךְ וּ⁠`
+- GEN 32:18: differs
+  - $.versions[2].text: today `"18 19וְ⁠אָֽמַרְתָּ֙ לְ⁠עַבְדְּ⁠ךָ֣ לְ⁠יַעֲקֹ֔ב מִנְחָ֥ה הִוא֙ שְׁלוּחָ֔ה לַֽ⁠אדֹנִ֖⁠י לְ⁠עֵשָׂ֑ו וְ⁠הִנֵּ֥ה גַם־ה֖וּא אַחֲרֵֽי⁠נוּ׃"` format 3 `"18 וְ⁠אָֽמַרְתָּ֙ לְ⁠עַבְדְּ⁠ךָ֣ לְ⁠יַעֲקֹ֔ב מִנְחָ֥ה הִוא֙ שְׁלוּחָ֔ה לַֽ⁠אדֹנִ֖⁠י לְ⁠עֵשָׂ֑ו וְ⁠הִנֵּ֥ה גַם־ה֖וּא אַחֲרֵֽי⁠נוּ׃"`
+- GEN 32:19: differs
+  - $.versions[2].text: today `"19 20וַ⁠יְצַ֞ו גַּ֣ם אֶת־הַ⁠שֵּׁנִ֗י גַּ֚ם אֶת־הַ⁠שְּׁלִישִׁ֔י גַּ֚ם אֶת־כָּל־הַ⁠הֹ֣לְכִ֔ים אַחֲרֵ֥י הָ⁠עֲדָרִ֖ים לֵ⁠אמֹ֑ר כַּ⁠דָּבָ֤ר הַ⁠ז` format 3 `"19 וַ⁠יְצַ֞ו גַּ֣ם אֶת־הַ⁠שֵּׁנִ֗י גַּ֚ם אֶת־הַ⁠שְּׁלִישִׁ֔י גַּ֚ם אֶת־כָּל־הַ⁠הֹ֣לְכִ֔ים אַחֲרֵ֥י הָ⁠עֲדָרִ֖ים לֵ⁠אמֹ֑ר כַּ⁠דָּבָ֤ר הַ⁠זֶּ`
+- GEN 32:20: differs
+  - $.versions[2].text: today `"20 21וַ⁠אֲמַרְתֶּ֕ם גַּ֗ם הִנֵּ֛ה עַבְדְּ⁠ךָ֥ יַעֲקֹ֖ב אַחֲרֵ֑י⁠נוּ כִּֽי־אָמַ֞ר אֲכַפְּרָ֣ה פָנָ֗י⁠ו בַּ⁠מִּנְחָה֙ הַ⁠הֹלֶ֣כֶת לְ⁠פָנָ֔⁠י ` format 3 `"20 וַ⁠אֲמַרְתֶּ֕ם גַּ֗ם הִנֵּ֛ה עַבְדְּ⁠ךָ֥ יַעֲקֹ֖ב אַחֲרֵ֑י⁠נוּ כִּֽי־אָמַ֞ר אֲכַפְּרָ֣ה פָנָ֗י⁠ו בַּ⁠מִּנְחָה֙ הַ⁠הֹלֶ֣כֶת לְ⁠פָנָ֔⁠י וְ`
+- GEN 32:21: fallback (adapter-undefined)
+- GEN 32:22: differs
+  - $.versions[2].text: today `"22 23וַ⁠יָּ֣קָם ׀ בַּ⁠לַּ֣יְלָה ה֗וּא וַ⁠יִּקַּ֞ח אֶת־שְׁתֵּ֤י נָשָׁי⁠ו֙ וְ⁠אֶת־שְׁתֵּ֣י שִׁפְחֹתָ֔י⁠ו וְ⁠אֶת־אַחַ֥ד עָשָׂ֖ר יְלָדָ֑י⁠ו וַֽ` format 3 `"22 וַ⁠יָּ֣קָם ׀ בַּ⁠לַּ֣יְלָה ה֗וּא וַ⁠יִּקַּ֞ח אֶת־שְׁתֵּ֤י נָשָׁי⁠ו֙ וְ⁠אֶת־שְׁתֵּ֣י שִׁפְחֹתָ֔י⁠ו וְ⁠אֶת־אַחַ֥ד עָשָׂ֖ר יְלָדָ֑י⁠ו וַֽ⁠י`
+- GEN 32:23: differs
+  - $.versions[2].text: today `"23 24וַ⁠יִּקָּחֵ֔⁠ם וַ⁠יַּֽעֲבִרֵ֖⁠ם אֶת־הַ⁠נָּ֑חַל וַֽ⁠יַּעֲבֵ֖ר אֶת־אֲשֶׁר־ל⁠וֹ׃"` format 3 `"23 וַ⁠יִּקָּחֵ֔⁠ם וַ⁠יַּֽעֲבִרֵ֖⁠ם אֶת־הַ⁠נָּ֑חַל וַֽ⁠יַּעֲבֵ֖ר אֶת־אֲשֶׁר־ל⁠וֹ׃"`
+- GEN 32:24: differs
+  - $.versions[2].text: today `"24 25וַ⁠יִּוָּתֵ֥ר יַעֲקֹ֖ב לְ⁠בַדּ֑⁠וֹ וַ⁠יֵּאָבֵ֥ק אִישׁ֙ עִמּ֔⁠וֹ עַ֖ד עֲל֥וֹת הַ⁠שָּֽׁחַר׃"` format 3 `"24 וַ⁠יִּוָּתֵ֥ר יַעֲקֹ֖ב לְ⁠בַדּ֑⁠וֹ וַ⁠יֵּאָבֵ֥ק אִישׁ֙ עִמּ֔⁠וֹ עַ֖ד עֲל֥וֹת הַ⁠שָּֽׁחַר׃"`
+- GEN 32:25: differs
+  - $.versions[2].text: today `"25 26וַ⁠יַּ֗רְא כִּ֣י לֹ֤א יָכֹל֙ ל֔⁠וֹ וַ⁠יִּגַּ֖ע בְּ⁠כַף־יְרֵכ֑⁠וֹ וַ⁠תֵּ֨קַע֙ כַּף־יֶ֣רֶךְ יַעֲקֹ֔ב בְּ⁠הֵֽאָבְק֖⁠וֹ עִמּֽ⁠וֹ׃"` format 3 `"25 וַ⁠יַּ֗רְא כִּ֣י לֹ֤א יָכֹל֙ ל֔⁠וֹ וַ⁠יִּגַּ֖ע בְּ⁠כַף־יְרֵכ֑⁠וֹ וַ⁠תֵּ֨קַע֙ כַּף־יֶ֣רֶךְ יַעֲקֹ֔ב בְּ⁠הֵֽאָבְק֖⁠וֹ עִמּֽ⁠וֹ׃"`
+- GEN 32:26: differs
+  - $.versions[2].text: today `"26 27וַ⁠יֹּ֣אמֶר שַׁלְּחֵ֔⁠נִי כִּ֥י עָלָ֖ה הַ⁠שָּׁ֑חַר וַ⁠יֹּ֨אמֶר֙ לֹ֣א אֲשַֽׁלֵּחֲ⁠ךָ֔ כִּ֖י אִם־בֵּרַכְתָּֽ⁠נִי׃"` format 3 `"26 וַ⁠יֹּ֣אמֶר שַׁלְּחֵ֔⁠נִי כִּ֥י עָלָ֖ה הַ⁠שָּׁ֑חַר וַ⁠יֹּ֨אמֶר֙ לֹ֣א אֲשַֽׁלֵּחֲ⁠ךָ֔ כִּ֖י אִם־בֵּרַכְתָּֽ⁠נִי׃"`
+- GEN 32:27: differs
+  - $.versions[2].text: today `"27 28וַ⁠יֹּ֥אמֶר אֵלָ֖י⁠ו מַה־שְּׁמֶ֑⁠ךָ וַ⁠יֹּ֖אמֶר יַעֲקֹֽב׃"` format 3 `"27 וַ⁠יֹּ֥אמֶר אֵלָ֖י⁠ו מַה־שְּׁמֶ֑⁠ךָ וַ⁠יֹּ֖אמֶר יַעֲקֹֽב׃"`
+- GEN 32:28: differs
+  - $.versions[2].text: today `"28 29וַ⁠יֹּ֗אמֶר לֹ֤א יַעֲקֹב֙ יֵאָמֵ֥ר עוֹד֙ שִׁמְ⁠ךָ֔ כִּ֖י אִם־יִשְׂרָאֵ֑ל כִּֽי־שָׂרִ֧יתָ עִם־אֱלֹהִ֛ים וְ⁠עִם־אֲנָשִׁ֖ים וַ⁠תּוּכָֽל׃"` format 3 `"28 וַ⁠יֹּ֗אמֶר לֹ֤א יַעֲקֹב֙ יֵאָמֵ֥ר עוֹד֙ שִׁמְ⁠ךָ֔ כִּ֖י אִם־יִשְׂרָאֵ֑ל כִּֽי־שָׂרִ֧יתָ עִם־אֱלֹהִ֛ים וְ⁠עִם־אֲנָשִׁ֖ים וַ⁠תּוּכָֽל׃"`
+- GEN 32:29: differs
+  - $.versions[2].text: today `"29 30וַ⁠יִּשְׁאַ֣ל יַעֲקֹ֗ב וַ⁠יֹּ֨אמֶר֙ הַגִּֽידָ⁠ה־נָּ֣א שְׁמֶ֔⁠ךָ וַ⁠יֹּ֕אמֶר לָ֥⁠מָּה זֶּ֖ה תִּשְׁאַ֣ל לִ⁠שְׁמִ֑⁠י וַ⁠יְבָ֥רֶךְ אֹת֖⁠וֹ` format 3 `"29 וַ⁠יִּשְׁאַ֣ל יַעֲקֹ֗ב וַ⁠יֹּ֨אמֶר֙ הַגִּֽידָ⁠ה־נָּ֣א שְׁמֶ֔⁠ךָ וַ⁠יֹּ֕אמֶר לָ֥⁠מָּה זֶּ֖ה תִּשְׁאַ֣ל לִ⁠שְׁמִ֑⁠י וַ⁠יְבָ֥רֶךְ אֹת֖⁠וֹ ש`
+- GEN 32:30: differs
+  - $.versions[2].text: today `"30 31וַ⁠יִּקְרָ֧א יַעֲקֹ֛ב שֵׁ֥ם הַ⁠מָּק֖וֹם פְּנִיאֵ֑ל כִּֽי־רָאִ֤יתִי אֱלֹהִים֙ פָּנִ֣ים אֶל־פָּנִ֔ים וַ⁠תִּנָּצֵ֖ל נַפְשִֽׁ⁠י׃"` format 3 `"30 וַ⁠יִּקְרָ֧א יַעֲקֹ֛ב שֵׁ֥ם הַ⁠מָּק֖וֹם פְּנִיאֵ֑ל כִּֽי־רָאִ֤יתִי אֱלֹהִים֙ פָּנִ֣ים אֶל־פָּנִ֔ים וַ⁠תִּנָּצֵ֖ל נַפְשִֽׁ⁠י׃"`
+- GEN 32:31: differs
+  - $.versions[2].text: today `"31 32וַ⁠יִּֽזְרַֽח־ל֣⁠וֹ הַ⁠שֶּׁ֔מֶשׁ כַּ⁠אֲשֶׁ֥ר עָבַ֖ר אֶת־פְּנוּאֵ֑ל וְ⁠ה֥וּא צֹלֵ֖עַ עַל־יְרֵכֽ⁠וֹ׃"` format 3 `"31 וַ⁠יִּֽזְרַֽח־ל֣⁠וֹ הַ⁠שֶּׁ֔מֶשׁ כַּ⁠אֲשֶׁ֥ר עָבַ֖ר אֶת־פְּנוּאֵ֑ל וְ⁠ה֥וּא צֹלֵ֖עַ עַל־יְרֵכֽ⁠וֹ׃"`
+- GEN 32:32: differs
+  - $.versions[2].text: today `"32 33עַל־כֵּ֡ן לֹֽא־יֹאכְל֨וּ בְנֵֽי־יִשְׂרָאֵ֜ל אֶת־גִּ֣יד הַ⁠נָּשֶׁ֗ה אֲשֶׁר֙ עַל־כַּ֣ף הַ⁠יָּרֵ֔ךְ עַ֖ד הַ⁠יּ֣וֹם הַ⁠זֶּ֑ה כִּ֤י נָגַע֙ ` format 3 `"32 עַל־כֵּ֡ן לֹֽא־יֹאכְל֨וּ בְנֵֽי־יִשְׂרָאֵ֜ל אֶת־גִּ֣יד הַ⁠נָּשֶׁ֗ה אֲשֶׁר֙ עַל־כַּ֣ף הַ⁠יָּרֵ֔ךְ עַ֖ד הַ⁠יּ֣וֹם הַ⁠זֶּ֑ה כִּ֤י נָגַע֙ בּ`
+- GEN 32:1-32: fallback (adapter-undefined)
+- GEN 33:1-20: fallback (adapter-undefined)
+- GEN 34:1-31: fallback (adapter-undefined)
+- GEN 35:15: fallback (adapter-undefined)
+- GEN 35:20: fallback (adapter-undefined)
+- GEN 35:22: differs
+  - $.versions[0].text: today `"22 And it happened while Israel was living in that land, then Reuben went and lay with Bilhah, the concubine of his father, and Israel hear` format 3 `"22 And it happened while Israel was living in that land, then Reuben went and lay with Bilhah, the concubine of his father, and Israel hear`
+  - $.versions[1].text: today `"22 While they were living in that area, {Israel’s son} Reuben committed adultery with his father’s servant-wife Bilhah, and Israel found ou` format 3 `"22 While they were living in that area, {Israel’s son} Reuben committed adultery with his father’s servant-wife Bilhah, and Israel found ou`
+- GEN 35:26: fallback (adapter-undefined)
+- GEN 35:1-29: fallback (adapter-undefined)
+- GEN 36:2: fallback (adapter-undefined)
+- GEN 36:5: fallback (adapter-undefined)
+- GEN 36:14: fallback (adapter-undefined)
+- GEN 36:19: fallback (adapter-undefined)
+- GEN 36:30: fallback (adapter-undefined)
+- GEN 36:1-43: fallback (adapter-undefined)
+- GEN 37:11: fallback (adapter-undefined)
+- GEN 37:17: differs
+  - $.versions[0].text: today `"17 Then the man said, “They set out from here. For I heard them say, ‘Let us go to Dothan.’”\n\n Then Joseph went after his brothers and fo` format 3 `"17 Then the man said, “They set out from here. For I heard them say, ‘Let us go to Dothan.’” Then Joseph went after his brothers and found `
+  - $.versions[1].text: today `"17 The man answered, “They were here and then left, but I overheard them say that they were going to {the town of} Dothan.”\n So Joseph fol` format 3 `"17 The man answered, “They were here and then left, but I overheard them say that they were going to {the town of} Dothan.” So Joseph follo`
+- GEN 37:1-36: fallback (adapter-undefined)
+- GEN 38:1-30: fallback (adapter-undefined)
+- GEN 39:6: differs
+  - $.versions[0].text: today `"6 And he left all that {belonged} to him in the hand of Joseph, and he did not think to himself {about} anything except for the bread that ` format 3 `"6 And he left all that {belonged} to him in the hand of Joseph, and he did not think to himself {about} anything except for the bread that `
+  - $.versions[1].text: today `"6 In fact, after Joseph’s owner put him in charge of everything that he owned, he did not {need to} concern himself with anything {in his h` format 3 `"6 In fact, after Joseph’s owner put him in charge of everything that he owned, he did not {need to} concern himself with anything {in his h`
+- GEN 39:20: fallback (adapter-undefined)
+- GEN 39:1-23: fallback (adapter-undefined)
+- GEN 40:1-23: fallback (adapter-undefined)
+- GEN 41:36: fallback (adapter-undefined)
+- GEN 41:1-57: fallback (adapter-undefined)
+- GEN 42:1-38: fallback (adapter-undefined)
+- GEN 43:28: fallback (adapter-undefined)
+- GEN 43:1-34: fallback (adapter-undefined)
+- GEN 44:17: fallback (adapter-undefined)
+- GEN 44:1-34: fallback (adapter-undefined)
+- GEN 45:1-28: fallback (adapter-undefined)
+- GEN 46:27: fallback (adapter-undefined)
+- GEN 46:1-34: fallback (adapter-undefined)
+- GEN 47:12: fallback (adapter-undefined)
+- GEN 47:20: fallback (adapter-undefined)
+- GEN 47:26: fallback (adapter-undefined)
+- GEN 47:1-31: fallback (adapter-undefined)
+- GEN 48:20: differs
+  - $.versions[0].text: today `"20 And he blessed them on that day, saying, “By you Israel will bless {people}, saying, ‘May God make you like Ephraim and like Manasseh.’”` format 3 `"20 And he blessed them on that day, saying, “By you Israel will bless {people}, saying, ‘May God make you like Ephraim and like Manasseh.’”`
+  - $.versions[1].text: today `"20 So Israel blessed Ephraim and Manasseh that day by saying {to them}, “{The people of} Israel will use your names when they bless {people` format 3 `"20 So Israel blessed Ephraim and Manasseh that day by saying {to them}, “{The people of} Israel will use your names when they bless {people`
+- GEN 48:1-22: fallback (adapter-undefined)
+- GEN 49:10: fallback (adapter-undefined)
+- GEN 49:11: fallback (adapter-undefined)
+- GEN 49:28: fallback (adapter-undefined)
+- GEN 49:1-33: fallback (adapter-undefined)
+- GEN 50:2: differs
+  - $.versions[1].text: today `"2 Then he ordered his doctors who served him to prepare his father{’s body} for burial. So they did that."` format 3 `"2 Then he ordered his doctors who served him to prepare his father {’s body} for burial. So they did that."`
+- GEN 50:5: differs
+  - $.versions[1].text: today `"5 that when my father was about to die, he had me vow to him that I would bury his body in the region of Canaan, in a tomb that he had prep` format 3 `"5 that when my father was about to die, he had me vow to him that I would bury his body in the region of Canaan, in a tomb that he had prep`
+- GEN 50:6: differs
+  - $.versions[1].text: today `"6 {When Pharaoh heard Joseph’s message,} he replied, “{Tell Joseph that} he may go {to Canaan} and bury his father{’s body} just as his fat` format 3 `"6 {When Pharaoh heard Joseph’s message,} he replied, “{Tell Joseph that} he may go {to Canaan} and bury his father {’s body} just as his fa`
+- GEN 50:7: differs
+  - $.versions[1].text: today `"7 So Joseph started the trip {to Canaan} to bury his father{’s body}, and all Pharaoh’s officials escorted him, {including} the important l` format 3 `"7 So Joseph started the trip {to Canaan} to bury his father {’s body}, and all Pharaoh’s officials escorted him, {including} the important `
+- GEN 50:14: fallback (adapter-undefined)
+- GEN 50:21: fallback (adapter-undefined)
+- GEN 50:1-26: fallback (adapter-undefined)
+- EXO 1:1-22: fallback (adapter-undefined)
+- EXO 2:9: differs
+  - $.versions[0].text: today `"9 And the daughter of Pharaoh said to her, “Take this child and cause him to nurse for me, and I shall give your wages.”\n\n And the woman ` format 3 `"9 And the daughter of Pharaoh said to her, “Take this child and cause him to nurse for me, and I shall give your wages.” And the woman took`
+  - $.versions[1].text: today `"9 The king’s daughter said to the mother, “Please take this baby and nurse him for me. I will pay you for doing that.”\n\n So the baby’s mo` format 3 `"9 The king’s daughter said to the mother, “Please take this baby and nurse him for me. I will pay you for doing that.” So the baby’s mother`
+- EXO 2:14: differs
+  - $.versions[0].text: today `"14 And he said, “Who set you as the ruler man and judge over us? Are you saying to kill me like you killed the Egyptian?”\n\n And Moses fea` format 3 `"14 And he said, “Who set you as the ruler man and judge over us? Are you saying to kill me like you killed the Egyptian?” And Moses feared `
+  - $.versions[1].text: today `"14 The man replied, “No one put you in charge of judging us! Do not think you {will get away with} killing me like you killed that Egyptian` format 3 `"14 The man replied, “No one put you in charge of judging us! Do not think you {will get away with} killing me like you killed that Egyptian`
+- EXO 2:15: differs
+  - $.versions[0].text: today `"15 And Pharaoh heard this thing, and he sought to kill Moses. And Moses fled from the face of Pharaoh.\n\n And he dwelt in the land of Midi` format 3 `"15 And Pharaoh heard this thing, and he sought to kill Moses. And Moses fled from the face of Pharaoh. And he dwelt in the land of Midian, `
+- EXO 2:1-25: fallback (adapter-undefined)
+- EXO 3:4: differs
+  - $.versions[0].text: today `"4 And Yahweh saw that he had turned aside in order to look, and God called to him from the middle of the bush, and he said, “Moses, Moses.”` format 3 `"4 And Yahweh saw that he had turned aside in order to look, and God called to him from the middle of the bush, and he said, “Moses, Moses.”`
+  - $.versions[1].text: today `"4 When Yahweh saw Moses coming for a closer look, he called out from the bush, “Moses, Moses!”\n “Yes!” Moses replied."` format 3 `"4 When Yahweh saw Moses coming for a closer look, he called out from the bush, “Moses, Moses!” “Yes!” Moses replied."`
+- EXO 3:18: differs
+  - $.versions[0].text: today `"18 And they will listen to your voice.\n And you and the elders of Israel will go to the king of Egypt, and you all will say to him, ‘Yahwe` format 3 `"18 And they will listen to your voice. And you and the elders of Israel will go to the king of Egypt, and you all will say to him, ‘Yahweh,`
+  - $.versions[1].text: today `"18 The leaders will do what you say.\n Then you and the leaders will go to the king of Egypt, and you will say to him, ‘Yahweh, the God who` format 3 `"18 The leaders will do what you say. Then you and the leaders will go to the king of Egypt, and you will say to him, ‘Yahweh, the God whom `
+- EXO 3:1-22: fallback (adapter-undefined)
+- EXO 4:2: differs
+  - $.versions[0].text: today `"2 And Yahweh said to him, “What is that in your hand?”\n And he said, “A staff.”"` format 3 `"2 And Yahweh said to him, “What is that in your hand?” And he said, “A staff.”"`
+  - $.versions[1].text: today `"2 Yahweh said to him, “What is that in your hand?”\n Moses answered, “A staff.”"` format 3 `"2 Yahweh said to him, “What is that in your hand?” Moses answered, “A staff.”"`
+- EXO 4:18: differs
+  - $.versions[0].text: today `"18 And Moses went and returned to Jethro his father-in-law, and he said to him, “Please let me go, and let me return to my brothers who are` format 3 `"18 And Moses went and returned to Jethro his father-in-law, and he said to him, “Please let me go, and let me return to my brothers who are`
+  - $.versions[1].text: today `"18 Moses went back to his father-in-law, Jethro, and said to him, “Please let me go back to my relatives in Egypt to see if they are well.”` format 3 `"18 Moses went back to his father-in-law, Jethro, and said to him, “Please let me go back to my relatives in Egypt to see if they are well.”`
+- EXO 4:1-31: fallback (adapter-undefined)
+- EXO 5:1-23: fallback (adapter-undefined)
+- EXO 6:14: differs
+  - $.versions[0].text: today `"14 These were the heads of the houses of their fathers:\n The sons of Reuben, the firstborn of Israel: Hanoch and Pallu, Hezron and Karmi. ` format 3 `"14 These were the heads of the houses of their fathers: The sons of Reuben, the firstborn of Israel: Hanoch and Pallu, Hezron and Karmi. Th`
+  - $.versions[1].text: today `"14 These are the original clan leaders:\n Jacob’s oldest son Reuben had these sons: Hanok, Pallu, Hezron, and Karmi. The clans of Reuben ar` format 3 `"14 These are the original clan leaders: Jacob’s oldest son Reuben had these sons: Hanok, Pallu, Hezron, and Karmi. The clans of Reuben are `
+- EXO 6:1-30: fallback (adapter-undefined)
+- EXO 7:1-25: fallback (adapter-undefined)
+- EXO 8:1: differs
+  - $.versions[2].text: today `"1 7:26וַ⁠יֹּ֤אמֶר יְהוָה֙ אֶל־מֹשֶׁ֔ה בֹּ֖א אֶל־פַּרְעֹ֑ה וְ⁠אָמַרְתָּ֣ אֵלָ֗י⁠ו כֹּ֚ה אָמַ֣ר יְהוָ֔ה שַׁלַּ֥ח אֶת־עַמִּ֖⁠י וְ⁠יַֽעַבְדֻֽ⁠נ` format 3 `"1 וַ⁠יֹּ֤אמֶר יְהוָה֙ אֶל־מֹשֶׁ֔ה בֹּ֖א אֶל־פַּרְעֹ֑ה וְ⁠אָמַרְתָּ֣ אֵלָ֗י⁠ו כֹּ֚ה אָמַ֣ר יְהוָ֔ה שַׁלַּ֥ח אֶת־עַמִּ֖⁠י וְ⁠יַֽעַבְדֻֽ⁠נִי׃"`
+- EXO 8:2: differs
+  - $.versions[2].text: today `"2 7:27וְ⁠אִם־מָאֵ֥ן אַתָּ֖ה לְ⁠שַׁלֵּ֑חַ הִנֵּ֣ה אָנֹכִ֗י נֹגֵ֛ף אֶת־כָּל־גְּבוּלְ⁠ךָ֖ בַּֽ⁠צְפַרְדְּעִֽים׃"` format 3 `"2 וְ⁠אִם־מָאֵ֥ן אַתָּ֖ה לְ⁠שַׁלֵּ֑חַ הִנֵּ֣ה אָנֹכִ֗י נֹגֵ֛ף אֶת־כָּל־גְּבוּלְ⁠ךָ֖ בַּֽ⁠צְפַרְדְּעִֽים׃"`
+- EXO 8:3: differs
+  - $.versions[2].text: today `"3 7:28וְ⁠שָׁרַ֣ץ הַ⁠יְאֹר֮ צְפַרְדְּעִים֒ וְ⁠עָלוּ֙ וּ⁠בָ֣אוּ בְּ⁠בֵיתֶ֔⁠ךָ וּ⁠בַ⁠חֲדַ֥ר מִשְׁכָּבְ⁠ךָ֖ וְ⁠עַל־מִטָּתֶ֑⁠ךָ וּ⁠בְ⁠בֵ֤ית עֲבָ` format 3 `"3 וְ⁠שָׁרַ֣ץ הַ⁠יְאֹר֮ צְפַרְדְּעִים֒ וְ⁠עָלוּ֙ וּ⁠בָ֣אוּ בְּ⁠בֵיתֶ֔⁠ךָ וּ⁠בַ⁠חֲדַ֥ר מִשְׁכָּבְ⁠ךָ֖ וְ⁠עַל־מִטָּתֶ֑⁠ךָ וּ⁠בְ⁠בֵ֤ית עֲבָדֶ֨י`
+- EXO 8:4: fallback (adapter-undefined)
+- EXO 8:5: differs
+  - $.versions[2].text: today `"5 1וַ⁠יֹּ֣אמֶר יְהוָה֮ אֶל־מֹשֶׁה֒ אֱמֹ֣ר אֶֽל־אַהֲרֹ֗ן נְטֵ֤ה אֶת־יָדְ⁠ךָ֙ בְּ⁠מַטֶּ֔⁠ךָ עַל־הַ֨⁠נְּהָרֹ֔ת עַל־הַ⁠יְאֹרִ֖ים וְ⁠עַל־הָ⁠אֲגַ` format 3 `"5 וַ⁠יֹּ֣אמֶר יְהוָה֮ אֶל־מֹשֶׁה֒ אֱמֹ֣ר אֶֽל־אַהֲרֹ֗ן נְטֵ֤ה אֶת־יָדְ⁠ךָ֙ בְּ⁠מַטֶּ֔⁠ךָ עַל־הַ֨⁠נְּהָרֹ֔ת עַל־הַ⁠יְאֹרִ֖ים וְ⁠עַל־הָ⁠אֲגַמ`
+- EXO 8:6: differs
+  - $.versions[2].text: today `"6 2וַ⁠יֵּ֤ט אַהֲרֹן֙ אֶת־יָד֔⁠וֹ עַ֖ל מֵימֵ֣י מִצְרָ֑יִם וַ⁠תַּ֨עַל֙ הַ⁠צְּפַרְדֵּ֔עַ וַ⁠תְּכַ֖ס אֶת־אֶ֥רֶץ מִצְרָֽיִם׃"` format 3 `"6 וַ⁠יֵּ֤ט אַהֲרֹן֙ אֶת־יָד֔⁠וֹ עַ֖ל מֵימֵ֣י מִצְרָ֑יִם וַ⁠תַּ֨עַל֙ הַ⁠צְּפַרְדֵּ֔עַ וַ⁠תְּכַ֖ס אֶת־אֶ֥רֶץ מִצְרָֽיִם׃"`
+- EXO 8:7: differs
+  - $.versions[2].text: today `"7 3וַ⁠יַּֽעֲשׂוּ־כֵ֥ן הַֽ⁠חֲרְטֻמִּ֖ים בְּ⁠לָטֵי⁠הֶ֑ם וַ⁠יַּעֲל֥וּ אֶת־הַֽ⁠צְפַרְדְּעִ֖ים עַל־אֶ֥רֶץ מִצְרָֽיִם׃"` format 3 `"7 וַ⁠יַּֽעֲשׂוּ־כֵ֥ן הַֽ⁠חֲרְטֻמִּ֖ים בְּ⁠לָטֵי⁠הֶ֑ם וַ⁠יַּעֲל֥וּ אֶת־הַֽ⁠צְפַרְדְּעִ֖ים עַל־אֶ֥רֶץ מִצְרָֽיִם׃"`
+- EXO 8:8: differs
+  - $.versions[2].text: today `"8 4וַ⁠יִּקְרָ֨א פַרְעֹ֜ה לְ⁠מֹשֶׁ֣ה וּֽ⁠לְ⁠אַהֲרֹ֗ן וַ⁠יֹּ֨אמֶר֙ הַעְתִּ֣ירוּ אֶל־יְהוָ֔ה וְ⁠יָסֵר֙ הַֽ⁠צְפַרְדְּעִ֔ים מִמֶּ֖⁠נִּי וּ⁠מֵֽ⁠ע` format 3 `"8 וַ⁠יִּקְרָ֨א פַרְעֹ֜ה לְ⁠מֹשֶׁ֣ה וּֽ⁠לְ⁠אַהֲרֹ֗ן וַ⁠יֹּ֨אמֶר֙ הַעְתִּ֣ירוּ אֶל־יְהוָ֔ה וְ⁠יָסֵר֙ הַֽ⁠צְפַרְדְּעִ֔ים מִמֶּ֖⁠נִּי וּ⁠מֵֽ⁠עַ`
+- EXO 8:9: differs
+  - $.versions[2].text: today `"9 5וַ⁠יֹּ֣אמֶר מֹשֶׁ֣ה לְ⁠פַרְעֹה֮ הִתְפָּאֵ֣ר עָלַ⁠י֒ לְ⁠מָתַ֣י ׀ אַעְתִּ֣יר לְ⁠ךָ֗ וְ⁠לַ⁠עֲבָדֶ֨י⁠ךָ֙ וּֽ⁠לְ⁠עַמְּ⁠ךָ֔ לְ⁠הַכְרִית֙ הַֽ⁠צ` format 3 `"9 וַ⁠יֹּ֣אמֶר מֹשֶׁ֣ה לְ⁠פַרְעֹה֮ הִתְפָּאֵ֣ר עָלַ⁠י֒ לְ⁠מָתַ֣י ׀ אַעְתִּ֣יר לְ⁠ךָ֗ וְ⁠לַ⁠עֲבָדֶ֨י⁠ךָ֙ וּֽ⁠לְ⁠עַמְּ⁠ךָ֔ לְ⁠הַכְרִית֙ הַֽ⁠צֲ`
+- and more (see the counts above)
+
+## en|unfoldingWord/en/ust|v91|passage
+
+Items 24811, exceptions 2565 (fallback adapter-undefined 3922, differs 2251, api-error 1)
+
+Range windows 26846, equal 7505
+
+- GEN 1:14: fallback (adapter-undefined)
+- GEN 1:16: fallback (adapter-undefined)
+- GEN 1:18: fallback (adapter-undefined)
+- GEN 1:30: fallback (adapter-undefined)
+- GEN 1:1-31: fallback (adapter-undefined)
+- GEN 2:3: fallback (adapter-undefined)
+- GEN 2:10: fallback (adapter-undefined)
+- GEN 2:22: differs
+  - $.versions[1].text: today `"22 Next Yahweh God made a woman from the rib which he had taken out of the man{’s body}, and he took her to the man."` format 3 `"22 Next Yahweh God made a woman from the rib which he had taken out of the man {’s body}, and he took her to the man."`
+- GEN 2:1-25: fallback (adapter-undefined)
+- GEN 3:6: differs
+  - $.versions[1].text: today `"6 The woman saw that the tree{’s fruit} {looked} good to eat and that the tree {itself} was {very} beautiful. She also wanted {to eat} the ` format 3 `"6 The woman saw that the tree {’s fruit} {looked} good to eat and that the tree {itself} was {very} beautiful. She also wanted {to eat} the`
+- GEN 3:1-24: fallback (adapter-undefined)
+- GEN 4:16: fallback (adapter-undefined)
+- GEN 4:24: fallback (adapter-undefined)
+- GEN 4:26: differs
+  - $.versions[0].text: today `"26 And to Seth also a son was born, and he called his name Enosh.\n Then {people} began to call on the name of Yahweh."` format 3 `"26 And to Seth also a son was born, and he called his name Enosh. Then {people} began to call on the name of Yahweh."`
+  - $.versions[1].text: today `"26 Seth also had a son, and he named him Enosh.\n During that time people began to worship {God} by using His name Yahweh."` format 3 `"26 Seth also had a son, and he named him Enosh. During that time people began to worship {God} by using His name Yahweh."`
+- GEN 4:1-26: fallback (adapter-undefined)
+- GEN 5:1: fallback (adapter-undefined)
+- GEN 5:2: fallback (adapter-undefined)
+- GEN 5:1-32: fallback (adapter-undefined)
+- GEN 6:8: fallback (adapter-undefined)
+- GEN 6:1-22: fallback (adapter-undefined)
+- GEN 7:23: fallback (adapter-undefined)
+- GEN 7:1-24: fallback (adapter-undefined)
+- GEN 8:17: fallback (adapter-undefined)
+- GEN 8:19: fallback (adapter-undefined)
+- GEN 8:21: differs
+  - $.versions[1].text: today `"21 Yahweh smelled the aroma {of the offerings} and was pleased, and he thought to himself, “Never again will I curse the ground because of ` format 3 `"21 Yahweh smelled the aroma {of the offerings} and was pleased, and he thought to himself, “Never again will I curse the ground because of `
+- GEN 8:1-22: fallback (adapter-undefined)
+- GEN 9:17: fallback (adapter-undefined)
+- GEN 9:1-29: fallback (adapter-undefined)
+- GEN 10:1: fallback (adapter-undefined)
+- GEN 10:5: fallback (adapter-undefined)
+- GEN 10:20: fallback (adapter-undefined)
+- GEN 10:1-32: fallback (adapter-undefined)
+- GEN 11:9: fallback (adapter-undefined)
+- GEN 11:10: differs
+  - $.versions[0].text: today `"10 These {are} the generations of Shem:\n Shem {was} the son of 100 years, then he fathered Arpachshad two years after the flood."` format 3 `"10 These {are} the generations of Shem: Shem {was} the son of 100 years, then he fathered Arpachshad two years after the flood."`
+  - $.versions[1].text: today `"10 This is the record of Shem’s descendants:\n Two years after the flood {began}, when Shem was 100 years old, he had {a son named} Arpachs` format 3 `"10 This is the record of Shem’s descendants: Two years after the flood {began}, when Shem was 100 years old, he had {a son named} Arpachsha`
+- GEN 11:26: fallback (adapter-undefined)
+- GEN 11:1-32: fallback (adapter-undefined)
+- GEN 12:9: fallback (adapter-undefined)
+- GEN 12:1-20: fallback (adapter-undefined)
+- GEN 13:3: fallback (adapter-undefined)
+- GEN 13:13: fallback (adapter-undefined)
+- GEN 13:1-18: fallback (adapter-undefined)
+- GEN 14:2: fallback (adapter-undefined)
+- GEN 14:8: fallback (adapter-undefined)
+- GEN 14:16: fallback (adapter-undefined)
+- GEN 14:20: differs
+  - $.versions[0].text: today `"20 And praised be God Most High, who delivered your enemies into your hand!”\n Then he gave to him a tenth of everything."` format 3 `"20 And praised be God Most High, who delivered your enemies into your hand!” Then he gave to him a tenth of everything."`
+  - $.versions[1].text: today `"20 Praise the greatest God, because he enabled you to defeat your enemies!”\n Then Abram gave {King} Melchizedek ten percent of everything ` format 3 `"20 Praise the greatest God, because he enabled you to defeat your enemies!” Then Abram gave {King} Melchizedek ten percent of everything {t`
+- GEN 14:1-24: fallback (adapter-undefined)
+- GEN 15:1-21: fallback (adapter-undefined)
+- GEN 16:6: fallback (adapter-undefined)
+- GEN 16:1-16: fallback (adapter-undefined)
+- GEN 17:1-27: fallback (adapter-undefined)
+- GEN 18:15: fallback (adapter-undefined)
+- GEN 18:1-33: fallback (adapter-undefined)
+- GEN 19:29: fallback (adapter-undefined)
+- GEN 19:1-38: fallback (adapter-undefined)
+- GEN 20:1-18: fallback (adapter-undefined)
+- GEN 21:7: fallback (adapter-undefined)
+- GEN 21:21: fallback (adapter-undefined)
+- GEN 21:1-34: fallback (adapter-undefined)
+- GEN 22:3: fallback (adapter-undefined)
+- GEN 22:6: differs
+  - $.versions[1].text: today `"6 Then Abraham took the wood for the burnt offering {off the donkey} and loaded {it} on his son Isaac{’s shoulder} {to carry}. He {himself}` format 3 `"6 Then Abraham took the wood for the burnt offering {off the donkey} and loaded {it} on his son Isaac {’s shoulder} {to carry}. He {himself`
+- GEN 22:7: fallback (adapter-undefined)
+- GEN 22:9: differs
+  - $.versions[1].text: today `"9 When they reached the place that God had told him {to go to}, Abraham built a {stone} altar there and put the wood {on top of it}. Then h` format 3 `"9 When they reached the place that God had told him {to go to}, Abraham built a {stone} altar there and put the wood {on top of it}. Then h`
+- GEN 22:19: fallback (adapter-undefined)
+- GEN 22:1-24: fallback (adapter-undefined)
+- GEN 23:1-20: fallback (adapter-undefined)
+- GEN 24:33: fallback (adapter-undefined)
+- GEN 24:1-67: fallback (adapter-undefined)
+- GEN 25:6: fallback (adapter-undefined)
+- GEN 25:11: fallback (adapter-undefined)
+- GEN 25:18: fallback (adapter-undefined)
+- GEN 25:23: fallback (adapter-undefined)
+- GEN 25:26: fallback (adapter-undefined)
+- GEN 25:1-34: fallback (adapter-undefined)
+- GEN 26:5: fallback (adapter-undefined)
+- GEN 26:11: fallback (adapter-undefined)
+- GEN 26:33: fallback (adapter-undefined)
+- GEN 26:1-35: fallback (adapter-undefined)
+- GEN 27:3: fallback (adapter-undefined)
+- GEN 27:29: fallback (adapter-undefined)
+- GEN 27:36: differs
+  - $.versions[0].text: today `"36 Then he said, “Is it because his name is called Jacob that he has defrauded me these two times? He took my birthright, and behold, now h` format 3 `"36 Then he said, “Is it because his name is called Jacob that he has defrauded me these two times? He took my birthright, and behold, now h`
+  - $.versions[1].text: today `"36 Then Esau exclaimed, “The name Jacob fits him exactly, because he has tricked me like this two times {now}! {First} he stole my rights a` format 3 `"36 Then Esau exclaimed, “The name Jacob fits him exactly, because he has tricked me like this two times {now}! {First} he stole my rights a`
+- GEN 27:40: fallback (adapter-undefined)
+- GEN 27:1-46: fallback (adapter-undefined)
+- GEN 28:5: fallback (adapter-undefined)
+- GEN 28:9: fallback (adapter-undefined)
+- GEN 28:1-22: fallback (adapter-undefined)
+- GEN 29:14: fallback (adapter-undefined)
+- GEN 29:30: fallback (adapter-undefined)
+- GEN 29:1-35: fallback (adapter-undefined)
+- GEN 30:24: fallback (adapter-undefined)
+- GEN 30:1-43: fallback (adapter-undefined)
+- GEN 31:21: fallback (adapter-undefined)
+- GEN 31:42: fallback (adapter-undefined)
+- GEN 31:54: fallback (adapter-undefined)
+- GEN 31:55: differs
+  - $.versions[2].text: today `"55 32:1וַ⁠יַּשְׁכֵּ֨ם לָבָ֜ן בַּ⁠בֹּ֗קֶר וַ⁠יְנַשֵּׁ֧ק לְ⁠בָנָ֛י⁠ו וְ⁠לִ⁠בְנוֹתָ֖י⁠ו וַ⁠יְבָ֣רֶךְ אֶתְ⁠הֶ֑ם וַ⁠יֵּ֛לֶךְ וַ⁠יָּ֥שָׁב לָבָ֖ן ` format 3 `"55 וַ⁠יַּשְׁכֵּ֨ם לָבָ֜ן בַּ⁠בֹּ֗קֶר וַ⁠יְנַשֵּׁ֧ק לְ⁠בָנָ֛י⁠ו וְ⁠לִ⁠בְנוֹתָ֖י⁠ו וַ⁠יְבָ֣רֶךְ אֶתְ⁠הֶ֑ם וַ⁠יֵּ֛לֶךְ וַ⁠יָּ֥שָׁב לָבָ֖ן לִ⁠מ`
+- GEN 31:1-55: fallback (adapter-undefined)
+- GEN 32:1: differs
+  - $.versions[2].text: today `"1 2וְ⁠יַעֲקֹ֖ב הָלַ֣ךְ לְ⁠דַרְכּ֑⁠וֹ וַ⁠יִּפְגְּעוּ־ב֖⁠וֹ מַלְאֲכֵ֥י אֱלֹהִֽים׃"` format 3 `"1 וְ⁠יַעֲקֹ֖ב הָלַ֣ךְ לְ⁠דַרְכּ֑⁠וֹ וַ⁠יִּפְגְּעוּ־ב֖⁠וֹ מַלְאֲכֵ֥י אֱלֹהִֽים׃"`
+- GEN 32:2: differs
+  - $.versions[2].text: today `"2 3וַ⁠יֹּ֤אמֶר יַעֲקֹב֙ כַּ⁠אֲשֶׁ֣ר רָאָ֔⁠ם מַחֲנֵ֥ה אֱלֹהִ֖ים זֶ֑ה וַ⁠יִּקְרָ֛א שֵֽׁם־הַ⁠מָּק֥וֹם הַ⁠ה֖וּא מַֽחֲנָֽיִם׃פ"` format 3 `"2 וַ⁠יֹּ֤אמֶר יַעֲקֹב֙ כַּ⁠אֲשֶׁ֣ר רָאָ֔⁠ם מַחֲנֵ֥ה אֱלֹהִ֖ים זֶ֑ה וַ⁠יִּקְרָ֛א שֵֽׁם־הַ⁠מָּק֥וֹם הַ⁠ה֖וּא מַֽחֲנָֽיִם׃פ"`
+- GEN 32:3: differs
+  - $.versions[2].text: today `"3 4וַ⁠יִּשְׁלַ֨ח יַעֲקֹ֤ב מַלְאָכִים֙ לְ⁠פָנָ֔י⁠ו אֶל־עֵשָׂ֖ו אָחִ֑י⁠ו אַ֥רְצָ⁠ה שֵׂעִ֖יר שְׂדֵ֥ה אֱדֽוֹם׃"` format 3 `"3 וַ⁠יִּשְׁלַ֨ח יַעֲקֹ֤ב מַלְאָכִים֙ לְ⁠פָנָ֔י⁠ו אֶל־עֵשָׂ֖ו אָחִ֑י⁠ו אַ֥רְצָ⁠ה שֵׂעִ֖יר שְׂדֵ֥ה אֱדֽוֹם׃"`
+- GEN 32:4: differs
+  - $.versions[2].text: today `"4 5וַ⁠יְצַ֤ו אֹתָ⁠ם֙ לֵ⁠אמֹ֔ר כֹּ֣ה תֹאמְר֔וּ⁠ן לַֽ⁠אדֹנִ֖⁠י לְ⁠עֵשָׂ֑ו כֹּ֤ה אָמַר֙ עַבְדְּ⁠ךָ֣ יַעֲקֹ֔ב עִם־לָבָ֣ן גַּ֔רְתִּי וָ⁠אֵחַ֖ר ע` format 3 `"4 וַ⁠יְצַ֤ו אֹתָ⁠ם֙ לֵ⁠אמֹ֔ר כֹּ֣ה תֹאמְר֔וּ⁠ן לַֽ⁠אדֹנִ֖⁠י לְ⁠עֵשָׂ֑ו כֹּ֤ה אָמַר֙ עַבְדְּ⁠ךָ֣ יַעֲקֹ֔ב עִם־לָבָ֣ן גַּ֔רְתִּי וָ⁠אֵחַ֖ר עַ`
+- GEN 32:5: differs
+  - $.versions[2].text: today `"5 6וַֽ⁠יְהִי־לִ⁠י֙ שׁ֣וֹר וַ⁠חֲמ֔וֹר צֹ֖אן וְ⁠עֶ֣בֶד וְ⁠שִׁפְחָ֑ה וָֽ⁠אֶשְׁלְחָ⁠ה֙ לְ⁠הַגִּ֣יד לַֽ⁠אדֹנִ֔⁠י לִ⁠מְצֹא־חֵ֖ן בְּ⁠עֵינֶֽי⁠ךָ׃"` format 3 `"5 וַֽ⁠יְהִי־לִ⁠י֙ שׁ֣וֹר וַ⁠חֲמ֔וֹר צֹ֖אן וְ⁠עֶ֣בֶד וְ⁠שִׁפְחָ֑ה וָֽ⁠אֶשְׁלְחָ⁠ה֙ לְ⁠הַגִּ֣יד לַֽ⁠אדֹנִ֔⁠י לִ⁠מְצֹא־חֵ֖ן בְּ⁠עֵינֶֽי⁠ךָ׃"`
+- GEN 32:6: differs
+  - $.versions[2].text: today `"6 7וַ⁠יָּשֻׁ֨בוּ֙ הַ⁠מַּלְאָכִ֔ים אֶֽל־יַעֲקֹ֖ב לֵ⁠אמֹ֑ר בָּ֤אנוּ אֶל־אָחִ֨י⁠ךָ֙ אֶל־עֵשָׂ֔ו וְ⁠גַם֙ הֹלֵ֣ךְ לִ⁠קְרָֽאתְ⁠ךָ֔ וְ⁠אַרְבַּע־מֵ` format 3 `"6 וַ⁠יָּשֻׁ֨בוּ֙ הַ⁠מַּלְאָכִ֔ים אֶֽל־יַעֲקֹ֖ב לֵ⁠אמֹ֑ר בָּ֤אנוּ אֶל־אָחִ֨י⁠ךָ֙ אֶל־עֵשָׂ֔ו וְ⁠גַם֙ הֹלֵ֣ךְ לִ⁠קְרָֽאתְ⁠ךָ֔ וְ⁠אַרְבַּע־מֵא`
+- GEN 32:7: differs
+  - $.versions[2].text: today `"7 8וַ⁠יִּירָ֧א יַעֲקֹ֛ב מְאֹ֖ד וַ⁠יֵּ֣צֶר ל֑⁠וֹ וַ⁠יַּ֜חַץ אֶת־הָ⁠עָ֣ם אֲשֶׁר־אִתּ֗⁠וֹ וְ⁠אֶת־הַ⁠צֹּ֧אן וְ⁠אֶת־הַ⁠בָּקָ֛ר וְ⁠הַ⁠גְּמַלִּ֖ים` format 3 `"7 וַ⁠יִּירָ֧א יַעֲקֹ֛ב מְאֹ֖ד וַ⁠יֵּ֣צֶר ל֑⁠וֹ וַ⁠יַּ֜חַץ אֶת־הָ⁠עָ֣ם אֲשֶׁר־אִתּ֗⁠וֹ וְ⁠אֶת־הַ⁠צֹּ֧אן וְ⁠אֶת־הַ⁠בָּקָ֛ר וְ⁠הַ⁠גְּמַלִּ֖ים `
+- GEN 32:8: differs
+  - $.versions[2].text: today `"8 9וַ⁠יֹּ֕אמֶר אִם־יָב֥וֹא עֵשָׂ֛ו אֶל־הַ⁠מַּחֲנֶ֥ה הָ⁠אַחַ֖ת וְ⁠הִכָּ֑⁠הוּ וְ⁠הָיָ֛ה הַ⁠מַּחֲנֶ֥ה הַ⁠נִּשְׁאָ֖ר לִ⁠פְלֵיטָֽה׃"` format 3 `"8 וַ⁠יֹּ֕אמֶר אִם־יָב֥וֹא עֵשָׂ֛ו אֶל־הַ⁠מַּחֲנֶ֥ה הָ⁠אַחַ֖ת וְ⁠הִכָּ֑⁠הוּ וְ⁠הָיָ֛ה הַ⁠מַּחֲנֶ֥ה הַ⁠נִּשְׁאָ֖ר לִ⁠פְלֵיטָֽה׃"`
+- GEN 32:9: differs
+  - $.versions[2].text: today `"9 10וַ⁠יֹּאמֶר֮ יַעֲקֹב֒ אֱלֹהֵי֙ אָבִ֣⁠י אַבְרָהָ֔ם וֵ⁠אלֹהֵ֖י אָבִ֣⁠י יִצְחָ֑ק יְהוָ֞ה הָ⁠אֹמֵ֣ר אֵלַ֗⁠י שׁ֧וּב לְ⁠אַרְצְ⁠ךָ֛ וּ⁠לְ⁠מוֹלַ` format 3 `"9 וַ⁠יֹּאמֶר֮ יַעֲקֹב֒ אֱלֹהֵי֙ אָבִ֣⁠י אַבְרָהָ֔ם וֵ⁠אלֹהֵ֖י אָבִ֣⁠י יִצְחָ֑ק יְהוָ֞ה הָ⁠אֹמֵ֣ר אֵלַ֗⁠י שׁ֧וּב לְ⁠אַרְצְ⁠ךָ֛ וּ⁠לְ⁠מוֹלַדְ`
+- GEN 32:10: differs
+  - $.versions[2].text: today `"10 11קָטֹ֜נְתִּי מִ⁠כֹּ֤ל הַ⁠חֲסָדִים֙ וּ⁠מִ⁠כָּל־הָ֣⁠אֱמֶ֔ת אֲשֶׁ֥ר עָשִׂ֖יתָ אֶת־עַבְדֶּ֑⁠ךָ כִּ֣י בְ⁠מַקְלִ֗⁠י עָבַ֨רְתִּי֙ אֶת־הַ⁠יַּרְ` format 3 `"10 קָטֹ֜נְתִּי מִ⁠כֹּ֤ל הַ⁠חֲסָדִים֙ וּ⁠מִ⁠כָּל־הָ֣⁠אֱמֶ֔ת אֲשֶׁ֥ר עָשִׂ֖יתָ אֶת־עַבְדֶּ֑⁠ךָ כִּ֣י בְ⁠מַקְלִ֗⁠י עָבַ֨רְתִּי֙ אֶת־הַ⁠יַּרְדּ`
+- GEN 32:11: differs
+  - $.versions[2].text: today `"11 12הַצִּילֵ֥⁠נִי נָ֛א מִ⁠יַּ֥ד אָחִ֖⁠י מִ⁠יַּ֣ד עֵשָׂ֑ו כִּֽי־יָרֵ֤א אָנֹכִי֙ אֹת֔⁠וֹ פֶּן־יָב֣וֹא וְ⁠הִכַּ֔⁠נִי אֵ֖ם עַל־בָּנִֽים׃"` format 3 `"11 הַצִּילֵ֥⁠נִי נָ֛א מִ⁠יַּ֥ד אָחִ֖⁠י מִ⁠יַּ֣ד עֵשָׂ֑ו כִּֽי־יָרֵ֤א אָנֹכִי֙ אֹת֔⁠וֹ פֶּן־יָב֣וֹא וְ⁠הִכַּ֔⁠נִי אֵ֖ם עַל־בָּנִֽים׃"`
+- GEN 32:12: differs
+  - $.versions[2].text: today `"12 13וְ⁠אַתָּ֣ה אָמַ֔רְתָּ הֵיטֵ֥ב אֵיטִ֖יב עִמָּ֑⁠ךְ וְ⁠שַׂמְתִּ֤י אֶֽת־זַרְעֲ⁠ךָ֙ כְּ⁠ח֣וֹל הַ⁠יָּ֔ם אֲשֶׁ֥ר לֹא־יִסָּפֵ֖ר מֵ⁠רֹֽב׃"` format 3 `"12 וְ⁠אַתָּ֣ה אָמַ֔רְתָּ הֵיטֵ֥ב אֵיטִ֖יב עִמָּ֑⁠ךְ וְ⁠שַׂמְתִּ֤י אֶֽת־זַרְעֲ⁠ךָ֙ כְּ⁠ח֣וֹל הַ⁠יָּ֔ם אֲשֶׁ֥ר לֹא־יִסָּפֵ֖ר מֵ⁠רֹֽב׃"`
+- GEN 32:13: differs
+  - $.versions[2].text: today `"13 14וַ⁠יָּ֥לֶן שָׁ֖ם בַּ⁠לַּ֣יְלָה הַ⁠ה֑וּא וַ⁠יִּקַּ֞ח מִן־הַ⁠בָּ֧א בְ⁠יָד֛⁠וֹ מִנְחָ֖ה לְ⁠עֵשָׂ֥ו אָחִֽי⁠ו׃"` format 3 `"13 וַ⁠יָּ֥לֶן שָׁ֖ם בַּ⁠לַּ֣יְלָה הַ⁠ה֑וּא וַ⁠יִּקַּ֞ח מִן־הַ⁠בָּ֧א בְ⁠יָד֛⁠וֹ מִנְחָ֖ה לְ⁠עֵשָׂ֥ו אָחִֽי⁠ו׃"`
+- GEN 32:14: differs
+  - $.versions[2].text: today `"14 15עִזִּ֣ים מָאתַ֔יִם וּ⁠תְיָשִׁ֖ים עֶשְׂרִ֑ים רְחֵלִ֥ים מָאתַ֖יִם וְ⁠אֵילִ֥ים עֶשְׂרִֽים׃"` format 3 `"14 עִזִּ֣ים מָאתַ֔יִם וּ⁠תְיָשִׁ֖ים עֶשְׂרִ֑ים רְחֵלִ֥ים מָאתַ֖יִם וְ⁠אֵילִ֥ים עֶשְׂרִֽים׃"`
+- GEN 32:15: differs
+  - $.versions[2].text: today `"15 16גְּמַלִּ֧ים מֵינִיק֛וֹת וּ⁠בְנֵי⁠הֶ֖ם שְׁלֹשִׁ֑ים פָּר֤וֹת אַרְבָּעִים֙ וּ⁠פָרִ֣ים עֲשָׂרָ֔ה אֲתֹנֹ֣ת עֶשְׂרִ֔ים וַ⁠עְיָרִ֖ם עֲשָׂרָֽה` format 3 `"15 גְּמַלִּ֧ים מֵינִיק֛וֹת וּ⁠בְנֵי⁠הֶ֖ם שְׁלֹשִׁ֑ים פָּר֤וֹת אַרְבָּעִים֙ וּ⁠פָרִ֣ים עֲשָׂרָ֔ה אֲתֹנֹ֣ת עֶשְׂרִ֔ים וַ⁠עְיָרִ֖ם עֲשָׂרָֽה׃"`
+- GEN 32:16: differs
+  - $.versions[2].text: today `"16 17וַ⁠יִּתֵּן֙ בְּ⁠יַד־עֲבָדָ֔י⁠ו עֵ֥דֶר עֵ֖דֶר לְ⁠בַדּ֑⁠וֹ וַ֤⁠יֹּאמֶר אֶל־עֲבָדָי⁠ו֙ עִבְר֣וּ לְ⁠פָנַ֔⁠י וְ⁠רֶ֣וַח תָּשִׂ֔ימוּ בֵּ֥ין ע` format 3 `"16 וַ⁠יִּתֵּן֙ בְּ⁠יַד־עֲבָדָ֔י⁠ו עֵ֥דֶר עֵ֖דֶר לְ⁠בַדּ֑⁠וֹ וַ֤⁠יֹּאמֶר אֶל־עֲבָדָי⁠ו֙ עִבְר֣וּ לְ⁠פָנַ֔⁠י וְ⁠רֶ֣וַח תָּשִׂ֔ימוּ בֵּ֥ין עֵ֖`
+- GEN 32:17: differs
+  - $.versions[2].text: today `"17 18וַ⁠יְצַ֥ו אֶת־הָ⁠רִאשׁ֖וֹן לֵ⁠אמֹ֑ר כִּ֣י יִֽפְגָּשְׁ⁠ךָ֞ עֵשָׂ֣ו אָחִ֗⁠י וִ⁠שְׁאֵֽלְ⁠ךָ֙ לֵ⁠אמֹ֔ר לְ⁠מִי־אַ֨תָּה֙ וְ⁠אָ֣נָה תֵלֵ֔ךְ ו` format 3 `"17 וַ⁠יְצַ֥ו אֶת־הָ⁠רִאשׁ֖וֹן לֵ⁠אמֹ֑ר כִּ֣י יִֽפְגָּשְׁ⁠ךָ֞ עֵשָׂ֣ו אָחִ֗⁠י וִ⁠שְׁאֵֽלְ⁠ךָ֙ לֵ⁠אמֹ֔ר לְ⁠מִי־אַ֨תָּה֙ וְ⁠אָ֣נָה תֵלֵ֔ךְ וּ⁠`
+- GEN 32:18: differs
+  - $.versions[2].text: today `"18 19וְ⁠אָֽמַרְתָּ֙ לְ⁠עַבְדְּ⁠ךָ֣ לְ⁠יַעֲקֹ֔ב מִנְחָ֥ה הִוא֙ שְׁלוּחָ֔ה לַֽ⁠אדֹנִ֖⁠י לְ⁠עֵשָׂ֑ו וְ⁠הִנֵּ֥ה גַם־ה֖וּא אַחֲרֵֽי⁠נוּ׃"` format 3 `"18 וְ⁠אָֽמַרְתָּ֙ לְ⁠עַבְדְּ⁠ךָ֣ לְ⁠יַעֲקֹ֔ב מִנְחָ֥ה הִוא֙ שְׁלוּחָ֔ה לַֽ⁠אדֹנִ֖⁠י לְ⁠עֵשָׂ֑ו וְ⁠הִנֵּ֥ה גַם־ה֖וּא אַחֲרֵֽי⁠נוּ׃"`
+- GEN 32:19: differs
+  - $.versions[2].text: today `"19 20וַ⁠יְצַ֞ו גַּ֣ם אֶת־הַ⁠שֵּׁנִ֗י גַּ֚ם אֶת־הַ⁠שְּׁלִישִׁ֔י גַּ֚ם אֶת־כָּל־הַ⁠הֹ֣לְכִ֔ים אַחֲרֵ֥י הָ⁠עֲדָרִ֖ים לֵ⁠אמֹ֑ר כַּ⁠דָּבָ֤ר הַ⁠ז` format 3 `"19 וַ⁠יְצַ֞ו גַּ֣ם אֶת־הַ⁠שֵּׁנִ֗י גַּ֚ם אֶת־הַ⁠שְּׁלִישִׁ֔י גַּ֚ם אֶת־כָּל־הַ⁠הֹ֣לְכִ֔ים אַחֲרֵ֥י הָ⁠עֲדָרִ֖ים לֵ⁠אמֹ֑ר כַּ⁠דָּבָ֤ר הַ⁠זֶּ`
+- GEN 32:20: differs
+  - $.versions[2].text: today `"20 21וַ⁠אֲמַרְתֶּ֕ם גַּ֗ם הִנֵּ֛ה עַבְדְּ⁠ךָ֥ יַעֲקֹ֖ב אַחֲרֵ֑י⁠נוּ כִּֽי־אָמַ֞ר אֲכַפְּרָ֣ה פָנָ֗י⁠ו בַּ⁠מִּנְחָה֙ הַ⁠הֹלֶ֣כֶת לְ⁠פָנָ֔⁠י ` format 3 `"20 וַ⁠אֲמַרְתֶּ֕ם גַּ֗ם הִנֵּ֛ה עַבְדְּ⁠ךָ֥ יַעֲקֹ֖ב אַחֲרֵ֑י⁠נוּ כִּֽי־אָמַ֞ר אֲכַפְּרָ֣ה פָנָ֗י⁠ו בַּ⁠מִּנְחָה֙ הַ⁠הֹלֶ֣כֶת לְ⁠פָנָ֔⁠י וְ`
+- GEN 32:21: fallback (adapter-undefined)
+- GEN 32:22: differs
+  - $.versions[2].text: today `"22 23וַ⁠יָּ֣קָם ׀ בַּ⁠לַּ֣יְלָה ה֗וּא וַ⁠יִּקַּ֞ח אֶת־שְׁתֵּ֤י נָשָׁי⁠ו֙ וְ⁠אֶת־שְׁתֵּ֣י שִׁפְחֹתָ֔י⁠ו וְ⁠אֶת־אַחַ֥ד עָשָׂ֖ר יְלָדָ֑י⁠ו וַֽ` format 3 `"22 וַ⁠יָּ֣קָם ׀ בַּ⁠לַּ֣יְלָה ה֗וּא וַ⁠יִּקַּ֞ח אֶת־שְׁתֵּ֤י נָשָׁי⁠ו֙ וְ⁠אֶת־שְׁתֵּ֣י שִׁפְחֹתָ֔י⁠ו וְ⁠אֶת־אַחַ֥ד עָשָׂ֖ר יְלָדָ֑י⁠ו וַֽ⁠י`
+- GEN 32:23: differs
+  - $.versions[2].text: today `"23 24וַ⁠יִּקָּחֵ֔⁠ם וַ⁠יַּֽעֲבִרֵ֖⁠ם אֶת־הַ⁠נָּ֑חַל וַֽ⁠יַּעֲבֵ֖ר אֶת־אֲשֶׁר־ל⁠וֹ׃"` format 3 `"23 וַ⁠יִּקָּחֵ֔⁠ם וַ⁠יַּֽעֲבִרֵ֖⁠ם אֶת־הַ⁠נָּ֑חַל וַֽ⁠יַּעֲבֵ֖ר אֶת־אֲשֶׁר־ל⁠וֹ׃"`
+- GEN 32:24: differs
+  - $.versions[2].text: today `"24 25וַ⁠יִּוָּתֵ֥ר יַעֲקֹ֖ב לְ⁠בַדּ֑⁠וֹ וַ⁠יֵּאָבֵ֥ק אִישׁ֙ עִמּ֔⁠וֹ עַ֖ד עֲל֥וֹת הַ⁠שָּֽׁחַר׃"` format 3 `"24 וַ⁠יִּוָּתֵ֥ר יַעֲקֹ֖ב לְ⁠בַדּ֑⁠וֹ וַ⁠יֵּאָבֵ֥ק אִישׁ֙ עִמּ֔⁠וֹ עַ֖ד עֲל֥וֹת הַ⁠שָּֽׁחַר׃"`
+- GEN 32:25: differs
+  - $.versions[2].text: today `"25 26וַ⁠יַּ֗רְא כִּ֣י לֹ֤א יָכֹל֙ ל֔⁠וֹ וַ⁠יִּגַּ֖ע בְּ⁠כַף־יְרֵכ֑⁠וֹ וַ⁠תֵּ֨קַע֙ כַּף־יֶ֣רֶךְ יַעֲקֹ֔ב בְּ⁠הֵֽאָבְק֖⁠וֹ עִמּֽ⁠וֹ׃"` format 3 `"25 וַ⁠יַּ֗רְא כִּ֣י לֹ֤א יָכֹל֙ ל֔⁠וֹ וַ⁠יִּגַּ֖ע בְּ⁠כַף־יְרֵכ֑⁠וֹ וַ⁠תֵּ֨קַע֙ כַּף־יֶ֣רֶךְ יַעֲקֹ֔ב בְּ⁠הֵֽאָבְק֖⁠וֹ עִמּֽ⁠וֹ׃"`
+- GEN 32:26: differs
+  - $.versions[2].text: today `"26 27וַ⁠יֹּ֣אמֶר שַׁלְּחֵ֔⁠נִי כִּ֥י עָלָ֖ה הַ⁠שָּׁ֑חַר וַ⁠יֹּ֨אמֶר֙ לֹ֣א אֲשַֽׁלֵּחֲ⁠ךָ֔ כִּ֖י אִם־בֵּרַכְתָּֽ⁠נִי׃"` format 3 `"26 וַ⁠יֹּ֣אמֶר שַׁלְּחֵ֔⁠נִי כִּ֥י עָלָ֖ה הַ⁠שָּׁ֑חַר וַ⁠יֹּ֨אמֶר֙ לֹ֣א אֲשַֽׁלֵּחֲ⁠ךָ֔ כִּ֖י אִם־בֵּרַכְתָּֽ⁠נִי׃"`
+- GEN 32:27: differs
+  - $.versions[2].text: today `"27 28וַ⁠יֹּ֥אמֶר אֵלָ֖י⁠ו מַה־שְּׁמֶ֑⁠ךָ וַ⁠יֹּ֖אמֶר יַעֲקֹֽב׃"` format 3 `"27 וַ⁠יֹּ֥אמֶר אֵלָ֖י⁠ו מַה־שְּׁמֶ֑⁠ךָ וַ⁠יֹּ֖אמֶר יַעֲקֹֽב׃"`
+- GEN 32:28: differs
+  - $.versions[2].text: today `"28 29וַ⁠יֹּ֗אמֶר לֹ֤א יַעֲקֹב֙ יֵאָמֵ֥ר עוֹד֙ שִׁמְ⁠ךָ֔ כִּ֖י אִם־יִשְׂרָאֵ֑ל כִּֽי־שָׂרִ֧יתָ עִם־אֱלֹהִ֛ים וְ⁠עִם־אֲנָשִׁ֖ים וַ⁠תּוּכָֽל׃"` format 3 `"28 וַ⁠יֹּ֗אמֶר לֹ֤א יַעֲקֹב֙ יֵאָמֵ֥ר עוֹד֙ שִׁמְ⁠ךָ֔ כִּ֖י אִם־יִשְׂרָאֵ֑ל כִּֽי־שָׂרִ֧יתָ עִם־אֱלֹהִ֛ים וְ⁠עִם־אֲנָשִׁ֖ים וַ⁠תּוּכָֽל׃"`
+- GEN 32:29: differs
+  - $.versions[2].text: today `"29 30וַ⁠יִּשְׁאַ֣ל יַעֲקֹ֗ב וַ⁠יֹּ֨אמֶר֙ הַגִּֽידָ⁠ה־נָּ֣א שְׁמֶ֔⁠ךָ וַ⁠יֹּ֕אמֶר לָ֥⁠מָּה זֶּ֖ה תִּשְׁאַ֣ל לִ⁠שְׁמִ֑⁠י וַ⁠יְבָ֥רֶךְ אֹת֖⁠וֹ` format 3 `"29 וַ⁠יִּשְׁאַ֣ל יַעֲקֹ֗ב וַ⁠יֹּ֨אמֶר֙ הַגִּֽידָ⁠ה־נָּ֣א שְׁמֶ֔⁠ךָ וַ⁠יֹּ֕אמֶר לָ֥⁠מָּה זֶּ֖ה תִּשְׁאַ֣ל לִ⁠שְׁמִ֑⁠י וַ⁠יְבָ֥רֶךְ אֹת֖⁠וֹ ש`
+- GEN 32:30: differs
+  - $.versions[2].text: today `"30 31וַ⁠יִּקְרָ֧א יַעֲקֹ֛ב שֵׁ֥ם הַ⁠מָּק֖וֹם פְּנִיאֵ֑ל כִּֽי־רָאִ֤יתִי אֱלֹהִים֙ פָּנִ֣ים אֶל־פָּנִ֔ים וַ⁠תִּנָּצֵ֖ל נַפְשִֽׁ⁠י׃"` format 3 `"30 וַ⁠יִּקְרָ֧א יַעֲקֹ֛ב שֵׁ֥ם הַ⁠מָּק֖וֹם פְּנִיאֵ֑ל כִּֽי־רָאִ֤יתִי אֱלֹהִים֙ פָּנִ֣ים אֶל־פָּנִ֔ים וַ⁠תִּנָּצֵ֖ל נַפְשִֽׁ⁠י׃"`
+- GEN 32:31: differs
+  - $.versions[2].text: today `"31 32וַ⁠יִּֽזְרַֽח־ל֣⁠וֹ הַ⁠שֶּׁ֔מֶשׁ כַּ⁠אֲשֶׁ֥ר עָבַ֖ר אֶת־פְּנוּאֵ֑ל וְ⁠ה֥וּא צֹלֵ֖עַ עַל־יְרֵכֽ⁠וֹ׃"` format 3 `"31 וַ⁠יִּֽזְרַֽח־ל֣⁠וֹ הַ⁠שֶּׁ֔מֶשׁ כַּ⁠אֲשֶׁ֥ר עָבַ֖ר אֶת־פְּנוּאֵ֑ל וְ⁠ה֥וּא צֹלֵ֖עַ עַל־יְרֵכֽ⁠וֹ׃"`
+- GEN 32:32: differs
+  - $.versions[2].text: today `"32 33עַל־כֵּ֡ן לֹֽא־יֹאכְל֨וּ בְנֵֽי־יִשְׂרָאֵ֜ל אֶת־גִּ֣יד הַ⁠נָּשֶׁ֗ה אֲשֶׁר֙ עַל־כַּ֣ף הַ⁠יָּרֵ֔ךְ עַ֖ד הַ⁠יּ֣וֹם הַ⁠זֶּ֑ה כִּ֤י נָגַע֙ ` format 3 `"32 עַל־כֵּ֡ן לֹֽא־יֹאכְל֨וּ בְנֵֽי־יִשְׂרָאֵ֜ל אֶת־גִּ֣יד הַ⁠נָּשֶׁ֗ה אֲשֶׁר֙ עַל־כַּ֣ף הַ⁠יָּרֵ֔ךְ עַ֖ד הַ⁠יּ֣וֹם הַ⁠זֶּ֑ה כִּ֤י נָגַע֙ בּ`
+- GEN 32:1-32: fallback (adapter-undefined)
+- GEN 33:1-20: fallback (adapter-undefined)
+- GEN 34:1-31: fallback (adapter-undefined)
+- GEN 35:15: fallback (adapter-undefined)
+- GEN 35:20: fallback (adapter-undefined)
+- GEN 35:22: differs
+  - $.versions[0].text: today `"22 And it happened while Israel was living in that land, then Reuben went and lay with Bilhah, the concubine of his father, and Israel hear` format 3 `"22 And it happened while Israel was living in that land, then Reuben went and lay with Bilhah, the concubine of his father, and Israel hear`
+  - $.versions[1].text: today `"22 While they were living in that area, {Israel’s son} Reuben committed adultery with his father’s servant-wife Bilhah, and Israel found ou` format 3 `"22 While they were living in that area, {Israel’s son} Reuben committed adultery with his father’s servant-wife Bilhah, and Israel found ou`
+- GEN 35:26: fallback (adapter-undefined)
+- GEN 35:1-29: fallback (adapter-undefined)
+- GEN 36:2: fallback (adapter-undefined)
+- GEN 36:5: fallback (adapter-undefined)
+- GEN 36:14: fallback (adapter-undefined)
+- GEN 36:19: fallback (adapter-undefined)
+- GEN 36:30: fallback (adapter-undefined)
+- GEN 36:1-43: fallback (adapter-undefined)
+- GEN 37:11: fallback (adapter-undefined)
+- GEN 37:17: differs
+  - $.versions[0].text: today `"17 Then the man said, “They set out from here. For I heard them say, ‘Let us go to Dothan.’”\n\n Then Joseph went after his brothers and fo` format 3 `"17 Then the man said, “They set out from here. For I heard them say, ‘Let us go to Dothan.’” Then Joseph went after his brothers and found `
+  - $.versions[1].text: today `"17 The man answered, “They were here and then left, but I overheard them say that they were going to {the town of} Dothan.”\n So Joseph fol` format 3 `"17 The man answered, “They were here and then left, but I overheard them say that they were going to {the town of} Dothan.” So Joseph follo`
+- GEN 37:1-36: fallback (adapter-undefined)
+- GEN 38:1-30: fallback (adapter-undefined)
+- GEN 39:6: differs
+  - $.versions[0].text: today `"6 And he left all that {belonged} to him in the hand of Joseph, and he did not think to himself {about} anything except for the bread that ` format 3 `"6 And he left all that {belonged} to him in the hand of Joseph, and he did not think to himself {about} anything except for the bread that `
+  - $.versions[1].text: today `"6 In fact, after Joseph’s owner put him in charge of everything that he owned, he did not {need to} concern himself with anything {in his h` format 3 `"6 In fact, after Joseph’s owner put him in charge of everything that he owned, he did not {need to} concern himself with anything {in his h`
+- GEN 39:20: fallback (adapter-undefined)
+- GEN 39:1-23: fallback (adapter-undefined)
+- GEN 40:1-23: fallback (adapter-undefined)
+- GEN 41:36: fallback (adapter-undefined)
+- GEN 41:1-57: fallback (adapter-undefined)
+- GEN 42:1-38: fallback (adapter-undefined)
+- GEN 43:28: fallback (adapter-undefined)
+- GEN 43:1-34: fallback (adapter-undefined)
+- GEN 44:17: fallback (adapter-undefined)
+- GEN 44:1-34: fallback (adapter-undefined)
+- GEN 45:1-28: fallback (adapter-undefined)
+- GEN 46:27: fallback (adapter-undefined)
+- GEN 46:1-34: fallback (adapter-undefined)
+- GEN 47:12: fallback (adapter-undefined)
+- GEN 47:20: fallback (adapter-undefined)
+- GEN 47:26: fallback (adapter-undefined)
+- GEN 47:1-31: fallback (adapter-undefined)
+- GEN 48:20: differs
+  - $.versions[0].text: today `"20 And he blessed them on that day, saying, “By you Israel will bless {people}, saying, ‘May God make you like Ephraim and like Manasseh.’”` format 3 `"20 And he blessed them on that day, saying, “By you Israel will bless {people}, saying, ‘May God make you like Ephraim and like Manasseh.’”`
+  - $.versions[1].text: today `"20 So Israel blessed Ephraim and Manasseh that day by saying {to them}, “{The people of} Israel will use your names when they bless {people` format 3 `"20 So Israel blessed Ephraim and Manasseh that day by saying {to them}, “{The people of} Israel will use your names when they bless {people`
+- GEN 48:1-22: fallback (adapter-undefined)
+- GEN 49:10: fallback (adapter-undefined)
+- GEN 49:11: fallback (adapter-undefined)
+- GEN 49:28: fallback (adapter-undefined)
+- GEN 49:1-33: fallback (adapter-undefined)
+- GEN 50:2: differs
+  - $.versions[1].text: today `"2 Then he ordered his doctors who served him to prepare his father{’s body} for burial. So they did that."` format 3 `"2 Then he ordered his doctors who served him to prepare his father {’s body} for burial. So they did that."`
+- GEN 50:5: differs
+  - $.versions[1].text: today `"5 that when my father was about to die, he had me vow to him that I would bury his body in the region of Canaan, in a tomb that he had prep` format 3 `"5 that when my father was about to die, he had me vow to him that I would bury his body in the region of Canaan, in a tomb that he had prep`
+- GEN 50:6: differs
+  - $.versions[1].text: today `"6 {When Pharaoh heard Joseph’s message,} he replied, “{Tell Joseph that} he may go {to Canaan} and bury his father{’s body} just as his fat` format 3 `"6 {When Pharaoh heard Joseph’s message,} he replied, “{Tell Joseph that} he may go {to Canaan} and bury his father {’s body} just as his fa`
+- GEN 50:7: differs
+  - $.versions[1].text: today `"7 So Joseph started the trip {to Canaan} to bury his father{’s body}, and all Pharaoh’s officials escorted him, {including} the important l` format 3 `"7 So Joseph started the trip {to Canaan} to bury his father {’s body}, and all Pharaoh’s officials escorted him, {including} the important `
+- GEN 50:14: fallback (adapter-undefined)
+- GEN 50:21: fallback (adapter-undefined)
+- GEN 50:1-26: fallback (adapter-undefined)
+- EXO 1:1-22: fallback (adapter-undefined)
+- EXO 2:9: differs
+  - $.versions[0].text: today `"9 And the daughter of Pharaoh said to her, “Take this child and cause him to nurse for me, and I shall give your wages.”\n\n And the woman ` format 3 `"9 And the daughter of Pharaoh said to her, “Take this child and cause him to nurse for me, and I shall give your wages.” And the woman took`
+  - $.versions[1].text: today `"9 The king’s daughter said to the mother, “Please take this baby and nurse him for me. I will pay you for doing that.”\n\n So the baby’s mo` format 3 `"9 The king’s daughter said to the mother, “Please take this baby and nurse him for me. I will pay you for doing that.” So the baby’s mother`
+- EXO 2:14: differs
+  - $.versions[0].text: today `"14 And he said, “Who set you as the ruler man and judge over us? Are you saying to kill me like you killed the Egyptian?”\n\n And Moses fea` format 3 `"14 And he said, “Who set you as the ruler man and judge over us? Are you saying to kill me like you killed the Egyptian?” And Moses feared `
+  - $.versions[1].text: today `"14 The man replied, “No one put you in charge of judging us! Do not think you {will get away with} killing me like you killed that Egyptian` format 3 `"14 The man replied, “No one put you in charge of judging us! Do not think you {will get away with} killing me like you killed that Egyptian`
+- EXO 2:15: differs
+  - $.versions[0].text: today `"15 And Pharaoh heard this thing, and he sought to kill Moses. And Moses fled from the face of Pharaoh.\n\n And he dwelt in the land of Midi` format 3 `"15 And Pharaoh heard this thing, and he sought to kill Moses. And Moses fled from the face of Pharaoh. And he dwelt in the land of Midian, `
+- EXO 2:1-25: fallback (adapter-undefined)
+- EXO 3:4: differs
+  - $.versions[0].text: today `"4 And Yahweh saw that he had turned aside in order to look, and God called to him from the middle of the bush, and he said, “Moses, Moses.”` format 3 `"4 And Yahweh saw that he had turned aside in order to look, and God called to him from the middle of the bush, and he said, “Moses, Moses.”`
+  - $.versions[1].text: today `"4 When Yahweh saw Moses coming for a closer look, he called out from the bush, “Moses, Moses!”\n “Yes!” Moses replied."` format 3 `"4 When Yahweh saw Moses coming for a closer look, he called out from the bush, “Moses, Moses!” “Yes!” Moses replied."`
+- EXO 3:18: differs
+  - $.versions[0].text: today `"18 And they will listen to your voice.\n And you and the elders of Israel will go to the king of Egypt, and you all will say to him, ‘Yahwe` format 3 `"18 And they will listen to your voice. And you and the elders of Israel will go to the king of Egypt, and you all will say to him, ‘Yahweh,`
+  - $.versions[1].text: today `"18 The leaders will do what you say.\n Then you and the leaders will go to the king of Egypt, and you will say to him, ‘Yahweh, the God who` format 3 `"18 The leaders will do what you say. Then you and the leaders will go to the king of Egypt, and you will say to him, ‘Yahweh, the God whom `
+- EXO 3:1-22: fallback (adapter-undefined)
+- EXO 4:2: differs
+  - $.versions[0].text: today `"2 And Yahweh said to him, “What is that in your hand?”\n And he said, “A staff.”"` format 3 `"2 And Yahweh said to him, “What is that in your hand?” And he said, “A staff.”"`
+  - $.versions[1].text: today `"2 Yahweh said to him, “What is that in your hand?”\n Moses answered, “A staff.”"` format 3 `"2 Yahweh said to him, “What is that in your hand?” Moses answered, “A staff.”"`
+- EXO 4:18: differs
+  - $.versions[0].text: today `"18 And Moses went and returned to Jethro his father-in-law, and he said to him, “Please let me go, and let me return to my brothers who are` format 3 `"18 And Moses went and returned to Jethro his father-in-law, and he said to him, “Please let me go, and let me return to my brothers who are`
+  - $.versions[1].text: today `"18 Moses went back to his father-in-law, Jethro, and said to him, “Please let me go back to my relatives in Egypt to see if they are well.”` format 3 `"18 Moses went back to his father-in-law, Jethro, and said to him, “Please let me go back to my relatives in Egypt to see if they are well.”`
+- EXO 4:1-31: fallback (adapter-undefined)
+- EXO 5:1-23: fallback (adapter-undefined)
+- EXO 6:14: differs
+  - $.versions[0].text: today `"14 These were the heads of the houses of their fathers:\n The sons of Reuben, the firstborn of Israel: Hanoch and Pallu, Hezron and Karmi. ` format 3 `"14 These were the heads of the houses of their fathers: The sons of Reuben, the firstborn of Israel: Hanoch and Pallu, Hezron and Karmi. Th`
+  - $.versions[1].text: today `"14 These are the original clan leaders:\n Jacob’s oldest son Reuben had these sons: Hanok, Pallu, Hezron, and Karmi. The clans of Reuben ar` format 3 `"14 These are the original clan leaders: Jacob’s oldest son Reuben had these sons: Hanok, Pallu, Hezron, and Karmi. The clans of Reuben are `
+- EXO 6:1-30: fallback (adapter-undefined)
+- EXO 7:1-25: fallback (adapter-undefined)
+- EXO 8:1: differs
+  - $.versions[2].text: today `"1 7:26וַ⁠יֹּ֤אמֶר יְהוָה֙ אֶל־מֹשֶׁ֔ה בֹּ֖א אֶל־פַּרְעֹ֑ה וְ⁠אָמַרְתָּ֣ אֵלָ֗י⁠ו כֹּ֚ה אָמַ֣ר יְהוָ֔ה שַׁלַּ֥ח אֶת־עַמִּ֖⁠י וְ⁠יַֽעַבְדֻֽ⁠נ` format 3 `"1 וַ⁠יֹּ֤אמֶר יְהוָה֙ אֶל־מֹשֶׁ֔ה בֹּ֖א אֶל־פַּרְעֹ֑ה וְ⁠אָמַרְתָּ֣ אֵלָ֗י⁠ו כֹּ֚ה אָמַ֣ר יְהוָ֔ה שַׁלַּ֥ח אֶת־עַמִּ֖⁠י וְ⁠יַֽעַבְדֻֽ⁠נִי׃"`
+- EXO 8:2: differs
+  - $.versions[2].text: today `"2 7:27וְ⁠אִם־מָאֵ֥ן אַתָּ֖ה לְ⁠שַׁלֵּ֑חַ הִנֵּ֣ה אָנֹכִ֗י נֹגֵ֛ף אֶת־כָּל־גְּבוּלְ⁠ךָ֖ בַּֽ⁠צְפַרְדְּעִֽים׃"` format 3 `"2 וְ⁠אִם־מָאֵ֥ן אַתָּ֖ה לְ⁠שַׁלֵּ֑חַ הִנֵּ֣ה אָנֹכִ֗י נֹגֵ֛ף אֶת־כָּל־גְּבוּלְ⁠ךָ֖ בַּֽ⁠צְפַרְדְּעִֽים׃"`
+- EXO 8:3: differs
+  - $.versions[2].text: today `"3 7:28וְ⁠שָׁרַ֣ץ הַ⁠יְאֹר֮ צְפַרְדְּעִים֒ וְ⁠עָלוּ֙ וּ⁠בָ֣אוּ בְּ⁠בֵיתֶ֔⁠ךָ וּ⁠בַ⁠חֲדַ֥ר מִשְׁכָּבְ⁠ךָ֖ וְ⁠עַל־מִטָּתֶ֑⁠ךָ וּ⁠בְ⁠בֵ֤ית עֲבָ` format 3 `"3 וְ⁠שָׁרַ֣ץ הַ⁠יְאֹר֮ צְפַרְדְּעִים֒ וְ⁠עָלוּ֙ וּ⁠בָ֣אוּ בְּ⁠בֵיתֶ֔⁠ךָ וּ⁠בַ⁠חֲדַ֥ר מִשְׁכָּבְ⁠ךָ֖ וְ⁠עַל־מִטָּתֶ֑⁠ךָ וּ⁠בְ⁠בֵ֤ית עֲבָדֶ֨י`
+- EXO 8:4: fallback (adapter-undefined)
+- EXO 8:5: differs
+  - $.versions[2].text: today `"5 1וַ⁠יֹּ֣אמֶר יְהוָה֮ אֶל־מֹשֶׁה֒ אֱמֹ֣ר אֶֽל־אַהֲרֹ֗ן נְטֵ֤ה אֶת־יָדְ⁠ךָ֙ בְּ⁠מַטֶּ֔⁠ךָ עַל־הַ֨⁠נְּהָרֹ֔ת עַל־הַ⁠יְאֹרִ֖ים וְ⁠עַל־הָ⁠אֲגַ` format 3 `"5 וַ⁠יֹּ֣אמֶר יְהוָה֮ אֶל־מֹשֶׁה֒ אֱמֹ֣ר אֶֽל־אַהֲרֹ֗ן נְטֵ֤ה אֶת־יָדְ⁠ךָ֙ בְּ⁠מַטֶּ֔⁠ךָ עַל־הַ֨⁠נְּהָרֹ֔ת עַל־הַ⁠יְאֹרִ֖ים וְ⁠עַל־הָ⁠אֲגַמ`
+- EXO 8:6: differs
+  - $.versions[2].text: today `"6 2וַ⁠יֵּ֤ט אַהֲרֹן֙ אֶת־יָד֔⁠וֹ עַ֖ל מֵימֵ֣י מִצְרָ֑יִם וַ⁠תַּ֨עַל֙ הַ⁠צְּפַרְדֵּ֔עַ וַ⁠תְּכַ֖ס אֶת־אֶ֥רֶץ מִצְרָֽיִם׃"` format 3 `"6 וַ⁠יֵּ֤ט אַהֲרֹן֙ אֶת־יָד֔⁠וֹ עַ֖ל מֵימֵ֣י מִצְרָ֑יִם וַ⁠תַּ֨עַל֙ הַ⁠צְּפַרְדֵּ֔עַ וַ⁠תְּכַ֖ס אֶת־אֶ֥רֶץ מִצְרָֽיִם׃"`
+- EXO 8:7: differs
+  - $.versions[2].text: today `"7 3וַ⁠יַּֽעֲשׂוּ־כֵ֥ן הַֽ⁠חֲרְטֻמִּ֖ים בְּ⁠לָטֵי⁠הֶ֑ם וַ⁠יַּעֲל֥וּ אֶת־הַֽ⁠צְפַרְדְּעִ֖ים עַל־אֶ֥רֶץ מִצְרָֽיִם׃"` format 3 `"7 וַ⁠יַּֽעֲשׂוּ־כֵ֥ן הַֽ⁠חֲרְטֻמִּ֖ים בְּ⁠לָטֵי⁠הֶ֑ם וַ⁠יַּעֲל֥וּ אֶת־הַֽ⁠צְפַרְדְּעִ֖ים עַל־אֶ֥רֶץ מִצְרָֽיִם׃"`
+- EXO 8:8: differs
+  - $.versions[2].text: today `"8 4וַ⁠יִּקְרָ֨א פַרְעֹ֜ה לְ⁠מֹשֶׁ֣ה וּֽ⁠לְ⁠אַהֲרֹ֗ן וַ⁠יֹּ֨אמֶר֙ הַעְתִּ֣ירוּ אֶל־יְהוָ֔ה וְ⁠יָסֵר֙ הַֽ⁠צְפַרְדְּעִ֔ים מִמֶּ֖⁠נִּי וּ⁠מֵֽ⁠ע` format 3 `"8 וַ⁠יִּקְרָ֨א פַרְעֹ֜ה לְ⁠מֹשֶׁ֣ה וּֽ⁠לְ⁠אַהֲרֹ֗ן וַ⁠יֹּ֨אמֶר֙ הַעְתִּ֣ירוּ אֶל־יְהוָ֔ה וְ⁠יָסֵר֙ הַֽ⁠צְפַרְדְּעִ֔ים מִמֶּ֖⁠נִּי וּ⁠מֵֽ⁠עַ`
+- EXO 8:9: differs
+  - $.versions[2].text: today `"9 5וַ⁠יֹּ֣אמֶר מֹשֶׁ֣ה לְ⁠פַרְעֹה֮ הִתְפָּאֵ֣ר עָלַ⁠י֒ לְ⁠מָתַ֣י ׀ אַעְתִּ֣יר לְ⁠ךָ֗ וְ⁠לַ⁠עֲבָדֶ֨י⁠ךָ֙ וּֽ⁠לְ⁠עַמְּ⁠ךָ֔ לְ⁠הַכְרִית֙ הַֽ⁠צ` format 3 `"9 וַ⁠יֹּ֣אמֶר מֹשֶׁ֣ה לְ⁠פַרְעֹה֮ הִתְפָּאֵ֣ר עָלַ⁠י֒ לְ⁠מָתַ֣י ׀ אַעְתִּ֣יר לְ⁠ךָ֗ וְ⁠לַ⁠עֲבָדֶ֨י⁠ךָ֙ וּֽ⁠לְ⁠עַמְּ⁠ךָ֔ לְ⁠הַכְרִית֙ הַֽ⁠צֲ`
+- and more (see the counts above)

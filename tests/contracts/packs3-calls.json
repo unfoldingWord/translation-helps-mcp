@@ -1,0 +1,633 @@
+[
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "JHN 3:16",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "TIT 1:1-3",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "PSA 23",
+      "language": "en"
+    },
+    "expect": "fallback",
+    "why": "PSA 23:1,2,4,5 and the whole chapter are swept exceptions of the en ult proof (adapter-undefined, no format 3 rebuild)"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "PSA 119:1-8",
+      "language": "en"
+    },
+    "expect": "fallback",
+    "why": "PSA 119:8 is a swept exception of the en ult proof and the range 1-8 contains it"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "GEN 1:1",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "ROM 8:28",
+      "language": "en"
+    },
+    "expect": "fallback",
+    "why": "a marker in the verse the rebuild does not cover (adapter-undefined, not traced further)"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "MAT 5:3-10",
+      "language": "en"
+    },
+    "expect": "fallback",
+    "why": "format 3 lost whitespace in the poetry of MAT 5 (guard of 5228f9cf)"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "JON 1:1-3",
+      "language": "en"
+    },
+    "expect": "fallback",
+    "why": "JON 1:1, 1:2 and 1:3 are swept exceptions of the en ult proof"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "OBS 3:5",
+      "language": "en"
+    },
+    "expect": "fallback",
+    "why": "no format 3 adapter for this API path (no-adapter): OBS text"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "TIT 1:1",
+      "language": "en",
+      "format": "usfm"
+    },
+    "expect": "fallback",
+    "why": "format usfm stays on today's path (plan deviation: no USFM writer yet)"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "JON",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "TIT 1",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "PSA 23",
+      "language": "en"
+    },
+    "expect": "either",
+    "why": "getPassageIndex runs notes and word-links in parallel and en Psalms notes needs the exclusive reader (readers.ts), so when word-links asks for a reader while notes holds it, links gets readers-busy and the composite falls back (detail readers-busy); when the two calls do not overlap it is served and equal. The same code and bucket gave both outcomes across runs, so neither is asserted"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "JHN 3:16",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "ROM 8",
+      "language": "en"
+    },
+    "expect": "fallback",
+    "why": "helps item not swept (unverified-resource)"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "OBS 3:5",
+      "language": "en"
+    },
+    "expect": "fallback",
+    "why": "no format 3 adapter for this API path (no-adapter): OBS notes"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "JON",
+      "language": "en",
+      "limit": 10,
+      "offset": 10
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "TIT 1:1",
+      "language": "en",
+      "phrase": "servant"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "JHN 1:intro",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "JHN 3:16",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "JON 1:3",
+      "language": "en",
+      "ids": ["__FROM_INDEX__"]
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "OBS 3:5",
+      "language": "en",
+      "kind": "study"
+    },
+    "expect": "fallback",
+    "why": "no format 3 adapter for this API path (no-adapter): OBS study notes"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "Jonah",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_questions",
+    "args": {
+      "reference": "TIT 1",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_questions",
+    "args": {
+      "reference": "JHN 3",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_questions",
+    "args": {
+      "reference": "ROM 8:28",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_questions",
+    "args": {
+      "reference": "OBS 3",
+      "language": "en",
+      "kind": "study"
+    },
+    "expect": "fallback",
+    "why": "no format 3 adapter for this API path (no-adapter): OBS study questions"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "bible/kt/grace",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "translate/figs-metaphor",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "covenant",
+      "language": "en"
+    },
+    "expect": "fallback",
+    "why": "en \"covenant\" resolves to /api/v1/words/covenant = bible/kt/covenant, a swept exception (en articles proof: differs, article body) (detail unverified-resource)"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "metaphor",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "rc://en/tw/dict/bible/kt/love",
+      "language": "en"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "bible/kt/grace",
+      "language": "en",
+      "detail": "summary"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_search",
+    "args": {
+      "query": "figures of speech",
+      "language": "en"
+    },
+    "expect": "pack",
+    "why": "served by the search catalog proof (any query); it fell back only because th_search sends limit 10 and the adapter answered limit 5 (fixed in 15f)"
+  },
+  {
+    "tool": "th_search",
+    "args": {
+      "query": "abstract nouns",
+      "language": "en"
+    },
+    "expect": "pack",
+    "why": "served by the search catalog proof (any query); it fell back only because th_search sends limit 10 and the adapter answered limit 5 (fixed in 15f)"
+  },
+  {
+    "tool": "th_search",
+    "args": {
+      "query": "covenant",
+      "language": "en"
+    },
+    "expect": "pack",
+    "why": "served by the search catalog proof (any query); it fell back only because th_search sends limit 10 and the adapter answered limit 5 (fixed in 15f)"
+  },
+  {
+    "tool": "th_search",
+    "args": {
+      "query": "metaphor",
+      "language": "en",
+      "type": "ta",
+      "limit": 5
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_list_resources",
+    "args": {
+      "language": "en"
+    },
+    "expect": "fallback",
+    "why": "no format 3 adapter for this API path (no-adapter): list_resources"
+  },
+  {
+    "tool": "th_list_resources",
+    "args": {
+      "language": "en",
+      "book": "JON"
+    },
+    "expect": "fallback",
+    "why": "no format 3 adapter for this API path (no-adapter): list_resources"
+  },
+  {
+    "tool": "th_list_resources",
+    "args": {},
+    "expect": "fallback",
+    "why": "no format 3 adapter for this API path (no-adapter): list_resources"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "JHN 3:16",
+      "language": "fr"
+    },
+    "expect": "fallback",
+    "why": "no fr language pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "RUT 1:1",
+      "language": "es-419"
+    },
+    "expect": "fallback",
+    "why": "RUT 1:1 is a swept exception of the es-419 gst proof"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "JON 1:3",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "TIT 1:1-3",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "PSA 23",
+      "language": "es-419"
+    },
+    "expect": "fallback",
+    "why": "the es-419 pack has no Psalms (book not in the pack)"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "JHN 3:16",
+      "language": "es-419"
+    },
+    "expect": "fallback",
+    "why": "TPL and GST lack John: the route answers with a note, the adapter does not rebuild it"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "Juan 3:16",
+      "language": "es-419"
+    },
+    "expect": "fallback",
+    "why": "TPL and GST lack John"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "MAT 5:3-10",
+      "language": "es-419"
+    },
+    "expect": "fallback",
+    "why": "TPL and GST lack Matthew"
+  },
+  {
+    "tool": "th_get_passage",
+    "args": {
+      "reference": "MAT 5:1",
+      "language": "es-419"
+    },
+    "expect": "fallback",
+    "why": "the es-419 pack has no Matthew (book not in the pack)"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "JON",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "TIT 1",
+      "language": "es-419"
+    },
+    "expect": "fallback",
+    "why": "notes part gives undefined in index mode (not traced: an introduction heading or row guard)"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "PSA 23",
+      "language": "es-419"
+    },
+    "expect": "fallback",
+    "why": "the es-419 pack has no Psalms (book not in the pack)"
+  },
+  {
+    "tool": "th_get_passage_index",
+    "args": {
+      "reference": "RUT 1",
+      "language": "es-419"
+    },
+    "expect": "fallback",
+    "why": "es-419 RUT 1 is in the pack's index chapters yet falls back; cause not traced (known residual)"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "JON 1:3",
+      "language": "es-419"
+    },
+    "expect": "fallback",
+    "why": "helps item not swept (unverified-resource)"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "TIT 1:1",
+      "language": "es-419",
+      "phrase": "siervo"
+    },
+    "expect": "fallback",
+    "why": "note-links"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "JHN 1:intro",
+      "language": "es-419"
+    },
+    "expect": "fallback",
+    "why": "es-419 pack has no John (adapter-undefined)"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "ROM 8:28",
+      "language": "es-419"
+    },
+    "expect": "fallback",
+    "why": "adapter-undefined for es-419 ROM (not traced)"
+  },
+  {
+    "tool": "th_get_notes",
+    "args": {
+      "reference": "JON 1:3",
+      "language": "es-419",
+      "ids": ["__FROM_INDEX__"]
+    },
+    "expect": "fallback",
+    "why": "helps item not swept (unverified-resource)"
+  },
+  {
+    "tool": "th_get_questions",
+    "args": {
+      "reference": "RUT 1",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_questions",
+    "args": {
+      "reference": "TIT 1",
+      "language": "es-419"
+    },
+    "expect": "pack"
+  },
+  {
+    "tool": "th_get_questions",
+    "args": {
+      "reference": "JHN 3",
+      "language": "es-419"
+    },
+    "expect": "fallback",
+    "why": "adapter-undefined for es-419 JHN questions"
+  },
+  {
+    "tool": "th_get_questions",
+    "args": {
+      "reference": "OBS 3",
+      "language": "es-419",
+      "kind": "study"
+    },
+    "expect": "fallback",
+    "why": "no format 3 adapter for this API path (no-adapter): OBS study questions"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "bible/kt/grace",
+      "language": "es-419"
+    },
+    "expect": "fallback",
+    "why": "es-419 bible/kt/grace: a swept exception of the es-419 articles proof (differs, article body; S0 builder/published data) (detail unverified-resource)"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "translate/figs-metaphor",
+      "language": "es-419"
+    },
+    "expect": "fallback",
+    "why": "es-419 translate/figs-metaphor: a swept exception of the es-419 articles proof (differs, article body; S0 builder/published data) (detail unverified-resource)"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "pacto",
+      "language": "es-419"
+    },
+    "expect": "fallback",
+    "why": "es-419 bible/kt/covenant (by title \"pacto\"): a swept exception of the es-419 articles proof (differs, article body; S0 builder/published data) (detail unverified-resource)"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "bible/kt/grace",
+      "language": "es-419",
+      "detail": "summary"
+    },
+    "expect": "fallback",
+    "why": "es-419 bible/kt/grace: a swept exception of the es-419 articles proof (differs, article body; S0 builder/published data) (detail unverified-resource)"
+  },
+  {
+    "tool": "th_get_article",
+    "args": {
+      "path": "translate/figs-simile",
+      "language": "es-419"
+    },
+    "expect": "fallback",
+    "why": "es-419 translate/figs-simile: a swept exception of the es-419 articles proof (differs, article body; S0 builder/published data) (detail unverified-resource)"
+  },
+  {
+    "tool": "th_search",
+    "args": {
+      "query": "gracia",
+      "language": "es-419"
+    },
+    "expect": "pack",
+    "why": "served by the search catalog proof (any query); it fell back only because th_search sends limit 10 and the adapter answered limit 5 (fixed in 15f)"
+  },
+  {
+    "tool": "th_search",
+    "args": {
+      "query": "figuras de lenguaje",
+      "language": "es-419"
+    },
+    "expect": "pack",
+    "why": "served by the search catalog proof (any query); it fell back only because th_search sends limit 10 and the adapter answered limit 5 (fixed in 15f)"
+  },
+  {
+    "tool": "th_search",
+    "args": {
+      "query": "pacto",
+      "language": "es-419"
+    },
+    "expect": "pack",
+    "why": "served by the search catalog proof (any query); it fell back only because th_search sends limit 10 and the adapter answered limit 5 (fixed in 15f)"
+  },
+  {
+    "tool": "th_list_resources",
+    "args": {
+      "language": "es-419"
+    },
+    "expect": "fallback",
+    "why": "no format 3 adapter for this API path (no-adapter): list_resources"
+  },
+  {
+    "tool": "th_list_resources",
+    "args": {
+      "language": "es-419",
+      "book": "JON"
+    },
+    "expect": "fallback",
+    "why": "no format 3 adapter for this API path (no-adapter): list_resources"
+  }
+]
