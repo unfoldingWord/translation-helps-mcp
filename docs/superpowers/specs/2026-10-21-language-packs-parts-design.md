@@ -220,9 +220,26 @@ Each with its own plan and PRs, in this order:
    - lexicons: an owner option (`test_org` for English) and a reader for translationCore's layout (`brief`/`long`);
    - Worker: drop the unconditional daily builds of es-419 and en; the daily sweep only checks releases;
    - the tc-study commit (`generator`) leaves the build id, so an unrelated commit rebuilds nothing.
-2. **Parts and the per-book build** (tc-study, the largest): deterministic parts, fingerprints from Door43 trees,
-   one database per book, reuse of unchanged parts, the shared originals list, compat `f2.0`. The es-419 equivalence
-   test, then the English measurement.
+2. **Parts and the per-book build** (tc-study, the largest), in three plans:
+   - **2a, per-book keys:** derived keys (quote, alignment) stamped per book, not per release (below);
+   - **2b, parts and the per-book build:** deterministic parts, the list (schema 2), fingerprints from Door43 trees,
+     one database per book, reuse of unchanged parts, the shared originals list, compat `f2.0`; the es-419
+     equivalence test, then the English measurement;
+   - **2c, MCP views from parts:** only the chapters whose parts changed.
+
+   Decided 2026-10-22, after mapping the code:
+   - **A book's stamp is its file's git blob sha.** Door43's tree gives it per file (`tn_RUT.tsv`, `08-RUT.usfm`);
+     a download records it in the resource's catalog row (`contentMetadata.bookBlobs`), and packs carry those rows,
+     so the build, the Worker, tc-study's app and Servos all derive the same stamp. Without it (an old row, Door43
+     down) the release stamp is used, as today.
+   - **The receipt moves into the list.** A part names its resource, book and fingerprint; a resource is complete
+     when every part the person chose is there.
+   - **The per-book build plans only what a resource has**, and counts failures apart instead of hiding them among
+     «sin hacer» (the English measurement's 3,002).
+
+   English measured on a GitHub runner on 2026-10-22, with today's whole build: 46:51, 14.9 GB peak of the runner's
+   16 GB, a 155.2 MB language pack. It fits, with no margin; parts come before English is published.
+
 3. **Worker and MCP v2:** fingerprint comparison before asking for a build, the parts route with cache and its own
    rate limit, views from parts with fingerprints, cleanup after 30 days.
 4. **Servos online** (plan 3, now written for parts): project-book download, "the whole language", updates by
