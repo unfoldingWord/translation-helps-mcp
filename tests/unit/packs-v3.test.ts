@@ -13,6 +13,9 @@ import { resetRateLimitStoreForTests } from "../../src/core/rateLimit";
 
 const HEX = "ab12".repeat(16);
 const SEG_KEY = `v3/seg/${HEX}.seg`;
+const COMP_HEX = "cd34".repeat(16);
+const COMP_KEY = `v3/complement/${COMP_HEX}`;
+const COMP_BYTES = new Uint8Array(60).map((_, i) => (i * 5) % 251);
 const BYTES = new Uint8Array(1000).map((_, i) => (i * 7) % 251);
 const CAT_BYTES = new Uint8Array(300).map((_, i) => (i * 3) % 251);
 
@@ -287,6 +290,82 @@ describe("GET /v3/packs/<lang>/catalog", () => {
       headers: { Range: "bytes=-0" },
     });
     expect(bad.status).toBe(200);
+  });
+});
+
+describe("GET /v3/packs/complement/<id>", () => {
+  const withComplement = () => {
+    const objects = defaultObjects();
+    objects[COMP_KEY] = {
+      bytes: COMP_BYTES,
+      etag: "c1",
+      contentType: "application/octet-stream",
+    };
+    return setup({ objects });
+  };
+
+  it("parses only a lowercase sha256 under complement/", () => {
+    expect(parseV3Path(`complement/${COMP_HEX}`)).toEqual({
+      route: "complement",
+      id: COMP_HEX,
+      key: COMP_KEY,
+    });
+    expect(parseV3Path("complement/catalog")).toBeNull();
+    expect(parseV3Path(`complement/${COMP_HEX.toUpperCase()}`)).toBeNull();
+    expect(parseV3Path("complement/abc")).toBeNull();
+    expect(parseV3Path("complement")).toBeNull();
+  });
+
+  it("serves the file as immutable bytes under the key v3/complement/<id>", async () => {
+    const { call, gets } = withComplement();
+    const res = await call(`complement/${COMP_HEX}`);
+    expect(res.status).toBe(200);
+    expect(gets[0]?.key).toBe(COMP_KEY);
+    expect(await bytes(res)).toEqual(COMP_BYTES);
+    expect(res.headers.get("Cache-Control")).toBe(
+      "public, max-age=31536000, immutable, no-transform",
+    );
+    expect(res.headers.get("Content-Encoding")).toBeNull();
+    expect(res.headers.get("ETag")).toBe('"c1"');
+    expectCors(res);
+  });
+
+  it("answers 404 complement not found, and 400 for a bad id", async () => {
+    const { call } = setup();
+    const miss = await call(`complement/${COMP_HEX}`);
+    expect(miss.status).toBe(404);
+    expect(await miss.json()).toEqual({ error: "complement not found" });
+    expect((await call("complement/catalog")).status).toBe(400);
+  });
+
+  it("is limited with the segments' budget, not the catalogs'", async () => {
+    resetRateLimitStoreForTests();
+    const { call } = setup({
+      rpm: "50",
+      partsRpm: "2",
+      objects: {
+        ...defaultObjects(),
+        [COMP_KEY]: {
+          bytes: COMP_BYTES,
+          etag: "c1",
+          contentType: "application/octet-stream",
+        },
+      },
+    });
+    // one parts counter for segments and complements: two requests, then 429
+    expect((await call(`complement/${COMP_HEX}`)).status).toBe(200);
+    expect((await call(`seg/${HEX}`)).status).toBe(200);
+    expect((await call(`complement/${COMP_HEX}`)).status).toBe(429);
+  });
+
+  it("honours Range (206) like a segment", async () => {
+    const { call } = withComplement();
+    const res = await call(`complement/${COMP_HEX}`, {
+      headers: { Range: "bytes=10-19" },
+    });
+    expect(res.status).toBe(206);
+    expect(res.headers.get("Content-Range")).toBe("bytes 10-19/60");
+    expect(await bytes(res)).toEqual(COMP_BYTES.slice(10, 20));
   });
 });
 

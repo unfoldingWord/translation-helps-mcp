@@ -514,8 +514,9 @@ Format 3 is built and uploaded by the same run that builds a language's 2.0 part
 | `GET /v3/packs/{lang}/catalog` | `v3/catalog/{lang}.seg` | `no-cache, no-transform` (revalidated with `ETag` / `If-None-Match`)     |
 | `GET /v3/packs/common/catalog` | `v3/catalog/common.seg` | same                                                                     |
 | `GET /v3/packs/seg/{id}`       | `v3/seg/{id}.seg`       | `public, max-age=31536000, immutable, no-transform`; `Range` is honoured |
+| `GET /v3/packs/complement/{id}` | `v3/complement/{id}`   | as a segment; the file a catalog lists as a complement (the map `basemap`), `{id}` = sha256 of the file as downloaded; same rate limit as segments |
 
-`{id}` is 64 lowercase hex characters (the sha256 of the segment's uncompressed body). `v3/registry/{lang}.json` is
+`{id}` is 64 lowercase hex characters (the sha256 of the segment's uncompressed body; for a complement, the sha256 of the file as downloaded). `v3/registry/{lang}.json` is
 written by the pipeline and is not served. `HEAD` and `OPTIONS` work; a catalog ignores `Range`.
 
 ### `PACKS_V3`
