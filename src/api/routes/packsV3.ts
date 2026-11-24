@@ -6,6 +6,8 @@
  *   /v3/packs/{lang}/catalog → v3/catalog/{lang}.seg (revalidated on every use)
  *   /v3/packs/common/catalog → v3/catalog/common.seg
  *   /v3/packs/seg/{id}       → v3/seg/{id}.seg (immutable, shared by every language)
+ *   /v3/packs/complement/{id} → v3/complement/{id} (a file a catalog lists, such as the map `basemap`; id = sha256 of the
+ *                               file as downloaded; immutable, same headers and rate limit as a segment)
  *
  * The Worker never decodes a file and never starts a build: format 3 is built in the same run as the language's
  * format 2.0 parts. The header helpers are those of /v2/packs (./packs.ts), so both prefixes read If-None-Match and
@@ -36,7 +38,8 @@ type V3Target =
       /** Served when `key` is missing: `es` has no pack of its own and falls to `es-419`. */
       alias?: { lang: string; key: string };
     }
-  | { route: "seg"; id: string; key: string };
+  | { route: "seg"; id: string; key: string }
+  | { route: "complement"; id: string; key: string };
 
 type Outcome =
   | "hit"
@@ -75,6 +78,11 @@ export function parseV3Path(path: string): V3Target | null {
   if (first === "seg" && second !== "catalog") {
     if (!SEGMENT_ID_RE.test(second)) return null;
     return { route: "seg", id: second, key: `v3/seg/${second}.seg` };
+  }
+  // `complement` is not a language tag (2 or 3 letters), so a path under it that is not a complement is a bad path.
+  if (first === "complement") {
+    if (!SEGMENT_ID_RE.test(second)) return null;
+    return { route: "complement", id: second, key: `v3/complement/${second}` };
   }
   if (second !== "catalog") return null;
   if (first === COMMON) {
@@ -148,7 +156,7 @@ async function serve(
 ): Promise<Served | null> {
   const tags = parseIfNoneMatch(request.headers.get("If-None-Match"));
   const isHead = request.method === "HEAD";
-  const segment = target.route === "seg";
+  const segment = target.route !== "catalog";
   // A catalog is whole or nothing: its Range header is ignored. HEAD reads Range like the GET it stands for.
   const range = segment ? parseRange(request.headers.get("Range")) : null;
 
@@ -238,7 +246,7 @@ async function respond(
   }
   const limitHeaders = { ...CORS, "Cache-Control": NO_STORE };
   const limited =
-    target?.route === "seg"
+    target?.route === "seg" || target?.route === "complement"
       ? enforceRateLimit(request, env.PARTS_RATE_LIMIT_RPM, limitHeaders, {
           scope: PARTS_RATE_LIMIT_SCOPE,
           fallbackRpm: DEFAULT_PARTS_RPM,
@@ -271,9 +279,14 @@ async function respond(
     });
     if (aliased) return { ...aliased, lang: target.alias.lang };
   }
-  return target.route === "catalog"
-    ? plain(404, "missing", { error: "catalog not found" })
-    : plain(404, "missing", { error: "segment not found" });
+  return plain(404, "missing", {
+    error:
+      target.route === "catalog"
+        ? "catalog not found"
+        : target.route === "complement"
+          ? "complement not found"
+          : "segment not found",
+  });
 }
 
 /** `path` is what follows `/v3/packs/`, still percent-encoded. */
