@@ -1,2 +1,8 @@
 # The chat lives outside the build (see chat/README.md)
 chat/
+
+# vendored bundle: byte-for-byte as built (SOURCE.json holds its hash)
+vendor/
+
+# written by scripts/sweep-packs3.mjs in its own layout (one field per line); a reformat would only add diff noise
+src/packs3/verified.json

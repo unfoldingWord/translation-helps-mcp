@@ -1,0 +1,1684 @@
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+// @ts-expect-error plain .mjs script, no types
+import * as s from "../../scripts/sweep-packs3.mjs";
+import { isVerified, setVerifiedForTests } from "../../src/packs3/verified";
+
+describe("sweep-packs3 pure parts", () => {
+  it("builds the key from language, resource key, release and kind", () => {
+    expect(
+      s.sweepKey("es-419", "es-419_gl/es-419/tq", "v38", "questions"),
+    ).toBe("es-419|es-419_gl/es-419/tq|v38|questions");
+  });
+
+  it("picks the catalog resources a kind covers, with their release", () => {
+    const resources = [
+      { key: "a/en/ult", subject: "Aligned Bible", release: "v1" },
+      { key: "a/en/tq", subject: "TSV Translation Questions", release: "v2" },
+      { key: "a/en/tw", subject: "Translation Words", release: "v3" },
+      { key: "a/en/ta", subject: "Translation Academy", release: "v4" },
+    ];
+    expect(
+      s.resourcesOfKind("questions", resources).map((r: any) => r.key),
+    ).toEqual(["a/en/tq"]);
+    expect(
+      s.resourcesOfKind("passage", resources).map((r: any) => r.key),
+    ).toEqual(["a/en/ult"]);
+    // search covers ta and tw (each type set names its resources in its items)
+    expect(
+      s.resourcesOfKind("search", resources).map((r: any) => r.key),
+    ).toEqual(["a/en/ta", "a/en/tw"]);
+    expect(
+      s.resourcesOfKind("articles", resources).map((r: any) => r.key),
+    ).toEqual(["a/en/ta", "a/en/tw"]);
+    expect(s.resourcesOfKind("nonsense", resources)).toEqual([]);
+  });
+
+  it("lists exceptions: differing items, fallbacks and API errors, sorted and unique", () => {
+    const results = [
+      { item: "TIT 3", status: "equal" },
+      { item: "TIT 2", status: "differs" },
+      { item: "TIT 1", status: "fallback", reason: "unverified-book" },
+      { item: "RUT 1", status: "api-error" },
+      { item: "TIT 2", status: "differs" },
+    ];
+    expect(s.listExceptions(results)).toEqual(["RUT 1", "TIT 1", "TIT 2"]);
+  });
+
+  it("builds an entry with the item count and the date", () => {
+    const results = [
+      { item: "a", status: "equal" },
+      { item: "b", status: "differs" },
+    ];
+    expect(s.buildEntry(results, "2026-11-14T00:00:00.000Z")).toEqual({
+      items: 2,
+      exceptions: ["b"],
+      swept: "2026-11-14T00:00:00.000Z",
+    });
+    // the documented shape: deps and the exact coverage ride along
+    expect(
+      s.buildEntry(results, "d", {
+        deps: { "en|x/y/z": "v1" },
+        chapters: { TIT: [1] },
+        skippedBooks: ["GEN"],
+      }),
+    ).toEqual({
+      items: 2,
+      exceptions: ["b"],
+      swept: "d",
+      deps: { "en|x/y/z": "v1" },
+      chapters: { TIT: [1] },
+      skippedBooks: ["GEN"],
+    });
+  });
+
+  it("merges entries by key, keeps the others, and sorts the keys", () => {
+    const old = {
+      "en|x|v1|notes": { items: 1, exceptions: [], swept: "old" },
+      "en|x|v1|links": { items: 1, exceptions: [], swept: "old" },
+    };
+    const merged = s.mergeVerified(old, {
+      "en|x|v1|notes": { items: 5, exceptions: ["TIT 1"], swept: "new" },
+      "en|y|v2|notes": { items: 2, exceptions: [], swept: "new" },
+    });
+    expect(Object.keys(merged)).toEqual([
+      "en|x|v1|links",
+      "en|x|v1|notes",
+      "en|y|v2|notes",
+    ]);
+    expect(merged["en|x|v1|notes"].items).toBe(5);
+    expect(merged["en|x|v1|links"].swept).toBe("old");
+    // The inputs are not changed.
+    expect(old["en|x|v1|notes"].items).toBe(1);
+  });
+
+  it("classifies an item with the comparison's normalizer", () => {
+    const api = { requestId: "r", meta: { cache: "hit" }, q: [1] };
+    expect(
+      s.classifyItem(
+        { hit: true, value: { meta: { cache: "pack" }, q: [1] } },
+        api,
+      ).status,
+    ).toBe("equal");
+    const d = s.classifyItem({ hit: true, value: { q: [2] } }, api);
+    expect(d.status).toBe("differs");
+    expect(d.diffs[0].path).toBe("$.q[0]");
+    expect(
+      s.classifyItem({ hit: false, reason: "adapter-undefined" }, api),
+    ).toMatchObject({
+      status: "fallback",
+      reason: "adapter-undefined",
+    });
+    expect(s.classifyItem({ hit: true, value: {} }, undefined).status).toBe(
+      "api-error",
+    );
+  });
+
+  it("makes the item list per kind", () => {
+    expect(s.chapterItems("TIT", [1, 2, 3], true)).toEqual([
+      "TIT",
+      "TIT 1",
+      "TIT 2",
+      "TIT 3",
+    ]);
+    expect(s.chapterItems("TIT", [1, 2], false)).toEqual(["TIT 1", "TIT 2"]);
+    // numbers ascending (0 = intro), then names such as "front"
+    expect(
+      s.unionChapters([
+        ["1", "2"],
+        ["2", "10", "front", "0"],
+      ]),
+    ).toEqual([0, 1, 2, 10, "front"]);
+  });
+
+  it("has 40 distinct search queries per language, already normalized", () => {
+    for (const lang of ["en", "es-419"]) {
+      const q = s.searchQueries(lang);
+      expect(q).toHaveLength(40);
+      expect(new Set(q).size).toBe(40);
+      for (const x of q) expect(x).toBe(x.trim().toLowerCase());
+    }
+    expect(s.searchQueries("fr")).toEqual([]);
+  });
+
+  it("builds the API request of an item", () => {
+    expect(s.requestOf("questions", "es-419", "TIT 1")).toEqual({
+      path: "/api/v1/questions",
+      params: { reference: "TIT 1", language: "es-419" },
+    });
+    expect(s.requestOf("notes", "en", "TIT").path).toBe("/api/v1/notes");
+    expect(s.requestOf("links", "en", "TIT 1").path).toBe("/api/v1/word-links");
+    expect(s.requestOf("passage", "en", "TIT 1").path).toBe(
+      "/api/v1/scripture",
+    );
+    expect(s.requestOf("tw", "en", "bible/kt/grace")).toEqual({
+      path: "/api/v1/words/bible/kt/grace",
+      params: {
+        language: "en",
+        requestedPath: "bible/kt/grace",
+        prepared: "1",
+      },
+    });
+    expect(s.requestOf("ta", "en", "translate/figs-simile").path).toBe(
+      "/api/v1/academy/translate/figs-simile",
+    );
+    expect(s.requestOf("search", "en", "grace")).toEqual({
+      path: "/api/v1/search",
+      params: { q: "grace", language: "en", types: "tw", limit: "5" },
+    });
+  });
+
+  it("sweeps search per types set: tw plain, ta and ta,tw prefixed", () => {
+    expect(s.SEARCH_TYPES).toEqual(["tw", "ta", "ta,tw"]);
+    expect(s.searchItem("tw", "grace")).toBe("grace");
+    expect(s.searchItem("ta", "grace")).toBe("ta|grace");
+    expect(s.searchItem("ta,tw", "grace")).toBe("ta,tw|grace");
+    expect(s.parseSearchItem("ta,tw|grace")).toEqual({
+      types: "ta,tw",
+      q: "grace",
+    });
+    expect(s.parseSearchItem("grace")).toEqual({ types: "tw", q: "grace" });
+    expect(s.requestOf("search", "en", "ta|grace").params).toEqual({
+      q: "grace",
+      language: "en",
+      types: "ta",
+      limit: "5",
+    });
+    expect(s.requestOf("search", "en", "ta,tw|grace").params.types).toBe(
+      "ta,tw",
+    );
+  });
+
+  it("writes verified.json only for a whole run, never a narrowed one", () => {
+    expect(s.shouldWriteVerified({})).toBe(true);
+    expect(s.shouldWriteVerified({ books: undefined })).toBe(true);
+    expect(s.shouldWriteVerified({ books: [] })).toBe(true);
+    expect(s.shouldWriteVerified({ books: ["tit"] })).toBe(false);
+  });
+
+  it("finds resources without items", () => {
+    const items = [{ item: "a", res: ["r1"] }];
+    expect(s.emptyResources(items, [{ key: "r1" }, { key: "r2" }])).toEqual([
+      "r2",
+    ]);
+    expect(s.emptyResources([], [{ key: "r1" }])).toEqual(["r1"]);
+  });
+
+  it("trusts a cached answer only for the same catalog key and within the max age", () => {
+    const h = 3600 * 1000;
+    const c = { fetchedAt: 1000, catalog: "K", body: {} };
+    expect(s.cacheFresh(c, "K", 1000 + 23 * h, 24)).toBe(true);
+    expect(s.cacheFresh(c, "K", 1000 + 25 * h, 24)).toBe(false);
+    expect(s.cacheFresh(c, "K", 1000 + 25 * h, 48)).toBe(true);
+    expect(s.cacheFresh(c, "OTHER", 1000, 24)).toBe(false);
+    expect(s.cacheFresh({ body: {} }, "K", 1000, 24)).toBe(false);
+    expect(s.cacheFresh(undefined, "K", 1000, 24)).toBe(false);
+  });
+
+  it("reads the resource keys an answer was made of from its sources", () => {
+    expect(
+      s.keysFromVersions([
+        {
+          source: "https://git.door43.org/unfoldingWord/en_ult/archive/v91.zip",
+        },
+        {
+          source: "https://git.door43.org/es-419_gl/es-419_glt/archive/v5.zip",
+        },
+        {
+          source:
+            "https://git.door43.org/unfoldingWord/el-x-koine_ugnt/archive/v0.34.zip",
+        },
+        { source: "nonsense" },
+      ]),
+    ).toEqual([
+      "es-419_gl/es-419/glt",
+      "unfoldingWord/el-x-koine/ugnt",
+      "unfoldingWord/en/ult",
+    ]);
+  });
+
+  it("credits a passage item only to resources the answer contained", () => {
+    const results = [
+      {
+        item: "TIT 1:1",
+        res: ["a/ult", "a/ust"],
+        status: "equal",
+        used: ["a/ult", "x/ugnt"],
+      },
+      { item: "TIT 1:2", res: ["a/ult"], status: "equal", used: ["a/ult"] },
+      { item: "TIT 2:1", res: ["a/ust"], status: "equal" },
+    ];
+    const ult = s.resultsForResource("a/ult", results);
+    expect(s.listExceptions(ult)).toEqual([]);
+    expect(ult).toHaveLength(2);
+    const ust = s.resultsForResource("a/ust", results);
+    expect(s.listExceptions(ust)).toEqual(["TIT 1:1"]);
+    expect(ust).toHaveLength(2);
+  });
+
+  it("records the releases of the resources an answer depended on", () => {
+    const cats = [
+      {
+        name: "en",
+        resources: [
+          { key: "o/en/tn", subject: "TSV Translation Notes", release: "v1" },
+          { key: "o/en/ult", subject: "Aligned Bible", release: "v2" },
+          { key: "o/en/ust", subject: "Aligned Bible", release: "v3" },
+          { key: "o/en/ta", subject: "Translation Academy", release: "v4" },
+          { key: "o/en/tw", subject: "Translation Words", release: "v5" },
+        ],
+      },
+      {
+        name: "common",
+        resources: [
+          { key: "o/el/ugnt", subject: "Greek New Testament", release: "v6" },
+          { key: "o/en/ta", subject: "Translation Academy", release: "v4" },
+        ],
+      },
+    ];
+    expect(
+      s.depsFor("notes", "o/en/tn", cats, { alignedKey: "o/en/ult" }),
+    ).toEqual({
+      "common|o/el/ugnt": "v6",
+      "common|o/en/ta": "v4",
+      "en|o/en/ta": "v4",
+      "en|o/en/ult": "v2",
+    });
+    expect(
+      s.depsFor("links", "o/en/twl", cats, { alignedKey: "o/en/ult" }),
+    ).toEqual({
+      "common|o/el/ugnt": "v6",
+      "en|o/en/tw": "v5",
+      "en|o/en/ult": "v2",
+    });
+    expect(
+      s.depsFor("passage", "o/en/ult", cats, {
+        usedKeys: ["o/en/ult", "o/en/ust", "o/el/ugnt"],
+      }),
+    ).toEqual({ "common|o/el/ugnt": "v6", "en|o/en/ust": "v3" }); // ust: used, and a Bible the note reads
+    expect(s.depsFor("questions", "o/en/tq", cats)).toEqual({});
+    expect(s.depsFor("articles", "o/en/ta", cats)).toEqual({});
+  });
+
+  it("passage deps hold every Bible resource of the own catalog the versions note reads, picked or not", () => {
+    const cats = [
+      {
+        name: "en",
+        resources: [
+          { key: "o/en/ult", subject: "Aligned Bible", release: "v2" },
+          { key: "o/en/ust", subject: "Aligned Bible", release: "v3" },
+          { key: "w/en/bsb", subject: "Aligned Bible", release: "v7" },
+          { key: "o/en/t4t", subject: "Bible", release: "v8" },
+          { key: "o/en/tn", subject: "TSV Translation Notes", release: "v1" },
+        ],
+      },
+      {
+        name: "common",
+        resources: [
+          { key: "o/el/ugnt", subject: "Greek New Testament", release: "v6" },
+          { key: "o/x/other", subject: "Bible", release: "v9" },
+        ],
+      },
+    ];
+    expect(
+      s.depsFor("passage", "o/en/ult", cats, {
+        usedKeys: ["o/en/ult", "o/en/ust", "o/el/ugnt"],
+      }),
+    ).toEqual({
+      "common|o/el/ugnt": "v6",
+      "en|o/en/t4t": "v8",
+      "en|o/en/ust": "v3",
+      "en|w/en/bsb": "v7",
+    });
+  });
+
+  it("says exactly which items an entry covers", () => {
+    expect(
+      s.coverageOf([
+        { item: "TIT", book: "TIT" },
+        { item: "TIT 2", book: "TIT", chapter: 2 },
+        { item: "TIT 1", book: "TIT", chapter: 1 },
+        { item: "TIT front", book: "TIT", chapter: "front" },
+        { item: "TIT 0", book: "TIT", chapter: 0 },
+      ]),
+    ).toEqual({ chapters: { TIT: [0, 1, 2, "front"] }, wholeBooks: ["TIT"] });
+    expect(
+      s.coverageOf([
+        { item: "TIT 1", book: "TIT", chapter: 1 },
+        { item: "index:TIT", book: "TIT", index: true },
+        { item: "index:TIT 1", book: "TIT", chapter: 1, index: true },
+        { item: "index:TIT 0", book: "TIT", chapter: 0, index: true },
+      ]),
+    ).toEqual({
+      chapters: { TIT: [1] },
+      indexChapters: { TIT: [0, 1] },
+      indexWholeBooks: ["TIT"],
+    });
+    expect(s.requestOf("notes", "en", "TIT 1", { index: true })).toEqual({
+      path: "/api/v1/notes",
+      params: { reference: "TIT 1", language: "en", fields: "index" },
+    });
+    expect(
+      s.requestOf("links", "en", "TIT", { index: true }).params.fields,
+    ).toBe("index");
+    expect(() =>
+      s.requestOf("questions", "en", "TIT", { index: true }),
+    ).toThrow();
+    expect(s.indexItem("TIT 1")).toBe("index:TIT 1");
+    expect(
+      s.coverageOf([{ item: "b/x" }, { item: "a/y" }, { item: "b/x" }]),
+    ).toEqual({ ids: ["a/y", "b/x"] });
+  });
+
+  // The public API drops `fields=index`; only a trusted host (localhost) with the internal header answers that shape.
+  it("sends index items to --api-index with the internal header, the rest to --api", () => {
+    const api = "https://api.example.org";
+    const apiIndex = "http://localhost:8788";
+    const idx = { item: "index:TIT 1", index: true };
+    const plain = { item: "TIT 1" };
+    expect(s.apiTarget(idx, { api, apiIndex })).toEqual({
+      base: apiIndex,
+      headers: { accept: "application/json", "x-th-internal": "index" },
+    });
+    expect(s.apiTarget(plain, { api, apiIndex })).toEqual({
+      base: api,
+      headers: { accept: "application/json" },
+    });
+    // The old behaviour stays the default: no --api-index, everything to --api with no header.
+    expect(s.apiTarget(idx, { api })).toEqual({
+      base: api,
+      headers: { accept: "application/json" },
+    });
+    // A host the API would not trust would strip the shape: refuse it rather than compare the wrong shape.
+    expect(() =>
+      s.apiTarget(idx, { api, apiIndex: "https://api.example.org" }),
+    ).toThrow(/trusted/);
+    expect(
+      s.apiTarget(idx, { api, apiIndex: "http://127.0.0.1:8788/" }).base,
+    ).toBe("http://127.0.0.1:8788/");
+  });
+
+  it("makes passage items: every verse and one range per chapter, from the union of verse events", () => {
+    const ev1 = [
+      [0, "chapter", "1"],
+      [1, "verse", "1"],
+      [2, "verse", "2"],
+      [3, "chapter", "2"],
+      [4, "verse", "1"],
+    ];
+    const ev2 = [
+      [0, "chapter", "1"],
+      [1, "verse", "3"],
+      [2, "verse", "1"],
+    ];
+    const verses = s.verseMap([ev1, ev2]);
+    expect(verses).toEqual({ 1: [1, 2, 3], 2: [1] });
+    expect(s.passageItems("TIT", verses).map((x: any) => x.item)).toEqual([
+      "TIT 1:1",
+      "TIT 1:2",
+      "TIT 1:3",
+      "TIT 1:1-3",
+      "TIT 2:1",
+    ]);
+    expect(s.passageItems("TIT", verses)[0]).toMatchObject({
+      book: "TIT",
+      chapter: 1,
+    });
+  });
+
+  // verified.json is bundled in the Worker: it stays small (ruling: ceiling 200 KB; it is 184 KB), and every passage exception is one verified.ts can read
+  // (one it cannot read would make its whole entry unusable).
+  it("ships a small verified.json whose passage exceptions are all readable", () => {
+    const f = new URL("../../src/packs3/verified.json", import.meta.url);
+    const text = readFileSync(f, "utf8");
+    expect(text.length).toBeLessThan(200_000);
+    const table = JSON.parse(text) as Record<string, { exceptions?: string[] }>;
+    for (const [k, e] of Object.entries(table)) {
+      expect(k.split("|")).toHaveLength(4);
+      if (!k.endsWith("|passage")) continue;
+      for (const x of e.exceptions ?? [])
+        expect(x, k).toMatch(/^\S+ \d+:\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*$/);
+    }
+  });
+});
+
+describe("compactArticles", () => {
+  it("lists the clean items per directory and counts the exceptions", () => {
+    const entry = {
+      items: 4,
+      exceptions: ["bible/kt/god", "translate/b"],
+      swept: "d",
+      deps: {},
+      ids: [
+        "bible/kt/god",
+        "bible/kt/grace",
+        "bible/other/x",
+        "translate/b",
+        "translate/a",
+      ],
+    };
+    expect(s.compactArticles(entry)).toEqual({
+      items: 4,
+      swept: "d",
+      deps: {},
+      excepted: 2,
+      idDirs: { "bible/kt": "grace", "bible/other": "x", translate: "a" },
+    });
+    expect(s.exceptionCount(s.compactArticles(entry), "articles")).toBe(2);
+    expect(entry.ids).toHaveLength(5);
+  });
+
+  it("term items go to `terms` under their resolved clean article; `=` is the article's own name", () => {
+    const entry = {
+      items: 7,
+      exceptions: ["bible/kt/god", "term:sin"],
+      swept: "d",
+      deps: {},
+      ids: [
+        "bible/kt/god",
+        "bible/kt/grace",
+        "bible/kt/sin",
+        "term:grace",
+        "term:favor",
+        "term:god",
+        "term:sin",
+      ],
+    };
+    const resolved = {
+      "term:grace": "bible/kt/grace",
+      "term:favor": "bible/kt/grace",
+      "term:god": "bible/kt/god",
+      "term:sin": "bible/kt/sin",
+    };
+    expect(s.compactArticles(entry, resolved)).toEqual({
+      items: 7,
+      swept: "d",
+      deps: {},
+      excepted: 2,
+      idDirs: { "bible/kt": "grace,sin" },
+      // term:god resolves to an exception and term:sin is one: neither is listed
+      terms: { "bible/kt": "grace:=|favor" },
+      termsExcepted: 1,
+    });
+  });
+
+  it("equal miss items go to `misses` (sorted, comma-joined); excepted ones are not listed", () => {
+    const entry = {
+      items: 4,
+      exceptions: ["miss:pact"],
+      swept: "d",
+      deps: {},
+      ids: [
+        "translate/figs-metaphor",
+        "miss:pact",
+        "miss:covenant",
+        "miss:grace",
+      ],
+    };
+    expect(s.compactArticles(entry)).toEqual({
+      items: 4,
+      swept: "d",
+      deps: {},
+      excepted: 1,
+      idDirs: { translate: "figs-metaphor" },
+      misses: "covenant,grace",
+    });
+    expect(
+      s.compactArticles({ items: 1, exceptions: [], deps: {}, ids: ["a/b"] })
+        .misses,
+    ).toBeUndefined();
+  });
+
+  it("counts an equal term whose article is an exception in `termsExcepted`", () => {
+    const entry = {
+      items: 4,
+      exceptions: ["bible/kt/god"],
+      deps: {},
+      ids: ["bible/kt/god", "bible/kt/grace", "term:god", "term:grace"],
+    };
+    const resolved = {
+      "term:god": "bible/kt/god",
+      "term:grace": "bible/kt/grace",
+    };
+    const c = s.compactArticles(entry, resolved);
+    expect(c.terms).toEqual({ "bible/kt": "grace:=" });
+    expect(c.termsExcepted).toBe(1);
+    // none dropped: the key is absent
+    expect(
+      s.compactArticles(
+        {
+          items: 2,
+          exceptions: [],
+          deps: {},
+          ids: ["bible/kt/grace", "term:grace"],
+        },
+        { "term:grace": "bible/kt/grace" },
+      ).termsExcepted,
+    ).toBeUndefined();
+  });
+
+  it("a term item without a resolved path is never listed", () => {
+    const entry = {
+      items: 2,
+      exceptions: [],
+      deps: {},
+      ids: ["bible/kt/grace", "term:grace"],
+    };
+    expect(s.compactArticles(entry).terms).toBeUndefined();
+  });
+});
+
+describe("articleTerms", () => {
+  it("title parts (tW) or the title (tA), prepared and case-folded, with how each resolves", async () => {
+    const r = await import("../../src/core/articleResolve");
+    const tw = [
+      { path: "bible/kt/grace", title: "grace, gracious" },
+      { path: "bible/kt/god", title: "God" },
+      { path: "bible/kt/godly", title: "godly, godliness" },
+      { path: "bible/other/x", title: "Espíritu" },
+      { path: "bible/other/y", title: "a/b" },
+    ];
+    const out = s.articleTerms("tw", tw, r);
+    expect(out).toEqual(
+      expect.arrayContaining([
+        { item: "term:grace", status: "resolved", path: "bible/kt/grace" },
+        { item: "term:gracious", status: "resolved", path: "bible/kt/grace" },
+        { item: "term:god", status: "resolved", path: "bible/kt/god" },
+      ]),
+    );
+    // unsafe (non-ASCII) and slash titles are not terms
+    expect(out.map((x: { item: string }) => x.item)).not.toContain(
+      "term:espíritu",
+    );
+    expect(out.map((x: { item: string }) => x.item)).not.toContain("term:a/b");
+    const ta = s.articleTerms(
+      "ta",
+      [
+        { path: "translate/figs-metaphor", title: "Metaphor" },
+        { path: "translate/figs-simile", title: "Simile, Metaphor" },
+      ],
+      r,
+    );
+    expect(
+      ta.find((x: { item: string }) => x.item === "term:metaphor"),
+    ).toEqual({
+      item: "term:metaphor",
+      status: "resolved",
+      path: "translate/figs-metaphor",
+    });
+  });
+
+  it("requestOf sends a term item as the bare term, with the term as requestedPath", () => {
+    expect(s.requestOf("tw", "en", "term:covenant")).toEqual({
+      path: "/api/v1/words/covenant",
+      params: { language: "en", requestedPath: "covenant", prepared: "1" },
+    });
+    expect(s.requestOf("ta", "en", "term:metaphor").path).toBe(
+      "/api/v1/academy/metaphor",
+    );
+    // a miss item is asked the same way
+    expect(s.requestOf("ta", "en", "miss:covenant")).toEqual({
+      path: "/api/v1/academy/covenant",
+      params: { language: "en", requestedPath: "covenant", prepared: "1" },
+    });
+  });
+
+  it("terms of the other type (th_get_article asks both) are resolved here too: a miss becomes a miss item", async () => {
+    const r = await import("../../src/core/articleResolve");
+    const ta = [{ path: "translate/figs-metaphor", title: "Metaphor" }];
+    const out = s.articleTerms("ta", ta, r, ["covenant", "metaphor"]);
+    expect(out).toEqual([
+      { item: "miss:covenant", status: "miss" },
+      {
+        item: "term:metaphor",
+        status: "resolved",
+        path: "translate/figs-metaphor",
+      },
+    ]);
+    // without the other type's terms, own titles only (as before)
+    expect(
+      s.articleTerms("ta", ta, r).map((x: { item: string }) => x.item),
+    ).toEqual(["term:metaphor"]);
+    // the prepared terms of a catalog (both types share them)
+    expect(
+      s.titleTerms(
+        "tw",
+        [{ path: "bible/kt/grace", title: "Grace, gracious" }],
+        r,
+      ),
+    ).toEqual(["grace", "gracious"]);
+  });
+});
+
+describe("classifyMiss", () => {
+  const body = (m: string) => ({
+    error: { code: "NOT_FOUND", message: m, retryable: false },
+  });
+  const msg = 'Translation Academy article not found at path: "covenant"';
+  it("equal only when both are a 404 with the same body", () => {
+    expect(
+      s.classifyMiss(
+        { hit: true, status: 404, value: body(msg) },
+        { status: 404, body: body(msg) },
+      ),
+    ).toEqual({ status: "equal" });
+    expect(
+      s.classifyMiss(
+        { hit: true, status: 404, value: body("other") },
+        { status: 404, body: body(msg) },
+      ).status,
+    ).toBe("differs");
+  });
+  it("an article answer, a fallback, or an API that is not a 404 is never an equal miss", () => {
+    expect(
+      s.classifyMiss(
+        { hit: true, value: { path: "x" } },
+        { status: 404, body: body(msg) },
+      ).status,
+    ).toBe("differs");
+    expect(
+      s.classifyMiss(
+        { hit: false, reason: "r" },
+        { status: 404, body: body(msg) },
+      ).status,
+    ).toBe("fallback");
+    expect(
+      s.classifyMiss(
+        { hit: true, status: 404, value: body(msg) },
+        { status: 200, body: { path: "x" } },
+      ).status,
+    ).toBe("differs");
+    expect(
+      s.classifyMiss({ hit: true, status: 404, value: body(msg) }, undefined)
+        .status,
+    ).toBe("api-error");
+  });
+});
+
+describe("compactPassage", () => {
+  it("drops a chapter whose every item is an exception, with its exceptions (it is not listed, so never served)", () => {
+    const items = [
+      { item: "PSA 1:1", book: "PSA", chapter: 1 },
+      { item: "PSA 1:2", book: "PSA", chapter: 1 },
+      { item: "PSA 1:1-2", book: "PSA", chapter: 1 },
+      { item: "PSA 2:1", book: "PSA", chapter: 2 },
+      { item: "PSA 2:2", book: "PSA", chapter: 2 },
+      { item: "PSA 2:1-2", book: "PSA", chapter: 2 },
+      { item: "JON 1:1", book: "JON", chapter: 1 },
+    ];
+    const entry = {
+      items: 7,
+      exceptions: ["JON 1:1", "PSA 1:1", "PSA 1:1-2", "PSA 1:2", "PSA 2:2"],
+      swept: "x",
+      chapters: { JON: [1], PSA: [1, 2] },
+    };
+    expect(s.compactPassage(entry, items)).toEqual({
+      items: 7,
+      exceptions: ["PSA 2:2"],
+      swept: "x",
+      chapters: { PSA: [2] },
+    });
+    expect(entry.chapters.PSA).toEqual([1, 2]);
+  });
+
+  it("groups the exceptions of a chapter in one string: verses ascending, then ranges", () => {
+    const items = ["1", "3", "10", "1-16"]
+      .map((v) => ({ item: `TIT 1:${v}`, book: "TIT", chapter: 1 }))
+      .concat([
+        { item: "TIT 2:1", book: "TIT", chapter: 2 },
+        { item: "TIT 2:2", book: "TIT", chapter: 2 },
+      ]);
+    const entry = {
+      items: 6,
+      exceptions: ["TIT 1:1-16", "TIT 1:10", "TIT 1:3", "TIT 2:1"],
+      swept: "x",
+      chapters: { TIT: [1, 2] },
+    };
+    expect(s.compactPassage(entry, items).exceptions).toEqual([
+      "TIT 1:3,10,1-16",
+      "TIT 2:1",
+    ]);
+  });
+});
+
+describe("exceptionCount", () => {
+  it("counts each item of a grouped passage exception, other kinds by entry", () => {
+    expect(
+      s.exceptionCount(
+        { exceptions: ["TIT 1:3,10,1-16", "TIT 2:1"] },
+        "passage",
+      ),
+    ).toBe(4);
+    expect(
+      s.exceptionCount({ exceptions: ["TIT 1", "index:TIT 2"] }, "notes"),
+    ).toBe(2);
+    expect(s.exceptionCount({}, "passage")).toBe(0);
+  });
+});
+
+describe("formatVerified", () => {
+  it("writes one line per field, arrays and objects inside a field on that line, and reads back the same", () => {
+    const v = {
+      "a|b|v1|passage": {
+        items: 2,
+        exceptions: ["TIT 1:3"],
+        chapters: { TIT: [1, 2] },
+      },
+    };
+    const text = s.formatVerified(v);
+    expect(JSON.parse(text)).toEqual(v);
+    expect(text).toContain('    "chapters": {"TIT":[1,2]}');
+    expect(text.endsWith("\n")).toBe(true);
+  });
+});
+
+describe("search catalog proof", () => {
+  const art = (path: string, title: string, category: string) => ({
+    path,
+    title,
+    category,
+  });
+  const res = (
+    path: string,
+    title: string,
+    score = 0.5,
+    resourceType = "tw",
+  ) => ({ path, title, resourceType, score });
+
+  it("is a sweep kind over tA and tW, asked with the probe query `/` at a limit", () => {
+    expect(s.KINDS).toContain(["sea", "rch"].join("") + "Catalog");
+    expect(s.searchCatalogRequest("tw", "en", 7)).toEqual({
+      path: "/api/v1/search",
+      params: { q: "/", language: "en", types: "tw", limit: "7" },
+    });
+    // the catalog's own count (an unsafe path before the last would show as a missing one) and a limit above any catalog
+    expect(s.searchCatalogLimits(1200)).toEqual([1200, s.SEARCH_CATALOG_ALL]);
+    expect(s.SEARCH_CATALOG_ALL).toBeGreaterThan(100000 - 1);
+  });
+
+  it("probes: `/` at two limits plus every one-character query at the all limit; a slash-less route path is not equal", async () => {
+    const chars = s.SEARCH_CATALOG_CHAR_QUERIES as string[];
+    expect(chars).toHaveLength(38);
+    expect(chars).toEqual(
+      expect.arrayContaining(["a", "z", "0", "9", "-", "_"]),
+    );
+    // our catalog; the route holds one more article, `x`, whose path and title have no `/`
+    const ours = [
+      {
+        path: "bible/kt/grace",
+        title: "grace",
+        category: "kt",
+        resourceType: "tw",
+      },
+    ];
+    const rank = (c: typeof ours, q: string) =>
+      c
+        .filter((a) => `${a.path} ${a.title}`.includes(q))
+        .map((a) => ({
+          path: a.path,
+          title: a.title,
+          resourceType: "tw",
+          score: 1,
+        }));
+    const route = [
+      ...ours,
+      { path: "x", title: "x", category: "", resourceType: "tw" },
+    ];
+    const asked: Array<{ q: string; limit: string }> = [];
+    const fetchApi = async (req: { params: { q: string; limit: string } }) => {
+      asked.push({ q: req.params.q, limit: req.params.limit });
+      return { language: "en", results: rank(route, req.params.q) };
+    };
+    const probes = await s.searchCatalogProbes({
+      type: "tw",
+      lang: "en",
+      candidates: ours,
+      rank,
+      fetchApi,
+    });
+    expect(asked).toHaveLength(2 + 38);
+    expect(asked[0]).toEqual({ q: "/", limit: "1" });
+    expect(asked[1]).toEqual({ q: "/", limit: String(s.SEARCH_CATALOG_ALL) });
+    expect(
+      asked.slice(2).every((a) => a.limit === String(s.SEARCH_CATALOG_ALL)),
+    ).toBe(true);
+    const e = s.searchCatalogEntry({
+      lang: "en",
+      problems: [],
+      probes,
+      swept: "T",
+    });
+    expect(e.catalog).toBe("differs");
+    expect(e.differs).toEqual(["x"]);
+    // the same route without the extra article is equal
+    const same = await s.searchCatalogProbes({
+      type: "tw",
+      lang: "en",
+      candidates: ours,
+      rank,
+      fetchApi: async (req: { params: { q: string } }) => ({
+        language: "en",
+        results: rank(ours, req.params.q),
+      }),
+    });
+    expect(
+      s.searchCatalogEntry({
+        lang: "en",
+        problems: [],
+        probes: same,
+        swept: "T",
+      }).catalog,
+    ).toBe("equal");
+  });
+
+  it("shape problems: an unsafe path, a path the probe cannot see, a category the route would not derive", () => {
+    const safe = (p: string) => !p.includes("..");
+    expect(
+      s.searchCatalogShapeProblems(
+        "tw",
+        [
+          art("bible/kt/grace", "grace", "kt"),
+          art("bible/kt/../x", "x", "kt"),
+          art("plain", "plain", "plain"),
+          art("bible/names/adam", "Adam", "other"),
+        ],
+        safe,
+      ),
+    ).toEqual(["bible/kt/../x", "bible/names/adam", "plain"]);
+    expect(
+      s.searchCatalogShapeProblems(
+        "ta",
+        [
+          art("translate/figs-metaphor", "Metaphor", "translate"),
+          art("intro/ta-intro", "Intro", "translate"),
+        ],
+        safe,
+      ),
+    ).toEqual(["intro/ta-intro"]);
+  });
+
+  it("entry: equal when every probe answer is the ranking over our catalog and the language is ours", () => {
+    const expected = [res("bible/kt/a", "a"), res("bible/kt/b", "b")];
+    const api = {
+      q: "/",
+      language: "en",
+      requestedLanguage: "en",
+      results: expected,
+    };
+    const e = s.searchCatalogEntry({
+      lang: "en",
+      problems: [],
+      probes: [{ expected, api }],
+      swept: "T",
+    });
+    expect(e).toEqual({
+      items: 1,
+      exceptions: [],
+      swept: "T",
+      catalog: "equal",
+    });
+  });
+
+  it("entry: differs lists the ids that are missing, extra, retitled or rescored; order or language alone differ too", () => {
+    const expected = [
+      res("bible/kt/a", "a"),
+      res("bible/kt/b", "b"),
+      res("bible/kt/c", "c"),
+    ];
+    const api = {
+      language: "en",
+      results: [
+        res("bible/kt/a", "A"),
+        res("bible/kt/c", "c"),
+        res("bible/kt/d", "d"),
+      ],
+    };
+    const e = s.searchCatalogEntry({
+      lang: "en",
+      problems: ["bible/x"],
+      probes: [{ expected, api }],
+      swept: "T",
+    });
+    expect(e.catalog).toBe("differs");
+    expect(e.differs).toEqual([
+      "bible/kt/a",
+      "bible/kt/b",
+      "bible/kt/d",
+      "bible/x",
+    ]);
+    const swapped = s.searchCatalogEntry({
+      lang: "en",
+      problems: [],
+      probes: [
+        {
+          expected: expected.slice(0, 2),
+          api: { language: "en", results: [expected[1], expected[0]] },
+        },
+      ],
+      swept: "T",
+    });
+    expect(swapped.catalog).toBe("differs");
+    expect(swapped.differs).toEqual(["(order)"]);
+    const lang = s.searchCatalogEntry({
+      lang: "es",
+      problems: [],
+      probes: [{ expected, api: { language: "es-419", results: expected } }],
+      swept: "T",
+    });
+    expect(lang.differs).toEqual(["(language es-419)"]);
+    const none = s.searchCatalogEntry({
+      lang: "en",
+      problems: [],
+      probes: [{ expected, api: undefined }],
+      swept: "T",
+    });
+    expect(none.differs).toEqual(["(api-error)"]);
+  });
+
+  it("entry: keeps verified.json small (at most 50 differing ids, then a count)", () => {
+    const expected = Array.from({ length: 80 }, (_, i) =>
+      res(`bible/kt/a${String(i).padStart(2, "0")}`, "t"),
+    );
+    const e = s.searchCatalogEntry({
+      lang: "en",
+      problems: [],
+      probes: [{ expected, api: { language: "en", results: [] } }],
+      swept: "T",
+    });
+    expect(e.differs).toHaveLength(51);
+    expect(e.differs.at(-1)).toBe("(and 30 more)");
+  });
+
+  it("entry: ids that differ only in case are equalExcept, with the lowercased ids", () => {
+    const ours = [
+      res("translate/figs-ordergrk", "Order of Greek"),
+      res("translate/figs-orderheb", "Order of Hebrew"),
+      res("translate/figs-simile", "Simile"),
+    ];
+    const theirs = [
+      res("translate/figs-orderGrk", "Order of Greek"),
+      res("translate/figs-orderHeb", "Order of Hebrew"),
+      res("translate/figs-simile", "Simile"),
+    ];
+    const e = s.searchCatalogEntry({
+      lang: "en",
+      problems: [],
+      probes: [
+        { expected: ours, api: { language: "en", results: theirs } },
+        // a one-character probe sees the route-case id too
+        {
+          expected: [ours[0]],
+          api: { language: "en", results: [theirs[0]] },
+        },
+      ],
+      swept: "T",
+    });
+    expect(e).toEqual({
+      items: 2,
+      exceptions: [],
+      swept: "T",
+      catalog: "equalExcept",
+      except: ["translate/figs-ordergrk", "translate/figs-orderheb"],
+    });
+    expect(s.entryWellFormed(e)).toBe(true);
+  });
+
+  it("entry: a case-only id with another title, or any other difference, stays differs", () => {
+    const ours = [res("translate/figs-ordergrk", "Order of Greek")];
+    const retitled = s.searchCatalogEntry({
+      lang: "en",
+      problems: [],
+      probes: [
+        {
+          expected: ours,
+          api: {
+            language: "en",
+            results: [res("translate/figs-orderGrk", "Greek order")],
+          },
+        },
+      ],
+      swept: "T",
+    });
+    expect(retitled.catalog).toBe("differs");
+    expect(retitled.except).toBeUndefined();
+    const plusMissing = s.searchCatalogEntry({
+      lang: "en",
+      problems: [],
+      probes: [
+        {
+          expected: [...ours, res("translate/figs-simile", "Simile")],
+          api: {
+            language: "en",
+            results: [res("translate/figs-orderGrk", "Order of Greek")],
+          },
+        },
+      ],
+      swept: "T",
+    });
+    expect(plusMissing.catalog).toBe("differs");
+    expect(plusMissing.differs).toContain("translate/figs-simile");
+    expect(plusMissing.except).toBeUndefined();
+    // a differing id that is not a case variant never becomes equalExcept
+    const other = s.searchCatalogEntry({
+      lang: "en",
+      problems: [],
+      probes: [
+        {
+          expected: ours,
+          api: {
+            language: "en",
+            results: [res("translate/figs-orderGrkX", "Order of Greek")],
+          },
+        },
+      ],
+      swept: "T",
+    });
+    expect(other.catalog).toBe("differs");
+    // a shape problem keeps it differs too
+    const shaped = s.searchCatalogEntry({
+      lang: "en",
+      problems: ["x"],
+      probes: [
+        {
+          expected: ours,
+          api: {
+            language: "en",
+            results: [res("translate/figs-orderGrk", "Order of Greek")],
+          },
+        },
+      ],
+      swept: "T",
+    });
+    expect(shaped.catalog).toBe("differs");
+  });
+
+  it("entryWellFormed: `except` must be a non-empty list of lowercase safe ids, only under equalExcept", () => {
+    const ok = { catalog: "equalExcept", except: ["translate/figs-ordergrk"] };
+    expect(s.entryWellFormed(ok)).toBe(true);
+    for (const bad of [
+      { catalog: "equalExcept" },
+      { catalog: "equalExcept", except: [] },
+      { catalog: "equalExcept", except: "translate/figs-ordergrk" },
+      { catalog: "equalExcept", except: ["translate/figs-orderGrk"] },
+      { catalog: "equalExcept", except: ["../x"] },
+      { catalog: "equalExcept", except: [1] },
+      { catalog: "equal", except: ["translate/figs-ordergrk"] },
+    ])
+      expect(s.entryWellFormed(bad)).toBe(false);
+  });
+});
+
+describe("verse and range samples (notes, links, questions)", () => {
+  const range = (a: number, b: number) =>
+    Array.from({ length: b - a + 1 }, (_, i) => a + i);
+
+  it("samples the first, middle and last verse and a 3-verse range around the middle", () => {
+    expect(s.verseSampleItems("TIT", 1, range(1, 16))).toEqual([
+      "TIT 1:1",
+      "TIT 1:8",
+      "TIT 1:16",
+      "TIT 1:7-9",
+    ]);
+    expect(s.verseSampleItems("TIT", 2, range(1, 4))).toEqual([
+      "TIT 2:1",
+      "TIT 2:2",
+      "TIT 2:4",
+      "TIT 2:1-3",
+    ]);
+  });
+
+  it("a chapter of 1-3 verses: every verse and the whole-chapter range; none without verses", () => {
+    expect(s.verseSampleItems("OBA", 1, [1])).toEqual(["OBA 1:1"]);
+    expect(s.verseSampleItems("X", 1, [1, 2])).toEqual([
+      "X 1:1",
+      "X 1:2",
+      "X 1:1-2",
+    ]);
+    expect(s.verseSampleItems("X", 1, [1, 2, 3])).toEqual([
+      "X 1:1",
+      "X 1:2",
+      "X 1:3",
+      "X 1:1-3",
+    ]);
+    expect(s.verseSampleItems("X", 1, [])).toEqual([]);
+    expect(s.verseSampleItems("X", 1, undefined)).toEqual([]);
+  });
+
+  it("`samples` lists the sampled chapters per book with each one's last verse; coverage ignores sample items", () => {
+    const items = [
+      { item: "TIT 1", book: "TIT", chapter: 1 },
+      { item: "TIT 1:1", book: "TIT", chapter: 1, sample: true, last: 16 },
+      { item: "TIT 2:1", book: "TIT", chapter: 2, sample: true, last: 15 },
+      { item: "TIT 3:1-2", book: "TIT", chapter: 3, sample: true, last: 15 },
+      { item: "TIT 5:1", book: "TIT", chapter: 5, sample: true, last: 15 },
+      { item: "TIT 6:1", book: "TIT", chapter: 6, sample: true, last: 15 },
+      { item: "RUT 1:1", book: "RUT", chapter: 1, sample: true, last: 22 },
+      // index-shape samples are not `samples` (they set `indexSamples`)
+      {
+        item: "index:RUT 2:1",
+        book: "RUT",
+        chapter: 2,
+        sample: true,
+        last: 23,
+        index: true,
+      },
+    ];
+    expect(s.samplesOf(items)).toEqual({
+      RUT: "1:22",
+      TIT: "1:16,2-3:15,5-6:15",
+    });
+    expect(s.samplesOf([{ item: "TIT 1", book: "TIT", chapter: 1 }])).toEqual(
+      {},
+    );
+    expect(s.coverageOf(items)).toEqual({ chapters: { TIT: [1] } });
+  });
+
+  it("chapterSampleItems: the default-shape samples with the chapter's last verse, and their index twins for notes and links", () => {
+    const vs = range(1, 4);
+    const plain = s.chapterSampleItems("questions", "TIT", 2, vs, ["r"], {
+      index: false,
+    });
+    expect(plain.map((i: { item: string }) => i.item)).toEqual([
+      "TIT 2:1",
+      "TIT 2:2",
+      "TIT 2:4",
+      "TIT 2:1-3",
+    ]);
+    expect(
+      plain.every(
+        (i: { sample: boolean; last: number; index?: boolean }) =>
+          i.sample && i.last === 4 && !i.index,
+      ),
+    ).toBe(true);
+    const both = s.chapterSampleItems("notes", "TIT", 2, vs, ["r"], {
+      index: true,
+    });
+    const idx = both.filter((i: { index?: boolean }) => i.index);
+    expect(
+      idx.map((i: { item: string; bare: string }) => [i.item, i.bare]),
+    ).toEqual([
+      ["index:TIT 2:1", "TIT 2:1"],
+      ["index:TIT 2:2", "TIT 2:2"],
+      ["index:TIT 2:4", "TIT 2:4"],
+      ["index:TIT 2:1-3", "TIT 2:1-3"],
+    ]);
+    expect(
+      s.requestOf("notes", "en", idx[3].bare, { index: true }).params,
+    ).toEqual({
+      reference: "TIT 2:1-3",
+      language: "en",
+      fields: "index",
+    });
+    expect(
+      s.chapterSampleItems("notes", "TIT", 2, [], ["r"], { index: true }),
+    ).toEqual([]);
+  });
+
+  it("sampleFieldsOf: `indexSamples: true` only when index samples were swept", () => {
+    const d = s.chapterSampleItems("notes", "TIT", 1, range(1, 16), ["r"], {
+      index: false,
+    });
+    const both = s.chapterSampleItems("notes", "TIT", 1, range(1, 16), ["r"], {
+      index: true,
+    });
+    expect(s.sampleFieldsOf(d)).toEqual({ samples: { TIT: "1:16" } });
+    expect(s.sampleFieldsOf(both)).toEqual({
+      samples: { TIT: "1:16" },
+      indexSamples: true,
+    });
+  });
+
+  it("sampleCoverage counts the sampled chapters and names the books with none", () => {
+    const own = [
+      { item: "TIT 1", book: "TIT", chapter: 1 },
+      { item: "TIT 2", book: "TIT", chapter: 2 },
+      { item: "TIT front", book: "TIT", chapter: "front" },
+      ...s.chapterSampleItems("questions", "TIT", 1, range(1, 16), ["r"], {
+        index: false,
+      }),
+      ...s.chapterSampleItems("questions", "TIT", 2, range(1, 15), ["r"], {
+        index: false,
+      }),
+      { item: "PHM 1", book: "PHM", chapter: 1 },
+      { item: "index:JUD", book: "JUD", index: true, bare: "JUD" },
+      { item: "JUD 1", book: "JUD", chapter: 1 },
+    ];
+    expect(s.sampleCoverage(own)).toEqual({
+      chapters: 2,
+      booksWithout: ["JUD", "PHM"],
+    });
+    expect(s.sampleCoverageLine(s.sampleCoverage(own))).toBe(
+      "Samples: 2 chapters; books without samples: JUD, PHM",
+    );
+    expect(s.sampleCoverageLine({ chapters: 3, booksWithout: [] })).toBe(
+      "Samples: 3 chapters; books without samples: none",
+    );
+  });
+
+  it("the written entry is read back: clean samples serve, an exception falls back", () => {
+    const K = "en|u/en/tn|v9|notes";
+    const own = [
+      { item: "TIT 1", book: "TIT", chapter: 1, res: ["u/en/tn"] },
+      { item: "TIT 2", book: "TIT", chapter: 2, res: ["u/en/tn"] },
+      {
+        item: "index:TIT 1",
+        book: "TIT",
+        chapter: 1,
+        res: ["u/en/tn"],
+        index: true,
+        bare: "TIT 1",
+      },
+      {
+        item: "index:TIT 2",
+        book: "TIT",
+        chapter: 2,
+        res: ["u/en/tn"],
+        index: true,
+        bare: "TIT 2",
+      },
+      ...s.chapterSampleItems("notes", "TIT", 1, range(1, 16), ["u/en/tn"], {
+        index: true,
+      }),
+      ...s.chapterSampleItems("notes", "TIT", 2, range(1, 15), ["u/en/tn"], {
+        index: true,
+      }),
+    ];
+    const results = own.map((i) => ({
+      ...i,
+      status:
+        i.item === "TIT 2:7-9" || i.item === "index:TIT 1:16"
+          ? "differs"
+          : "equal",
+    }));
+    const e = s.buildEntry(results, "now", {
+      ...s.coverageOf(own),
+      ...s.sampleFieldsOf(own),
+    });
+    e.exceptions = s.compactSampleExceptions(e.exceptions);
+    expect(s.entryWellFormed(e)).toBe(true);
+    setVerifiedForTests({ [K]: e });
+    const at = (item: string, index = false) =>
+      isVerified("en", "u/en/tn", "v9", "notes", item, { index });
+    try {
+      expect(at("TIT 1:5")).toBe(true);
+      expect(at("TIT 1:2-3")).toBe(true);
+      expect(at("TIT 1:15-17")).toBe(false); // past the last verse
+      expect(at("TIT 2:1")).toBe(false);
+      expect(at("TIT 2")).toBe(true);
+      expect(at("TIT 1:5", true)).toBe(false); // an index sample exception in chapter 1
+      expect(at("TIT 2:1", true)).toBe(true);
+      expect(at("TIT 2:3-5", true)).toBe(true);
+      expect(at("TIT 1", true)).toBe(true);
+    } finally {
+      setVerifiedForTests(undefined);
+    }
+  });
+
+  it("keeps one sample exception per clean chapter, none where the chapter item is an exception; serves the same", () => {
+    const full = [
+      "TIT 1",
+      "TIT 1:1",
+      "TIT 1:7-9",
+      "TIT 2:1",
+      "TIT 2:8",
+      "TIT 2:7-9",
+      "TIT 3:15",
+      "index:TIT 2",
+    ];
+    const kept = s.compactSampleExceptions(full);
+    expect(kept).toEqual(["TIT 1", "TIT 2:1", "TIT 3:15", "index:TIT 2"]);
+    // index sample exceptions are compacted the same way, per shape
+    expect(
+      s.compactSampleExceptions([
+        "index:TIT 2",
+        "index:TIT 2:1",
+        "index:TIT 3:1",
+        "index:TIT 3:4-6",
+        "TIT 3:1",
+      ]),
+    ).toEqual(["index:TIT 2", "index:TIT 3:1", "TIT 3:1"]);
+    const K = "en|u/en/tn|v9|notes";
+    const base = {
+      chapters: { TIT: [1, 2, 3, 4] },
+      samples: { TIT: "1-4:15" },
+    };
+    const items = [
+      "TIT 1",
+      "TIT 1:2",
+      "TIT 2:3-4",
+      "TIT 3:1",
+      "TIT 4:1",
+      "TIT 4:2-3",
+    ];
+    const served = (exceptions: string[]) => {
+      setVerifiedForTests({ [K]: { ...base, exceptions } });
+      try {
+        return items.map((i) => isVerified("en", "u/en/tn", "v9", "notes", i));
+      } finally {
+        setVerifiedForTests(undefined);
+      }
+    };
+    expect(served(kept)).toEqual(served(full));
+    expect(served(kept)).toEqual([false, false, false, false, true, true]);
+  });
+
+  it("compactVerified keeps `samples` and `indexSamples` and does not widen a malformed one", () => {
+    const A = "en|u/en/tn|v9|notes";
+    const B = "en|u/en/tw|v9|notes";
+    const ex = ["TIT 1:8", "TIT 2:1"];
+    const good = {
+      items: 2,
+      exceptions: [...ex],
+      chapters: { TIT: [1, 2] },
+      samples: { TIT: "1-2:15" },
+      indexChapters: { TIT: [1, 2] },
+      indexSamples: true,
+    };
+    const bad = {
+      items: 2,
+      exceptions: [...ex],
+      chapters: { TIT: [1, 2] },
+      samples: { TIT: "1-2:15" },
+      indexChapters: { TIT: [1, 2] },
+      indexSamples: "yes",
+    };
+    expect(s.compactVerified({ [A]: good })).toEqual({ [A]: good });
+    // the malformed entry is kept exactly and never holds the list for the good one
+    const out = s.compactVerified({ [A]: bad, [B]: good });
+    expect(out[A]).toEqual(bad);
+    expect(out[B]).toEqual(good);
+    const out2 = s.compactVerified({ [A]: good, [B]: { ...good } });
+    expect(out2[B].samples).toEqual({ TIT: "1-2:15" });
+    expect(out2[B].indexSamples).toBe(true);
+    expect(s.expandVerified(out2)).toEqual({ [A]: good, [B]: good });
+  });
+});
+
+describe("compactVerified / expandVerified / nextVerified", () => {
+  const ULT = "en|u/en/ult|v9|passage";
+  const UST = "en|u/en/ust|v9|passage";
+  const GLT = "es|u/es/glt|v9|passage";
+  const long = ["TIT 1:3,4,1-16", "TIT 2:1,2,3,4,5,6,7,8,9,10,11,12,13,14,15"];
+  const TA = "en|u/en/ta|v9|articles";
+  const TACAT = "en|u/en/ta|v9|searchCatalog";
+
+  it("stores identical exceptions of the same lang, release and kind once", () => {
+    const out = s.compactVerified({
+      [UST]: { items: 2, exceptions: [...long], chapters: { TIT: [1] } },
+      [ULT]: { items: 2, exceptions: [...long], chapters: { TIT: [1] } },
+      [GLT]: { items: 2, exceptions: [...long] },
+    });
+    expect(out[ULT].exceptions).toEqual(long);
+    expect(out[UST].exceptions).toBeUndefined();
+    expect(out[UST].exceptionsSameAs).toBe(ULT);
+    expect(Object.keys(out[UST])).toEqual([
+      "items",
+      "exceptionsSameAs",
+      "chapters",
+    ]);
+    expect(out[GLT].exceptions).toEqual(long);
+  });
+
+  it("leaves different or empty lists alone", () => {
+    const v = {
+      [ULT]: { exceptions: [...long] },
+      [UST]: { exceptions: [long[0]] },
+      "en|u/en/bsb|v9|passage": { exceptions: [] },
+      "en|u/en/t4t|v9|passage": { exceptions: [] },
+    };
+    expect(s.compactVerified(v)).toEqual(v);
+  });
+
+  it("expands a pointer back to the list and is idempotent", () => {
+    const v = {
+      [ULT]: { exceptions: [...long] },
+      [UST]: { exceptions: [...long] },
+    };
+    const once = s.compactVerified(v);
+    expect(s.expandVerified(once)).toEqual(v);
+    expect(s.compactVerified(once)).toEqual(once);
+    expect(
+      s.formatVerified(s.compactVerified(JSON.parse(s.formatVerified(once)))),
+    ).toBe(s.formatVerified(once));
+  });
+
+  it("drops misses unless the same release's search catalog verdict is equal", () => {
+    const art = { items: 2, idDirs: { "bible/kt": "god" }, misses: "foo,bar" };
+    expect(s.compactVerified({ [TA]: art })[TA]).toEqual({
+      items: 2,
+      idDirs: { "bible/kt": "god" },
+    });
+    expect(
+      s.compactVerified({
+        [TA]: art,
+        [TACAT]: { catalog: "differs", differs: ["x"] },
+      })[TA].misses,
+    ).toBeUndefined();
+    expect(
+      s.compactVerified({
+        [TA]: art,
+        "en|u/en/ta|v8|searchCatalog": { catalog: "equal" },
+      })[TA].misses,
+    ).toBeUndefined();
+    expect(
+      s.compactVerified({ [TA]: art, [TACAT]: { catalog: "equal" } })[TA]
+        .misses,
+    ).toBe("foo,bar");
+  });
+
+  it("keeps misses under an equalExcept verdict, not under a malformed one", () => {
+    const art = { items: 2, idDirs: { "bible/kt": "god" }, misses: "foo,bar" };
+    expect(
+      s.compactVerified({
+        [TA]: art,
+        [TACAT]: {
+          catalog: "equalExcept",
+          except: ["translate/figs-ordergrk"],
+        },
+      })[TA].misses,
+    ).toBe("foo,bar");
+    for (const bad of [
+      { catalog: "equalExcept" },
+      { catalog: "equalExcept", except: ["translate/figs-orderGrk"] },
+      {
+        catalog: "equalExcept",
+        except: ["translate/figs-ordergrk"],
+        differs: ["x"],
+      },
+    ])
+      expect(
+        s.compactVerified({ [TA]: art, [TACAT]: bad })[TA].misses,
+      ).toBeUndefined();
+  });
+
+  it("a new sweep entry replaces the target without breaking the entry that pointed at it", () => {
+    const old = s.compactVerified({
+      [ULT]: { exceptions: [...long] },
+      [UST]: { exceptions: [...long] },
+    });
+    const next = s.nextVerified(old, { [ULT]: { exceptions: ["TIT 1:1"] } });
+    expect(next[ULT].exceptions).toEqual(["TIT 1:1"]);
+    expect(next[UST].exceptions).toEqual(long);
+    expect(next[UST].exceptionsSameAs).toBeUndefined();
+  });
+
+  it("stores identical range joins once (joinsSameAs) and expands them back", () => {
+    const joins = { TIT: "1:1,2,3,4,5,6,7,8,9;2:3,4,5,6,7,8,9,10,11,12,13" };
+    const t = {
+      [ULT]: { items: 2, exceptions: [...long], joins, chapters: { TIT: [1] } },
+      [UST]: { items: 2, exceptions: [...long], joins: { ...joins } },
+      [GLT]: { items: 2, joins: { ...joins } },
+    };
+    const out = s.compactVerified(t);
+    expect(out[ULT].joins).toEqual(joins);
+    expect(out[UST].joins).toBeUndefined();
+    expect(out[UST].joinsSameAs).toBe(ULT);
+    expect(out[UST].exceptionsSameAs).toBe(ULT);
+    expect(out[GLT].joins).toEqual(joins);
+    expect(out[GLT].joinsSameAs).toBeUndefined();
+    expect(s.expandVerified(out)).toEqual(t);
+    expect(s.formatVerified(s.compactVerified(out))).toBe(
+      s.formatVerified(out),
+    );
+  });
+
+  it("leaves different or empty joins alone, and a pointer it cannot follow", () => {
+    const t = {
+      [ULT]: { joins: { TIT: "1:1" } },
+      [UST]: { joins: { TIT: "1:2" } },
+      "en|u/en/bsb|v9|passage": { joins: {} },
+      "en|u/en/t4t|v9|passage": { joins: {} },
+      "en|u/en/x|v9|passage": { joinsSameAs: "en|u/en/missing|v9|passage" },
+    };
+    expect(s.compactVerified(t)).toEqual(t);
+  });
+
+  it("a new sweep entry replaces the joins target without breaking the entry that pointed at it", () => {
+    const joins = { TIT: "1:1,2" };
+    const old = s.compactVerified({ [ULT]: { joins }, [UST]: { joins } });
+    const next = s.nextVerified(old, { [ULT]: { joins: { TIT: "1:5" } } });
+    expect(next[ULT].joins).toEqual({ TIT: "1:5" });
+    expect(next[UST].joins).toEqual(joins);
+    expect(next[UST].joinsSameAs).toBeUndefined();
+  });
+
+  it("a later equal verdict keeps the misses an articles sweep writes", () => {
+    const cat = s.nextVerified({}, { [TACAT]: { catalog: "equal" } });
+    const next = s.nextVerified(cat, { [TA]: { items: 1, misses: "foo" } });
+    expect(next[TA].misses).toBe("foo");
+  });
+
+  it("readWindowsFrom expands pointers so the previous proof's range exceptions are seen", () => {
+    const dir = mkdtempSync(join(tmpdir(), "sweep-"));
+    const file = join(dir, "verified.json");
+    writeFileSync(
+      file,
+      s.formatVerified(
+        s.compactVerified({
+          [ULT]: { exceptions: [...long] },
+          [UST]: { exceptions: [...long] },
+        }),
+      ),
+    );
+    const v = s.readWindowsFrom(file);
+    expect(s.rangeExceptionChapters(v[UST]).get("TIT")).toEqual(new Set([1]));
+  });
+});
+
+describe("compactVerified never widens what verified.ts serves", () => {
+  const key = (r: string, kind = "passage") => `en|u/en/${r}|v9|${kind}`;
+  const [A, B, C, D] = ["a", "b", "c", "d"].map((r) => key(r));
+  const long = ["TIT 1:3,4,1-16", "TIT 2:1,2,3,4,5,6,7,8,9,10,11,12,13,14,15"];
+  const ok = (extra = {}) => ({ items: 9, chapters: { TIT: [3] }, ...extra });
+  const bad = (extra = {}) => ({ items: 9, chapters: "TIT", ...extra });
+
+  /** What the real reader serves for each key of `table` (a passage verse, or the articles item `bible/kt/god`). */
+  function served(table: Record<string, unknown>): Record<string, boolean> {
+    setVerifiedForTests(table as never);
+    try {
+      return Object.fromEntries(
+        Object.keys(table).map((k) => {
+          const [lang, rk, rel, kind] = k.split("|");
+          const item = kind === "passage" ? "TIT 3:1" : "bible/kt/god";
+          return [k, isVerified(lang!, rk!, rel!, kind!, item)];
+        }),
+      );
+    } finally {
+      setVerifiedForTests(undefined);
+    }
+  }
+  const twice = (t: Record<string, unknown>) => {
+    const once = s.formatVerified(s.compactVerified(t));
+    expect(s.formatVerified(s.compactVerified(JSON.parse(once)))).toBe(once);
+    return JSON.parse(once);
+  };
+
+  it("(a) a pointer at a later malformed entry stays unusable, and so does its target", () => {
+    const t = {
+      [A]: ok({ exceptionsSameAs: B }),
+      [B]: bad({ exceptions: [...long] }),
+    };
+    expect(served(t)).toEqual({ [A]: false, [B]: false });
+    const out = twice(t);
+    expect(served(out)).toEqual({ [A]: false, [B]: false });
+    expect(out).toEqual(t);
+  });
+
+  it("(b) a chain A->B->C where only B serves: A still does not serve", () => {
+    const t = {
+      [A]: ok({ exceptionsSameAs: B }),
+      [B]: ok({ exceptionsSameAs: C }),
+      [C]: ok({ exceptions: [...long] }),
+    };
+    const before = served(t);
+    expect(before).toEqual({ [A]: false, [B]: true, [C]: true });
+    expect(served(twice(t))).toEqual(before);
+  });
+
+  it("(b) the same chain with the list holder first in key order", () => {
+    const t = {
+      [A]: ok({ exceptions: [...long] }),
+      [C]: ok({ exceptionsSameAs: D }),
+      [D]: ok({ exceptionsSameAs: A }),
+    };
+    const before = served(t);
+    expect(before).toEqual({ [A]: true, [C]: false, [D]: true });
+    expect(served(twice(t))).toEqual(before);
+  });
+
+  it("(2) a well formed entry whose list equals a malformed earlier one keeps its own list", () => {
+    const t = {
+      [A]: bad({ exceptions: [...long] }),
+      [B]: ok({ exceptions: [...long] }),
+    };
+    const out = twice(t);
+    expect(out[B].exceptions).toEqual(long);
+    expect(out[B].exceptionsSameAs).toBeUndefined();
+    expect(served(out)).toEqual({ [A]: false, [B]: true });
+  });
+
+  it("a malformed entry is left as it is: its misses are not dropped to make it well formed", () => {
+    const TA = key("ta", "articles");
+    const TB = key("tb", "articles");
+    const art = { items: 1, idDirs: { "bible/kt": "god" } };
+    const t = {
+      [TA]: { ...art, exceptionsSameAs: TB },
+      [TB]: { ...art, exceptions: ["x"], misses: "Not A Term" },
+    };
+    expect(served(t)).toEqual({ [TA]: false, [TB]: false });
+    const out = twice(t);
+    expect(out[TB].misses).toBe("Not A Term");
+    expect(served(out)).toEqual({ [TA]: false, [TB]: false });
+  });
+
+  it("a stale pointer (no target) stays as it is, also when a later sweep writes that target", () => {
+    const t = {
+      [A]: ok({ exceptionsSameAs: D }),
+      [B]: ok({ exceptions: [...long] }),
+    };
+    const out = twice(t);
+    expect(out).toEqual(t);
+    expect(served(out)).toEqual({ [A]: false, [B]: true });
+    const next = s.nextVerified(out, { [D]: ok({ exceptions: ["TIT 1:1"] }) });
+    expect(served(next)[A]).not.toBe(true);
+    expect(served(next)[D]).toBe(true);
+  });
+
+  it("a mixed table: what each key serves and the bytes are the same after one and two runs", () => {
+    const t = {
+      [A]: ok({ exceptionsSameAs: B }),
+      [B]: ok({ exceptionsSameAs: C }),
+      [C]: ok({ exceptions: [...long] }),
+      [D]: ok({ exceptions: [...long] }),
+      [key("e")]: bad({ exceptions: [...long] }),
+      [key("f")]: ok({ exceptionsSameAs: key("e") }),
+      [key("g")]: ok({ exceptionsSameAs: key("g") }),
+      [key("h")]: ok({ exceptions: [...long] }),
+    };
+    const before = served(t);
+    const out = twice(t);
+    expect(served(out)).toEqual(before);
+  });
+});

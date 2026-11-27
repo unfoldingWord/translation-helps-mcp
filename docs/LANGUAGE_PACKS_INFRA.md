@@ -557,6 +557,101 @@ and writes nothing.
    default): a full `en` may need more than 600 segments.
 4. Production is not touched in this phase.
 
+### Format 3 reads (the MCP tools)
+
+The MCP tools can answer from format 3 instead of calling the API Worker (`src/packs3/`, entry `attemptPacks3` in
+`src/packs3/answer.ts`, called by `src/mcp/apiClient.ts`).
+
+- **Switch.** Format 3 reads run only when `PACKS_V3 = "on"` and `PACKS_V3_TRUSTED_KEYS` holds at least one key. Top
+  level and `[env.preview]` are on with the staging key; `[env.production]` has `PACKS_V3 = "off"` and
+  `PACKS_V3_TRUSTED_KEYS = ""`, so every production call stays on today's path.
+- **Keys.** `PACKS_V3_TRUSTED_KEYS` is `<keyId>:<hex public key>` (comma separated for more). A catalog
+  (`v3/catalog/{lang}.seg`, `v3/catalog/common.seg`) whose signature no listed key verifies is not used. Production
+  needs the production key here, with Abel's yes.
+- **Fallback.** Format 3 serves a call only when (lang, resource key, release, kind) is in the bundled `verified.json`
+  proof (written by `scripts/sweep-packs3.mjs`) and the item is not an exception. Proof kinds: `passage` (with join
+  windows), `notes`, `links`, `questions`, `articles` (with `terms` and `misses`), `search` (40 queries) and
+  `searchCatalog` (`equal` or `equalExcept`); an entry may say `exceptionsSameAs` or `joinsSameAs` another. `verified.json` is 184 KB
+  (ceiling 200 KB, asserted by tests/unit/packs3-sweep.test.ts).
+  Search: under the `searchCatalog` proof any query is served when `limit` is absent or a plain number
+  (`^[1-9][0-9]{0,2}$`); the 40 swept queries are no longer a limit. The `tw` catalog is `equal`; the `ta` catalog
+  is `equalExcept` the case-only ids `figs-orderGrk` and `figs-orderHeb`, so a result list containing either falls
+  back. A new release, an article by a title or term that is not in `terms`, or a `limit` that is not a plain number
+  falls back to the API Worker. Still falling back after S0 (the builder and publish step, Task 11): builder
+  whitespace in poetry and Hebrew line breaks (passage exceptions), the intro occurrence (`''` -> `1`: AMO, DAN, HOS,
+  LAM, ZEC), PSA front rows, and the published `rc://*` host of the es-419 tW/tA articles. The en article "covenant"
+  and the es-419 articles are swept exceptions with that S0 data as their reason; this run did not verify them again.
+  The reasons are logged once per isolate and language as `packs3 fallback { lang, reason }`, and under
+  `PACKS_V3_DEBUG` each answer carries a mark in `result._meta._packs3`: `{ served: true }` or
+  `{ fallback: <reason>, detail? }`. The reasons are `v3-off`/`mode-off`, `no-keys`, `no-packs`, `no-adapter` (no
+  format 3 adapter for that API path: OBS, `th_list_resources`), `adapter-undefined` (the adapter declined: no sweep
+  entry for the release or item, an exception, `format: "usfm"`, a book the pack lacks), `adapter-exception`,
+  `readers-busy`. `detail` is the inner reason of an `adapter-undefined` (`unverified-resource`, `note-links`,
+  `readers-busy`, ...), taken from the log line of the call; it is approximate when calls overlap. The en PSA 23
+  index is not asserted either way (`either` in `packs3-calls.json`): `getPassageIndex` runs notes and word-links in
+  parallel, en Psalms notes needs the exclusive reader, and when word-links asks for a reader while notes holds it
+  links gets `readers-busy` and the composite goes to the API; when the calls do not overlap it is served and equal.
+  Across runs of the same code and bucket both outcomes occurred. The local wrangler route used for the index sweep
+  may differ from the deployed API Worker commit; record it when sweeping (the sweep run's code commit is not known
+  today).
+- **Budget.** A reader keeps at most **1 MB** of compressed segments; at most **2 readers** per isolate, live and
+  retired together; a third concurrent call falls back with reason `readers-busy`. The decoded segment LRU holds at
+  most **8 MB** (`SEGMENT_CACHE_MAX_BYTES`). Why: about 41 MB of heap per compressed MB was measured, inside a 128 MB
+  isolate.
+- **Debug header.** With `PACKS_V3_DEBUG = "on"` (never in production) a request may send `x-th-packs3: off` (today's
+  path only) or `x-th-packs3: only` (format 3 only; a call it cannot answer gives the fallback reason as an error, never
+  an API call). The comparison uses it.
+- **Comparison.** `node scripts/compare-packs3.mjs --base <url>` runs `tests/contracts/packs3-calls.json` with `off`
+  against `only` (or plain against plain with `--base-b`) and writes `docs/packs3-comparison.md`. A local run:
+  `node scripts/fetch-packs3-fixtures.mjs --all --out <folder>` (the staging bucket's `v3/` keys), put them into a
+  local R2 persist folder (`getPlatformProxy` with `persist: { path: "<persist>/v3" }`; await each `put` in turn and
+  list the bucket before `dispose()`: puts still pending at `dispose()` are lost, and every call then falls back with
+  detail `no-catalog`), then
+  `npx wrangler dev --port 8811 --persist-to <persist> --var API_BASE_URL:https://translation-helps-api-v2.unfoldingword.workers.dev --var RATE_LIMIT_RPM:100000`
+  (the default 90 rpm limit cuts a run short; the script reports `RATE_LIMITED` calls as failures). The local API
+  Worker needs `--var RATE_LIMIT_RPM:100000` too, or the `off` side of the later calls fails.
+  Final run (2026-11-17, packs en rev 5, es-419 rev 5, sweeps of that date; 72 calls, 0 failed): 32 served and equal
+  (including the 6 default-limit searches, each equal to the live route); 1 fallback allowed either way (the en PSA 23
+  index, `expect: "either"`: served in the run before, fallen back in this one); 21 planned fallbacks (OBS 5, `format: "usfm"` 1, `th_list_resources` 5, `fr` 1,
+  es-419 books the pack lacks 9); 18 swept exceptions (en PSA 23, PSA 119, MAT 5, JON 1:1-3, ROM 8:28 passages and
+  the ROM 8 index; es-419 RUT 1:1, TIT 1 and RUT 1 indexes, JON 1:3 notes with and without ids, TIT 1:1 "siervo"
+  notes; en article "covenant" and the 5 es-419 articles, whose reason is S0 data, not re-verified here); 0 other
+  fallbacks. 32 + 1 + 21 + 18 = 72.
+  The "off" side needs the local API Worker on 8788 for the index shape (`--var API_BASE_URL:http://localhost:8788`):
+  the deployed one answers index calls differently. docs/packs3-comparison.md is that run's generated output.
+
+- **Verse and range samples (notes, links, questions).** The route builds a verse or range answer for the verses asked
+  (for notes and links, the aligned words too; the `fields=index` shape is filtered by verse as well), so a chapter
+  proof does not prove it. The sweep therefore also compares, per chapter, a fixed sample: the first verse, the middle
+  verse (`verses[floor((n-1)/2)]`), the last verse and the 3-verse range around the middle (a chapter of 1-3 verses:
+  every verse and the whole-chapter range; a chapter with no text verses gets none). For notes and links it compares
+  the same items in the index shape too, sent to `--api-index` like the index chapter items. The entry's `samples`
+  (`{ "TIT": "1:16,2-3:15" }`) lists the sampled chapters with each one's last verse, `indexSamples: true` says the
+  index-shape samples were swept, and the failures are `exceptions` (`TIT 1:8`, `index:TIT 1:7-9`; only the first per
+  chapter and shape is written, and none for a chapter that is itself an exception, since one already blocks its
+  verses). A verse or range request of either shape is served only when its chapter item of that shape is listed and
+  clean, the chapter was sampled in that shape, none of those samples is an exception, and the request stays inside the
+  chapter (no verse past its last verse, no range in a 1-verse chapter); otherwise it falls back. An entry without
+  `samples` serves no verse or range; one without `indexSamples` serves no index-shape verse or range (index chapter
+  and whole-book requests are unchanged). Entries swept before this change have neither, so those requests fall back
+  until the resource is swept again. The sweep report gives, per entry, how many chapters got samples and which books
+  got none.
+  Say it plainly: in both shapes this is SAMPLED evidence, not exhaustive. The verses between the samples are not each
+  compared, so a difference only in an unsampled verse or range would be served.
+- **Staging and preview run with `PACKS_V3_DEBUG = "on"`.** Every staging or preview `tools/call` result carries
+  `_meta._packs3`, and any caller may send `x-th-packs3: only` (its fallbacks then become `PACKS3_FALLBACK` 404s for
+  that caller). Production is unaffected: debug is not set and `PACKS_V3` is off. Staging consumers must not rely on
+  `_meta` being absent.
+- **The S0 republish must be a FULL rebuild.** The whitespace fix changes the output for `inputs` hashes that did not
+  change, so an incremental publish would keep the old bytes for unchanged inputs.
+- **Known residuals.**
+  - Notes, links and questions verse and range requests, default and `fields=index` shape, are served on SAMPLED
+    evidence, not exhaustive (see "Verse and range samples" above).
+  - The scripture `versionsNote` depends on Bible resources that are not in the entry's `deps`.
+  - en ult/ust JON chapter 2 is not in the proof (the call falls back).
+  - The es-419 RUT 1 and TIT 1 index fallback cause is not traced.
+  - The combined reader byte cap does not apply to calls with no `need`.
+
 ## Rotation
 
 - GitHub App private key: App settings → Private keys → generate a new one, update `GITHUB_APP_PRIVATE_KEY` on both

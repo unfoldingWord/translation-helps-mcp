@@ -1,0 +1,483 @@
+# Sweep differences: en articles
+
+Swept 2026-11-16T13:35:42.314Z, API https://translation-helps-api-v2.unfoldingword.workers.dev, catalog ed619cd5428e7f63cae9c1ec1c94435b18dd482da6e5e6b33b6900b9464a3c8d+e47a3e63650cd4fb394034bfb71e5bf52806df055d83dd581f00ad147082f196.
+
+## en|unfoldingWord/en/ta|v91|articles
+
+Items 2295, exceptions 54 (differs 26, ambiguous 28)
+
+- translate/figs-123person: differs
+  - $.article: today `"Normally a speaker refers to himself as “I” and the person he is speaking to as “you.” Sometimes in the Bible a speaker refers to himself o` format 3 `"Normally a speaker refers to himself as “I” and the person he is speaking to as “you.” Sometimes in the Bible a speaker refers to himself o`
+- translate/figs-crowd: differs
+  - $.article: today `"### Description\n\nThis is the placeholder for an article about discussion of crowds in biblical literature. This article is still being de` format 3 `"### Description\n\nThis is the placeholder for an article about discussion of crowds in biblical literature. This article is still being de`
+- translate/figs-doublenegatives: differs
+  - $.article: today `"A double negative occurs when a clause has two words that each express the meaning of “not.” Double negatives mean very different things in` format 3 `"A double negative occurs when a clause has two words that each express the meaning of “not.” Double negatives mean very different things in`
+- translate/figs-ellipsis: differs
+  - $.article: today `"### Description\n\nAn ellipsis\\[^1\\] occurs when a speaker or writer leaves out one or more words that normally should be in the sentence` format 3 `"### Description\n\nAn ellipsis\\[^1\\] occurs when a speaker or writer leaves out one or more words that normally should be in the sentence`
+- translate/figs-imperative3p: differs
+  - $.article: today `"### Description\n\nThe languages of the Bible have verb forms that can give commands, instructions or other directive speech in the third p` format 3 `"### Description\n\nThe languages of the Bible have verb forms that can give commands, instructions or other directive speech in the third p`
+- translate/figs-order: differs
+  - $.related[0].title: today `"Word Order"` format 3 `"Biblical Hebrew"`
+  - $.related[1].title: today `"Word Order"` format 3 `"Koiné Greek"`
+- translate/figs-ordergrk: differs
+  - $.path: today `"translate/figs-orderGrk"` format 3 `"translate/figs-ordergrk"`
+- translate/figs-orderheb: differs
+  - $.path: today `"translate/figs-orderHeb"` format 3 `"translate/figs-orderheb"`
+- translate/figs-parallelism: differs
+  - $.article: today `"### Description\n\nParallelism is a poetic device in which two phrases or clauses that are similar in structure or idea are used together. ` format 3 `"### Description\n\nParallelism is a poetic device in which two phrases or clauses that are similar in structure or idea are used together. `
+- translate/figs-possession: differs
+  - $.article: today `"### Description\n\nIn English, the grammatical form that commonly indicates possession is also used to indicate a variety of relationships ` format 3 `"### Description\n\nIn English, the grammatical form that commonly indicates possession is also used to indicate a variety of relationships `
+- translate/grammar-connect-logic-contrast: differs
+  - $.article: today `"## Logical Relationships\n\nSome connectors establish logical relationships between two phrases, clauses, sentences, or chunks of text.\n\n` format 3 `"## Logical Relationships\n\nSome connectors establish logical relationships between two phrases, clauses, sentences, or chunks of text.\n\n`
+- translate/resources-links: differs
+  - $.article: today `"There are two types of links in the translationNotes: links to an unfoldingWord® Translation Academy topic page and links for repeated word` format 3 `"There are two types of links in the translationNotes: links to an unfoldingWord® Translation Academy topic page and links for repeated word`
+- translate/translate-alternativereadings: differs
+  - $.article: today `"### Description\n\nIn some places in the traditional Hebrew text of the Bible as we have it today, there are words or phrases that some scr` format 3 `"### Description\n\nIn some places in the traditional Hebrew text of the Bible as we have it today, there are words or phrases that some scr`
+- translate/translate-plural: differs
+  - $.article: today `"The biblical languages sometimes use plural forms to refer to single objects, ideas, or people.\n\n### Description\n\nUsing a plural form t` format 3 `"The biblical languages sometimes use plural forms to refer to single objects, ideas, or people.\n\n### Description\n\nUsing a plural form t`
+- translate/translate-tense: differs
+  - $.article: today `"### Description\nNormally, languages indicate when an event happens by marking it as past, present, or future (or some subset of those cate` format 3 `"### Description\n\nNormally, languages indicate when an event happens by marking it as past, present, or future (or some subset of those ca`
+- translate/translate-transliterate: differs
+  - $.article: today `"### Description\n\nSometimes the Bible includes things that are not part of your culture and for which your language may not have a word. T` format 3 `"### Description\n\nSometimes the Bible includes things that are not part of your culture and for which your language may not have a word. T`
+- translate/writing-foreground: differs
+  - $.article: today `"### Description\nWhen people tell a story, make an argument, or make a request, sometimes they need to tell their listeners that something ` format 3 `"### Description\n\nWhen people tell a story, make an argument, or make a request, sometimes they need to tell their listeners that somethin`
+- translate/writing-oathformula: differs
+  - $.article: today `"An oath is a solemn promise that someone makes to another person to do something or to solemnly testify that something is true.  The oath i` format 3 `"An oath is a solemn promise that someone makes to another person to do something or to solemnly testify that something is true.  The oath i`
+- translate/writing-politeness: differs
+  - $.article: today `"### Description\n\nPeople say certain things, or say things in a certain way, in order to communicate that they respect the people to whom ` format 3 `"### Description\n\nPeople say certain things, or say things in a certain way, in order to communicate that they respect the people to whom `
+- term:age: ambiguous
+- term:ai: ambiguous
+- term:beg: ambiguous
+- term:church: ambiguous
+- term:community: ambiguous
+- term:create: ambiguous
+- term:crowd: differs
+  - $.article: today `"### Description\n\nThis is the placeholder for an article about discussion of crowds in biblical literature. This article is still being de` format 3 `"### Description\n\nThis is the placeholder for an article about discussion of crowds in biblical literature. This article is still being de`
+- term:ellipsis: differs
+  - $.article: today `"### Description\n\nAn ellipsis\\[^1\\] occurs when a speaker or writer leaves out one or more words that normally should be in the sentence` format 3 `"### Description\n\nAn ellipsis\\[^1\\] occurs when a speaker or writer leaves out one or more words that normally should be in the sentence`
+- term:era: ambiguous
+- term:eve: ambiguous
+- term:faith: ambiguous
+- term:father: ambiguous
+- term:fig: ambiguous
+- term:figure: ambiguous
+- term:fir: ambiguous
+- term:firs: ambiguous
+- term:image: ambiguous
+- term:kin: ambiguous
+- term:king: ambiguous
+- term:know: ambiguous
+- term:knowledge: ambiguous
+- term:language: ambiguous
+- term:oath: differs
+  - $.article: today `"An oath is a solemn promise that someone makes to another person to do something or to solemnly testify that something is true.  The oath i` format 3 `"An oath is a solemn promise that someone makes to another person to do something or to solemnly testify that something is true.  The oath i`
+- term:old: ambiguous
+- term:parallelism: differs
+  - $.article: today `"### Description\n\nParallelism is a poetic device in which two phrases or clauses that are similar in structure or idea are used together. ` format 3 `"### Description\n\nParallelism is a poetic device in which two phrases or clauses that are similar in structure or idea are used together. `
+- term:politeness: differs
+  - $.article: today `"### Description\n\nPeople say certain things, or say things in a certain way, in order to communicate that they respect the people to whom ` format 3 `"### Description\n\nPeople say certain things, or say things in a certain way, in order to communicate that they respect the people to whom `
+- term:possess: differs
+  - $.article: today `"### Description\n\nIn English, the grammatical form that commonly indicates possession is also used to indicate a variety of relationships ` format 3 `"### Description\n\nIn English, the grammatical form that commonly indicates possession is also used to indicate a variety of relationships `
+- term:possession: differs
+  - $.article: today `"### Description\n\nIn English, the grammatical form that commonly indicates possession is also used to indicate a variety of relationships ` format 3 `"### Description\n\nIn English, the grammatical form that commonly indicates possession is also used to indicate a variety of relationships `
+- term:rob: ambiguous
+- term:rod: ambiguous
+- term:sin: ambiguous
+- term:source: ambiguous
+- term:tent: ambiguous
+- term:time: ambiguous
+- term:ur: ambiguous
+
+## en|unfoldingWord/en/tw|v91|articles
+
+Items 3006, exceptions 478 (differs 436, ambiguous 42)
+
+- bible/kt/adoption: differs
+  - $.article: today `"# adoption, adopt, adopted\n\n## Definition:\n\nThe terms “adopt” and “adoption” refer to the process of someone legally becoming the child` format 3 `"# adoption, adopt, adopted\n\n## Definition:\n\nThe terms “adopt” and “adoption” refer to the process of someone legally becoming the child`
+- bible/kt/confess: differs
+  - $.article: today `"# confess, confession\n\n## Definition:\n\nTo confess means to admit or assert that something is true. A “confession” is a statement or adm` format 3 `"# confess, confession\n\n## Definition:\n\nTo confess means to admit or assert that something is true. A “confession” is a statement or adm`
+- bible/kt/covenant: differs
+  - $.article: today `"# covenant\n\n## Definition:\n\nIn the Bible, the term “covenant” refers to a formal, binding agreement between two parties that one or bot` format 3 `"# covenant\n\n## Definition:\n\nIn the Bible, the term “covenant” refers to a formal, binding agreement between two parties that one or bot`
+- bible/kt/evil: differs
+  - $.article: today `"# evil, wicked, wickedness, unpleasant\n\n## Definition:\n\nIn the Bible, the term “evil” can refer either to the concept of moral wickedne` format 3 `"# evil, wicked, wickedness, unpleasant\n\n## Definition:\n\nIn the Bible, the term “evil” can refer either to the concept of moral wickedne`
+- bible/kt/faith: differs
+  - $.article: today `"# faith\n\n## Definition:\n\nIn general, the term “faith” refers to a belief, trust or confidence in someone or something.\n\n* To “have fa` format 3 `"# faith\n\n## Definition:\n\nIn general, the term “faith” refers to a belief, trust or confidence in someone or something.\n\n* To “have fa`
+- bible/kt/faithful: differs
+  - $.article: today `"# faithful, faithfulness, trustworthy\n\n## Definition:\n\nTo be “faithful” to God means to consistently live according to God’s teachings.` format 3 `"# faithful, faithfulness, trustworthy\n\n## Definition:\n\nTo be “faithful” to God means to consistently live according to God’s teachings.`
+- bible/kt/falsegod: differs
+  - $.article: today `"# god, false god, goddess, idol, idolater, idolatrous, idolatry\n\n## Definition:\n\nA false god is something that people worship instead o` format 3 `"# god, false god, goddess, idol, idolater, idolatrous, idolatry\n\n## Definition:\n\nA false god is something that people worship instead o`
+- bible/kt/fellowship: differs
+  - $.article: today `"# fellowship\n\n## Definition:\n\nIn general, the term “fellowship” refers to friendly interactions between members of a group of people wh` format 3 `"# fellowship\n\n## Definition:\n\nIn general, the term “fellowship” refers to friendly interactions between members of a group of people wh`
+- bible/kt/forgive: differs
+  - $.article: today `"# forgive, forgiven, forgiveness, pardon, pardoned\n\n## Definition:\n\nTo forgive someone means to not hold a grudge against that person e` format 3 `"# forgive, forgiven, forgiveness, pardon, pardoned\n\n## Definition:\n\nTo forgive someone means to not hold a grudge against that person e`
+- bible/kt/fulfill: differs
+  - $.article: today `"# fulfill, fulfilled, carried out\n\n## Definition:\n\nThe term “fulfill” means to complete or accomplish something that was expected.\n\n*` format 3 `"# fulfill, fulfilled, carried out\n\n## Definition:\n\nThe term “fulfill” means to complete or accomplish something that was expected.\n\n*`
+- bible/kt/heaven: differs
+  - $.article: today `"# heaven, sky, heavens, heavenly\n\n## Definition:\n\nThe term that is translated as “heaven” usually refers to where God lives. The same w` format 3 `"# heaven, sky, heavens, heavenly\n\n## Definition:\n\nThe term that is translated as “heaven” usually refers to where God lives. The same w`
+- bible/kt/holy: differs
+  - $.article: today `"# holy, holiness, unholy, sacred\n\n## Definition:\n\nThe terms “holy” and “holiness” refer to the character of God that is totally set apa` format 3 `"# holy, holiness, unholy, sacred\n\n## Definition:\n\nThe terms “holy” and “holiness” refer to the character of God that is totally set apa`
+- bible/kt/holyspirit: differs
+  - $.article: today `"# Holy Spirit, Spirit of God, Spirit of the Lord, Spirit\n\n## Definition:\n\nThese terms all refer to the Holy Spirit, who is God. The one` format 3 `"# Holy Spirit, Spirit of God, Spirit of the Lord, Spirit\n\n## Definition:\n\nThese terms all refer to the Holy Spirit, who is God. The one`
+- bible/kt/iamyahweh: differs
+  - $.article: today `"# I am Yahweh\n\n## Definition:\n\nThe statement “I am Yahweh” is used to mark out a command, historical event, promise, or prophecy as som` format 3 `"# I am Yahweh\n\n## Definition:\n\nThe statement “I am Yahweh” is used to mark out a command, historical event, promise, or prophecy as som`
+- bible/kt/justice: differs
+  - $.article: today `"# just, justice, unjust, injustice, justify, justification\n\n## Definition:\n\n“Just” and “justice” refer to treating people fairly accord` format 3 `"# just, justice, unjust, injustice, justify, justification\n\n## Definition:\n\n“Just” and “justice” refer to treating people fairly accord`
+- bible/kt/lament: differs
+  - $.article: today `"# lament, lamentation\n\n## Definition:\n\nThe terms “lament” and “lamentation” refer to a strong expression of mourning, sorrow, or grief.` format 3 `"# lament, lamentation\n\n## Definition:\n\nThe terms “lament” and “lamentation” refer to a strong expression of mourning, sorrow, or grief.`
+- bible/kt/lord: differs
+  - $.article: today `"# lord, Lord, master, sir\n\n## Definition:\n\nIn the Bible, the term “lord” generally refers to someone who has ownership or authority ove` format 3 `"# lord, Lord, master, sir\n\n## Definition:\n\nIn the Bible, the term “lord” generally refers to someone who has ownership or authority ove`
+- bible/kt/manna: differs
+  - $.article: today `"# manna\n\n## Definition:\n\nManna was a white, grain-like food that God provided for the Israelites to eat during the 40 years of living i` format 3 `"# manna\n\n## Definition:\n\nManna was a white, grain-like food that God provided for the Israelites to eat during the 40 years of living i`
+- bible/kt/mercy: differs
+  - $.article: today `"# mercy, merciful\n\n## Definition:\n\nThe terms “mercy” and “merciful” refer to helping people who are in need, especially when they are i` format 3 `"# mercy, merciful\n\n## Definition:\n\nThe terms “mercy” and “merciful” refer to helping people who are in need, especially when they are i`
+- bible/kt/perish: differs
+  - $.article: today `"# perish\n\n## Definition:\n\nThe term “perish” means to die or be destroyed, usually as the result of violence or disaster. In the New Tes` format 3 `"# perish\n\n## Definition:\n\nThe term “perish” means to die or be destroyed, usually as the result of violence or disaster. In the New Tes`
+- bible/kt/pray: differs
+  - $.article: today `"# pray, prayer\n\n## Definition:\n\nThe terms “pray” and “prayer” refer to talking with God. These terms are also used to refer to people t` format 3 `"# pray, prayer\n\n## Definition:\n\nThe terms “pray” and “prayer” refer to talking with God. These terms are also used to refer to people t`
+- bible/kt/priest: differs
+  - $.article: today `"# priest, priesthood\n\n## Definition:\n\nIn the Bible, a priest was someone who was chosen to offer sacrifices to God on behalf of God’s p` format 3 `"# priest, priesthood\n\n## Definition:\n\nIn the Bible, a priest was someone who was chosen to offer sacrifices to God on behalf of God’s p`
+- bible/kt/repent: differs
+  - $.article: today `"# repent, repentance\n\n## Definition:\n\nThe terms “repent” and “repentance” refer to turning away from sin and turning back to God.\n\n* ` format 3 `"# repent, repentance\n\n## Definition:\n\nThe terms “repent” and “repentance” refer to turning away from sin and turning back to God.\n\n* `
+- bible/kt/restore: differs
+  - $.article: today `"# restore, restoration\n\n## Definition:\n\nThe terms “restore” and “restoration” refer to causing something to return to its original plac` format 3 `"# restore, restoration\n\n## Definition:\n\nThe terms “restore” and “restoration” refer to causing something to return to its original plac`
+- bible/kt/savior: differs
+  - $.article: today `"# Savior, savior\n\n## Definition:\n\nThe term “savior” refers to a person who saves or rescues others from danger. It can also refer to so` format 3 `"# Savior, savior\n\n## Definition:\n\nThe term “savior” refers to a person who saves or rescues others from danger. It can also refer to so`
+- bible/kt/sign: differs
+  - $.article: today `"# sign, proof, reminder\n\n## Definition:\n\nThe term “sign” usually refers an object, event, or action that communicates a special meaning` format 3 `"# sign, proof, reminder\n\n## Definition:\n\nThe term “sign” usually refers an object, event, or action that communicates a special meaning`
+- bible/kt/sonofman: differs
+  - $.article: today `"# Son of Man, son of man\n\n## Definition:\n\nThe title “Son of Man” was used by Jesus to refer to himself. He often used this term instead` format 3 `"# Son of Man, son of man\n\n## Definition:\n\nThe title “Son of Man” was used by Jesus to refer to himself. He often used this term instead`
+- bible/kt/sonsofgod: differs
+  - $.article: today `"# sons of God, children of God\n\n## Definition:\n\nThe term “sons of God” is a figurative expression that has several possible meanings.\n` format 3 `"# sons of God, children of God\n\n## Definition:\n\nThe term “sons of God” is a figurative expression that has several possible meanings.\n`
+- bible/kt/soul: differs
+  - $.article: today `"# soul, self\n\n## Definition:\n\nThe term “soul” can either refer generally to the non-physical part of a person or refer specifically to ` format 3 `"# soul, self\n\n## Definition:\n\nThe term “soul” can either refer generally to the non-physical part of a person or refer specifically to `
+- bible/kt/temple: differs
+  - $.article: today `"# temple, house, house of God\n\n## Definition:\n\nA temple is a building dedicated to the worship of a specific diety where that diety was` format 3 `"# temple, house, house of God\n\n## Definition:\n\nA temple is a building dedicated to the worship of a specific diety where that diety was`
+- bible/kt/wrath: differs
+  - $.article: today `"# wrath, fury\n\n## Definition:\n\nWrath is an intense anger that is sometimes long-lasting. The Bible describes both people and God as exp` format 3 `"# wrath, fury\n\n## Definition:\n\nWrath is an intense anger that is sometimes long-lasting. The Bible describes both people and God as exp`
+- bible/kt/yahweh: differs
+  - $.article: today `"# Yahweh, Yah\n\n## Definition:\n\nThe term “Yahweh” is God’s personal name in the Old Testament. The specific origin of this name is unkno` format 3 `"# Yahweh, Yah\n\n## Definition:\n\nThe term “Yahweh” is God’s personal name in the Old Testament. The specific origin of this name is unkno`
+- bible/kt/zion: differs
+  - $.article: today `"# Zion, Mount Zion\n\n## Definition:\n\nOriginally, the term “Zion” or “Mount Zion” referred to a stronghold or fortress that King David ca` format 3 `"# Zion, Mount Zion\n\n## Definition:\n\nOriginally, the term “Zion” or “Mount Zion” referred to a stronghold or fortress that King David ca`
+- bible/names/absalom: differs
+  - $.article: today `"# Absalom\n\n## Definition:\n\nAbsalom was the third son of King David. He was known for his handsome appearance and fiery temperament.\n\n` format 3 `"# Absalom\n\n## Definition:\n\nAbsalom was the third son of King David. He was known for his handsome appearance and fiery temperament.\n\n`
+- bible/names/ahaz: differs
+  - $.article: today `"# Ahaz\n\n## Definition:\n\nAhaz was a wicked king who ruled over the kingdom of Judah from 732 BC to 716 BC. This was about 140 years befo` format 3 `"# Ahaz\n\n## Definition:\n\nAhaz was a wicked king who ruled over the kingdom of Judah from 732 BC to 716 BC. This was about 140 years befo`
+- bible/names/aram: differs
+  - $.article: today `"# Aram, Aramean, Aramaic, Aram of Damascus\n\n## Definition:\n\n“Aram” was the name of two men in the Old Testament. It was also the name o` format 3 `"# Aram, Aramean, Aramaic, Aram of Damascus\n\n## Definition:\n\n“Aram” was the name of two men in the Old Testament. It was also the name o`
+- bible/names/asaph: differs
+  - $.article: today `"# Asaph\n\n## Definition:\n\nAsaph was a Levite priest and gifted musician who composed the music for the psalms of King David. He also wro` format 3 `"# Asaph\n\n## Definition:\n\nAsaph was a Levite priest and gifted musician who composed the music for the psalms of King David. He also wro`
+- bible/names/asherim: differs
+  - $.article: today `"# Asherah, Asherah pole, Ashtoreth\n\n## Definition:\n\nAsherah was the name of a goddess that was worshiped by Canaanite people groups dur` format 3 `"# Asherah, Asherah pole, Ashtoreth\n\n## Definition:\n\nAsherah was the name of a goddess that was worshiped by Canaanite people groups dur`
+- bible/names/bathsheba: differs
+  - $.article: today `"# Bathsheba\n\n## Definition:\n\nBathsheba was the wife of Uriah, a soldier in King David’s army. After Uriah’s death, she became the wife ` format 3 `"# Bathsheba\n\n## Definition:\n\nBathsheba was the wife of Uriah, a soldier in King David’s army. After Uriah’s death, she became the wife `
+- bible/names/bilhah: differs
+  - $.article: today `"# Bilhah\n\n## Definition:\n\nBilhah was one of Jacob’s wives. She gave birth to Dan and Naphtali, two sons of Jacob whose descendants beca` format 3 `"# Bilhah\n\n## Definition:\n\nBilhah was one of Jacob’s wives. She gave birth to Dan and Naphtali, two sons of Jacob whose descendants beca`
+- bible/names/capernaum: differs
+  - $.article: today `"# Capernaum\n\n## Definition:\n\nCapernaum was a fishing village on the northwest shore of the Sea of Galilee.\n\n* Jesus lived in Capernau` format 3 `"# Capernaum\n\n## Definition:\n\nCapernaum was a fishing village on the northwest shore of the Sea of Galilee.\n\n* Jesus lived in Capernau`
+- bible/names/eden: differs
+  - $.article: today `"# Eden, garden of Eden\n\n## Definition:\n\nIn ancient times, Eden was a region that had a garden where God placed the first man and woman ` format 3 `"# Eden, garden of Eden\n\n## Definition:\n\nIn ancient times, Eden was a region that had a garden where God placed the first man and woman `
+- bible/names/esther: differs
+  - $.article: today `"# Esther, Hadassah\n\n## Definition:\n\nEsther was a Jewish woman who became queen of the Persian kingdom after the Israelites were taken t` format 3 `"# Esther, Hadassah\n\n## Definition:\n\nEsther was a Jewish woman who became queen of the Persian kingdom after the Israelites were taken t`
+- bible/names/gomorrah: differs
+  - $.article: today `"# Gomorrah\n\n## Definition:\n\nGomorrah was a city located in a fertile valley near Sodom, where Abraham’s nephew Lot chose to live.\n\n* ` format 3 `"# Gomorrah\n\n## Definition:\n\nGomorrah was a city located in a fertile valley near Sodom, where Abraham’s nephew Lot chose to live.\n\n* `
+- bible/names/greek: differs
+  - $.article: today `"# Greek, Grecian, Hellenist\n\n## Definition:\n\nThe term “Greek” refers to the language spoken in the country of Greece, it is also a pers` format 3 `"# Greek, Grecian, Hellenist\n\n## Definition:\n\nThe term “Greek” refers to the language spoken in the country of Greece, it is also a pers`
+- bible/names/hannah: differs
+  - $.article: today `"# Hannah\n\n## Definition:\n\nHannah was the mother of the prophet Samuel. She was one of two wives of Elkanah.\n\n* Hannah was not able to` format 3 `"# Hannah\n\n## Definition:\n\nHannah was the mother of the prophet Samuel. She was one of two wives of Elkanah.\n\n* Hannah was not able to`
+- bible/names/isaac: differs
+  - $.article: today `"# Isaac\n\n## Definition:\n\nIsaac was the only son of Abraham and Sarah. God had promised to give them a son even though they were very ol` format 3 `"# Isaac\n\n## Definition:\n\nIsaac was the only son of Abraham and Sarah. God had promised to give them a son even though they were very ol`
+- bible/names/isaiah: differs
+  - $.article: today `"# Isaiah\n\n## Definition:\n\nIsaiah was a prophet of God who prophesied during the reigns of four kings of Judah: Uzziah, Jotham, Ahaz, an` format 3 `"# Isaiah\n\n## Definition:\n\nIsaiah was a prophet of God who prophesied during the reigns of four kings of Judah: Uzziah, Jotham, Ahaz, an`
+- bible/names/jericho: differs
+  - $.article: today `"# Jericho\n\n## Definition:\n\nJericho was a powerful city in the land of Canaan. It was located just west of the Jordan River and just nor` format 3 `"# Jericho\n\n## Definition:\n\nJericho was a powerful city in the land of Canaan. It was located just west of the Jordan River and just nor`
+- bible/names/jonathan: differs
+  - $.article: today `"# Jonathan\n\n## Definition:\n\nJonathan was the name of at least ten men in the Old Testament. The name means “Yahweh has given.”\n\n* Dav` format 3 `"# Jonathan\n\n## Definition:\n\nJonathan was the name of at least ten men in the Old Testament. The name means “Yahweh has given.”\n\n* Dav`
+- bible/names/jotham: differs
+  - $.article: today `"# Jotham\n\n## Definition:\n\nIn the Old Testament, there were three men with the name Jotham.\n\n* One man named Jotham was the youngest s` format 3 `"# Jotham\n\n## Definition:\n\nIn the Old Testament, there were three men with the name Jotham.\n\n* One man named Jotham was the youngest s`
+- bible/names/korah: differs
+  - $.article: today `"# Korah, Korahite\n\n## Definition:\n\nKorah was the name of three men in the Old Testament.\n\n1. Korah was a descendant of Levi and so se` format 3 `"# Korah, Korahite\n\n## Definition:\n\nKorah was the name of three men in the Old Testament.\n\n1. Korah was a descendant of Levi and so se`
+- bible/names/lebanon: differs
+  - $.article: today `"# Lebanon\n\n## Definition:\n\nLebanon is a beautiful mountainous region located along the coast of the Mediterranean Sea, north of Israel.` format 3 `"# Lebanon\n\n## Definition:\n\nLebanon is a beautiful mountainous region located along the coast of the Mediterranean Sea, north of Israel.`
+- bible/names/leviathan: differs
+  - $.article: today `"# Leviathan\n\n## Definition:\n\nThe term “Leviathan” refers to a very large, extinct animal mentioned in the earliest writings of the Old ` format 3 `"# Leviathan\n\n## Definition:\n\nThe term “Leviathan” refers to a very large, extinct animal mentioned in the earliest writings of the Old `
+- bible/names/melchizedek: differs
+  - $.article: today `"# Melchizedek\n\n## Definition:\n\nDuring the time when Abram lived, Melchizedek was the king of the city of Salem (later “Jerusalem”)\n\n*` format 3 `"# Melchizedek\n\n## Definition:\n\nDuring the time when Abram lived, Melchizedek was the king of the city of Salem (later “Jerusalem”)\n\n*`
+- bible/names/micah: differs
+  - $.article: today `"# Micah\n\n## Definition:\n\nMicah was a prophet of Judah around 700 years before Christ, when the prophet Isaiah was also ministering to J` format 3 `"# Micah\n\n## Definition:\n\nMicah was a prophet of Judah around 700 years before Christ, when the prophet Isaiah was also ministering to J`
+- bible/names/midian: differs
+  - $.article: today `"# Midian, Midianite\n\n## Definition:\n\nMidian was a son of Abraham and his wife Keturah. It is also the name of a people group and region` format 3 `"# Midian, Midianite\n\n## Definition:\n\nMidian was a son of Abraham and his wife Keturah. It is also the name of a people group and region`
+- bible/names/nahum: differs
+  - $.article: today `"# Nahum\n\n## Definition:\n\nNahum was a prophet who preached during the time when the evil King Manasseh was ruling over Judah.\n\n* Nahum` format 3 `"# Nahum\n\n## Definition:\n\nNahum was a prophet who preached during the time when the evil King Manasseh was ruling over Judah.\n\n* Nahum`
+- bible/names/noah: differs
+  - $.article: today `"# Noah\n\n## Definition:\n\nNoah was a man who lived over 4,000 years ago, at the time when God sent a worldwide flood to destroy all the e` format 3 `"# Noah\n\n## Definition:\n\nNoah was a man who lived over 4,000 years ago, at the time when God sent a worldwide flood to destroy all the e`
+- bible/names/peor: differs
+  - $.article: today `"# Peor, Mount Peor, Baal Peor\n\n## Definition:\n\nThe terms “Peor” and “Mount Peor” refer to a mountain located northeast of the Salt Sea,` format 3 `"# Peor, Mount Peor, Baal Peor\n\n## Definition:\n\nThe terms “Peor” and “Mount Peor” refer to a mountain located northeast of the Salt Sea,`
+- bible/names/philistia: differs
+  - $.article: today `"# Philistia\n\n## Definition:\n\nPhilistia is the name of a large region in the land of Canaan, located along the coast of the Mediterranea` format 3 `"# Philistia\n\n## Definition:\n\nPhilistia is the name of a large region in the land of Canaan, located along the coast of the Mediterranea`
+- bible/names/philistines: differs
+  - $.article: today `"# Philistines\n\n## Definition:\n\nThe Philistines were a people group who occupied a region known as Philistia along the coast of the Medi` format 3 `"# Philistines\n\n## Definition:\n\nThe Philistines were a people group who occupied a region known as Philistia along the coast of the Medi`
+- bible/names/rabbah: differs
+  - $.article: today `"# Rabbah\n\n## Definition:\n\nRabbah was the most important city of the Ammonite people.\n\n* In battles against the Ammonites, the Israeli` format 3 `"# Rabbah\n\n## Definition:\n\nRabbah was the most important city of the Ammonite people.\n\n* In battles against the Ammonites, the Israeli`
+- bible/names/rahab: differs
+  - $.article: today `"# Rahab\n\n## Definition:\n\nRahab was a woman who lived in Jericho when Israel attacked the city. Rahab was also the name of a mythical mo` format 3 `"# Rahab\n\n## Definition:\n\nRahab was a woman who lived in Jericho when Israel attacked the city. Rahab was also the name of a mythical mo`
+- bible/names/ramah: differs
+  - $.article: today `"# Ramah\n\n## Definition:\n\nRamah was an ancient Israelite city located about 8 kilometers from Jerusalem. It was in the region where the ` format 3 `"# Ramah\n\n## Definition:\n\nRamah was an ancient Israelite city located about 8 kilometers from Jerusalem. It was in the region where the `
+- bible/names/saul: differs
+  - $.article: today `"# Saul (OT)\n\n## Definition:\n\nSaul was an Israelite man whom God chose to become the first king of Israel.\n\n* Saul was tall and handso` format 3 `"# Saul (OT)\n\n## Definition:\n\nSaul was an Israelite man whom God chose to become the first king of Israel.\n\n* Saul was tall and handso`
+- bible/names/sennacherib: differs
+  - $.article: today `"# Sennacherib\n\n## Definition:\n\nSennacherib was a powerful king of Assyria who caused Nineveh to become a rich, important city.\n\n* Kin` format 3 `"# Sennacherib\n\n## Definition:\n\nSennacherib was a powerful king of Assyria who caused Nineveh to become a rich, important city.\n\n* Kin`
+- bible/names/sharon: differs
+  - $.article: today `"# Sharon, Plain of Sharon\n\n## Definition:\n\nSharon was the name of a flat, fertile area of land along the coast of the Mediterranean Sea` format 3 `"# Sharon, Plain of Sharon\n\n## Definition:\n\nSharon was the name of a flat, fertile area of land along the coast of the Mediterranean Sea`
+- bible/names/silas: differs
+  - $.article: today `"# Silas, Silvanus\n\n## Definition:\n\nSilas was a leader among the believers in Jerusalem.\n\n* The elders of the church in Jerusalem appo` format 3 `"# Silas, Silvanus\n\n## Definition:\n\nSilas was a leader among the believers in Jerusalem.\n\n* The elders of the church in Jerusalem appo`
+- bible/names/thessalonica: differs
+  - $.article: today `"# Thessalonica, Thessalonian\n\n## Definition:\n\nIn New Testament times, Thessalonica was the capital city of Macedonia in the ancient Rom` format 3 `"# Thessalonica, Thessalonian\n\n## Definition:\n\nIn New Testament times, Thessalonica was the capital city of Macedonia in the ancient Rom`
+- bible/names/tirzah: differs
+  - $.article: today `"# Tirzah\n\n## Definition:\n\nTirzah was an important Canaanite city that was conquered by the Israelites. It was also the name of a daught` format 3 `"# Tirzah\n\n## Definition:\n\nTirzah was an important Canaanite city that was conquered by the Israelites. It was also the name of a daught`
+- bible/names/zilpah: differs
+  - $.article: today `"# Zilpah\n\n## Definition:\n\nZilpah was one of Jacob’s wives. She was the mother of Jacob’s two sons Gad and Asher.\n\n* Laban gave Zilpah` format 3 `"# Zilpah\n\n## Definition:\n\nZilpah was one of Jacob’s wives. She was the mother of Jacob’s two sons Gad and Asher.\n\n* Laban gave Zilpah`
+- bible/other/acknowledge: differs
+  - $.article: today `"# acknowledge, admit, admitted\n\n## Definition:\n\nThe term “acknowledge” means to give proper recognition to something or someone.\n\n* T` format 3 `"# acknowledge, admit, admitted\n\n## Definition:\n\nThe term “acknowledge” means to give proper recognition to something or someone.\n\n* T`
+- bible/other/alarm: differs
+  - $.article: today `"# alarm, alarmed\n\n## Definition:\n\nAn alarm is something that warns people about something that could harm them. To “be alarmed” is to b` format 3 `"# alarm, alarmed\n\n## Definition:\n\nAn alarm is something that warns people about something that could harm them. To “be alarmed” is to b`
+- bible/other/anguish: differs
+  - $.article: today `"# anguish\n\n## Definition:\n\nThe term “anguish” refers to severe pain or distress.\n\n* Anguish can be physical or emotional pain or dist` format 3 `"# anguish\n\n## Definition:\n\nThe term “anguish” refers to severe pain or distress.\n\n* Anguish can be physical or emotional pain or dist`
+- bible/other/arrogant: differs
+  - $.article: today `"# arrogant, presumptuous\n\n## Definition:\n\nThe term “arrogant” means proud, usually in an obvious, outward way.\n\n* An arrogant person ` format 3 `"# arrogant, presumptuous\n\n## Definition:\n\nThe term “arrogant” means proud, usually in an obvious, outward way.\n\n* An arrogant person `
+- bible/other/astrologers: differs
+  - $.article: today `"# astrologer\n\n## Definition:\n\n“Astrologers” are people who study the stars because they believe that the movements and positions of the` format 3 `"# astrologer\n\n## Definition:\n\n“Astrologers” are people who study the stars because they believe that the movements and positions of the`
+- bible/other/awe: differs
+  - $.article: today `"# awe, awesome\n\n## Definition:\n\nThe term “awe” refers to the sense of amazement and deep respect that comes from seeing something great` format 3 `"# awe, awesome\n\n## Definition:\n\nThe term “awe” refers to the sense of amazement and deep respect that comes from seeing something great`
+- bible/other/ax: differs
+  - $.article: today `"# ax\n\n## Definition:\n\nAn ax is tool used for cutting or chopping trees or wood.\n\n* An ax usually has a long wooden handle with a larg` format 3 `"# ax\n\n## Definition:\n\nAn ax is tool used for cutting or chopping trees or wood.\n\n* An ax usually has a long wooden handle with a larg`
+- bible/other/beast: differs
+  - $.article: today `"# beast\n\n## Definition:\n\nIn the Bible, the term “beast” is often just another way of saying “animal.”\n\n* A wild beast is a type of an` format 3 `"# beast\n\n## Definition:\n\nIn the Bible, the term “beast” is often just another way of saying “animal.”\n\n* A wild beast is a type of an`
+- bible/other/biblicaltimewatch: differs
+  - $.article: today `"# watch (biblical time)\n\n## Definition:\n\nIn biblical times, a “watch” was a period of time at night during which a watchman or guard fo` format 3 `"# watch (biblical time)\n\n## Definition:\n\nIn biblical times, a “watch” was a period of time at night during which a watchman or guard fo`
+- bible/other/bookoflife: differs
+  - $.article: today `"# Book of Life\n\n## Definition:\n\nThe term “Book of Life” is used to refer to where God has written the names of all the people whom he h` format 3 `"# Book of Life\n\n## Definition:\n\nThe term “Book of Life” is used to refer to where God has written the names of all the people whom he h`
+- bible/other/bowweapon: differs
+  - $.article: today `"# bow and arrow, a bow\n\n## Definition:\n\nThis is a type of weapon that consists of shooting arrows from a stringed bow. In Bible times i` format 3 `"# bow and arrow, a bow\n\n## Definition:\n\nThis is a type of weapon that consists of shooting arrows from a stringed bow. In Bible times i`
+- bible/other/bride: differs
+  - $.article: today `"# bride, bridal\n\n## Definition:\n\nA bride is the woman in a marriage ceremony who will marry the bridegroom (the __man__).\n\n## Transla` format 3 `"# bride, bridal\n\n## Definition:\n\nA bride is the woman in a marriage ceremony who will marry the bridegroom (the __man__).\n\n## Transla`
+- bible/other/bridegroom: differs
+  - $.article: today `"# bridegroom, groom\n\n## Definition:\n\nIn a marriage ceremony, the bridegroom, also called the groom, is the __man__ who will marry the b` format 3 `"# bridegroom, groom\n\n## Definition:\n\nIn a marriage ceremony, the bridegroom, also called the groom, is the __man__ who will marry the b`
+- bible/other/bury: differs
+  - $.article: today `"# bury, buried, burial\n\n## Definition:\n\nThe term “bury” refers to putting an object (usually a dead body) into a hole or other burial p` format 3 `"# bury, buried, burial\n\n## Definition:\n\nThe term “bury” refers to putting an object (usually a dead body) into a hole or other burial p`
+- bible/other/chief: differs
+  - $.article: today `"# chief, leader\n\n## Definition:\n\nThe term “chief” refers to the most powerful or most important leader of a particular group.\n\n* Exam` format 3 `"# chief, leader\n\n## Definition:\n\nThe term “chief” refers to the most powerful or most important leader of a particular group.\n\n* Exam`
+- bible/other/companion: differs
+  - $.article: today `"# companion, fellow worker, friend\n\n## Definition:\n\nThe term “companion” refers to a person who goes with someone else or who is associ` format 3 `"# companion, fellow worker, friend\n\n## Definition:\n\nThe term “companion” refers to a person who goes with someone else or who is associ`
+- bible/other/corrupt: differs
+  - $.article: today `"# corrupt, corrupted, corruption, incorruptibility, depraved\n\n## Definition:\n\nThe terms “corrupt” and “corruption” refer to a state of ` format 3 `"# corrupt, corrupted, corruption, incorruptibility, depraved\n\n## Definition:\n\nThe terms “corrupt” and “corruption” refer to a state of `
+- bible/other/court: differs
+  - $.article: today `"# court, courtyard\n\n## Definition:\n\nThe terms “court” and “courtyard” refer to an enclosed area that is open to the sky and surrounded ` format 3 `"# court, courtyard\n\n## Definition:\n\nThe terms “court” and “courtyard” refer to an enclosed area that is open to the sky and surrounded `
+- bible/other/cow: differs
+  - $.article: today `"# cow, bull, calf, cattle, heifer, ox\n\n## Definition:\n\nThe terms “cow,” “bull,” “heifer,” “ox,” and “cattle” all refer to a kind of lar` format 3 `"# cow, bull, calf, cattle, heifer, ox\n\n## Definition:\n\nThe terms “cow,” “bull,” “heifer,” “ox,” and “cattle” all refer to a kind of lar`
+- bible/other/cry: differs
+  - $.article: today `"# cry, cry out, outcry\n\n## Definition:\n\nThe terms “cry” or “cry out” usually mean to say something loudly or urgently. Someone can “cry` format 3 `"# cry, cry out, outcry\n\n## Definition:\n\nThe terms “cry” or “cry out” usually mean to say something loudly or urgently. Someone can “cry`
+- bible/other/deer: differs
+  - $.article: today `"# deer, doe, fawn, roebuck, stag\n\n## Definition:\n\nA deer is a large, graceful, four-legged animal that lives in forests or on mountains` format 3 `"# deer, doe, fawn, roebuck, stag\n\n## Definition:\n\nA deer is a large, graceful, four-legged animal that lives in forests or on mountains`
+- bible/other/delight: differs
+  - $.article: today `"# delight\n\n## Definition:\n\nThe term “delight” means great pleasure or great joy.\n\n* To “delight in” something means to “to take pleas` format 3 `"# delight\n\n## Definition:\n\nThe term “delight” means great pleasure or great joy.\n\n* To “delight in” something means to “to take pleas`
+- bible/other/descendant: differs
+  - $.article: today `"# descend, descendant\n\n## Definition:\n\nA “descendant” is someone who is a direct blood relative of someone else further back in history` format 3 `"# descend, descendant\n\n## Definition:\n\nA “descendant” is someone who is a direct blood relative of someone else further back in history`
+- bible/other/desecrate: differs
+  - $.article: today `"# desecrate, desecrated\n\n## Definition:\n\nThe term “desecrate” means to damage or contaminate a sacred place or object in such a way tha` format 3 `"# desecrate, desecrated\n\n## Definition:\n\nThe term “desecrate” means to damage or contaminate a sacred place or object in such a way tha`
+- bible/other/doom: differs
+  - $.article: today `"# doom\n\n## Definition:\n\nThe term “doom” refers to a judgment of condemnation with no possibility of appeal or escape.\n\n* As the natio` format 3 `"# doom\n\n## Definition:\n\nThe term “doom” refers to a judgment of condemnation with no possibility of appeal or escape.\n\n* As the natio`
+- bible/other/exult: differs
+  - $.article: today `"# exult, exultant\n\n## Definition:\n\nThe terms “exult” and “exultant” refer to being very happy because of a success or special blessing.` format 3 `"# exult, exultant\n\n## Definition:\n\nThe terms “exult” and “exultant” refer to being very happy because of a success or special blessing.`
+- bible/other/falsewitness: differs
+  - $.article: today `"# corrupt witness, false report, false testimony, false witness\n\n## Definition:\n\nThe terms “false witness” and “corrupt witness” refer ` format 3 `"# corrupt witness, false report, false testimony, false witness\n\n## Definition:\n\nThe terms “false witness” and “corrupt witness” refer `
+- bible/other/fir: differs
+  - $.article: today `"# fir, firs\n\n## Definition:\n\nA fir tree is a kind of tree that stays green all year and has cones that contain seeds.\n\n* Fir trees ar` format 3 `"# fir, firs\n\n## Definition:\n\nA fir tree is a kind of tree that stays green all year and has cones that contain seeds.\n\n* Fir trees ar`
+- bible/other/footstool: differs
+  - $.article: today `"# footstool\n\n## Definition:\n\nThe term “footstool” refers to an object which a person puts his feet on, usually to rest them while sitti` format 3 `"# footstool\n\n## Definition:\n\nThe term “footstool” refers to an object which a person puts his feet on, usually to rest them while sitti`
+- bible/other/free: differs
+  - $.article: today `"# free, freed, freedom, freeman, freewill, liberty\n\n## Definition:\n\nThe terms “free” or “freedom” refer to not being in slavery, or any` format 3 `"# free, freed, freedom, freeman, freewill, liberty\n\n## Definition:\n\nThe terms “free” or “freedom” refer to not being in slavery, or any`
+- bible/other/generation-character: differs
+  - $.article: today `"# generation\n\n## Definition:\n\nThe term “generation” in this sense refers to a group of people who share a certain characteristic or qua` format 3 `"# generation\n\n## Definition:\n\nThe term “generation” in this sense refers to a group of people who share a certain characteristic or qua`
+- bible/other/giant: differs
+  - $.article: today `"# giant\n\n## Definition:\n\nThe word “giant” usually refers to a person who is extremely tall and strong.\n\n* Goliath, a Philistine soldi` format 3 `"# giant\n\n## Definition:\n\nThe word “giant” usually refers to a person who is extremely tall and strong.\n\n* Goliath, a Philistine soldi`
+- bible/other/harp: differs
+  - $.article: today `"# harp, harpist\n\n## Definition:\n\nA harp is a stringed musical instrument, that usually consists of a large open frame with vertical str` format 3 `"# harp, harpist\n\n## Definition:\n\nA harp is a stringed musical instrument, that usually consists of a large open frame with vertical str`
+- bible/other/haughty: differs
+  - $.article: today `"# haughty, lofty\n\n## Definition:\n\nThe term “haughty” means to be prideful or arrogant. Someone who is “haughty” thinks too highly of hi` format 3 `"# haughty, lofty\n\n## Definition:\n\nThe term “haughty” means to be prideful or arrogant. Someone who is “haughty” thinks too highly of hi`
+- bible/other/honey: differs
+  - $.article: today `"# honey, honeycomb\n\n## Definition:\n\n“Honey” is the sweet, sticky, edible substance that honeybees make out of flower nectar. Honeycomb ` format 3 `"# honey, honeycomb\n\n## Definition:\n\n“Honey” is the sweet, sticky, edible substance that honeybees make out of flower nectar. Honeycomb `
+- bible/other/integrity: differs
+  - $.article: today `"# integrity\n\n## Definition:\n\nThe term “integrity” refers to being honest, with strong moral principles and behavior is said to have int` format 3 `"# integrity\n\n## Definition:\n\nThe term “integrity” refers to being honest, with strong moral principles and behavior is said to have int`
+- bible/other/law: differs
+  - $.article: today `"# law, principle\n\n## Definition:\n\nA “law” is a legal rule that is usually written down and enforced by someone in authority. A “princip` format 3 `"# law, principle\n\n## Definition:\n\nA “law” is a legal rule that is usually written down and enforced by someone in authority. A “princip`
+- bible/other/leopard: differs
+  - $.article: today `"# leopard\n\n## Definition:\n\nA leopard is a large, cat-like, wild animal that is brown with black spots.\n\n* A leopard is a kind of anim` format 3 `"# leopard\n\n## Definition:\n\nA leopard is a large, cat-like, wild animal that is brown with black spots.\n\n* A leopard is a kind of anim`
+- bible/other/lots: differs
+  - $.article: today `"# lots, casting lots\n\n## Definition:\n\nIn the Bible, a “lot” is a marked object(s) used as a way of making a fair and/or random decision` format 3 `"# lots, casting lots\n\n## Definition:\n\nIn the Bible, a “lot” is a marked object(s) used as a way of making a fair and/or random decision`
+- bible/other/meditate: differs
+  - $.article: today `"# meditate, meditation\n\n## Definition:\n\n“The term meditate” means to spend time thinking about something carefully and deeply.\n\n* Thi` format 3 `"# meditate, meditation\n\n## Definition:\n\n“The term meditate” means to spend time thinking about something carefully and deeply.\n\n* Thi`
+- bible/other/mighty: differs
+  - $.article: today `"# might, mighty, mighty works\n\n## Definition:\n\nThe terms “mighty” and “might” refer to having great strength or power.\n\n* Often the w` format 3 `"# might, mighty, mighty works\n\n## Definition:\n\nThe terms “mighty” and “might” refer to having great strength or power.\n\n* Often the w`
+- bible/other/noble: differs
+  - $.article: today `"# noble, nobleman, royal official\n\n## Definition:\n\nThe term “noble” refers to something that is excellent and of high quality. A “noble` format 3 `"# noble, nobleman, royal official\n\n## Definition:\n\nThe term “noble” refers to something that is excellent and of high quality. A “noble`
+- bible/other/ordain: differs
+  - $.article: today `"# ordain, ordained, ordination, planned long ago, set up, prepared\n\n## Definition:\n\nTo ordain means to formally appoint a person for a ` format 3 `"# ordain, ordained, ordination, planned long ago, set up, prepared\n\n## Definition:\n\nTo ordain means to formally appoint a person for a `
+- bible/other/patient: differs
+  - $.article: today `"# patient, patience, impatient\n\n## Definition:\n\nThe terms “patient” and “patience” refer to persevering through difficult circumstances` format 3 `"# patient, patience, impatient\n\n## Definition:\n\nThe terms “patient” and “patience” refer to persevering through difficult circumstances`
+- bible/other/perfect: differs
+  - $.article: today `"# perfect, complete\n\n## Definition:\n\nIn the New Testament, the term “perfect” means to be mature in our Christian life. To perfect some` format 3 `"# perfect, complete\n\n## Definition:\n\nIn the New Testament, the term “perfect” means to be mature in our Christian life. To perfect some`
+- bible/other/perverse: differs
+  - $.article: today `"# perverse, perversion, pervert, depraved, malicious, devious, dishonest, distortion\n\n## Definition:\n\nThe term “perverse” is used to de` format 3 `"# perverse, perversion, pervert, depraved, malicious, devious, dishonest, distortion\n\n## Definition:\n\nThe term “perverse” is used to de`
+- bible/other/pig: differs
+  - $.article: today `"# pig, pork, swine\n\n## Definition:\n\nA pig is a type of four-legged, hoofed animal that is raised for meat. Its meat is called “pork.” T` format 3 `"# pig, pork, swine\n\n## Definition:\n\nA pig is a type of four-legged, hoofed animal that is raised for meat. Its meat is called “pork.” T`
+- bible/other/plow: differs
+  - $.article: today `"# plow, plower, plowman, plowmen, plowshare, unplowed\n\n## Definition:\n\nA “plow” is a farm tool that is used for breaking up soil to pre` format 3 `"# plow, plower, plowman, plowmen, plowshare, unplowed\n\n## Definition:\n\nA “plow” is a farm tool that is used for breaking up soil to pre`
+- bible/other/praise: differs
+  - $.article: today `"# praise, praised, praiseworthy\n\n## Definition:\n\nTo praise someone is to express admiration and honor for that person.\n\n* People prai` format 3 `"# praise, praised, praiseworthy\n\n## Definition:\n\nTo praise someone is to express admiration and honor for that person.\n\n* People prai`
+- bible/other/prosper: differs
+  - $.article: today `"# prosper, prosperity, prosperous\n\n## Definition:\n\nThe term “prosper” generally refers to living well, whether it be physically, morall` format 3 `"# prosper, prosperity, prosperous\n\n## Definition:\n\nThe term “prosper” generally refers to living well, whether it be physically, morall`
+- bible/other/purple: differs
+  - $.article: today `"# purple\n\n## Definition:\n\nThe term “purple” is the name of a color that is a mixture of blue and red.\n\n* In ancient times, purple was` format 3 `"# purple\n\n## Definition:\n\nThe term “purple” is the name of a color that is a mixture of blue and red.\n\n* In ancient times, purple was`
+- bible/other/receive: differs
+  - $.article: today `"# receive, welcome, taken up, acceptance\n\n## Definition:\n\nThe term “receive” generally means to get or accept something that is given, ` format 3 `"# receive, welcome, taken up, acceptance\n\n## Definition:\n\nThe term “receive” generally means to get or accept something that is given, `
+- bible/other/renown: differs
+  - $.article: today `"# renown, renowned, famous\n\n## Definition:\n\nThe term “renown” refers to the greatness associated with being well known and having a pra` format 3 `"# renown, renowned, famous\n\n## Definition:\n\nThe term “renown” refers to the greatness associated with being well known and having a pra`
+- bible/other/reverence: differs
+  - $.article: today `"# revere, revered, reverence, reverent\n\n## Definition:\n\nThe term “reverence” refers to feelings of profound, deep respect for someone o` format 3 `"# revere, revered, reverence, reverent\n\n## Definition:\n\nThe term “reverence” refers to feelings of profound, deep respect for someone o`
+- bible/other/reward: differs
+  - $.article: today `"# reward, prize, deserve\n\n## Definition:\n\nThe term “reward” refers to what a person receives because of something he has done, either g` format 3 `"# reward, prize, deserve\n\n## Definition:\n\nThe term “reward” refers to what a person receives because of something he has done, either g`
+- bible/other/scepter: differs
+  - $.article: today `"# scepter\n\n## Definition:\n\nThe term “scepter” refers to an ornamental rod or staff held by a ruler, such as a king.\n\n* Scepters were ` format 3 `"# scepter\n\n## Definition:\n\nThe term “scepter” refers to an ornamental rod or staff held by a ruler, such as a king.\n\n* Scepters were `
+- bible/other/selah: differs
+  - $.article: today `"# selah\n\n## Definition:\n\nThe term “selah” is a Hebrew word that occurs mostly in the book of Psalms. It has several possible meanings.\` format 3 `"# selah\n\n## Definition:\n\nThe term “selah” is a Hebrew word that occurs mostly in the book of Psalms. It has several possible meanings.\`
+- bible/other/servant: differs
+  - $.article: today `"# servant, serve, maidservant, young man, young women\n\n## Definition:\n\nA “servant” refers to a person who works for (or obeys) another ` format 3 `"# servant, serve, maidservant, young man, young women\n\n## Definition:\n\nA “servant” refers to a person who works for (or obeys) another `
+- bible/other/shame: differs
+  - $.article: today `"# shame, ashamed, disgrace, humiliate, reproach\n\n## Definition:\n\nThe term “shame” refers to the painful feeling of being disgraced or h` format 3 `"# shame, ashamed, disgrace, humiliate, reproach\n\n## Definition:\n\nThe term “shame” refers to the painful feeling of being disgraced or h`
+- bible/other/siege: differs
+  - $.article: today `"# siege, besiege, besieged, siegework, siegeworks\n\n## Definition:\n\nA “siege” occurs when an attacking army surrounds a city and keeps i` format 3 `"# siege, besiege, besieged, siegework, siegeworks\n\n## Definition:\n\nA “siege” occurs when an attacking army surrounds a city and keeps i`
+- bible/other/splendor: differs
+  - $.article: today `"# splendor\n\n## Definition:\n\nThe term “splendor” refers to the extreme beauty and elegance that is often associated with wealth and a ma` format 3 `"# splendor\n\n## Definition:\n\nThe term “splendor” refers to the extreme beauty and elegance that is often associated with wealth and a ma`
+- bible/other/strife: differs
+  - $.article: today `"# strife, disputes, quarrel, arguing, conflict\n\n## Definition:\n\nThe term “strife” refers to physical or emotional conflict between peop` format 3 `"# strife, disputes, quarrel, arguing, conflict\n\n## Definition:\n\nThe term “strife” refers to physical or emotional conflict between peop`
+- bible/other/stumble: differs
+  - $.article: today `"# stumble, reeling\n\n## Definition:\n\nThe term “stumble” means “almost fall” when walking or running. Usually it involves tripping over s` format 3 `"# stumble, reeling\n\n## Definition:\n\nThe term “stumble” means “almost fall” when walking or running. Usually it involves tripping over s`
+- bible/other/trample: differs
+  - $.article: today `"# trample\n\n## Definition:\n\nTo “trample” means to step on something and smash it with the feet. This term is also used figuratively in t` format 3 `"# trample\n\n## Definition:\n\nTo “trample” means to step on something and smash it with the feet. This term is also used figuratively in t`
+- bible/other/veil: differs
+  - $.article: today `"# veil, veiled, unveiled\n\n## Definition:\n\nThe term “veil” usually refers to a thin piece of cloth that is used as a head covering, to f` format 3 `"# veil, veiled, unveiled\n\n## Definition:\n\nThe term “veil” usually refers to a thin piece of cloth that is used as a head covering, to f`
+- bible/other/yeast: differs
+  - $.article: today `"# yeast, leaven, unleavened\n\n## Definition:\n\n“Leaven” is a general term for a substance that causes bread dough to expand and rise. “Ye` format 3 `"# yeast, leaven, unleavened\n\n## Definition:\n\n“Leaven” is a general term for a substance that causes bread dough to expand and rise. “Ye`
+- term:abow: differs
+  - $.article: today `"# bow and arrow, a bow\n\n## Definition:\n\nThis is a type of weapon that consists of shooting arrows from a stringed bow. In Bible times i` format 3 `"# bow and arrow, a bow\n\n## Definition:\n\nThis is a type of weapon that consists of shooting arrows from a stringed bow. In Bible times i`
+- term:absalom: differs
+  - $.article: today `"# Absalom\n\n## Definition:\n\nAbsalom was the third son of King David. He was known for his handsome appearance and fiery temperament.\n\n` format 3 `"# Absalom\n\n## Definition:\n\nAbsalom was the third son of King David. He was known for his handsome appearance and fiery temperament.\n\n`
+- term:acceptance: differs
+  - $.article: today `"# receive, welcome, taken up, acceptance\n\n## Definition:\n\nThe term “receive” generally means to get or accept something that is given, ` format 3 `"# receive, welcome, taken up, acceptance\n\n## Definition:\n\nThe term “receive” generally means to get or accept something that is given, `
+- term:acknowledge: differs
+  - $.article: today `"# acknowledge, admit, admitted\n\n## Definition:\n\nThe term “acknowledge” means to give proper recognition to something or someone.\n\n* T` format 3 `"# acknowledge, admit, admitted\n\n## Definition:\n\nThe term “acknowledge” means to give proper recognition to something or someone.\n\n* T`
+- term:admit: differs
+  - $.article: today `"# acknowledge, admit, admitted\n\n## Definition:\n\nThe term “acknowledge” means to give proper recognition to something or someone.\n\n* T` format 3 `"# acknowledge, admit, admitted\n\n## Definition:\n\nThe term “acknowledge” means to give proper recognition to something or someone.\n\n* T`
+- term:admitted: differs
+  - $.article: today `"# acknowledge, admit, admitted\n\n## Definition:\n\nThe term “acknowledge” means to give proper recognition to something or someone.\n\n* T` format 3 `"# acknowledge, admit, admitted\n\n## Definition:\n\nThe term “acknowledge” means to give proper recognition to something or someone.\n\n* T`
+- term:adopt: differs
+  - $.article: today `"# adoption, adopt, adopted\n\n## Definition:\n\nThe terms “adopt” and “adoption” refer to the process of someone legally becoming the child` format 3 `"# adoption, adopt, adopted\n\n## Definition:\n\nThe terms “adopt” and “adoption” refer to the process of someone legally becoming the child`
+- term:adopted: differs
+  - $.article: today `"# adoption, adopt, adopted\n\n## Definition:\n\nThe terms “adopt” and “adoption” refer to the process of someone legally becoming the child` format 3 `"# adoption, adopt, adopted\n\n## Definition:\n\nThe terms “adopt” and “adoption” refer to the process of someone legally becoming the child`
+- term:adoption: differs
+  - $.article: today `"# adoption, adopt, adopted\n\n## Definition:\n\nThe terms “adopt” and “adoption” refer to the process of someone legally becoming the child` format 3 `"# adoption, adopt, adopted\n\n## Definition:\n\nThe terms “adopt” and “adoption” refer to the process of someone legally becoming the child`
+- term:advisor: ambiguous
+- term:ahaz: differs
+  - $.article: today `"# Ahaz\n\n## Definition:\n\nAhaz was a wicked king who ruled over the kingdom of Judah from 732 BC to 716 BC. This was about 140 years befo` format 3 `"# Ahaz\n\n## Definition:\n\nAhaz was a wicked king who ruled over the kingdom of Judah from 732 BC to 716 BC. This was about 140 years befo`
+- term:alarm: differs
+  - $.article: today `"# alarm, alarmed\n\n## Definition:\n\nAn alarm is something that warns people about something that could harm them. To “be alarmed” is to b` format 3 `"# alarm, alarmed\n\n## Definition:\n\nAn alarm is something that warns people about something that could harm them. To “be alarmed” is to b`
+- term:alarmed: differs
+  - $.article: today `"# alarm, alarmed\n\n## Definition:\n\nAn alarm is something that warns people about something that could harm them. To “be alarmed” is to b` format 3 `"# alarm, alarmed\n\n## Definition:\n\nAn alarm is something that warns people about something that could harm them. To “be alarmed” is to b`
+- term:anguish: differs
+  - $.article: today `"# anguish\n\n## Definition:\n\nThe term “anguish” refers to severe pain or distress.\n\n* Anguish can be physical or emotional pain or dist` format 3 `"# anguish\n\n## Definition:\n\nThe term “anguish” refers to severe pain or distress.\n\n* Anguish can be physical or emotional pain or dist`
+- term:aram: differs
+  - $.article: today `"# Aram, Aramean, Aramaic, Aram of Damascus\n\n## Definition:\n\n“Aram” was the name of two men in the Old Testament. It was also the name o` format 3 `"# Aram, Aramean, Aramaic, Aram of Damascus\n\n## Definition:\n\n“Aram” was the name of two men in the Old Testament. It was also the name o`
+- term:aramaic: differs
+  - $.article: today `"# Aram, Aramean, Aramaic, Aram of Damascus\n\n## Definition:\n\n“Aram” was the name of two men in the Old Testament. It was also the name o` format 3 `"# Aram, Aramean, Aramaic, Aram of Damascus\n\n## Definition:\n\n“Aram” was the name of two men in the Old Testament. It was also the name o`
+- term:aramean: differs
+  - $.article: today `"# Aram, Aramean, Aramaic, Aram of Damascus\n\n## Definition:\n\n“Aram” was the name of two men in the Old Testament. It was also the name o` format 3 `"# Aram, Aramean, Aramaic, Aram of Damascus\n\n## Definition:\n\n“Aram” was the name of two men in the Old Testament. It was also the name o`
+- term:aramofdamascus: differs
+  - $.article: today `"# Aram, Aramean, Aramaic, Aram of Damascus\n\n## Definition:\n\n“Aram” was the name of two men in the Old Testament. It was also the name o` format 3 `"# Aram, Aramean, Aramaic, Aram of Damascus\n\n## Definition:\n\n“Aram” was the name of two men in the Old Testament. It was also the name o`
+- term:arguing: differs
+  - $.article: today `"# strife, disputes, quarrel, arguing, conflict\n\n## Definition:\n\nThe term “strife” refers to physical or emotional conflict between peop` format 3 `"# strife, disputes, quarrel, arguing, conflict\n\n## Definition:\n\nThe term “strife” refers to physical or emotional conflict between peop`
+- term:arrogant: differs
+  - $.article: today `"# arrogant, presumptuous\n\n## Definition:\n\nThe term “arrogant” means proud, usually in an obvious, outward way.\n\n* An arrogant person ` format 3 `"# arrogant, presumptuous\n\n## Definition:\n\nThe term “arrogant” means proud, usually in an obvious, outward way.\n\n* An arrogant person `
+- term:asaph: differs
+  - $.article: today `"# Asaph\n\n## Definition:\n\nAsaph was a Levite priest and gifted musician who composed the music for the psalms of King David. He also wro` format 3 `"# Asaph\n\n## Definition:\n\nAsaph was a Levite priest and gifted musician who composed the music for the psalms of King David. He also wro`
+- term:ashamed: differs
+  - $.article: today `"# shame, ashamed, disgrace, humiliate, reproach\n\n## Definition:\n\nThe term “shame” refers to the painful feeling of being disgraced or h` format 3 `"# shame, ashamed, disgrace, humiliate, reproach\n\n## Definition:\n\nThe term “shame” refers to the painful feeling of being disgraced or h`
+- term:asherah: differs
+  - $.article: today `"# Asherah, Asherah pole, Ashtoreth\n\n## Definition:\n\nAsherah was the name of a goddess that was worshiped by Canaanite people groups dur` format 3 `"# Asherah, Asherah pole, Ashtoreth\n\n## Definition:\n\nAsherah was the name of a goddess that was worshiped by Canaanite people groups dur`
+- term:asherahpole: differs
+  - $.article: today `"# Asherah, Asherah pole, Ashtoreth\n\n## Definition:\n\nAsherah was the name of a goddess that was worshiped by Canaanite people groups dur` format 3 `"# Asherah, Asherah pole, Ashtoreth\n\n## Definition:\n\nAsherah was the name of a goddess that was worshiped by Canaanite people groups dur`
+- term:ashtoreth: differs
+  - $.article: today `"# Asherah, Asherah pole, Ashtoreth\n\n## Definition:\n\nAsherah was the name of a goddess that was worshiped by Canaanite people groups dur` format 3 `"# Asherah, Asherah pole, Ashtoreth\n\n## Definition:\n\nAsherah was the name of a goddess that was worshiped by Canaanite people groups dur`
+- term:astrologer: differs
+  - $.article: today `"# astrologer\n\n## Definition:\n\n“Astrologers” are people who study the stars because they believe that the movements and positions of the` format 3 `"# astrologer\n\n## Definition:\n\n“Astrologers” are people who study the stars because they believe that the movements and positions of the`
+- term:awe: differs
+  - $.article: today `"# awe, awesome\n\n## Definition:\n\nThe term “awe” refers to the sense of amazement and deep respect that comes from seeing something great` format 3 `"# awe, awesome\n\n## Definition:\n\nThe term “awe” refers to the sense of amazement and deep respect that comes from seeing something great`
+- term:awesome: differs
+  - $.article: today `"# awe, awesome\n\n## Definition:\n\nThe term “awe” refers to the sense of amazement and deep respect that comes from seeing something great` format 3 `"# awe, awesome\n\n## Definition:\n\nThe term “awe” refers to the sense of amazement and deep respect that comes from seeing something great`
+- term:ax: differs
+  - $.article: today `"# ax\n\n## Definition:\n\nAn ax is tool used for cutting or chopping trees or wood.\n\n* An ax usually has a long wooden handle with a larg` format 3 `"# ax\n\n## Definition:\n\nAn ax is tool used for cutting or chopping trees or wood.\n\n* An ax usually has a long wooden handle with a larg`
+- term:baalpeor: differs
+  - $.article: today `"# Peor, Mount Peor, Baal Peor\n\n## Definition:\n\nThe terms “Peor” and “Mount Peor” refer to a mountain located northeast of the Salt Sea,` format 3 `"# Peor, Mount Peor, Baal Peor\n\n## Definition:\n\nThe terms “Peor” and “Mount Peor” refer to a mountain located northeast of the Salt Sea,`
+- term:bathsheba: differs
+  - $.article: today `"# Bathsheba\n\n## Definition:\n\nBathsheba was the wife of Uriah, a soldier in King David’s army. After Uriah’s death, she became the wife ` format 3 `"# Bathsheba\n\n## Definition:\n\nBathsheba was the wife of Uriah, a soldier in King David’s army. After Uriah’s death, she became the wife `
+- term:bearer: ambiguous
+- term:beast: differs
+  - $.article: today `"# beast\n\n## Definition:\n\nIn the Bible, the term “beast” is often just another way of saying “animal.”\n\n* A wild beast is a type of an` format 3 `"# beast\n\n## Definition:\n\nIn the Bible, the term “beast” is often just another way of saying “animal.”\n\n* A wild beast is a type of an`
+- term:begging: ambiguous
+- term:belief: ambiguous
+- term:besiege: differs
+  - $.article: today `"# siege, besiege, besieged, siegework, siegeworks\n\n## Definition:\n\nA “siege” occurs when an attacking army surrounds a city and keeps i` format 3 `"# siege, besiege, besieged, siegework, siegeworks\n\n## Definition:\n\nA “siege” occurs when an attacking army surrounds a city and keeps i`
+- term:besieged: differs
+  - $.article: today `"# siege, besiege, besieged, siegework, siegeworks\n\n## Definition:\n\nA “siege” occurs when an attacking army surrounds a city and keeps i` format 3 `"# siege, besiege, besieged, siegework, siegeworks\n\n## Definition:\n\nA “siege” occurs when an attacking army surrounds a city and keeps i`
+- term:bilhah: differs
+  - $.article: today `"# Bilhah\n\n## Definition:\n\nBilhah was one of Jacob’s wives. She gave birth to Dan and Naphtali, two sons of Jacob whose descendants beca` format 3 `"# Bilhah\n\n## Definition:\n\nBilhah was one of Jacob’s wives. She gave birth to Dan and Naphtali, two sons of Jacob whose descendants beca`
+- term:boastful: ambiguous
+- term:bookoflife: differs
+  - $.article: today `"# Book of Life\n\n## Definition:\n\nThe term “Book of Life” is used to refer to where God has written the names of all the people whom he h` format 3 `"# Book of Life\n\n## Definition:\n\nThe term “Book of Life” is used to refer to where God has written the names of all the people whom he h`
+- term:bore: ambiguous
+- term:borne: ambiguous
+- term:bound: ambiguous
+- term:bowandarrow: differs
+  - $.article: today `"# bow and arrow, a bow\n\n## Definition:\n\nThis is a type of weapon that consists of shooting arrows from a stringed bow. In Bible times i` format 3 `"# bow and arrow, a bow\n\n## Definition:\n\nThis is a type of weapon that consists of shooting arrows from a stringed bow. In Bible times i`
+- term:bowdown: ambiguous
+- term:bridal: differs
+  - $.article: today `"# bride, bridal\n\n## Definition:\n\nA bride is the woman in a marriage ceremony who will marry the bridegroom (the __man__).\n\n## Transla` format 3 `"# bride, bridal\n\n## Definition:\n\nA bride is the woman in a marriage ceremony who will marry the bridegroom (the __man__).\n\n## Transla`
+- term:bride: differs
+  - $.article: today `"# bride, bridal\n\n## Definition:\n\nA bride is the woman in a marriage ceremony who will marry the bridegroom (the __man__).\n\n## Transla` format 3 `"# bride, bridal\n\n## Definition:\n\nA bride is the woman in a marriage ceremony who will marry the bridegroom (the __man__).\n\n## Transla`
+- term:bridegroom: differs
+  - $.article: today `"# bridegroom, groom\n\n## Definition:\n\nIn a marriage ceremony, the bridegroom, also called the groom, is the __man__ who will marry the b` format 3 `"# bridegroom, groom\n\n## Definition:\n\nIn a marriage ceremony, the bridegroom, also called the groom, is the __man__ who will marry the b`
+- term:bull: differs
+  - $.article: today `"# cow, bull, calf, cattle, heifer, ox\n\n## Definition:\n\nThe terms “cow,” “bull,” “heifer,” “ox,” and “cattle” all refer to a kind of lar` format 3 `"# cow, bull, calf, cattle, heifer, ox\n\n## Definition:\n\nThe terms “cow,” “bull,” “heifer,” “ox,” and “cattle” all refer to a kind of lar`
+- term:burial: differs
+  - $.article: today `"# bury, buried, burial\n\n## Definition:\n\nThe term “bury” refers to putting an object (usually a dead body) into a hole or other burial p` format 3 `"# bury, buried, burial\n\n## Definition:\n\nThe term “bury” refers to putting an object (usually a dead body) into a hole or other burial p`
+- term:buried: differs
+  - $.article: today `"# bury, buried, burial\n\n## Definition:\n\nThe term “bury” refers to putting an object (usually a dead body) into a hole or other burial p` format 3 `"# bury, buried, burial\n\n## Definition:\n\nThe term “bury” refers to putting an object (usually a dead body) into a hole or other burial p`
+- term:bury: differs
+  - $.article: today `"# bury, buried, burial\n\n## Definition:\n\nThe term “bury” refers to putting an object (usually a dead body) into a hole or other burial p` format 3 `"# bury, buried, burial\n\n## Definition:\n\nThe term “bury” refers to putting an object (usually a dead body) into a hole or other burial p`
+- term:calf: differs
+  - $.article: today `"# cow, bull, calf, cattle, heifer, ox\n\n## Definition:\n\nThe terms “cow,” “bull,” “heifer,” “ox,” and “cattle” all refer to a kind of lar` format 3 `"# cow, bull, calf, cattle, heifer, ox\n\n## Definition:\n\nThe terms “cow,” “bull,” “heifer,” “ox,” and “cattle” all refer to a kind of lar`
+- term:call: ambiguous
+- term:called: ambiguous
+- term:capernaum: differs
+  - $.article: today `"# Capernaum\n\n## Definition:\n\nCapernaum was a fishing village on the northwest shore of the Sea of Galilee.\n\n* Jesus lived in Capernau` format 3 `"# Capernaum\n\n## Definition:\n\nCapernaum was a fishing village on the northwest shore of the Sea of Galilee.\n\n* Jesus lived in Capernau`
+- term:carriedout: differs
+  - $.article: today `"# fulfill, fulfilled, carried out\n\n## Definition:\n\nThe term “fulfill” means to complete or accomplish something that was expected.\n\n*` format 3 `"# fulfill, fulfilled, carried out\n\n## Definition:\n\nThe term “fulfill” means to complete or accomplish something that was expected.\n\n*`
+- term:castinglots: differs
+  - $.article: today `"# lots, casting lots\n\n## Definition:\n\nIn the Bible, a “lot” is a marked object(s) used as a way of making a fair and/or random decision` format 3 `"# lots, casting lots\n\n## Definition:\n\nIn the Bible, a “lot” is a marked object(s) used as a way of making a fair and/or random decision`
+- term:cattle: differs
+  - $.article: today `"# cow, bull, calf, cattle, heifer, ox\n\n## Definition:\n\nThe terms “cow,” “bull,” “heifer,” “ox,” and “cattle” all refer to a kind of lar` format 3 `"# cow, bull, calf, cattle, heifer, ox\n\n## Definition:\n\nThe terms “cow,” “bull,” “heifer,” “ox,” and “cattle” all refer to a kind of lar`
+- term:chief: differs
+  - $.article: today `"# chief, leader\n\n## Definition:\n\nThe term “chief” refers to the most powerful or most important leader of a particular group.\n\n* Exam` format 3 `"# chief, leader\n\n## Definition:\n\nThe term “chief” refers to the most powerful or most important leader of a particular group.\n\n* Exam`
+- term:childrenofgod: differs
+  - $.article: today `"# sons of God, children of God\n\n## Definition:\n\nThe term “sons of God” is a figurative expression that has several possible meanings.\n` format 3 `"# sons of God, children of God\n\n## Definition:\n\nThe term “sons of God” is a figurative expression that has several possible meanings.\n`
+- term:cistern: ambiguous
+- and more (see the counts above)

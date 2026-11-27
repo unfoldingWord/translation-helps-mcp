@@ -1,0 +1,5683 @@
+{
+  "lang": "en",
+  "book": "Tit",
+  "source": "https://translation-helps-api-v2.unfoldingword.workers.dev",
+  "chapters": {
+    "1": {
+      "source": {
+        "owner": "unfoldingWord",
+        "repo": "en_tn",
+        "version": "v91",
+        "language": "en"
+      },
+      "notes": [
+        {
+          "book": "",
+          "chapter": "front",
+          "verse": "intro",
+          "id": "m2jl",
+          "supportReference": "",
+          "quote": "",
+          "occurrence": "0",
+          "supportReferenceTitle": null,
+          "gatewayQuote": { "original": "", "aligned": "" },
+          "noteSha": "e0505f0e99da26cc0386607c72ad0122b3666d24",
+          "noteLinks": true,
+          "heading": "Introduction to Titus"
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "intro",
+          "id": "c7me",
+          "supportReference": "",
+          "quote": "",
+          "occurrence": "0",
+          "supportReferenceTitle": null,
+          "gatewayQuote": { "original": "", "aligned": "" },
+          "noteSha": "5238018212a6b5bc9f27d72586b99d3b5941fc61",
+          "noteLinks": true,
+          "heading": "Titus 1 Chapter Introduction"
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "1",
+          "id": "rtc9",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "κατὰ πίστιν ἐκλεκτῶν Θεοῦ, καὶ ἐπίγνωσιν ἀληθείας",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "κατὰ πίστιν ἐκλεκτῶν Θεοῦ, καὶ ἐπίγνωσιν ἀληθείας",
+            "aligned": "for the faith of the chosen people of God and knowledge of the truth"
+          },
+          "noteSha": "520cb179861b220c771ed911d756b3c12c3bc615",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "1",
+          "id": "xrtm",
+          "supportReference": "rc://*/ta/man/translate/figs-activepassive",
+          "quote": "ἐκλεκτῶν Θεοῦ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Active or Passive",
+          "gatewayQuote": {
+            "original": "ἐκλεκτῶν Θεοῦ",
+            "aligned": "of the chosen people of God"
+          },
+          "noteSha": "f7a3e289faa67d41936b0096a094f87a37e36cb4",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "1",
+          "id": "tn97",
+          "supportReference": "rc://*/ta/man/translate/figs-ellipsis",
+          "quote": "καὶ ἐπίγνωσιν ἀληθείας",
+          "occurrence": "1",
+          "supportReferenceTitle": "Ellipsis",
+          "gatewayQuote": {
+            "original": "καὶ ἐπίγνωσιν ἀληθείας",
+            "aligned": "and knowledge of the truth"
+          },
+          "noteSha": "91d114e8f3fc75280d63465e2f65edd57ae78cfe",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "1",
+          "id": "fyf8",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "τῆς κατ’ εὐσέβειαν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "τῆς κατ’ εὐσέβειαν",
+            "aligned": "that agrees with godliness"
+          },
+          "noteSha": "01ac92bd9e3192ab9aeea1998085f6eba4cc7c1f",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "2",
+          "id": "xyz9",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-words-phrases",
+          "quote": "ἐπ’ ἐλπίδι ζωῆς αἰωνίου",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connecting Words and Phrases",
+          "gatewayQuote": {
+            "original": "ἐπ’ ἐλπίδι ζωῆς αἰωνίου",
+            "aligned": "with the certain hope of eternal life"
+          },
+          "noteSha": "c7c4de1c384eafd86631cdab9a52d46cf10573f8",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "2",
+          "id": "u0gk",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "ἐπ’ ἐλπίδι ζωῆς αἰωνίου",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "ἐπ’ ἐλπίδι ζωῆς αἰωνίου",
+            "aligned": "with the certain hope of eternal life"
+          },
+          "noteSha": "62ad338fc120b6674e69f019bbe58aff28fee623",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "2",
+          "id": "vyuu",
+          "supportReference": "rc://*/ta/man/translate/figs-doublenegatives",
+          "quote": "ὁ ἀψευδὴς Θεὸς",
+          "occurrence": "1",
+          "supportReferenceTitle": "Double Negatives",
+          "gatewayQuote": {
+            "original": "ὁ ἀψευδὴς Θεὸς",
+            "aligned": "the non lying God"
+          },
+          "noteSha": "c6e666f30ed47ee7105147d976f9dbbb4d17ee04",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "2",
+          "id": "r2gj",
+          "supportReference": "",
+          "quote": "πρὸ χρόνων αἰωνίων",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "πρὸ χρόνων αἰωνίων",
+            "aligned": "before all the ages of time"
+          },
+          "noteSha": "e30921b2ca3d0e6373eb3dd7a9d0f4e7e469dcf0",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "3",
+          "id": "b22h",
+          "supportReference": "",
+          "quote": "καιροῖς ἰδίοις",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "καιροῖς ἰδίοις",
+            "aligned": "at the right time"
+          },
+          "noteSha": "cd3dbad5774426c309ce59309129c3a99343016b",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "3",
+          "id": "swi9",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "ἐφανέρωσεν & τὸν λόγον αὐτοῦ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "ἐφανέρωσεν … τὸν λόγον αὐτοῦ",
+            "aligned": "he revealed his word"
+          },
+          "noteSha": "d9d65dab4b2ce447964a1f767b6431e19b83575b",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "3",
+          "id": "abc9",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "ἐν κηρύγματι",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "ἐν κηρύγματι",
+            "aligned": "by the proclamation"
+          },
+          "noteSha": "749a2a5ad5a2e59a4ba1d4f88092c3d03afbb5ed",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "3",
+          "id": "m41u",
+          "supportReference": "rc://*/ta/man/translate/figs-activepassive",
+          "quote": "ὃ ἐπιστεύθην ἐγὼ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Active or Passive",
+          "gatewayQuote": {
+            "original": "ὃ ἐπιστεύθην ἐγὼ",
+            "aligned": "the one I was entrusted with"
+          },
+          "noteSha": "ab7aa51819aa6b1af3ae270f9ee4123fc20cb08e",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "3",
+          "id": "xy18",
+          "supportReference": "rc://*/ta/man/translate/figs-exclusive",
+          "quote": "ἡμῶν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Exclusive and Inclusive ‘We’",
+          "gatewayQuote": { "original": "ἡμῶν", "aligned": "our" },
+          "noteSha": "392e1ca36ffe6eaf839a35649723fd086569ae80",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "4",
+          "id": "gu55",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "γνησίῳ τέκνῳ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "γνησίῳ τέκνῳ",
+            "aligned": "a true son"
+          },
+          "noteSha": "6f01a5a64a6fe79589d4cb040682c8dd6193ea94",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "4",
+          "id": "wx6c",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "κατὰ κοινὴν πίστιν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "κατὰ κοινὴν πίστιν",
+            "aligned": "in a common faith"
+          },
+          "noteSha": "e5d0a81ab97971924901c57d6b08732ad7d8d0b8",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "4",
+          "id": "h93t",
+          "supportReference": "rc://*/ta/man/translate/figs-ellipsis",
+          "quote": "χάρις καὶ εἰρήνη",
+          "occurrence": "1",
+          "supportReferenceTitle": "Ellipsis",
+          "gatewayQuote": {
+            "original": "χάρις καὶ εἰρήνη",
+            "aligned": "Grace and peace"
+          },
+          "noteSha": "e737a11bce9d3cd90fb1e50b34252071309567fb",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "4",
+          "id": "vft3",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "χάρις καὶ εἰρήνη ἀπὸ Θεοῦ Πατρὸς καὶ Χριστοῦ Ἰησοῦ τοῦ Σωτῆρος ἡμῶν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "χάρις καὶ εἰρήνη ἀπὸ Θεοῦ Πατρὸς καὶ Χριστοῦ Ἰησοῦ τοῦ Σωτῆρος ἡμῶν",
+            "aligned": "Grace and peace from God the Father and Christ Jesus our Savior"
+          },
+          "noteSha": "1f78cf01521f7893fb72e789d0a1f37fcb3217d0",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "4",
+          "id": "s3yr",
+          "supportReference": "",
+          "quote": "Χριστοῦ Ἰησοῦ τοῦ Σωτῆρος ἡμῶν",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "Χριστοῦ Ἰησοῦ τοῦ Σωτῆρος ἡμῶν",
+            "aligned": "Christ Jesus our Savior"
+          },
+          "noteSha": "35d4afd8489fde4c01e0ad7f6f7011abd17d73f0",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "4",
+          "id": "xy17",
+          "supportReference": "rc://*/ta/man/translate/figs-exclusive",
+          "quote": "ἡμῶν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Exclusive and Inclusive ‘We’",
+          "gatewayQuote": { "original": "ἡμῶν", "aligned": "our" },
+          "noteSha": "392e1ca36ffe6eaf839a35649723fd086569ae80",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "5",
+          "id": "ew8h",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-goal",
+          "quote": "τούτου χάριν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Goal (Purpose) Relationship",
+          "gatewayQuote": {
+            "original": "τούτου χάριν",
+            "aligned": "For this purpose"
+          },
+          "noteSha": "a55802417b6f1c08c8c7d1d051681109a226559f",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "5",
+          "id": "lh9b",
+          "supportReference": "",
+          "quote": "ἀπέλιπόν σε ἐν Κρήτῃ",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "ἀπέλιπόν σε ἐν Κρήτῃ",
+            "aligned": "I left you in Crete"
+          },
+          "noteSha": "4987563138e8fe26244ea7006f0da59af81874db",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "5",
+          "id": "ga62",
+          "supportReference": "",
+          "quote": "ἵνα τὰ λείποντα ἐπιδιορθώσῃ",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "ἵνα τὰ λείποντα ἐπιδιορθώσῃ",
+            "aligned": "that you might set in order the things not yet being complete"
+          },
+          "noteSha": "b6d4e7b41fc9ee996847ca84ac6812e168d4a3ea",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "5",
+          "id": "b52u",
+          "supportReference": "",
+          "quote": "καταστήσῃς & πρεσβυτέρους",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "καταστήσῃς … πρεσβυτέρους",
+            "aligned": "ordain elders"
+          },
+          "noteSha": "077fa2d122c8fa29b1cd45dce5406c073dedc6d5",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "6",
+          "id": "jen8",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "εἴ τίς ἐστιν ἀνέγκλητος",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "εἴ τίς ἐστιν ἀνέγκλητος",
+            "aligned": "if anyone is blameless"
+          },
+          "noteSha": "1f5429170ded55788d36ed18636980fe7093f606",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "6",
+          "id": "ab70",
+          "supportReference": "rc://*/ta/man/translate/figs-doublenegatives",
+          "quote": "ἀνέγκλητος",
+          "occurrence": "1",
+          "supportReferenceTitle": "Double Negatives",
+          "gatewayQuote": { "original": "ἀνέγκλητος", "aligned": "blameless" },
+          "noteSha": "2a3ab2f5bd07f5d3b4087bba80d7ebd52fecc8a7",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "6",
+          "id": "q6uy",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "μιᾶς γυναικὸς ἀνήρ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "μιᾶς γυναικὸς ἀνήρ",
+            "aligned": "a husband of one wife"
+          },
+          "noteSha": "9d44771a7d24b86524e286aadc832661d4e38a10",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "6",
+          "id": "wd6q",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "τέκνα & πιστά",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "τέκνα … πιστά",
+            "aligned": "faithful children"
+          },
+          "noteSha": "a6396ae95138c09baac2507e175f92282a8634e6",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "7",
+          "id": "lz7x",
+          "supportReference": "rc://*/ta/man/translate/translate-unknown",
+          "quote": "τὸν ἐπίσκοπον",
+          "occurrence": "1",
+          "supportReferenceTitle": "Translate Unknowns",
+          "gatewayQuote": {
+            "original": "τὸν ἐπίσκοπον",
+            "aligned": "the overseer"
+          },
+          "noteSha": "b16b510b96e148850f9886a619743a7273445946",
+          "noteLinks": true
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "7",
+          "id": "g2zf",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "Θεοῦ οἰκονόμον",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "Θεοῦ οἰκονόμον",
+            "aligned": "a household manager of God"
+          },
+          "noteSha": "8a67302408d4eb42d00db54fc7f8571b9190a694",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "7",
+          "id": "d6l1",
+          "supportReference": "",
+          "quote": "μὴ πάροινον",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "μὴ πάροινον",
+            "aligned": "not addicted to wine"
+          },
+          "noteSha": "faa3481bf73f26df4a47acb65e0b4d9a8d3811e5",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "7",
+          "id": "j1qq",
+          "supportReference": "",
+          "quote": "μὴ πλήκτην",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "μὴ πλήκτην",
+            "aligned": "not a brawler"
+          },
+          "noteSha": "46de6bf1c8dd5c33a2abc7328d92b0475f1c3a20",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "8",
+          "id": "i549",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-contrast",
+          "quote": "ἀλλὰ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Contrast Relationship",
+          "gatewayQuote": { "original": "ἀλλὰ", "aligned": "Instead" },
+          "noteSha": "b4bc97377075ec17601e9b166ca236d6103fa129",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "8",
+          "id": "vkq1",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "φιλάγαθον",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "φιλάγαθον",
+            "aligned": "a friend of what is good"
+          },
+          "noteSha": "4847bbd4564d9cb61d8d0b0eb667f7fba1cebb46",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "8",
+          "id": "xy11",
+          "supportReference": "rc://*/ta/man/translate/figs-doublet",
+          "quote": "σώφρονα & ἐγκρατῆ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Doublet",
+          "gatewayQuote": {
+            "original": "σώφρονα … ἐγκρατῆ",
+            "aligned": "sensible … self controlled"
+          },
+          "noteSha": "05e43ed2481c24b4434738400fbc8fa4c01101fd",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "8",
+          "id": "xy12",
+          "supportReference": "rc://*/ta/man/translate/figs-doublet",
+          "quote": "δίκαιον, ὅσιον",
+          "occurrence": "1",
+          "supportReferenceTitle": "Doublet",
+          "gatewayQuote": {
+            "original": "δίκαιον, ὅσιον",
+            "aligned": "righteous holy"
+          },
+          "noteSha": "de57934a6f6ef499005c48d46b8aeb6c90b51ede",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "9",
+          "id": "xwy6",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "ἀντεχόμενον",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "ἀντεχόμενον",
+            "aligned": "He must hold tightly to"
+          },
+          "noteSha": "afb5437a7d617c2521aff16d95cabe34e4416ac7",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "9",
+          "id": "xy10",
+          "supportReference": "",
+          "quote": "κατὰ τὴν διδαχὴν",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "κατὰ τὴν διδαχὴν",
+            "aligned": "that is in accordance with the teaching"
+          },
+          "noteSha": "0f7cdf1c432b13bc434ade57117aa0b9eda7524f",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "9",
+          "id": "abcj",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-goal",
+          "quote": "ἵνα",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Goal (Purpose) Relationship",
+          "gatewayQuote": { "original": "ἵνα", "aligned": "so that" },
+          "noteSha": "ceab90f5cfc94f108a23256913c00e51a98455f4",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "9",
+          "id": "pzi1",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "τῇ διδασκαλίᾳ τῇ ὑγιαινούσῃ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "τῇ διδασκαλίᾳ τῇ ὑγιαινούσῃ",
+            "aligned": "sound teaching"
+          },
+          "noteSha": "a13b73d52b44bb944c67e4925b74c6a10dfc05ce",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "10",
+          "id": "w9kk",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "ματαιολόγοι",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "ματαιολόγοι",
+            "aligned": "empty talkers"
+          },
+          "noteSha": "8bc913e4d8700eae70058e82c07f386d257a0d30",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "10",
+          "id": "ga6n",
+          "supportReference": "rc://*/ta/man/translate/translate-unknown",
+          "quote": "φρεναπάται",
+          "occurrence": "1",
+          "supportReferenceTitle": "Translate Unknowns",
+          "gatewayQuote": { "original": "φρεναπάται", "aligned": "deceivers" },
+          "noteSha": "6e3e23de307adf7d7f2b063d553de560c3ed3ed8",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "10",
+          "id": "abcd",
+          "supportReference": "rc://*/ta/man/translate/figs-hendiadys",
+          "quote": "ματαιολόγοι, καὶ φρεναπάται",
+          "occurrence": "1",
+          "supportReferenceTitle": "Hendiadys",
+          "gatewayQuote": {
+            "original": "ματαιολόγοι, καὶ φρεναπάται",
+            "aligned": "empty talkers and deceivers"
+          },
+          "noteSha": "1146d9daf121e4f609d45412d3607d2423bec640",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "10",
+          "id": "pu74",
+          "supportReference": "rc://*/ta/man/translate/figs-metonymy",
+          "quote": "οἱ ἐκ τῆς περιτομῆς",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metonymy",
+          "gatewayQuote": {
+            "original": "οἱ ἐκ τῆς περιτομῆς",
+            "aligned": "the ones from the circumcision"
+          },
+          "noteSha": "d8a67eacbfeec57c3260b943822c36bae3ec6347",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "11",
+          "id": "f4iy",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "οὓς δεῖ ἐπιστομίζειν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "οὓς δεῖ ἐπιστομίζειν",
+            "aligned": "It is necessary to stop them"
+          },
+          "noteSha": "e5a20454f1e15f022b586c09c785148c04bb1f85",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "11",
+          "id": "aqi5",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "ὅλους οἴκους ἀνατρέπουσιν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "ὅλους οἴκους ἀνατρέπουσιν",
+            "aligned": "are upsetting whole households"
+          },
+          "noteSha": "25f8356d0bac5eaf33695023199a656fe285d0b6",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "11",
+          "id": "at7c",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "αἰσχροῦ κέρδους χάριν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "αἰσχροῦ κέρδους χάριν",
+            "aligned": "for the sake of shameful profit"
+          },
+          "noteSha": "9485f9b4dd90fc025744e2159441a6301cfcd908",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "12",
+          "id": "tr1j",
+          "supportReference": "",
+          "quote": "τις ἐξ αὐτῶν, ἴδιος αὐτῶν προφήτης",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "τις ἐξ αὐτῶν, ἴδιος αὐτῶν προφήτης",
+            "aligned": "One of them of their own prophets"
+          },
+          "noteSha": "763becad5ba6acf3498b92526fb4816b438b969f",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "12",
+          "id": "y3zb",
+          "supportReference": "rc://*/ta/man/translate/figs-hyperbole",
+          "quote": "Κρῆτες ἀεὶ ψεῦσται",
+          "occurrence": "1",
+          "supportReferenceTitle": "Hyperbole",
+          "gatewayQuote": {
+            "original": "Κρῆτες ἀεὶ ψεῦσται",
+            "aligned": "Cretans are always liars"
+          },
+          "noteSha": "cf4489f148483727e274b08601d19f0ba0bde6f1",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "12",
+          "id": "h3jb",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "κακὰ θηρία",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "κακὰ θηρία",
+            "aligned": "evil beasts"
+          },
+          "noteSha": "d0c28c1a7ff2a152c7342cf768127c8df6b987e1",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "12",
+          "id": "xyz1",
+          "supportReference": "rc://*/ta/man/translate/figs-synecdoche",
+          "quote": "γαστέρες ἀργαί",
+          "occurrence": "1",
+          "supportReferenceTitle": "Synecdoche",
+          "gatewayQuote": {
+            "original": "γαστέρες ἀργαί",
+            "aligned": "lazy bellies"
+          },
+          "noteSha": "2f8296af1456507907de2b688fd03b91a7721386",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "13",
+          "id": "fif8",
+          "supportReference": "",
+          "quote": "δι’ ἣν αἰτίαν ἔλεγχε αὐτοὺς ἀποτόμως",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "δι’ ἣν αἰτίαν ἔλεγχε αὐτοὺς ἀποτόμως",
+            "aligned": "For this reason rebuke them severely"
+          },
+          "noteSha": "dba6923c50e5f8a776a5f272a6a20fa52cab154d",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "13",
+          "id": "abck",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-result",
+          "quote": "δι’ ἣν αἰτίαν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Reason-and-Result Relationship",
+          "gatewayQuote": {
+            "original": "δι’ ἣν αἰτίαν",
+            "aligned": "For this reason"
+          },
+          "noteSha": "ab40c309338bd31b7425777a719ec1a8504913a0",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "13",
+          "id": "dlgr",
+          "supportReference": "rc://*/ta/man/translate/writing-pronouns",
+          "quote": "αὐτοὺς",
+          "occurrence": "1",
+          "supportReferenceTitle": "Pronouns — When to Use Them",
+          "gatewayQuote": { "original": "αὐτοὺς", "aligned": "them" },
+          "noteSha": "66aaab11f06ae164f33255f0c9d6b8d8a7db8341",
+          "noteLinks": true
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "13",
+          "id": "je3r",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "ἵνα ὑγιαίνωσιν ἐν τῇ πίστει",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "ἵνα ὑγιαίνωσιν ἐν τῇ πίστει",
+            "aligned": "so that they may be sound in the faith"
+          },
+          "noteSha": "73cf28a0f9ab6f92613467c0994041935ba0f78f",
+          "noteLinks": true
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "13",
+          "id": "abcl",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-goal",
+          "quote": "ἵνα",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Goal (Purpose) Relationship",
+          "gatewayQuote": { "original": "ἵνα", "aligned": "so that" },
+          "noteSha": "ae41285477853621788c9d48a5316ef1cec195df",
+          "noteLinks": true
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "13",
+          "id": "xyz2",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "ἐν τῇ πίστει",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "ἐν τῇ πίστει",
+            "aligned": "in the faith"
+          },
+          "noteSha": "2f23862d1f8030f8c06ecd9fe7c56e92cf7f7907",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "14",
+          "id": "p28i",
+          "supportReference": "",
+          "quote": "Ἰουδαϊκοῖς μύθοις",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "Ἰουδαϊκοῖς μύθοις",
+            "aligned": "Jewish myths"
+          },
+          "noteSha": "337ecd11a10c95e80870ab0d2f0949135f4046bf",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "14",
+          "id": "m4a5",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "ἀποστρεφομένων τὴν ἀλήθειαν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "ἀποστρεφομένων τὴν ἀλήθειαν",
+            "aligned": "turning away from the truth"
+          },
+          "noteSha": "a55a42e52745b5326a331ca127214a00afbf2cce",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "15",
+          "id": "qtb9",
+          "supportReference": "rc://*/ta/man/translate/writing-proverbs",
+          "quote": "πάντα καθαρὰ τοῖς καθαροῖς",
+          "occurrence": "1",
+          "supportReferenceTitle": "Proverbs",
+          "gatewayQuote": {
+            "original": "πάντα καθαρὰ τοῖς καθαροῖς",
+            "aligned": "All things are pure to the ones who are pure"
+          },
+          "noteSha": "4434a0c9dc3c0e00b2018366c285f5644052807b",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "15",
+          "id": "nx42",
+          "supportReference": "",
+          "quote": "τοῖς καθαροῖς",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "τοῖς καθαροῖς",
+            "aligned": "to the ones who are pure"
+          },
+          "noteSha": "6eba27f775e93c7833a7de6a2587c6899aa377fe",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "15",
+          "id": "abcn",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-contrast",
+          "quote": "δὲ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Contrast Relationship",
+          "gatewayQuote": { "original": "δὲ", "aligned": "But" },
+          "noteSha": "6b966d4bc6ac4c251ea0baf835ec80680a3bba95",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "15",
+          "id": "n3wk",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "τοῖς δὲ μεμιαμμένοις καὶ ἀπίστοις, οὐδὲν καθαρόν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "τοῖς δὲ μεμιαμμένοις καὶ ἀπίστοις, οὐδὲν καθαρόν",
+            "aligned": "But to the ones having been corrupted and unbelieving nothing is pure"
+          },
+          "noteSha": "220940bd06587ffe328811a5af098124b594e9e2",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "16",
+          "id": "abco",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-contrast",
+          "quote": "δὲ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Contrast Relationship",
+          "gatewayQuote": { "original": "δὲ", "aligned": "but" },
+          "noteSha": "c3d734ec99ff2c46d4d8fea80bda562e49a775c1",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "16",
+          "id": "i3l2",
+          "supportReference": "",
+          "quote": "τοῖς & ἔργοις ἀρνοῦνται",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "τοῖς … ἔργοις ἀρνοῦνται",
+            "aligned": "they deny him by their actions"
+          },
+          "noteSha": "5e1a865a955001b8c3ba0243d1fd521df8326e6d",
+          "noteLinks": false
+        }
+      ],
+      "wordLinks": [
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "1",
+          "twId": "trr8",
+          "supportReference": "",
+          "origWords": "Παῦλος",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/names/paul",
+          "wordPath": "bible/names/paul",
+          "twTitle": "Paul, Saul",
+          "gatewayQuote": { "original": "Παῦλος", "aligned": "Paul" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "1",
+          "twId": "zfgc",
+          "supportReference": "",
+          "origWords": "δοῦλος",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/servant",
+          "wordPath": "bible/other/servant",
+          "twTitle": "servant, serve, maidservant, young man, young women",
+          "gatewayQuote": { "original": "δοῦλος", "aligned": "a servant" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "1",
+          "twId": "pmq8",
+          "supportReference": "",
+          "origWords": "Θεοῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/god",
+          "wordPath": "bible/kt/god",
+          "twTitle": "God",
+          "gatewayQuote": { "original": "Θεοῦ", "aligned": "of God" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "1",
+          "twId": "sda6",
+          "supportReference": "",
+          "origWords": "ἀπόστολος",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/apostle",
+          "wordPath": "bible/kt/apostle",
+          "twTitle": "apostle, apostleship",
+          "gatewayQuote": { "original": "ἀπόστολος", "aligned": "an apostle" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "1",
+          "twId": "nze4",
+          "supportReference": "",
+          "origWords": "Ἰησοῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/jesus",
+          "wordPath": "bible/kt/jesus",
+          "twTitle": "Jesus, Jesus Christ, Christ Jesus",
+          "gatewayQuote": { "original": "Ἰησοῦ", "aligned": "of Jesus" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "1",
+          "twId": "n9wu",
+          "supportReference": "",
+          "origWords": "Χριστοῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/christ",
+          "wordPath": "bible/kt/christ",
+          "twTitle": "Christ, Messiah",
+          "gatewayQuote": { "original": "Χριστοῦ", "aligned": "Christ" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "1",
+          "twId": "z5q5",
+          "supportReference": "",
+          "origWords": "πίστιν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/faith",
+          "wordPath": "bible/kt/faith",
+          "twTitle": "faith",
+          "gatewayQuote": { "original": "πίστιν", "aligned": "the faith" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "1",
+          "twId": "dz84",
+          "supportReference": "",
+          "origWords": "ἐκλεκτῶν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/elect",
+          "wordPath": "bible/kt/elect",
+          "twTitle": "chosen, choose, chosen people, Chosen One, elect",
+          "gatewayQuote": {
+            "original": "ἐκλεκτῶν",
+            "aligned": "of the chosen people"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "1",
+          "twId": "f44k",
+          "supportReference": "",
+          "origWords": "Θεοῦ",
+          "occurrence": "2",
+          "twLink": "rc://*/tw/dict/bible/kt/god",
+          "wordPath": "bible/kt/god",
+          "twTitle": "God",
+          "gatewayQuote": { "original": "Θεοῦ", "aligned": "of God" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "1",
+          "twId": "tr4u",
+          "supportReference": "",
+          "origWords": "ἐπίγνωσιν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/know",
+          "wordPath": "bible/other/know",
+          "twTitle": "know, knew, knowledge, known, unknown, distinguish",
+          "gatewayQuote": { "original": "ἐπίγνωσιν", "aligned": "knowledge" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "1",
+          "twId": "qktr",
+          "supportReference": "",
+          "origWords": "εὐσέβειαν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/godly",
+          "wordPath": "bible/kt/godly",
+          "twTitle": "godly, godliness, ungodly, godless, ungodliness, godlessness",
+          "gatewayQuote": { "original": "εὐσέβειαν", "aligned": "godliness" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "2",
+          "twId": "pdm7",
+          "supportReference": "",
+          "origWords": "ἐλπίδι",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/hope",
+          "wordPath": "bible/kt/hope",
+          "twTitle": "hope, hoped",
+          "gatewayQuote": {
+            "original": "ἐλπίδι",
+            "aligned": "the certain hope"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "2",
+          "twId": "rjm7",
+          "supportReference": "",
+          "origWords": "αἰωνίου",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/eternity",
+          "wordPath": "bible/kt/eternity",
+          "twTitle": "eternity, everlasting, eternal, forever",
+          "gatewayQuote": { "original": "αἰωνίου", "aligned": "eternal" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "2",
+          "twId": "sht2",
+          "supportReference": "",
+          "origWords": "ἐπηγγείλατο",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/promise",
+          "wordPath": "bible/kt/promise",
+          "twTitle": "promise, promised",
+          "gatewayQuote": { "original": "ἐπηγγείλατο", "aligned": "promised" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "2",
+          "twId": "hmks",
+          "supportReference": "",
+          "origWords": "Θεὸς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/god",
+          "wordPath": "bible/kt/god",
+          "twTitle": "God",
+          "gatewayQuote": { "original": "Θεὸς", "aligned": "God" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "2",
+          "twId": "xut8",
+          "supportReference": "",
+          "origWords": "χρόνων",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/age-timeperiod",
+          "wordPath": "bible/other/age-timeperiod",
+          "twTitle": "age, era, time",
+          "gatewayQuote": { "original": "χρόνων", "aligned": "of time" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "3",
+          "twId": "dhdb",
+          "supportReference": "",
+          "origWords": "καιροῖς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/age-timeperiod",
+          "wordPath": "bible/other/age-timeperiod",
+          "twTitle": "age, era, time",
+          "gatewayQuote": { "original": "καιροῖς", "aligned": "at the … time" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "3",
+          "twId": "uz9x",
+          "supportReference": "",
+          "origWords": "τὸν λόγον",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/wordofgod",
+          "wordPath": "bible/kt/wordofgod",
+          "twTitle": "word of God, word of Yahweh, word of the Lord, word of truth, scripture",
+          "gatewayQuote": { "original": "τὸν λόγον", "aligned": "word" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "3",
+          "twId": "bgv4",
+          "supportReference": "",
+          "origWords": "κηρύγματι",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/preach",
+          "wordPath": "bible/other/preach",
+          "twTitle": "preach, preaching, preacher, proclaim, proclamation",
+          "gatewayQuote": {
+            "original": "κηρύγματι",
+            "aligned": "the proclamation"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "3",
+          "twId": "yu3w",
+          "supportReference": "",
+          "origWords": "ἐπιστεύθην",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/trust",
+          "wordPath": "bible/kt/trust",
+          "twTitle": "trust, trusted, trustworthy, trustworthiness",
+          "gatewayQuote": {
+            "original": "ἐπιστεύθην",
+            "aligned": "was entrusted with"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "3",
+          "twId": "snb7",
+          "supportReference": "",
+          "origWords": "τοῦ Σωτῆρος",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/savior",
+          "wordPath": "bible/kt/savior",
+          "twTitle": "Savior, savior",
+          "gatewayQuote": {
+            "original": "τοῦ Σωτῆρος",
+            "aligned": "of … Savior"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "3",
+          "twId": "uj2x",
+          "supportReference": "",
+          "origWords": "Θεοῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/god",
+          "wordPath": "bible/kt/god",
+          "twTitle": "God",
+          "gatewayQuote": { "original": "Θεοῦ", "aligned": "God" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "4",
+          "twId": "w4h6",
+          "supportReference": "",
+          "origWords": "Τίτῳ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/names/titus",
+          "wordPath": "bible/names/titus",
+          "twTitle": "Titus",
+          "gatewayQuote": { "original": "Τίτῳ", "aligned": "To Titus" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "4",
+          "twId": "c2fm",
+          "supportReference": "",
+          "origWords": "πίστιν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/faith",
+          "wordPath": "bible/kt/faith",
+          "twTitle": "faith",
+          "gatewayQuote": { "original": "πίστιν", "aligned": "a … faith" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "4",
+          "twId": "khr6",
+          "supportReference": "",
+          "origWords": "χάρις",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/grace",
+          "wordPath": "bible/kt/grace",
+          "twTitle": "grace, gracious",
+          "gatewayQuote": { "original": "χάρις", "aligned": "Grace" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "4",
+          "twId": "es8n",
+          "supportReference": "",
+          "origWords": "εἰρήνη",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/peace",
+          "wordPath": "bible/other/peace",
+          "twTitle": "peace, peaceful, peacemaker",
+          "gatewayQuote": { "original": "εἰρήνη", "aligned": "peace" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "4",
+          "twId": "new9",
+          "supportReference": "",
+          "origWords": "Θεοῦ Πατρὸς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/godthefather",
+          "wordPath": "bible/kt/godthefather",
+          "twTitle": "God the Father, heavenly Father, Father",
+          "gatewayQuote": {
+            "original": "Θεοῦ Πατρὸς",
+            "aligned": "God the Father"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "4",
+          "twId": "f6ja",
+          "supportReference": "",
+          "origWords": "Χριστοῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/christ",
+          "wordPath": "bible/kt/christ",
+          "twTitle": "Christ, Messiah",
+          "gatewayQuote": { "original": "Χριστοῦ", "aligned": "Christ" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "4",
+          "twId": "jgfj",
+          "supportReference": "",
+          "origWords": "Ἰησοῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/jesus",
+          "wordPath": "bible/kt/jesus",
+          "twTitle": "Jesus, Jesus Christ, Christ Jesus",
+          "gatewayQuote": { "original": "Ἰησοῦ", "aligned": "Jesus" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "4",
+          "twId": "mvwu",
+          "supportReference": "",
+          "origWords": "τοῦ Σωτῆρος",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/savior",
+          "wordPath": "bible/kt/savior",
+          "twTitle": "Savior, savior",
+          "gatewayQuote": { "original": "τοῦ Σωτῆρος", "aligned": "Savior" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "5",
+          "twId": "ymd3",
+          "supportReference": "",
+          "origWords": "Κρήτῃ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/names/crete",
+          "wordPath": "bible/names/crete",
+          "twTitle": "Crete, Cretan",
+          "gatewayQuote": { "original": "Κρήτῃ", "aligned": "Crete" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "5",
+          "twId": "a98w",
+          "supportReference": "",
+          "origWords": "καταστήσῃς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/ordain",
+          "wordPath": "bible/other/ordain",
+          "twTitle": "ordain, ordained, ordination, planned long ago, set up, prepared",
+          "gatewayQuote": { "original": "καταστήσῃς", "aligned": "ordain" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "5",
+          "twId": "znyx",
+          "supportReference": "",
+          "origWords": "πρεσβυτέρους",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/elder",
+          "wordPath": "bible/other/elder",
+          "twTitle": "elder",
+          "gatewayQuote": { "original": "πρεσβυτέρους", "aligned": "elders" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "6",
+          "twId": "rbuz",
+          "supportReference": "",
+          "origWords": "ἀνέγκλητος",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/blameless",
+          "wordPath": "bible/kt/blameless",
+          "twTitle": "blameless",
+          "gatewayQuote": { "original": "ἀνέγκλητος", "aligned": "blameless" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "6",
+          "twId": "nsxd",
+          "supportReference": "",
+          "origWords": "πιστά",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/faithful",
+          "wordPath": "bible/kt/faithful",
+          "twTitle": "faithful, faithfulness, trustworthy",
+          "gatewayQuote": { "original": "πιστά", "aligned": "faithful" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "6",
+          "twId": "evqx",
+          "supportReference": "",
+          "origWords": "ἀνυπότακτα",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/rebel",
+          "wordPath": "bible/other/rebel",
+          "twTitle": "rebel, rebellion, rebellious, rebelliousness",
+          "gatewayQuote": { "original": "ἀνυπότακτα", "aligned": "rebellion" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "7",
+          "twId": "g6v8",
+          "supportReference": "",
+          "origWords": "ἐπίσκοπον",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/overseer",
+          "wordPath": "bible/other/overseer",
+          "twTitle": "oversee, overseer, keeper",
+          "gatewayQuote": { "original": "ἐπίσκοπον", "aligned": "overseer" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "7",
+          "twId": "wejy",
+          "supportReference": "",
+          "origWords": "ἀνέγκλητον",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/blameless",
+          "wordPath": "bible/kt/blameless",
+          "twTitle": "blameless",
+          "gatewayQuote": { "original": "ἀνέγκλητον", "aligned": "blameless" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "7",
+          "twId": "mm9y",
+          "supportReference": "",
+          "origWords": "Θεοῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/god",
+          "wordPath": "bible/kt/god",
+          "twTitle": "God",
+          "gatewayQuote": { "original": "Θεοῦ", "aligned": "of God" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "7",
+          "twId": "nmsw",
+          "supportReference": "",
+          "origWords": "οἰκονόμον",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/manager",
+          "wordPath": "bible/other/manager",
+          "twTitle": "manager, steward, stewardship",
+          "gatewayQuote": {
+            "original": "οἰκονόμον",
+            "aligned": "a household manager"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "7",
+          "twId": "rfj7",
+          "supportReference": "",
+          "origWords": "πάροινον",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/wine",
+          "wordPath": "bible/other/wine",
+          "twTitle": "wine, wineskin, new wine",
+          "gatewayQuote": {
+            "original": "πάροινον",
+            "aligned": "addicted to wine"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "8",
+          "twId": "ufbw",
+          "supportReference": "",
+          "origWords": "φιλάγαθον",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/good",
+          "wordPath": "bible/kt/good",
+          "twTitle": "good, right, pleasant, better, best, goodness",
+          "gatewayQuote": {
+            "original": "φιλάγαθον",
+            "aligned": "a friend of what is good"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "8",
+          "twId": "r9c9",
+          "supportReference": "",
+          "origWords": "δίκαιον",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/righteous",
+          "wordPath": "bible/kt/righteous",
+          "twTitle": "righteous, righteousness, unrighteous, unrighteousness, upright, uprightness",
+          "gatewayQuote": { "original": "δίκαιον", "aligned": "righteous" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "8",
+          "twId": "pcs8",
+          "supportReference": "",
+          "origWords": "ὅσιον",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/holy",
+          "wordPath": "bible/kt/holy",
+          "twTitle": "holy, holiness, unholy, sacred",
+          "gatewayQuote": { "original": "ὅσιον", "aligned": "holy" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "8",
+          "twId": "qfud",
+          "supportReference": "",
+          "origWords": "ἐγκρατῆ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/selfcontrol",
+          "wordPath": "bible/other/selfcontrol",
+          "twTitle": "self-control, self-controlled",
+          "gatewayQuote": {
+            "original": "ἐγκρατῆ",
+            "aligned": "self controlled"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "9",
+          "twId": "x67x",
+          "supportReference": "",
+          "origWords": "πιστοῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/faithful",
+          "wordPath": "bible/kt/faithful",
+          "twTitle": "faithful, faithfulness, trustworthy",
+          "gatewayQuote": { "original": "πιστοῦ", "aligned": "trustworthy" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "9",
+          "twId": "nngz",
+          "supportReference": "",
+          "origWords": "παρακαλεῖν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/courage",
+          "wordPath": "bible/other/courage",
+          "twTitle": "courage, courageous, valor",
+          "gatewayQuote": {
+            "original": "παρακαλεῖν",
+            "aligned": "to encourage others"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "9",
+          "twId": "c9tq",
+          "supportReference": "",
+          "origWords": "τῇ διδασκαλίᾳ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/doctrine",
+          "wordPath": "bible/other/doctrine",
+          "twTitle": "doctrine, teaching, belief, beliefs, instruction, knowledge",
+          "gatewayQuote": { "original": "τῇ διδασκαλίᾳ", "aligned": "teaching" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "9",
+          "twId": "ss39",
+          "supportReference": "",
+          "origWords": "ἐλέγχειν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/rebuke",
+          "wordPath": "bible/other/rebuke",
+          "twTitle": "rebuke, reprove",
+          "gatewayQuote": { "original": "ἐλέγχειν", "aligned": "to rebuke" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "10",
+          "twId": "p8yj",
+          "supportReference": "",
+          "origWords": "καὶ ἀνυπότακτοι",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/rebel",
+          "wordPath": "bible/other/rebel",
+          "twTitle": "rebel, rebellion, rebellious, rebelliousness",
+          "gatewayQuote": {
+            "original": "καὶ ἀνυπότακτοι",
+            "aligned": "rebellious"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "10",
+          "twId": "k8ta",
+          "supportReference": "",
+          "origWords": "ματαιολόγοι",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/vain",
+          "wordPath": "bible/other/vain",
+          "twTitle": "vain, vanity",
+          "gatewayQuote": {
+            "original": "ματαιολόγοι",
+            "aligned": "empty talkers"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "10",
+          "twId": "ucvu",
+          "supportReference": "",
+          "origWords": "φρεναπάται",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/deceive",
+          "wordPath": "bible/other/deceive",
+          "twTitle": "deceive, lie, deception, illusion",
+          "gatewayQuote": { "original": "φρεναπάται", "aligned": "deceivers" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "10",
+          "twId": "z5xs",
+          "supportReference": "",
+          "origWords": "περιτομῆς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/circumcise",
+          "wordPath": "bible/kt/circumcise",
+          "twTitle": "circumcise, circumcised, circumcision, uncircumcised, uncircumcision",
+          "gatewayQuote": { "original": "περιτομῆς", "aligned": "circumcision" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "11",
+          "twId": "n4aq",
+          "supportReference": "",
+          "origWords": "οἴκους",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/household",
+          "wordPath": "bible/other/household",
+          "twTitle": "household, house",
+          "gatewayQuote": { "original": "οἴκους", "aligned": "households" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "11",
+          "twId": "bjyb",
+          "supportReference": "",
+          "origWords": "αἰσχροῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/shame",
+          "wordPath": "bible/other/shame",
+          "twTitle": "shame, ashamed, disgrace, humiliate, reproach",
+          "gatewayQuote": { "original": "αἰσχροῦ", "aligned": "shameful" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "11",
+          "twId": "wjg8",
+          "supportReference": "",
+          "origWords": "κέρδους",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/profit",
+          "wordPath": "bible/other/profit",
+          "twTitle": "profit, profits, profited, profitable",
+          "gatewayQuote": { "original": "κέρδους", "aligned": "profit" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "12",
+          "twId": "b5s5",
+          "supportReference": "",
+          "origWords": "προφήτης",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/prophet",
+          "wordPath": "bible/kt/prophet",
+          "twTitle": "prophet, prophecy, prophesy, seer, prophetess",
+          "gatewayQuote": { "original": "προφήτης", "aligned": "of … prophets" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "12",
+          "twId": "myt5",
+          "supportReference": "",
+          "origWords": "Κρῆτες",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/names/crete",
+          "wordPath": "bible/names/crete",
+          "twTitle": "Crete, Cretan",
+          "gatewayQuote": { "original": "Κρῆτες", "aligned": "Cretans" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "12",
+          "twId": "wgym",
+          "supportReference": "",
+          "origWords": "κακὰ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/evil",
+          "wordPath": "bible/kt/evil",
+          "twTitle": "evil, wicked, wickedness, unpleasant",
+          "gatewayQuote": { "original": "κακὰ", "aligned": "evil" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "12",
+          "twId": "ecyq",
+          "supportReference": "",
+          "origWords": "θηρία",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/beast",
+          "wordPath": "bible/other/beast",
+          "twTitle": "beast",
+          "gatewayQuote": { "original": "θηρία", "aligned": "beasts" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "13",
+          "twId": "dsy8",
+          "supportReference": "",
+          "origWords": "ἡ μαρτυρία",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/testimony",
+          "wordPath": "bible/kt/testimony",
+          "twTitle": "testimony, testify, witness, eyewitness, evidence",
+          "gatewayQuote": { "original": "ἡ μαρτυρία", "aligned": "testimony" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "13",
+          "twId": "crce",
+          "supportReference": "",
+          "origWords": "ἔλεγχε",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/rebuke",
+          "wordPath": "bible/other/rebuke",
+          "twTitle": "rebuke, reprove",
+          "gatewayQuote": { "original": "ἔλεγχε", "aligned": "rebuke" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "13",
+          "twId": "s5qd",
+          "supportReference": "",
+          "origWords": "πίστει",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/faith",
+          "wordPath": "bible/kt/faith",
+          "twTitle": "faith",
+          "gatewayQuote": { "original": "πίστει", "aligned": "faith" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "14",
+          "twId": "we3r",
+          "supportReference": "",
+          "origWords": "Ἰουδαϊκοῖς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/jew",
+          "wordPath": "bible/kt/jew",
+          "twTitle": "Jew, Jewish",
+          "gatewayQuote": { "original": "Ἰουδαϊκοῖς", "aligned": "Jewish" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "15",
+          "twId": "gpvr",
+          "supportReference": "",
+          "origWords": "καθαρὰ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/purify",
+          "wordPath": "bible/kt/purify",
+          "twTitle": "pure, purify, purification",
+          "gatewayQuote": { "original": "καθαρὰ", "aligned": "are pure" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "15",
+          "twId": "hr5s",
+          "supportReference": "",
+          "origWords": "καθαροῖς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/purify",
+          "wordPath": "bible/kt/purify",
+          "twTitle": "pure, purify, purification",
+          "gatewayQuote": { "original": "καθαροῖς", "aligned": "pure" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "15",
+          "twId": "mn4k",
+          "supportReference": "",
+          "origWords": "μεμιαμμένοις",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/corrupt",
+          "wordPath": "bible/other/corrupt",
+          "twTitle": "corrupt, corrupted, corruption, incorruptibility, depraved",
+          "gatewayQuote": {
+            "original": "μεμιαμμένοις",
+            "aligned": "having been corrupted"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "15",
+          "twId": "y2bm",
+          "supportReference": "",
+          "origWords": "ἀπίστοις",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/believe",
+          "wordPath": "bible/kt/believe",
+          "twTitle": "believe, believer, belief, unbeliever, unbelief",
+          "gatewayQuote": { "original": "ἀπίστοις", "aligned": "unbelieving" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "15",
+          "twId": "vg9y",
+          "supportReference": "",
+          "origWords": "καθαρόν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/purify",
+          "wordPath": "bible/kt/purify",
+          "twTitle": "pure, purify, purification",
+          "gatewayQuote": { "original": "καθαρόν", "aligned": "is pure" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "15",
+          "twId": "nvgm",
+          "supportReference": "",
+          "origWords": "μεμίανται",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/corrupt",
+          "wordPath": "bible/other/corrupt",
+          "twTitle": "corrupt, corrupted, corruption, incorruptibility, depraved",
+          "gatewayQuote": {
+            "original": "μεμίανται",
+            "aligned": "have been corrupted"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "15",
+          "twId": "qzbf",
+          "supportReference": "",
+          "origWords": "ὁ νοῦς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/mind",
+          "wordPath": "bible/other/mind",
+          "twTitle": "mind, mindful, remind, reminder, likeminded",
+          "gatewayQuote": { "original": "ὁ νοῦς", "aligned": "minds" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "15",
+          "twId": "unp8",
+          "supportReference": "",
+          "origWords": "ἡ συνείδησις",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/conscience",
+          "wordPath": "bible/kt/conscience",
+          "twTitle": "conscience",
+          "gatewayQuote": {
+            "original": "ἡ συνείδησις",
+            "aligned": "consciences"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "16",
+          "twId": "rjjt",
+          "supportReference": "",
+          "origWords": "Θεὸν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/god",
+          "wordPath": "bible/kt/god",
+          "twTitle": "God",
+          "gatewayQuote": { "original": "Θεὸν", "aligned": "God" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "16",
+          "twId": "napb",
+          "supportReference": "",
+          "origWords": "εἰδέναι",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/know",
+          "wordPath": "bible/other/know",
+          "twTitle": "know, knew, knowledge, known, unknown, distinguish",
+          "gatewayQuote": { "original": "εἰδέναι", "aligned": "to know" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "16",
+          "twId": "frhh",
+          "supportReference": "",
+          "origWords": "βδελυκτοὶ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/detestable",
+          "wordPath": "bible/other/detestable",
+          "twTitle": "detest, detested, detestable",
+          "gatewayQuote": { "original": "βδελυκτοὶ", "aligned": "detestable" }
+        },
+        {
+          "book": "",
+          "chapter": "1",
+          "verse": "16",
+          "twId": "yxnn",
+          "supportReference": "",
+          "origWords": "ἀγαθὸν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/good",
+          "wordPath": "bible/kt/good",
+          "twTitle": "good, right, pleasant, better, best, goodness",
+          "gatewayQuote": { "original": "ἀγαθὸν", "aligned": "good" }
+        }
+      ]
+    },
+    "2": {
+      "source": {
+        "owner": "unfoldingWord",
+        "repo": "en_tn",
+        "version": "v91",
+        "language": "en"
+      },
+      "notes": [
+        {
+          "book": "",
+          "chapter": "front",
+          "verse": "intro",
+          "id": "m2jl",
+          "supportReference": "",
+          "quote": "",
+          "occurrence": "0",
+          "supportReferenceTitle": null,
+          "gatewayQuote": { "original": "", "aligned": "" },
+          "noteSha": "e0505f0e99da26cc0386607c72ad0122b3666d24",
+          "noteLinks": true,
+          "heading": "Introduction to Titus"
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "intro",
+          "id": "h3il",
+          "supportReference": "",
+          "quote": "",
+          "occurrence": "0",
+          "supportReferenceTitle": null,
+          "gatewayQuote": { "original": "", "aligned": "" },
+          "noteSha": "ed519cc0ff30abb4de80fe048d24b80b5d1c2b5c",
+          "noteLinks": false,
+          "heading": "Titus 2 Chapter Introduction"
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "1",
+          "id": "tpi2",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "σὺ δὲ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": { "original": "σὺ δὲ", "aligned": "But you" },
+          "noteSha": "7f927c159703ca1db0fc376848ea0aca55bb660b",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "1",
+          "id": "ph2j",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "τῇ ὑγιαινούσῃ διδασκαλίᾳ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "τῇ ὑγιαινούσῃ διδασκαλίᾳ",
+            "aligned": "with sound teaching"
+          },
+          "noteSha": "870eabfe9fdf6db8b7bea4088fcb89e933d62954",
+          "noteLinks": true
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "2",
+          "id": "xyz3",
+          "supportReference": "rc://*/ta/man/translate/figs-ellipsis",
+          "quote": "πρεσβύτας & εἶναι",
+          "occurrence": "1",
+          "supportReferenceTitle": "Ellipsis",
+          "gatewayQuote": {
+            "original": "πρεσβύτας … εἶναι",
+            "aligned": "Older men to be"
+          },
+          "noteSha": "2661e7a65c85efe26c12c372e042922d4716eeac",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "2",
+          "id": "xy13",
+          "supportReference": "rc://*/ta/man/translate/figs-doublet",
+          "quote": "νηφαλίους & σεμνούς, σώφρονας",
+          "occurrence": "1",
+          "supportReferenceTitle": "Doublet",
+          "gatewayQuote": {
+            "original": "νηφαλίους … σεμνούς, σώφρονας",
+            "aligned": "temperate dignified sensible"
+          },
+          "noteSha": "a138385e49840da4ff73806c8783dc7e9dfcb27f",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "2",
+          "id": "xc6t",
+          "supportReference": "",
+          "quote": "νηφαλίους",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": { "original": "νηφαλίους", "aligned": "temperate" },
+          "noteSha": "a182deae97de53e31e7b02aca7e1f595cf7599fe",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "2",
+          "id": "y3j2",
+          "supportReference": "",
+          "quote": "σώφρονας",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": { "original": "σώφρονας", "aligned": "sensible" },
+          "noteSha": "80f07a1e5105c9c752ec04bda822c1ce40cec66f",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "2",
+          "id": "abc1",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "ὑγιαίνοντας τῇ πίστει, τῇ ἀγάπῃ, τῇ ὑπομονῇ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "ὑγιαίνοντας τῇ πίστει, τῇ ἀγάπῃ, τῇ ὑπομονῇ",
+            "aligned": "sound in faith in love and in perseverance"
+          },
+          "noteSha": "3257276c0f9ea8f0fc3646ff8bc38579067f3c02",
+          "noteLinks": true
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "2",
+          "id": "m14y",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "ὑγιαίνοντας τῇ πίστει",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "ὑγιαίνοντας τῇ πίστει",
+            "aligned": "sound in faith"
+          },
+          "noteSha": "b1a9ee34947b3eb51d80e3c52858e4dc35d9bf86",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "2",
+          "id": "z14y",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "τῇ ἀγάπῃ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": { "original": "τῇ ἀγάπῃ", "aligned": "in love" },
+          "noteSha": "9ea5359148d73e71de3ca1978c8a3be74ca028da",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "2",
+          "id": "a14y",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "τῇ ὑπομονῇ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "τῇ ὑπομονῇ",
+            "aligned": "and in perseverance"
+          },
+          "noteSha": "a3dc3017549cbe323306ca6278fc41880f07a54d",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "3",
+          "id": "gl8e",
+          "supportReference": "rc://*/ta/man/translate/figs-ellipsis",
+          "quote": "πρεσβύτιδας ὡσαύτως",
+          "occurrence": "1",
+          "supportReferenceTitle": "Ellipsis",
+          "gatewayQuote": {
+            "original": "πρεσβύτιδας ὡσαύτως",
+            "aligned": "Older women likewise"
+          },
+          "noteSha": "7ec1124fdb2da55a321b1ded89f61591f33f8417",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "3",
+          "id": "g9re",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "οἴνῳ πολλῷ δεδουλωμένας",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "οἴνῳ πολλῷ δεδουλωμένας",
+            "aligned": "enslaved to much wine"
+          },
+          "noteSha": "ff699309882cee96d72c0343a0587554df9f35e7",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "3",
+          "id": "xyz4",
+          "supportReference": "rc://*/ta/man/translate/figs-activepassive",
+          "quote": "οἴνῳ πολλῷ δεδουλωμένας",
+          "occurrence": "1",
+          "supportReferenceTitle": "Active or Passive",
+          "gatewayQuote": {
+            "original": "οἴνῳ πολλῷ δεδουλωμένας",
+            "aligned": "enslaved to much wine"
+          },
+          "noteSha": "17d21143d1fa0735a370458a1d5c3bb2b5340cd2",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "3",
+          "id": "abc4",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-contrast",
+          "quote": "καλοδιδασκάλους",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Contrast Relationship",
+          "gatewayQuote": {
+            "original": "καλοδιδασκάλους",
+            "aligned": "teachers of what is good"
+          },
+          "noteSha": "88ebbf05eb04b135229673f6df46b185b901f49b",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "4",
+          "id": "unh9",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-goal",
+          "quote": "ἵνα",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Goal (Purpose) Relationship",
+          "gatewayQuote": { "original": "ἵνα", "aligned": "so that" },
+          "noteSha": "ab0275587d7ff049dee65b1f405472fc6bb67df8",
+          "noteLinks": true
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "4",
+          "id": "abc5",
+          "supportReference": "",
+          "quote": "φιλάνδρους",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "φιλάνδρους",
+            "aligned": "lovers of their husbands"
+          },
+          "noteSha": "55d6037910641abec4838feaeb62e717bfa84da0",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "4",
+          "id": "abca",
+          "supportReference": "",
+          "quote": "φιλοτέκνους",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "φιλοτέκνους",
+            "aligned": "lovers of their children"
+          },
+          "noteSha": "9b8c263158cf9550020f3fdda902d2cdd9956bb3",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "5",
+          "id": "abcb",
+          "supportReference": "",
+          "quote": "ὑποτασσομένας τοῖς ἰδίοις ἀνδράσιν",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "ὑποτασσομένας τοῖς ἰδίοις ἀνδράσιν",
+            "aligned": "and subject to their own husbands"
+          },
+          "noteSha": "b82fdbca593e0954fdc2d7691717d2819f97ad76",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "5",
+          "id": "papr",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-goal",
+          "quote": "ἵνα",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Goal (Purpose) Relationship",
+          "gatewayQuote": { "original": "ἵνα", "aligned": "so that" },
+          "noteSha": "7995910c46f31cd77193611dc50dfe1dbdfa2929",
+          "noteLinks": true
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "5",
+          "id": "abcq",
+          "supportReference": "rc://*/ta/man/translate/figs-activepassive",
+          "quote": "ἵνα μὴ ὁ λόγος τοῦ Θεοῦ βλασφημῆται",
+          "occurrence": "1",
+          "supportReferenceTitle": "Active or Passive",
+          "gatewayQuote": {
+            "original": "ἵνα μὴ ὁ λόγος τοῦ Θεοῦ βλασφημῆται",
+            "aligned": "so that the word of God may not be insulted"
+          },
+          "noteSha": "0306b68b5a063398add8ba6c965b8c5af20b6092",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "5",
+          "id": "t5v6",
+          "supportReference": "rc://*/ta/man/translate/figs-metonymy",
+          "quote": "ὁ λόγος τοῦ Θεοῦ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metonymy",
+          "gatewayQuote": {
+            "original": "ὁ λόγος τοῦ Θεοῦ",
+            "aligned": "the word of God"
+          },
+          "noteSha": "a363c06c1b7d3ddd642abd36e2118b93bab55b6e",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "6",
+          "id": "i3hv",
+          "supportReference": "",
+          "quote": "ὡσαύτως",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "ὡσαύτως",
+            "aligned": "In the same way"
+          },
+          "noteSha": "dcda2fe9e4a182d19b23eac832f13eff8aacc693",
+          "noteLinks": true
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "7",
+          "id": "tn76",
+          "supportReference": "",
+          "quote": "περὶ πάντα",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "περὶ πάντα",
+            "aligned": "In everything"
+          },
+          "noteSha": "6ebfe9354ff5d432cce99591f7a17a113e904012",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "7",
+          "id": "x73u",
+          "supportReference": "",
+          "quote": "σεαυτὸν παρεχόμενος",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "σεαυτὸν παρεχόμενος",
+            "aligned": "present yourself as"
+          },
+          "noteSha": "f17dcb33380283a090eac152873624f4ce5c10b7",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "7",
+          "id": "ym6x",
+          "supportReference": "",
+          "quote": "τύπον καλῶν ἔργων",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "τύπον καλῶν ἔργων",
+            "aligned": "an example of good works"
+          },
+          "noteSha": "d9d6501589486ce85f31f4086fda400f944da7cc",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "7",
+          "id": "blcl",
+          "supportReference": "rc://*/ta/man/translate/figs-ellipsis",
+          "quote": "ἐν τῇ διδασκαλίᾳ ἀφθορίαν, σεμνότητα",
+          "occurrence": "1",
+          "supportReferenceTitle": "Ellipsis",
+          "gatewayQuote": {
+            "original": "ἐν τῇ διδασκαλίᾳ ἀφθορίαν, σεμνότητα",
+            "aligned": "In the teaching incorruption dignity"
+          },
+          "noteSha": "41a417fd7ca6f5a3f182a120beba4d6b540fcf8d",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "7",
+          "id": "cp3t",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "ἐν τῇ διδασκαλίᾳ ἀφθορίαν, σεμνότητα",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "ἐν τῇ διδασκαλίᾳ ἀφθορίαν, σεμνότητα",
+            "aligned": "In the teaching incorruption dignity"
+          },
+          "noteSha": "aac415619162c3277f9f3b3515957e29a8aab668",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "7",
+          "id": "gy0b",
+          "supportReference": "rc://*/ta/man/translate/figs-doublenegatives",
+          "quote": "ἀφθορίαν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Double Negatives",
+          "gatewayQuote": { "original": "ἀφθορίαν", "aligned": "incorruption" },
+          "noteSha": "f9a72a364ba45f4c9e6dd04a450a86d3da180ddc",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "8",
+          "id": "xy14",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "ὑγιῆ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": { "original": "ὑγιῆ", "aligned": "sound" },
+          "noteSha": "1ccb0e59f18e48865b1690624e24ed3922b0da20",
+          "noteLinks": true
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "8",
+          "id": "qe1k",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-goal",
+          "quote": "ἵνα",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Goal (Purpose) Relationship",
+          "gatewayQuote": { "original": "ἵνα", "aligned": "so that" },
+          "noteSha": "b297c2c0363cf9330fb7109934f0719ad611d1ae",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "8",
+          "id": "xt6v",
+          "supportReference": "rc://*/ta/man/translate/figs-hypo",
+          "quote": "ἵνα ὁ ἐξ ἐναντίας ἐντραπῇ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Hypothetical Situations",
+          "gatewayQuote": {
+            "original": "ἵνα ὁ ἐξ ἐναντίας ἐντραπῇ",
+            "aligned": "so that the opponent may be ashamed"
+          },
+          "noteSha": "906d08661eef7cf15ca9876a9bed0d6a40e0c4c5",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "8",
+          "id": "xy15",
+          "supportReference": "rc://*/ta/man/translate/figs-exclusive",
+          "quote": "ἡμῶν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Exclusive and Inclusive ‘We’",
+          "gatewayQuote": { "original": "ἡμῶν", "aligned": "us" },
+          "noteSha": "cd521cf75b34ee37ad5d007db4e05f22184b224c",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "9",
+          "id": "xyz5",
+          "supportReference": "rc://*/ta/man/translate/figs-ellipsis",
+          "quote": "δούλους ἰδίοις δεσπόταις ὑποτάσσεσθαι",
+          "occurrence": "1",
+          "supportReferenceTitle": "Ellipsis",
+          "gatewayQuote": {
+            "original": "δούλους ἰδίοις δεσπόταις ὑποτάσσεσθαι",
+            "aligned": "Slaves to be subject to their own masters"
+          },
+          "noteSha": "6eea5636816fb1e91b3bbde0916ec6f7ca439200",
+          "noteLinks": true
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "9",
+          "id": "if6v",
+          "supportReference": "",
+          "quote": "ἐν πᾶσιν",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "ἐν πᾶσιν",
+            "aligned": "in everything"
+          },
+          "noteSha": "8e9fbb338b2e09f1ca9106852ba8337fca74ebc6",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "9",
+          "id": "id15",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "εὐαρέστους εἶναι",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "εὐαρέστους εἶναι",
+            "aligned": "to be pleasing"
+          },
+          "noteSha": "36072d72c16174e081a52e97c6b5a7778c6dfea7",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "10",
+          "id": "abc6",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "μὴ νοσφιζομένους",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "μὴ νοσφιζομένους",
+            "aligned": "not to steal"
+          },
+          "noteSha": "71730b119353876bc27fa5ab5c45e8aa16a7d7ce",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "10",
+          "id": "fhwk",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-contrast",
+          "quote": "ἀλλὰ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Contrast Relationship",
+          "gatewayQuote": { "original": "ἀλλὰ", "aligned": "but" },
+          "noteSha": "81b5b1461c1b497065c2ba88097726933d9f00c1",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "10",
+          "id": "t87j",
+          "supportReference": "",
+          "quote": "πᾶσαν πίστιν ἐνδεικνυμένους ἀγαθήν",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "πᾶσαν πίστιν ἐνδεικνυμένους ἀγαθήν",
+            "aligned": "to demonstrate all good faith"
+          },
+          "noteSha": "71f00d87d8dd01c50e4600f54c83e5e97a0ec9f7",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "10",
+          "id": "s1ni",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-goal",
+          "quote": "ἵνα",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Goal (Purpose) Relationship",
+          "gatewayQuote": { "original": "ἵνα", "aligned": "so that" },
+          "noteSha": "d8f70345f6b41edc9fc08e81800b222a90b619ae",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "10",
+          "id": "h2n6",
+          "supportReference": "",
+          "quote": "ἐν πᾶσιν",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": { "original": "ἐν πᾶσιν", "aligned": "in every way" },
+          "noteSha": "962517241b89e16cf75f1518db9eb6105c35bb05",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "10",
+          "id": "f8jy",
+          "supportReference": "",
+          "quote": "τὴν διδασκαλίαν τὴν τοῦ Σωτῆρος ἡμῶν, Θεοῦ, κοσμῶσιν",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "τὴν διδασκαλίαν τὴν τοῦ Σωτῆρος ἡμῶν, Θεοῦ, κοσμῶσιν",
+            "aligned": "they may show the beauty of the teaching that is about God our Savior"
+          },
+          "noteSha": "edea4f69a5e782128a7d54006a63ff0f98f876e9",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "10",
+          "id": "xy16",
+          "supportReference": "rc://*/ta/man/translate/figs-exclusive",
+          "quote": "ἡμῶν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Exclusive and Inclusive ‘We’",
+          "gatewayQuote": { "original": "ἡμῶν", "aligned": "our" },
+          "noteSha": "227998ef638b0f6e65245f9bc984c40599404e45",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "11",
+          "id": "tlbm",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-result",
+          "quote": "γὰρ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Reason-and-Result Relationship",
+          "gatewayQuote": { "original": "γὰρ", "aligned": "For" },
+          "noteSha": "9661d08261c2ffe90a21cee6293258ec4d9de19c",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "11",
+          "id": "gp2z",
+          "supportReference": "rc://*/ta/man/translate/figs-personification",
+          "quote": "ἐπεφάνη & ἡ χάρις τοῦ Θεοῦ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Personification",
+          "gatewayQuote": {
+            "original": "ἐπεφάνη … ἡ χάρις τοῦ Θεοῦ",
+            "aligned": "the grace of God has appeared"
+          },
+          "noteSha": "2976f0890ed8263e9fdd6e737c46ae06f47d9271",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "11",
+          "id": "czny",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "ἐπεφάνη γὰρ ἡ χάρις τοῦ Θεοῦ, σωτήριος πᾶσιν ἀνθρώποις",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "ἐπεφάνη γὰρ ἡ χάρις τοῦ Θεοῦ, σωτήριος πᾶσιν ἀνθρώποις",
+            "aligned": "For the grace of God has appeared salvific for all men"
+          },
+          "noteSha": "f63f13e7e6b38e34493576318fae1de52cba45a9",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "11",
+          "id": "n08x",
+          "supportReference": "rc://*/ta/man/translate/figs-personification",
+          "quote": "σωτήριος πᾶσιν ἀνθρώποις",
+          "occurrence": "1",
+          "supportReferenceTitle": "Personification",
+          "gatewayQuote": {
+            "original": "σωτήριος πᾶσιν ἀνθρώποις",
+            "aligned": "salvific for all men"
+          },
+          "noteSha": "2ea696e0b4ac60b9517219f126b186c8e4b91f1f",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "11",
+          "id": "r94i",
+          "supportReference": "rc://*/ta/man/translate/figs-gendernotations",
+          "quote": "πᾶσιν ἀνθρώποις",
+          "occurrence": "1",
+          "supportReferenceTitle": "When Masculine Words Include Women",
+          "gatewayQuote": {
+            "original": "πᾶσιν ἀνθρώποις",
+            "aligned": "for all men"
+          },
+          "noteSha": "ba2bb518fbb9f5375aa4de292a98dbbfdd44b6b8",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "12",
+          "id": "qy8k",
+          "supportReference": "rc://*/ta/man/translate/figs-personification",
+          "quote": "παιδεύουσα ἡμᾶς",
+          "occurrence": "1",
+          "supportReferenceTitle": "Personification",
+          "gatewayQuote": {
+            "original": "παιδεύουσα ἡμᾶς",
+            "aligned": "training us"
+          },
+          "noteSha": "a0acc6a299a07249b71b465c588ed1ce10b453da",
+          "noteLinks": true
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "12",
+          "id": "abce",
+          "supportReference": "rc://*/ta/man/translate/figs-exclusive",
+          "quote": "ἡμᾶς",
+          "occurrence": "1",
+          "supportReferenceTitle": "Exclusive and Inclusive ‘We’",
+          "gatewayQuote": { "original": "ἡμᾶς", "aligned": "us" },
+          "noteSha": "cd521cf75b34ee37ad5d007db4e05f22184b224c",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "12",
+          "id": "lxb3",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "τὴν ἀσέβειαν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "τὴν ἀσέβειαν",
+            "aligned": "godlessness"
+          },
+          "noteSha": "c378ebb74dd54a071e2776112b284946c526d3c5",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "12",
+          "id": "n3k5",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "τὰς κοσμικὰς ἐπιθυμίας",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "τὰς κοσμικὰς ἐπιθυμίας",
+            "aligned": "worldly passions"
+          },
+          "noteSha": "07367f745f7280f3abd30f4daf07cccd869c29d3",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "12",
+          "id": "xy19",
+          "supportReference": "",
+          "quote": "τὴν ἀσέβειαν & εὐσεβῶς",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "τὴν ἀσέβειαν … εὐσεβῶς",
+            "aligned": "godlessness … godly way"
+          },
+          "noteSha": "6e5eff6566481d9561c2a67343caac2b77ef10e6",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "12",
+          "id": "fk8j",
+          "supportReference": "",
+          "quote": "ἐν τῷ νῦν αἰῶνι",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "ἐν τῷ νῦν αἰῶνι",
+            "aligned": "in the present age"
+          },
+          "noteSha": "edb8766560258b61fb3b4ec9632696bcb60be425",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "13",
+          "id": "rz93",
+          "supportReference": "",
+          "quote": "προσδεχόμενοι",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "προσδεχόμενοι",
+            "aligned": "while we look forward to receiving"
+          },
+          "noteSha": "9f9ae815c8836f02eca81d64fde313fd75669219",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "13",
+          "id": "xyz6",
+          "supportReference": "rc://*/ta/man/translate/figs-hendiadys",
+          "quote": "τὴν μακαρίαν ἐλπίδα, καὶ ἐπιφάνειαν τῆς δόξης",
+          "occurrence": "1",
+          "supportReferenceTitle": "Hendiadys",
+          "gatewayQuote": {
+            "original": "τὴν μακαρίαν ἐλπίδα, καὶ ἐπιφάνειαν τῆς δόξης",
+            "aligned": "the blessed hope and appearing of the glory"
+          },
+          "noteSha": "8d5e314cbbcf7582d9440ea2f75d3e52bd084ea3",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "13",
+          "id": "tpx8",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "τὴν μακαρίαν ἐλπίδα, καὶ ἐπιφάνειαν τῆς δόξης",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "τὴν μακαρίαν ἐλπίδα, καὶ ἐπιφάνειαν τῆς δόξης",
+            "aligned": "the blessed hope and appearing of the glory"
+          },
+          "noteSha": "16c7f3bdbe7267f1799ee0254b68b1e602553fed",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "13",
+          "id": "pss7",
+          "supportReference": "rc://*/ta/man/translate/figs-possession",
+          "quote": "τὴν μακαρίαν ἐλπίδα, καὶ ἐπιφάνειαν τῆς δόξης τοῦ μεγάλου Θεοῦ καὶ Σωτῆρος ἡμῶν, Ἰησοῦ Χριστοῦ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Possession",
+          "gatewayQuote": {
+            "original": "τὴν μακαρίαν ἐλπίδα, καὶ ἐπιφάνειαν τῆς δόξης τοῦ μεγάλου Θεοῦ καὶ Σωτῆρος ἡμῶν, Ἰησοῦ Χριστοῦ",
+            "aligned": "the blessed hope and appearing of the glory of our great God and Savior Jesus Christ"
+          },
+          "noteSha": "f5131062d977c929e47d3b1fa089b01a4f4c2f1b",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "13",
+          "id": "xyz7",
+          "supportReference": "rc://*/ta/man/translate/figs-hendiadys",
+          "quote": "τοῦ μεγάλου Θεοῦ καὶ Σωτῆρος ἡμῶν, Ἰησοῦ Χριστοῦ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Hendiadys",
+          "gatewayQuote": {
+            "original": "τοῦ μεγάλου Θεοῦ καὶ Σωτῆρος ἡμῶν, Ἰησοῦ Χριστοῦ",
+            "aligned": "of our great God and Savior Jesus Christ"
+          },
+          "noteSha": "b38966f33ad8e2c5bc79ec798aa3b44b8ce84335",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "14",
+          "id": "niu4",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "ὃς ἔδωκεν ἑαυτὸν ὑπὲρ ἡμῶν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "ὃς ἔδωκεν ἑαυτὸν ὑπὲρ ἡμῶν",
+            "aligned": "He gave himself for us"
+          },
+          "noteSha": "8764e95b74e23904bcbac5b8a6aa903a0610f205",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "14",
+          "id": "xy20",
+          "supportReference": "rc://*/ta/man/translate/figs-exclusive",
+          "quote": "ἡμῶν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Exclusive and Inclusive ‘We’",
+          "gatewayQuote": { "original": "ἡμῶν", "aligned": "us" },
+          "noteSha": "cd521cf75b34ee37ad5d007db4e05f22184b224c",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "14",
+          "id": "gxe7",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "λυτρώσηται ἡμᾶς ἀπὸ πάσης ἀνομίας",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "λυτρώσηται ἡμᾶς ἀπὸ πάσης ἀνομίας",
+            "aligned": "to redeem us from all lawlessness"
+          },
+          "noteSha": "1c8e69e88b459f4d642b14b51ae963892461ea1d",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "14",
+          "id": "xy21",
+          "supportReference": "rc://*/ta/man/translate/figs-exclusive",
+          "quote": "ἡμᾶς",
+          "occurrence": "1",
+          "supportReferenceTitle": "Exclusive and Inclusive ‘We’",
+          "gatewayQuote": { "original": "ἡμᾶς", "aligned": "us" },
+          "noteSha": "cd521cf75b34ee37ad5d007db4e05f22184b224c",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "14",
+          "id": "fjy1",
+          "supportReference": "rc://*/ta/man/translate/figs-activepassive",
+          "quote": "λαὸν περιούσιον",
+          "occurrence": "1",
+          "supportReferenceTitle": "Active or Passive",
+          "gatewayQuote": {
+            "original": "λαὸν περιούσιον",
+            "aligned": "a chosen people"
+          },
+          "noteSha": "faea80262899e8a581a68a4be8d10f57486e277f",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "14",
+          "id": "ii18",
+          "supportReference": "",
+          "quote": "ζηλωτὴν καλῶν ἔργων",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "ζηλωτὴν καλῶν ἔργων",
+            "aligned": "zealous for good works"
+          },
+          "noteSha": "20781d689775b20374056070c1b053596d97cf3c",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "15",
+          "id": "akz0",
+          "supportReference": "rc://*/ta/man/translate/figs-pronouns",
+          "quote": "ταῦτα",
+          "occurrence": "1",
+          "supportReferenceTitle": "Pronouns",
+          "gatewayQuote": { "original": "ταῦτα", "aligned": "of these things" },
+          "noteSha": "ac5e9122c6c02d3cc5fe9d5eda8c45f07403732f",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "15",
+          "id": "abc7",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "παρακάλει",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": { "original": "παρακάλει", "aligned": "exhort" },
+          "noteSha": "f75827106d52b9ebad9484a0f4c0a786e8d47905",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "15",
+          "id": "b94z",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "ἔλεγχε, μετὰ πάσης ἐπιταγῆς",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "ἔλεγχε, μετὰ πάσης ἐπιταγῆς",
+            "aligned": "rebuke with all authority"
+          },
+          "noteSha": "a8006fd3f99a6998e5064ac2b8c7d9791e8710bf",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "15",
+          "id": "iut6",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "μετὰ πάσης ἐπιταγῆς",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "μετὰ πάσης ἐπιταγῆς",
+            "aligned": "with all authority"
+          },
+          "noteSha": "cc46ea062e8a1529dbfd0de699735b599b34417e",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "15",
+          "id": "h15y",
+          "supportReference": "",
+          "quote": "μηδείς σου περιφρονείτω",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "μηδείς σου περιφρονείτω",
+            "aligned": "Let no one disregard you"
+          },
+          "noteSha": "d6afc86f32194b597cd3d81af9d2342531b40846",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "15",
+          "id": "xy22",
+          "supportReference": "rc://*/ta/man/translate/figs-doublenegatives",
+          "quote": "μηδείς σου περιφρονείτω",
+          "occurrence": "1",
+          "supportReferenceTitle": "Double Negatives",
+          "gatewayQuote": {
+            "original": "μηδείς σου περιφρονείτω",
+            "aligned": "Let no one disregard you"
+          },
+          "noteSha": "ba5e63f2de5a915c31f6640e0af168b4143a38e0",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "15",
+          "id": "jbu1",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "μηδείς σου περιφρονείτω",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "μηδείς σου περιφρονείτω",
+            "aligned": "Let no one disregard you"
+          },
+          "noteSha": "fc2198550c5d8db06f64956c44dc9151f4554915",
+          "noteLinks": false
+        }
+      ],
+      "wordLinks": [
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "1",
+          "twId": "gjgw",
+          "supportReference": "",
+          "origWords": "τῇ & διδασκαλίᾳ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/doctrine",
+          "wordPath": "bible/other/doctrine",
+          "twTitle": "doctrine, teaching, belief, beliefs, instruction, knowledge",
+          "gatewayQuote": {
+            "original": "τῇ … διδασκαλίᾳ",
+            "aligned": "with … teaching"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "2",
+          "twId": "y4e7",
+          "supportReference": "",
+          "origWords": "πρεσβύτας",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/elder",
+          "wordPath": "bible/other/elder",
+          "twTitle": "elder",
+          "gatewayQuote": { "original": "πρεσβύτας", "aligned": "Older men" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "2",
+          "twId": "skyq",
+          "supportReference": "",
+          "origWords": "τῇ πίστει",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/faith",
+          "wordPath": "bible/kt/faith",
+          "twTitle": "faith",
+          "gatewayQuote": { "original": "τῇ πίστει", "aligned": "in faith" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "2",
+          "twId": "pr7x",
+          "supportReference": "",
+          "origWords": "τῇ ἀγάπῃ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/love",
+          "wordPath": "bible/kt/love",
+          "twTitle": "love, beloved",
+          "gatewayQuote": { "original": "τῇ ἀγάπῃ", "aligned": "in love" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "2",
+          "twId": "zvdw",
+          "supportReference": "",
+          "origWords": "τῇ ὑπομονῇ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/perseverance",
+          "wordPath": "bible/other/perseverance",
+          "twTitle": "persevere, perseverance",
+          "gatewayQuote": {
+            "original": "τῇ ὑπομονῇ",
+            "aligned": "and in perseverance"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "3",
+          "twId": "qkdt",
+          "supportReference": "",
+          "origWords": "ἱεροπρεπεῖς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/reverence",
+          "wordPath": "bible/other/reverence",
+          "twTitle": "revere, revered, reverence, reverent",
+          "gatewayQuote": { "original": "ἱεροπρεπεῖς", "aligned": "reverent" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "3",
+          "twId": "cz4m",
+          "supportReference": "",
+          "origWords": "διαβόλους",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/slander",
+          "wordPath": "bible/other/slander",
+          "twTitle": "slander, slanderer, revile, insult",
+          "gatewayQuote": { "original": "διαβόλους", "aligned": "slanderers" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "3",
+          "twId": "jfdu",
+          "supportReference": "",
+          "origWords": "οἴνῳ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/wine",
+          "wordPath": "bible/other/wine",
+          "twTitle": "wine, wineskin, new wine",
+          "gatewayQuote": { "original": "οἴνῳ", "aligned": "to … wine" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "3",
+          "twId": "khhe",
+          "supportReference": "",
+          "origWords": "δεδουλωμένας",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/enslave",
+          "wordPath": "bible/other/enslave",
+          "twTitle": "enslave, slave, bondservant, bondage, bound, bond, bonds, young man, young men, young woman, young women",
+          "gatewayQuote": { "original": "δεδουλωμένας", "aligned": "enslaved" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "4",
+          "twId": "q8p8",
+          "supportReference": "",
+          "origWords": "φιλάνδρους",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/love",
+          "wordPath": "bible/kt/love",
+          "twTitle": "love, beloved",
+          "gatewayQuote": {
+            "original": "φιλάνδρους",
+            "aligned": "lovers of their husbands"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "4",
+          "twId": "m7kb",
+          "supportReference": "",
+          "origWords": "φιλοτέκνους",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/love",
+          "wordPath": "bible/kt/love",
+          "twTitle": "love, beloved",
+          "gatewayQuote": {
+            "original": "φιλοτέκνους",
+            "aligned": "lovers of their children"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "5",
+          "twId": "j8nj",
+          "supportReference": "",
+          "origWords": "ἁγνάς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/purify",
+          "wordPath": "bible/kt/purify",
+          "twTitle": "pure, purify, purification",
+          "gatewayQuote": { "original": "ἁγνάς", "aligned": "pure" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "5",
+          "twId": "mguz",
+          "supportReference": "",
+          "origWords": "ἀγαθάς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/good",
+          "wordPath": "bible/kt/good",
+          "twTitle": "good, right, pleasant, better, best, goodness",
+          "gatewayQuote": { "original": "ἀγαθάς", "aligned": "good" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "5",
+          "twId": "xd42",
+          "supportReference": "",
+          "origWords": "ὑποτασσομένας",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/subject",
+          "wordPath": "bible/other/subject",
+          "twTitle": "subject, be subject to, subjected, subjecting, subjection",
+          "gatewayQuote": {
+            "original": "ὑποτασσομένας",
+            "aligned": "and subject"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "5",
+          "twId": "ub8v",
+          "supportReference": "",
+          "origWords": "λόγος τοῦ Θεοῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/wordofgod",
+          "wordPath": "bible/kt/wordofgod",
+          "twTitle": "word of God, word of Yahweh, word of the Lord, word of truth, scripture",
+          "gatewayQuote": {
+            "original": "λόγος τοῦ Θεοῦ",
+            "aligned": "word of God"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "5",
+          "twId": "rhfd",
+          "supportReference": "",
+          "origWords": "βλασφημῆται",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/slander",
+          "wordPath": "bible/other/slander",
+          "twTitle": "slander, slanderer, revile, insult",
+          "gatewayQuote": {
+            "original": "βλασφημῆται",
+            "aligned": "may … be insulted"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "6",
+          "twId": "j7r6",
+          "supportReference": "",
+          "origWords": "παρακάλει",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/exhort",
+          "wordPath": "bible/kt/exhort",
+          "twTitle": "exhort, exhortation",
+          "gatewayQuote": { "original": "παρακάλει", "aligned": "exhort" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "7",
+          "twId": "ncv7",
+          "supportReference": "",
+          "origWords": "καλῶν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/good",
+          "wordPath": "bible/kt/good",
+          "twTitle": "good, right, pleasant, better, best, goodness",
+          "gatewayQuote": { "original": "καλῶν", "aligned": "good" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "7",
+          "twId": "p6a7",
+          "supportReference": "",
+          "origWords": "διδασκαλίᾳ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/doctrine",
+          "wordPath": "bible/other/doctrine",
+          "twTitle": "doctrine, teaching, belief, beliefs, instruction, knowledge",
+          "gatewayQuote": { "original": "διδασκαλίᾳ", "aligned": "teaching" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "8",
+          "twId": "bxtu",
+          "supportReference": "",
+          "origWords": "ἐντραπῇ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/shame",
+          "wordPath": "bible/other/shame",
+          "twTitle": "shame, ashamed, disgrace, humiliate, reproach",
+          "gatewayQuote": { "original": "ἐντραπῇ", "aligned": "may be ashamed" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "8",
+          "twId": "zdzc",
+          "supportReference": "",
+          "origWords": "φαῦλον",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/evil",
+          "wordPath": "bible/kt/evil",
+          "twTitle": "evil, wicked, wickedness, unpleasant",
+          "gatewayQuote": { "original": "φαῦλον", "aligned": "bad" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "9",
+          "twId": "xaer",
+          "supportReference": "",
+          "origWords": "δούλους",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/servant",
+          "wordPath": "bible/other/servant",
+          "twTitle": "servant, serve, maidservant, young man, young women",
+          "gatewayQuote": { "original": "δούλους", "aligned": "Slaves" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "9",
+          "twId": "hc8q",
+          "supportReference": "",
+          "origWords": "δεσπόταις",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/lord",
+          "wordPath": "bible/kt/lord",
+          "twTitle": "lord, Lord, master, sir",
+          "gatewayQuote": { "original": "δεσπόταις", "aligned": "masters" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "9",
+          "twId": "hhgu",
+          "supportReference": "",
+          "origWords": "ὑποτάσσεσθαι",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/subject",
+          "wordPath": "bible/other/subject",
+          "twTitle": "subject, be subject to, subjected, subjecting, subjection",
+          "gatewayQuote": {
+            "original": "ὑποτάσσεσθαι",
+            "aligned": "to be subject to"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "10",
+          "twId": "bn72",
+          "supportReference": "",
+          "origWords": "πίστιν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/faith",
+          "wordPath": "bible/kt/faith",
+          "twTitle": "faith",
+          "gatewayQuote": { "original": "πίστιν", "aligned": "faith" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "10",
+          "twId": "d9wq",
+          "supportReference": "",
+          "origWords": "ἀγαθήν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/good",
+          "wordPath": "bible/kt/good",
+          "twTitle": "good, right, pleasant, better, best, goodness",
+          "gatewayQuote": { "original": "ἀγαθήν", "aligned": "good" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "10",
+          "twId": "pex6",
+          "supportReference": "",
+          "origWords": "διδασκαλίαν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/doctrine",
+          "wordPath": "bible/other/doctrine",
+          "twTitle": "doctrine, teaching, belief, beliefs, instruction, knowledge",
+          "gatewayQuote": { "original": "διδασκαλίαν", "aligned": "teaching" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "10",
+          "twId": "rqa2",
+          "supportReference": "",
+          "origWords": "Σωτῆρος",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/savior",
+          "wordPath": "bible/kt/savior",
+          "twTitle": "Savior, savior",
+          "gatewayQuote": { "original": "Σωτῆρος", "aligned": "Savior" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "10",
+          "twId": "pynk",
+          "supportReference": "",
+          "origWords": "Θεοῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/god",
+          "wordPath": "bible/kt/god",
+          "twTitle": "God",
+          "gatewayQuote": { "original": "Θεοῦ", "aligned": "God" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "11",
+          "twId": "rxzp",
+          "supportReference": "",
+          "origWords": "χάρις",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/grace",
+          "wordPath": "bible/kt/grace",
+          "twTitle": "grace, gracious",
+          "gatewayQuote": { "original": "χάρις", "aligned": "grace" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "11",
+          "twId": "xef2",
+          "supportReference": "",
+          "origWords": "τοῦ Θεοῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/god",
+          "wordPath": "bible/kt/god",
+          "twTitle": "God",
+          "gatewayQuote": { "original": "τοῦ Θεοῦ", "aligned": "of God" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "11",
+          "twId": "kjwq",
+          "supportReference": "",
+          "origWords": "σωτήριος",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/save",
+          "wordPath": "bible/kt/save",
+          "twTitle": "save, saved, safe, salvation, rescue",
+          "gatewayQuote": { "original": "σωτήριος", "aligned": "salvific" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "12",
+          "twId": "trje",
+          "supportReference": "",
+          "origWords": "τὴν ἀσέβειαν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/godly",
+          "wordPath": "bible/kt/godly",
+          "twTitle": "godly, godliness, ungodly, godless, ungodliness, godlessness",
+          "gatewayQuote": {
+            "original": "τὴν ἀσέβειαν",
+            "aligned": "godlessness"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "12",
+          "twId": "y4sh",
+          "supportReference": "",
+          "origWords": "τὰς κοσμικὰς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/world",
+          "wordPath": "bible/kt/world",
+          "twTitle": "world, worldly",
+          "gatewayQuote": { "original": "τὰς κοσμικὰς", "aligned": "worldly" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "12",
+          "twId": "hukr",
+          "supportReference": "",
+          "origWords": "ἐπιθυμίας",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/lust",
+          "wordPath": "bible/other/lust",
+          "twTitle": "lust, lustful, passion, desire",
+          "gatewayQuote": { "original": "ἐπιθυμίας", "aligned": "passions" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "12",
+          "twId": "dr9j",
+          "supportReference": "",
+          "origWords": "δικαίως",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/righteous",
+          "wordPath": "bible/kt/righteous",
+          "twTitle": "righteous, righteousness, unrighteous, unrighteousness, upright, uprightness",
+          "gatewayQuote": { "original": "δικαίως", "aligned": "righteous" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "12",
+          "twId": "wyfa",
+          "supportReference": "",
+          "origWords": "εὐσεβῶς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/godly",
+          "wordPath": "bible/kt/godly",
+          "twTitle": "godly, godliness, ungodly, godless, ungodliness, godlessness",
+          "gatewayQuote": { "original": "εὐσεβῶς", "aligned": "godly way" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "12",
+          "twId": "e5gn",
+          "supportReference": "",
+          "origWords": "αἰῶνι",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/age",
+          "wordPath": "bible/other/age",
+          "twTitle": "age, aged, old, old age, years old",
+          "gatewayQuote": { "original": "αἰῶνι", "aligned": "age" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "13",
+          "twId": "eqaj",
+          "supportReference": "",
+          "origWords": "προσδεχόμενοι",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/receive",
+          "wordPath": "bible/other/receive",
+          "twTitle": "receive, welcome, taken up, acceptance",
+          "gatewayQuote": {
+            "original": "προσδεχόμενοι",
+            "aligned": "while we look forward to receiving"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "13",
+          "twId": "ctfv",
+          "supportReference": "",
+          "origWords": "μακαρίαν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/bless",
+          "wordPath": "bible/kt/bless",
+          "twTitle": "bless, blessed, blessing",
+          "gatewayQuote": { "original": "μακαρίαν", "aligned": "blessed" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "13",
+          "twId": "pqwf",
+          "supportReference": "",
+          "origWords": "ἐλπίδα",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/hope",
+          "wordPath": "bible/kt/hope",
+          "twTitle": "hope, hoped",
+          "gatewayQuote": { "original": "ἐλπίδα", "aligned": "hope" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "13",
+          "twId": "xzqt",
+          "supportReference": "",
+          "origWords": "τῆς δόξης",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/glory",
+          "wordPath": "bible/kt/glory",
+          "twTitle": "glory, glorious, glorify",
+          "gatewayQuote": { "original": "τῆς δόξης", "aligned": "of the glory" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "13",
+          "twId": "scfu",
+          "supportReference": "",
+          "origWords": "τοῦ & Θεοῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/god",
+          "wordPath": "bible/kt/god",
+          "twTitle": "God",
+          "gatewayQuote": { "original": "τοῦ … Θεοῦ", "aligned": "of … God" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "13",
+          "twId": "bpbw",
+          "supportReference": "",
+          "origWords": "Σωτῆρος",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/savior",
+          "wordPath": "bible/kt/savior",
+          "twTitle": "Savior, savior",
+          "gatewayQuote": { "original": "Σωτῆρος", "aligned": "Savior" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "13",
+          "twId": "mgn9",
+          "supportReference": "",
+          "origWords": "Ἰησοῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/jesus",
+          "wordPath": "bible/kt/jesus",
+          "twTitle": "Jesus, Jesus Christ, Christ Jesus",
+          "gatewayQuote": { "original": "Ἰησοῦ", "aligned": "Jesus" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "13",
+          "twId": "smpv",
+          "supportReference": "",
+          "origWords": "Χριστοῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/christ",
+          "wordPath": "bible/kt/christ",
+          "twTitle": "Christ, Messiah",
+          "gatewayQuote": { "original": "Χριστοῦ", "aligned": "Christ" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "14",
+          "twId": "uzyk",
+          "supportReference": "",
+          "origWords": "λυτρώσηται",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/redeem",
+          "wordPath": "bible/kt/redeem",
+          "twTitle": "redeem, redeemer, redemption",
+          "gatewayQuote": { "original": "λυτρώσηται", "aligned": "to redeem" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "14",
+          "twId": "xhp7",
+          "supportReference": "",
+          "origWords": "ἀνομίας",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/lawful",
+          "wordPath": "bible/other/lawful",
+          "twTitle": "lawful, unlawful, not lawful, lawless, lawlessness",
+          "gatewayQuote": { "original": "ἀνομίας", "aligned": "lawlessness" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "14",
+          "twId": "bxw8",
+          "supportReference": "",
+          "origWords": "καθαρίσῃ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/purify",
+          "wordPath": "bible/kt/purify",
+          "twTitle": "pure, purify, purification",
+          "gatewayQuote": { "original": "καθαρίσῃ", "aligned": "to purify" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "14",
+          "twId": "s2u6",
+          "supportReference": "",
+          "origWords": "ζηλωτὴν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/zealous",
+          "wordPath": "bible/kt/zealous",
+          "twTitle": "zeal, zealous",
+          "gatewayQuote": { "original": "ζηλωτὴν", "aligned": "zealous" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "14",
+          "twId": "jy6c",
+          "supportReference": "",
+          "origWords": "καλῶν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/good",
+          "wordPath": "bible/kt/good",
+          "twTitle": "good, right, pleasant, better, best, goodness",
+          "gatewayQuote": { "original": "καλῶν", "aligned": "good" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "15",
+          "twId": "pnzt",
+          "supportReference": "",
+          "origWords": "παρακάλει",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/exhort",
+          "wordPath": "bible/kt/exhort",
+          "twTitle": "exhort, exhortation",
+          "gatewayQuote": { "original": "παρακάλει", "aligned": "exhort" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "15",
+          "twId": "rvsu",
+          "supportReference": "",
+          "origWords": "ἔλεγχε",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/rebuke",
+          "wordPath": "bible/other/rebuke",
+          "twTitle": "rebuke, reprove",
+          "gatewayQuote": { "original": "ἔλεγχε", "aligned": "rebuke" }
+        },
+        {
+          "book": "",
+          "chapter": "2",
+          "verse": "15",
+          "twId": "ew7w",
+          "supportReference": "",
+          "origWords": "ἐπιταγῆς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/authority",
+          "wordPath": "bible/kt/authority",
+          "twTitle": "authority",
+          "gatewayQuote": { "original": "ἐπιταγῆς", "aligned": "authority" }
+        }
+      ]
+    },
+    "3": {
+      "source": {
+        "owner": "unfoldingWord",
+        "repo": "en_tn",
+        "version": "v91",
+        "language": "en"
+      },
+      "notes": [
+        {
+          "book": "",
+          "chapter": "front",
+          "verse": "intro",
+          "id": "m2jl",
+          "supportReference": "",
+          "quote": "",
+          "occurrence": "0",
+          "supportReferenceTitle": null,
+          "gatewayQuote": { "original": "", "aligned": "" },
+          "noteSha": "e0505f0e99da26cc0386607c72ad0122b3666d24",
+          "noteLinks": true,
+          "heading": "Introduction to Titus"
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "intro",
+          "id": "zh6x",
+          "supportReference": "",
+          "quote": "",
+          "occurrence": "0",
+          "supportReferenceTitle": null,
+          "gatewayQuote": { "original": "", "aligned": "" },
+          "noteSha": "73a3704ba945105caf411fa2bafdcf034d37d6a7",
+          "noteLinks": true,
+          "heading": "Titus 3 Chapter Introduction"
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "1",
+          "id": "j2sa",
+          "supportReference": "",
+          "quote": "ὑπομίμνῃσκε αὐτοὺς & ὑποτάσσεσθαι",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "ὑπομίμνῃσκε αὐτοὺς … ὑποτάσσεσθαι",
+            "aligned": "Remind them to submit"
+          },
+          "noteSha": "cf1e1a3b0443c48b87aa529c8d811ada5227388d",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "1",
+          "id": "w3fy",
+          "supportReference": "rc://*/ta/man/translate/figs-doublet",
+          "quote": "ἀρχαῖς, ἐξουσίαις, ὑποτάσσεσθαι, πειθαρχεῖν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Doublet",
+          "gatewayQuote": {
+            "original": "ἀρχαῖς, ἐξουσίαις, ὑποτάσσεσθαι, πειθαρχεῖν",
+            "aligned": "to submit to rulers and authorities to obey them"
+          },
+          "noteSha": "bbc31c2d1f042bfda7de08769d87df6028963ac5",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "1",
+          "id": "wa9x",
+          "supportReference": "rc://*/ta/man/translate/figs-doublet",
+          "quote": "ἀρχαῖς, ἐξουσίαις",
+          "occurrence": "1",
+          "supportReferenceTitle": "Doublet",
+          "gatewayQuote": {
+            "original": "ἀρχαῖς, ἐξουσίαις",
+            "aligned": "to rulers and authorities"
+          },
+          "noteSha": "7976a8c9c9b1987647f2219b20daf0a1a2e8c300",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "1",
+          "id": "in7u",
+          "supportReference": "",
+          "quote": "πρὸς πᾶν ἔργον ἀγαθὸν ἑτοίμους εἶναι",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "πρὸς πᾶν ἔργον ἀγαθὸν ἑτοίμους εἶναι",
+            "aligned": "to be ready for every good work"
+          },
+          "noteSha": "8c36aee56ed529725e59b90f2bd4f5f6f41e498d",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "2",
+          "id": "lug7",
+          "supportReference": "",
+          "quote": "βλασφημεῖν",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": { "original": "βλασφημεῖν", "aligned": "to revile" },
+          "noteSha": "b5dd82ffddd3c576e90e1bdc1a7e39c36dda0aab",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "2",
+          "id": "abcx",
+          "supportReference": "rc://*/ta/man/translate/figs-doublenegatives",
+          "quote": "ἀμάχους εἶναι",
+          "occurrence": "1",
+          "supportReferenceTitle": "Double Negatives",
+          "gatewayQuote": {
+            "original": "ἀμάχους εἶναι",
+            "aligned": "to be uncontentious"
+          },
+          "noteSha": "b6c1bcb2f50bc42faac5aa7793fd43e7a30f68aa",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "2",
+          "id": "u77t",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "πᾶσαν ἐνδεικνυμένους πραΰτητα",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "πᾶσαν ἐνδεικνυμένους πραΰτητα",
+            "aligned": "showing all humility"
+          },
+          "noteSha": "c0a479b0236e70194ba2099fe6fdb93417b9d344",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "2",
+          "id": "vyaj",
+          "supportReference": "rc://*/ta/man/translate/figs-gendernotations",
+          "quote": "πρὸς πάντας ἀνθρώπους",
+          "occurrence": "1",
+          "supportReferenceTitle": "When Masculine Words Include Women",
+          "gatewayQuote": {
+            "original": "πρὸς πάντας ἀνθρώπους",
+            "aligned": "toward all men"
+          },
+          "noteSha": "dbfa0940ab22f437492ea6bbb00db74d3da46dbb",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "3",
+          "id": "m9zd",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-result",
+          "quote": "ἦμεν γάρ ποτε καὶ ἡμεῖς",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Reason-and-Result Relationship",
+          "gatewayQuote": {
+            "original": "ἦμεν γάρ ποτε καὶ ἡμεῖς",
+            "aligned": "For once we also were"
+          },
+          "noteSha": "75a6e49b56418deab452b2fc07cbadc0dffd85ff",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "3",
+          "id": "me7b",
+          "supportReference": "",
+          "quote": "ποτε",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": { "original": "ποτε", "aligned": "once" },
+          "noteSha": "309c2d399fa14ab9f4b0f495310af748dcd83efc",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "3",
+          "id": "bl8e",
+          "supportReference": "rc://*/ta/man/translate/figs-exclusive",
+          "quote": "ἡμεῖς",
+          "occurrence": "1",
+          "supportReferenceTitle": "Exclusive and Inclusive ‘We’",
+          "gatewayQuote": { "original": "ἡμεῖς", "aligned": "we" },
+          "noteSha": "f81add414d213118598092d470d4299ea94b2c4e",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "3",
+          "id": "rrx9",
+          "supportReference": "",
+          "quote": "ἦμεν & ἀνόητοι",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "ἦμεν … ἀνόητοι",
+            "aligned": "were foolish"
+          },
+          "noteSha": "1645d8de460bb2e45ab4556a46da5ed08aba9df7",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "3",
+          "id": "qt8f",
+          "supportReference": "rc://*/ta/man/translate/figs-personification",
+          "quote": "πλανώμενοι, δουλεύοντες ἐπιθυμίαις καὶ ἡδοναῖς ποικίλαις",
+          "occurrence": "1",
+          "supportReferenceTitle": "Personification",
+          "gatewayQuote": {
+            "original": "πλανώμενοι, δουλεύοντες ἐπιθυμίαις καὶ ἡδοναῖς ποικίλαις",
+            "aligned": "We were led astray enslaved by various passions and pleasures"
+          },
+          "noteSha": "b63503178c0b2c2b039646a10eb894164ff77d10",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "3",
+          "id": "xy27",
+          "supportReference": "rc://*/ta/man/translate/figs-activepassive",
+          "quote": "πλανώμενοι, δουλεύοντες ἐπιθυμίαις καὶ ἡδοναῖς ποικίλαις",
+          "occurrence": "1",
+          "supportReferenceTitle": "Active or Passive",
+          "gatewayQuote": {
+            "original": "πλανώμενοι, δουλεύοντες ἐπιθυμίαις καὶ ἡδοναῖς ποικίλαις",
+            "aligned": "We were led astray enslaved by various passions and pleasures"
+          },
+          "noteSha": "5340226c3bab8b68431ae34398c82eca1396aca3",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "3",
+          "id": "tl5n",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "ἐπιθυμίαις καὶ ἡδοναῖς ποικίλαις",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "ἐπιθυμίαις καὶ ἡδοναῖς ποικίλαις",
+            "aligned": "by various passions and pleasures"
+          },
+          "noteSha": "ac6ebe936dbe32e02c6563cf4a54a66b787afef7",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "3",
+          "id": "dec4",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "ἐν κακίᾳ καὶ φθόνῳ διάγοντες",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "ἐν κακίᾳ καὶ φθόνῳ διάγοντες",
+            "aligned": "We lived in evil and envy"
+          },
+          "noteSha": "267b02b62b10a06241e7053181d94e3fe0d8b88a",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "3",
+          "id": "y5lp",
+          "supportReference": "",
+          "quote": "στυγητοί",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": { "original": "στυγητοί", "aligned": "detestable" },
+          "noteSha": "643d441116bebee91a619cc61d133931ff41964d",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "4",
+          "id": "xy28",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-contrast",
+          "quote": "δὲ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Contrast Relationship",
+          "gatewayQuote": { "original": "δὲ", "aligned": "But" },
+          "noteSha": "db081eaf61398916730ef8c085143b193461834f",
+          "noteLinks": true
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "4",
+          "id": "ba5a",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "ὅτε & ἡ χρηστότης καὶ ἡ φιλανθρωπία ἐπεφάνη τοῦ Σωτῆρος ἡμῶν, Θεοῦ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "ὅτε … ἡ χρηστότης καὶ ἡ φιλανθρωπία ἐπεφάνη τοῦ Σωτῆρος ἡμῶν, Θεοῦ",
+            "aligned": "when the kindness and the love for mankind of God our Savior appeared"
+          },
+          "noteSha": "e5ba712c00e829124a39367a2a7df111bd1c8c4e",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "4",
+          "id": "abcg",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "ὅτε & ἡ χρηστότης καὶ ἡ φιλανθρωπία ἐπεφάνη τοῦ Σωτῆρος ἡμῶν, Θεοῦ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "ὅτε … ἡ χρηστότης καὶ ἡ φιλανθρωπία ἐπεφάνη τοῦ Σωτῆρος ἡμῶν, Θεοῦ",
+            "aligned": "when the kindness and the love for mankind of God our Savior appeared"
+          },
+          "noteSha": "d488c7304c2956331d412a120840b48a413186d3",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "4",
+          "id": "abch",
+          "supportReference": "rc://*/ta/man/translate/figs-exclusive",
+          "quote": "ἡμῶν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Exclusive and Inclusive ‘We’",
+          "gatewayQuote": { "original": "ἡμῶν", "aligned": "our" },
+          "noteSha": "227998ef638b0f6e65245f9bc984c40599404e45",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "5",
+          "id": "l6a6",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "ἔργων τῶν ἐν δικαιοσύνῃ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "ἔργων τῶν ἐν δικαιοσύνῃ",
+            "aligned": "works of righteousness"
+          },
+          "noteSha": "63cad96cdce6f4ace51445998c9bcb1879520047",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "5",
+          "id": "n4ug",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "κατὰ τὸ αὐτοῦ ἔλεος",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "κατὰ τὸ αὐτοῦ ἔλεος",
+            "aligned": "by his mercy"
+          },
+          "noteSha": "14a981d982b6ab3144a5a6ee52b762eb6ed67e75",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "5",
+          "id": "k1a6",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "λουτροῦ παλινγενεσίας",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "λουτροῦ παλινγενεσίας",
+            "aligned": "the washing of new birth"
+          },
+          "noteSha": "439928b99cad145db39e7b37e00f3607110b1a3a",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "6",
+          "id": "fby9",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "οὗ ἐξέχεεν ἐφ’ ἡμᾶς πλουσίως",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "οὗ ἐξέχεεν ἐφ’ ἡμᾶς πλουσίως",
+            "aligned": "whom he richly poured on us"
+          },
+          "noteSha": "3ac3a38a454ef53248c701647c2131459de39e76",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "6",
+          "id": "xy24",
+          "supportReference": "rc://*/ta/man/translate/figs-exclusive",
+          "quote": "ἡμᾶς",
+          "occurrence": "1",
+          "supportReferenceTitle": "Exclusive and Inclusive ‘We’",
+          "gatewayQuote": { "original": "ἡμᾶς", "aligned": "us" },
+          "noteSha": "cd521cf75b34ee37ad5d007db4e05f22184b224c",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "6",
+          "id": "q9ze",
+          "supportReference": "",
+          "quote": "διὰ Ἰησοῦ Χριστοῦ, τοῦ Σωτῆρος ἡμῶν",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "διὰ Ἰησοῦ Χριστοῦ, τοῦ Σωτῆρος ἡμῶν",
+            "aligned": "through our Savior Jesus Christ"
+          },
+          "noteSha": "507fc07b073ecc32e626c04cdcd46d0389b6636c",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "6",
+          "id": "xy23",
+          "supportReference": "rc://*/ta/man/translate/figs-exclusive",
+          "quote": "ἡμῶν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Exclusive and Inclusive ‘We’",
+          "gatewayQuote": { "original": "ἡμῶν", "aligned": "our" },
+          "noteSha": "227998ef638b0f6e65245f9bc984c40599404e45",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "7",
+          "id": "qe39",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-goal",
+          "quote": "ἵνα",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Goal (Purpose) Relationship",
+          "gatewayQuote": { "original": "ἵνα", "aligned": "so that" },
+          "noteSha": "a6e8a9e161e537fcdf256886e2e29b0d0459eafc",
+          "noteLinks": true
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "7",
+          "id": "di3g",
+          "supportReference": "rc://*/ta/man/translate/figs-activepassive",
+          "quote": "δικαιωθέντες",
+          "occurrence": "1",
+          "supportReferenceTitle": "Active or Passive",
+          "gatewayQuote": {
+            "original": "δικαιωθέντες",
+            "aligned": "having been justified"
+          },
+          "noteSha": "ad1262268d8a4f7945a3823e0c71400dc653f56b",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "7",
+          "id": "ievx",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "τῇ ἐκείνου χάριτι",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": {
+            "original": "τῇ ἐκείνου χάριτι",
+            "aligned": "by the grace of that one"
+          },
+          "noteSha": "d525b97d4ed31d76b31a225558f4bad52843708a",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "7",
+          "id": "yrwd",
+          "supportReference": "rc://*/ta/man/translate/figs-pronouns",
+          "quote": "ἐκείνου",
+          "occurrence": "1",
+          "supportReferenceTitle": "Pronouns",
+          "gatewayQuote": { "original": "ἐκείνου", "aligned": "of that one" },
+          "noteSha": "e593fe09148d8d89f9a4f1c6d34d3cc287f5db37",
+          "noteLinks": true
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "7",
+          "id": "q1cm",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "κληρονόμοι γενηθῶμεν, κατ’ ἐλπίδα ζωῆς αἰωνίου",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "κληρονόμοι γενηθῶμεν, κατ’ ἐλπίδα ζωῆς αἰωνίου",
+            "aligned": "we might become heirs according to certain hope of eternal life"
+          },
+          "noteSha": "67f7df121205c68b8e99fab23a42c9b4d399ad12",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "8",
+          "id": "j8md",
+          "supportReference": "rc://*/ta/man/translate/figs-pronouns",
+          "quote": "ὁ λόγος",
+          "occurrence": "1",
+          "supportReferenceTitle": "Pronouns",
+          "gatewayQuote": { "original": "ὁ λόγος", "aligned": "This message" },
+          "noteSha": "4c2c2522ac809416ff4daeb04ae413f42763cec8",
+          "noteLinks": true
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "8",
+          "id": "xy29",
+          "supportReference": "rc://*/ta/man/translate/figs-pronouns",
+          "quote": "τούτων",
+          "occurrence": "1",
+          "supportReferenceTitle": "Pronouns",
+          "gatewayQuote": { "original": "τούτων", "aligned": "these things" },
+          "noteSha": "db471c27a6f73f88c295c58cc1a4acdd18b15e62",
+          "noteLinks": true
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "8",
+          "id": "kqm6",
+          "supportReference": "",
+          "quote": "φροντίζωσιν καλῶν ἔργων, προΐστασθαι",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "φροντίζωσιν καλῶν ἔργων, προΐστασθαι",
+            "aligned": "may be careful to engage themselves in good works"
+          },
+          "noteSha": "8d6237d11baeefd7e70c4ec6d44cd7b176b26cee",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "8",
+          "id": "gdx0",
+          "supportReference": "rc://*/ta/man/translate/figs-gendernotations",
+          "quote": "τοῖς ἀνθρώποις",
+          "occurrence": "1",
+          "supportReferenceTitle": "When Masculine Words Include Women",
+          "gatewayQuote": {
+            "original": "τοῖς ἀνθρώποις",
+            "aligned": "for men"
+          },
+          "noteSha": "ba2bb518fbb9f5375aa4de292a98dbbfdd44b6b8",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "9",
+          "id": "j1hf",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-contrast",
+          "quote": "δὲ & περιΐστασο",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Contrast Relationship",
+          "gatewayQuote": {
+            "original": "δὲ … περιΐστασο",
+            "aligned": "But avoid"
+          },
+          "noteSha": "6fb44d2544b805e7bacae1dda3187aad33445667",
+          "noteLinks": true
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "9",
+          "id": "xnf9",
+          "supportReference": "",
+          "quote": "μωρὰς & ζητήσεις",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "μωρὰς … ζητήσεις",
+            "aligned": "foolish debates"
+          },
+          "noteSha": "c9f27968002717ff8c473764101d947777d2b696",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "9",
+          "id": "qk66",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "γενεαλογίας",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "γενεαλογίας",
+            "aligned": "genealogies"
+          },
+          "noteSha": "50a28e4b99654bc8830de3cd2fe75e1f8ec64047",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "9",
+          "id": "xu7f",
+          "supportReference": "rc://*/ta/man/translate/figs-abstractnouns",
+          "quote": "ἔρεις",
+          "occurrence": "1",
+          "supportReferenceTitle": "Abstract Nouns",
+          "gatewayQuote": { "original": "ἔρεις", "aligned": "strife" },
+          "noteSha": "a2c3623a05f17f7c7134650af2d2fbadb3e2887c",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "9",
+          "id": "ky3n",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "νομικὰς",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": { "original": "νομικὰς", "aligned": "about the law" },
+          "noteSha": "2301bbe83ee8143258c7439401b715e8747e9708",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "10",
+          "id": "x3fh",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "αἱρετικὸν ἄνθρωπον & παραιτοῦ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "αἱρετικὸν ἄνθρωπον … παραιτοῦ",
+            "aligned": "Reject a divisive person"
+          },
+          "noteSha": "696a786864b0ae9c455f7a5c4c2cc35e3b47859f",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "10",
+          "id": "xzx1",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "μετὰ μίαν καὶ δευτέραν νουθεσίαν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "μετὰ μίαν καὶ δευτέραν νουθεσίαν",
+            "aligned": "after one or two warnings"
+          },
+          "noteSha": "8bed50e3c2c290af49f0eeb5e79757b85aab9383",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "11",
+          "id": "r7pc",
+          "supportReference": "",
+          "quote": "ὁ τοιοῦτος",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": { "original": "ὁ τοιοῦτος", "aligned": "such a one" },
+          "noteSha": "d479917ddb614a64bf51cf50baa63a6d7fab83c9",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "11",
+          "id": "inh5",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "ἐξέστραπται",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "ἐξέστραπται",
+            "aligned": "has turned from the right way"
+          },
+          "noteSha": "b23148d15f01ecd94e552a051208df23269ddee6",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "11",
+          "id": "p81k",
+          "supportReference": "",
+          "quote": "ὢν αὐτοκατάκριτος",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "ὢν αὐτοκατάκριτος",
+            "aligned": "being self condemned"
+          },
+          "noteSha": "531cbd017eb754d2d076d70f464cdad465b9baf9",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "12",
+          "id": "mba6",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "ὅταν πέμψω Ἀρτεμᾶν πρὸς σὲ ἢ Τυχικόν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "ὅταν πέμψω Ἀρτεμᾶν πρὸς σὲ ἢ Τυχικόν",
+            "aligned": "When I send Artemas or Tychicus to you"
+          },
+          "noteSha": "3e52cc28eae6378def7cd718fe5307a817571b7f",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "12",
+          "id": "c32w",
+          "supportReference": "rc://*/ta/man/translate/translate-names",
+          "quote": "Ἀρτεμᾶν & Τυχικόν",
+          "occurrence": "1",
+          "supportReferenceTitle": "How to Translate Names",
+          "gatewayQuote": {
+            "original": "Ἀρτεμᾶν … Τυχικόν",
+            "aligned": "Artemas … Tychicus"
+          },
+          "noteSha": "506796dc9da9b24751225505d1db7ea4785f0b93",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "12",
+          "id": "knt1",
+          "supportReference": "",
+          "quote": "σπούδασον ἐλθεῖν",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "σπούδασον ἐλθεῖν",
+            "aligned": "hurry to come"
+          },
+          "noteSha": "a2bcbb6a19d6ef107cbe192b1ad4a16e7d7057c1",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "12",
+          "id": "xy30",
+          "supportReference": "rc://*/ta/man/translate/figs-yousingular",
+          "quote": "σπούδασον",
+          "occurrence": "1",
+          "supportReferenceTitle": "Forms of ‘You’ — Singular",
+          "gatewayQuote": { "original": "σπούδασον", "aligned": "hurry" },
+          "noteSha": "6ae00454fec41a0eba51e8a3e4967056f74adc76",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "13",
+          "id": "mi7t",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "σπουδαίως πρόπεμψον",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "σπουδαίως πρόπεμψον",
+            "aligned": "Diligently send on their way"
+          },
+          "noteSha": "929252bcab997f1f7fc502d9bad9b2dd729f20ff",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "13",
+          "id": "a46f",
+          "supportReference": "rc://*/ta/man/translate/translate-names",
+          "quote": "Ζηνᾶν & Ἀπολλῶν",
+          "occurrence": "1",
+          "supportReferenceTitle": "How to Translate Names",
+          "gatewayQuote": {
+            "original": "Ζηνᾶν … Ἀπολλῶν",
+            "aligned": "Zenas … Apollos"
+          },
+          "noteSha": "6e703aa3e3d03831057c59136195614b178caa89",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "13",
+          "id": "s757",
+          "supportReference": "",
+          "quote": "καὶ Ἀπολλῶν",
+          "occurrence": "1",
+          "supportReferenceTitle": null,
+          "gatewayQuote": {
+            "original": "καὶ Ἀπολλῶν",
+            "aligned": "and Apollos"
+          },
+          "noteSha": "3c07a021b349ff9d9c82a421313e9b01c63aba21",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "13",
+          "id": "h3an",
+          "supportReference": "rc://*/ta/man/translate/grammar-connect-logic-goal",
+          "quote": "ἵνα μηδὲν αὐτοῖς λείπῃ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Connect — Goal (Purpose) Relationship",
+          "gatewayQuote": {
+            "original": "ἵνα μηδὲν αὐτοῖς λείπῃ",
+            "aligned": "so that they lack nothing"
+          },
+          "noteSha": "02dc5a293dd55158efb28f1ecf4ba7b7f5c79039",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "13",
+          "id": "xy31",
+          "supportReference": "rc://*/ta/man/translate/figs-doublenegatives",
+          "quote": "ἵνα μηδὲν αὐτοῖς λείπῃ",
+          "occurrence": "1",
+          "supportReferenceTitle": "Double Negatives",
+          "gatewayQuote": {
+            "original": "ἵνα μηδὲν αὐτοῖς λείπῃ",
+            "aligned": "so that they lack nothing"
+          },
+          "noteSha": "38f67e045e830faaa20ab658d4632337ab95ed2b",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "14",
+          "id": "fw98",
+          "supportReference": "rc://*/ta/man/translate/figs-ellipsis",
+          "quote": "οἱ ἡμέτεροι",
+          "occurrence": "1",
+          "supportReferenceTitle": "Ellipsis",
+          "gatewayQuote": { "original": "οἱ ἡμέτεροι", "aligned": "our own" },
+          "noteSha": "dd3754b020bbe0cd0e4183b4cf7b1b800ea511f0",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "14",
+          "id": "xy33",
+          "supportReference": "rc://*/ta/man/translate/figs-exclusive",
+          "quote": "οἱ ἡμέτεροι",
+          "occurrence": "1",
+          "supportReferenceTitle": "Exclusive and Inclusive ‘We’",
+          "gatewayQuote": { "original": "οἱ ἡμέτεροι", "aligned": "our own" },
+          "noteSha": "209a428dcfd4e0c276dfbfc4ccad94accde1513b",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "14",
+          "id": "tn24",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "εἰς τὰς ἀναγκαίας χρείας",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "εἰς τὰς ἀναγκαίας χρείας",
+            "aligned": "toward essential needs"
+          },
+          "noteSha": "1bc816d0f324c32730083b3c9df6a2443915976c",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "14",
+          "id": "mji4",
+          "supportReference": "rc://*/ta/man/translate/figs-metaphor",
+          "quote": "ἵνα μὴ ὦσιν ἄκαρποι",
+          "occurrence": "1",
+          "supportReferenceTitle": "Metaphor",
+          "gatewayQuote": {
+            "original": "ἵνα μὴ ὦσιν ἄκαρποι",
+            "aligned": "in order not to be unfruitful"
+          },
+          "noteSha": "2b5da6c95791ef701e29dcdb541b102eb617fdcd",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "14",
+          "id": "xy32",
+          "supportReference": "rc://*/ta/man/translate/figs-doublenegatives",
+          "quote": "ἵνα μὴ ὦσιν ἄκαρποι",
+          "occurrence": "1",
+          "supportReferenceTitle": "Double Negatives",
+          "gatewayQuote": {
+            "original": "ἵνα μὴ ὦσιν ἄκαρποι",
+            "aligned": "in order not to be unfruitful"
+          },
+          "noteSha": "6283a982f22686c117b2dea985df6d34e9e1436e",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "15",
+          "id": "abci",
+          "supportReference": "rc://*/ta/man/translate/figs-yousingular",
+          "quote": "ἀσπάζονταί σε",
+          "occurrence": "1",
+          "supportReferenceTitle": "Forms of ‘You’ — Singular",
+          "gatewayQuote": {
+            "original": "ἀσπάζονταί σε",
+            "aligned": "greet you"
+          },
+          "noteSha": "a26b5f023841dce5600e26a9aeb8e9c315c4b24e",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "15",
+          "id": "k1sa",
+          "supportReference": "rc://*/ta/man/translate/figs-explicit",
+          "quote": "οἱ μετ’ ἐμοῦ πάντες",
+          "occurrence": "1",
+          "supportReferenceTitle": "Assumed Knowledge and Implicit Information",
+          "gatewayQuote": {
+            "original": "οἱ μετ’ ἐμοῦ πάντες",
+            "aligned": "All those with me"
+          },
+          "noteSha": "0cb6281984eb715b3fb2c2733a04e1d9da108346",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "15",
+          "id": "f4vc",
+          "supportReference": "rc://*/ta/man/translate/figs-idiom",
+          "quote": "τοὺς φιλοῦντας ἡμᾶς ἐν πίστει",
+          "occurrence": "1",
+          "supportReferenceTitle": "Idiom",
+          "gatewayQuote": {
+            "original": "τοὺς φιλοῦντας ἡμᾶς ἐν πίστει",
+            "aligned": "the ones loving us in faith"
+          },
+          "noteSha": "5bff3d13ef62c244f832099191e19a3089c1e39a",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "15",
+          "id": "xy35",
+          "supportReference": "rc://*/ta/man/translate/figs-exclusive",
+          "quote": "ἡμᾶς",
+          "occurrence": "1",
+          "supportReferenceTitle": "Exclusive and Inclusive ‘We’",
+          "gatewayQuote": { "original": "ἡμᾶς", "aligned": "us" },
+          "noteSha": "2b10f065525e29e4c6556e28b4bd877a6b4beb41",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "15",
+          "id": "kx83",
+          "supportReference": "rc://*/ta/man/translate/translate-blessing",
+          "quote": "ἡ χάρις μετὰ πάντων ὑμῶν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Blessings",
+          "gatewayQuote": {
+            "original": "ἡ χάρις μετὰ πάντων ὑμῶν",
+            "aligned": "Grace be with all of you"
+          },
+          "noteSha": "4811061a848af225fdf44b438cc09ddf9854225f",
+          "noteLinks": false
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "15",
+          "id": "xy34",
+          "supportReference": "rc://*/ta/man/translate/figs-yousingular",
+          "quote": "ὑμῶν",
+          "occurrence": "1",
+          "supportReferenceTitle": "Forms of ‘You’ — Singular",
+          "gatewayQuote": { "original": "ὑμῶν", "aligned": "of you" },
+          "noteSha": "7eb5016c74298fe9bf1a774b43129fd46900ee0b",
+          "noteLinks": false
+        }
+      ],
+      "wordLinks": [
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "1",
+          "twId": "rtff",
+          "supportReference": "",
+          "origWords": "ἀρχαῖς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/ruler",
+          "wordPath": "bible/other/ruler",
+          "twTitle": "rule, reign, ruler, prefect, official, leader",
+          "gatewayQuote": { "original": "ἀρχαῖς", "aligned": "to rulers" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "1",
+          "twId": "yrw4",
+          "supportReference": "",
+          "origWords": "ἐξουσίαις",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/authority",
+          "wordPath": "bible/kt/authority",
+          "twTitle": "authority",
+          "gatewayQuote": {
+            "original": "ἐξουσίαις",
+            "aligned": "and authorities"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "1",
+          "twId": "s4xn",
+          "supportReference": "",
+          "origWords": "ὑποτάσσεσθαι",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/subject",
+          "wordPath": "bible/other/subject",
+          "twTitle": "subject, be subject to, subjected, subjecting, subjection",
+          "gatewayQuote": { "original": "ὑποτάσσεσθαι", "aligned": "to submit" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "1",
+          "twId": "w9yp",
+          "supportReference": "",
+          "origWords": "ἀγαθὸν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/good",
+          "wordPath": "bible/kt/good",
+          "twTitle": "good, right, pleasant, better, best, goodness",
+          "gatewayQuote": { "original": "ἀγαθὸν", "aligned": "good" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "2",
+          "twId": "sq5t",
+          "supportReference": "",
+          "origWords": "βλασφημεῖν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/slander",
+          "wordPath": "bible/other/slander",
+          "twTitle": "slander, slanderer, revile, insult",
+          "gatewayQuote": { "original": "βλασφημεῖν", "aligned": "to revile" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "2",
+          "twId": "kjtc",
+          "supportReference": "",
+          "origWords": "ἀμάχους",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/peace",
+          "wordPath": "bible/other/peace",
+          "twTitle": "peace, peaceful, peacemaker",
+          "gatewayQuote": { "original": "ἀμάχους", "aligned": "uncontentious" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "2",
+          "twId": "xrq8",
+          "supportReference": "",
+          "origWords": "πραΰτητα",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/humble",
+          "wordPath": "bible/kt/humble",
+          "twTitle": "humble, humbled, humility",
+          "gatewayQuote": { "original": "πραΰτητα", "aligned": "humility" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "3",
+          "twId": "tjjs",
+          "supportReference": "",
+          "origWords": "ἀνόητοι",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/foolish",
+          "wordPath": "bible/kt/foolish",
+          "twTitle": "fool, foolish, folly",
+          "gatewayQuote": { "original": "ἀνόητοι", "aligned": "foolish" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "3",
+          "twId": "udd5",
+          "supportReference": "",
+          "origWords": "δουλεύοντες",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/enslave",
+          "wordPath": "bible/other/enslave",
+          "twTitle": "enslave, slave, bondservant, bondage, bound, bond, bonds, young man, young men, young woman, young women",
+          "gatewayQuote": { "original": "δουλεύοντες", "aligned": "enslaved" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "3",
+          "twId": "gz5z",
+          "supportReference": "",
+          "origWords": "ἐπιθυμίαις",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/lust",
+          "wordPath": "bible/other/lust",
+          "twTitle": "lust, lustful, passion, desire",
+          "gatewayQuote": { "original": "ἐπιθυμίαις", "aligned": "passions" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "3",
+          "twId": "strs",
+          "supportReference": "",
+          "origWords": "κακίᾳ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/evil",
+          "wordPath": "bible/kt/evil",
+          "twTitle": "evil, wicked, wickedness, unpleasant",
+          "gatewayQuote": { "original": "κακίᾳ", "aligned": "evil" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "3",
+          "twId": "p9ch",
+          "supportReference": "",
+          "origWords": "φθόνῳ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/envy",
+          "wordPath": "bible/other/envy",
+          "twTitle": "envy, covet, jealous, jealousy",
+          "gatewayQuote": { "original": "φθόνῳ", "aligned": "envy" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "4",
+          "twId": "nwn9",
+          "supportReference": "",
+          "origWords": "φιλανθρωπία",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/love",
+          "wordPath": "bible/kt/love",
+          "twTitle": "love, beloved",
+          "gatewayQuote": {
+            "original": "φιλανθρωπία",
+            "aligned": "love for mankind"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "4",
+          "twId": "x4gg",
+          "supportReference": "",
+          "origWords": "τοῦ Σωτῆρος",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/savior",
+          "wordPath": "bible/kt/savior",
+          "twTitle": "Savior, savior",
+          "gatewayQuote": {
+            "original": "τοῦ Σωτῆρος",
+            "aligned": "of … Savior"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "4",
+          "twId": "g4b9",
+          "supportReference": "",
+          "origWords": "Θεοῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/god",
+          "wordPath": "bible/kt/god",
+          "twTitle": "God",
+          "gatewayQuote": { "original": "Θεοῦ", "aligned": "God" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "5",
+          "twId": "sqsf",
+          "supportReference": "",
+          "origWords": "τῶν ἐν δικαιοσύνῃ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/righteous",
+          "wordPath": "bible/kt/righteous",
+          "twTitle": "righteous, righteousness, unrighteous, unrighteousness, upright, uprightness",
+          "gatewayQuote": {
+            "original": "τῶν ἐν δικαιοσύνῃ",
+            "aligned": "of righteousness"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "5",
+          "twId": "uvcs",
+          "supportReference": "",
+          "origWords": "τὸ & ἔλεος",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/mercy",
+          "wordPath": "bible/kt/mercy",
+          "twTitle": "mercy, merciful",
+          "gatewayQuote": { "original": "τὸ … ἔλεος", "aligned": "mercy" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "5",
+          "twId": "y2kk",
+          "supportReference": "",
+          "origWords": "ἔσωσεν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/save",
+          "wordPath": "bible/kt/save",
+          "twTitle": "save, saved, safe, salvation, rescue",
+          "gatewayQuote": { "original": "ἔσωσεν", "aligned": "that he saved" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "5",
+          "twId": "f8tn",
+          "supportReference": "",
+          "origWords": "παλινγενεσίας",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/bornagain",
+          "wordPath": "bible/kt/bornagain",
+          "twTitle": "born again, born of God, new birth",
+          "gatewayQuote": {
+            "original": "παλινγενεσίας",
+            "aligned": "of new birth"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "5",
+          "twId": "e5fx",
+          "supportReference": "",
+          "origWords": "Πνεύματος Ἁγίου",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/holyspirit",
+          "wordPath": "bible/kt/holyspirit",
+          "twTitle": "Holy Spirit, Spirit of God, Spirit of the Lord, Spirit",
+          "gatewayQuote": {
+            "original": "Πνεύματος Ἁγίου",
+            "aligned": "by the Holy Spirit"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "6",
+          "twId": "snat",
+          "supportReference": "",
+          "origWords": "Ἰησοῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/jesus",
+          "wordPath": "bible/kt/jesus",
+          "twTitle": "Jesus, Jesus Christ, Christ Jesus",
+          "gatewayQuote": { "original": "Ἰησοῦ", "aligned": "Jesus" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "6",
+          "twId": "bmkx",
+          "supportReference": "",
+          "origWords": "Χριστοῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/christ",
+          "wordPath": "bible/kt/christ",
+          "twTitle": "Christ, Messiah",
+          "gatewayQuote": { "original": "Χριστοῦ", "aligned": "Christ" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "6",
+          "twId": "h9fu",
+          "supportReference": "",
+          "origWords": "τοῦ Σωτῆρος",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/savior",
+          "wordPath": "bible/kt/savior",
+          "twTitle": "Savior, savior",
+          "gatewayQuote": { "original": "τοῦ Σωτῆρος", "aligned": "Savior" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "7",
+          "twId": "va33",
+          "supportReference": "",
+          "origWords": "δικαιωθέντες",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/justice",
+          "wordPath": "bible/kt/justice",
+          "twTitle": "just, justice, unjust, injustice, justify, justification",
+          "gatewayQuote": {
+            "original": "δικαιωθέντες",
+            "aligned": "having been justified"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "7",
+          "twId": "qjc9",
+          "supportReference": "",
+          "origWords": "τῇ & χάριτι",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/grace",
+          "wordPath": "bible/kt/grace",
+          "twTitle": "grace, gracious",
+          "gatewayQuote": {
+            "original": "τῇ … χάριτι",
+            "aligned": "by the grace"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "7",
+          "twId": "w3sp",
+          "supportReference": "",
+          "origWords": "κληρονόμοι",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/heir",
+          "wordPath": "bible/other/heir",
+          "twTitle": "heir",
+          "gatewayQuote": { "original": "κληρονόμοι", "aligned": "heirs" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "7",
+          "twId": "yut8",
+          "supportReference": "",
+          "origWords": "ἐλπίδα",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/hope",
+          "wordPath": "bible/kt/hope",
+          "twTitle": "hope, hoped",
+          "gatewayQuote": { "original": "ἐλπίδα", "aligned": "certain hope" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "7",
+          "twId": "g6gy",
+          "supportReference": "",
+          "origWords": "αἰωνίου",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/eternity",
+          "wordPath": "bible/kt/eternity",
+          "twTitle": "eternity, everlasting, eternal, forever",
+          "gatewayQuote": { "original": "αἰωνίου", "aligned": "eternal" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "8",
+          "twId": "dxb8",
+          "supportReference": "",
+          "origWords": "πιστὸς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/faithful",
+          "wordPath": "bible/kt/faithful",
+          "twTitle": "faithful, faithfulness, trustworthy",
+          "gatewayQuote": { "original": "πιστὸς", "aligned": "is trustworthy" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "8",
+          "twId": "cmmp",
+          "supportReference": "",
+          "origWords": "καλῶν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/good",
+          "wordPath": "bible/kt/good",
+          "twTitle": "good, right, pleasant, better, best, goodness",
+          "gatewayQuote": { "original": "καλῶν", "aligned": "good" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "8",
+          "twId": "aphr",
+          "supportReference": "",
+          "origWords": "πεπιστευκότες",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/believe",
+          "wordPath": "bible/kt/believe",
+          "twTitle": "believe, believer, belief, unbeliever, unbelief",
+          "gatewayQuote": {
+            "original": "πεπιστευκότες",
+            "aligned": "having believed"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "8",
+          "twId": "gbdk",
+          "supportReference": "",
+          "origWords": "Θεῷ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/god",
+          "wordPath": "bible/kt/god",
+          "twTitle": "God",
+          "gatewayQuote": { "original": "Θεῷ", "aligned": "God" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "8",
+          "twId": "sbrv",
+          "supportReference": "",
+          "origWords": "καλὰ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/good",
+          "wordPath": "bible/kt/good",
+          "twTitle": "good, right, pleasant, better, best, goodness",
+          "gatewayQuote": { "original": "καλὰ", "aligned": "good" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "8",
+          "twId": "qttb",
+          "supportReference": "",
+          "origWords": "ὠφέλιμα",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/profit",
+          "wordPath": "bible/other/profit",
+          "twTitle": "profit, profits, profited, profitable",
+          "gatewayQuote": { "original": "ὠφέλιμα", "aligned": "useful" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "9",
+          "twId": "ctja",
+          "supportReference": "",
+          "origWords": "μωρὰς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/foolish",
+          "wordPath": "bible/kt/foolish",
+          "twTitle": "fool, foolish, folly",
+          "gatewayQuote": { "original": "μωρὰς", "aligned": "foolish" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "9",
+          "twId": "zxns",
+          "supportReference": "",
+          "origWords": "ἔρεις",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/strife",
+          "wordPath": "bible/other/strife",
+          "twTitle": "strife, disputes, quarrel, arguing, conflict",
+          "gatewayQuote": { "original": "ἔρεις", "aligned": "strife" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "9",
+          "twId": "kgjd",
+          "supportReference": "",
+          "origWords": "μάχας",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/strife",
+          "wordPath": "bible/other/strife",
+          "twTitle": "strife, disputes, quarrel, arguing, conflict",
+          "gatewayQuote": { "original": "μάχας", "aligned": "conflict" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "9",
+          "twId": "nptj",
+          "supportReference": "",
+          "origWords": "νομικὰς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/lawofmoses",
+          "wordPath": "bible/kt/lawofmoses",
+          "twTitle": "law, law of Moses, law of Yahweh, law of God",
+          "gatewayQuote": { "original": "νομικὰς", "aligned": "about the law" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "9",
+          "twId": "qdwm",
+          "supportReference": "",
+          "origWords": "μάταιοι",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/vain",
+          "wordPath": "bible/other/vain",
+          "twTitle": "vain, vanity",
+          "gatewayQuote": { "original": "μάταιοι", "aligned": "worthless" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "10",
+          "twId": "czjk",
+          "supportReference": "",
+          "origWords": "νουθεσίαν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/admonish",
+          "wordPath": "bible/other/admonish",
+          "twTitle": "admonish, warned, aware",
+          "gatewayQuote": { "original": "νουθεσίαν", "aligned": "warnings" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "10",
+          "twId": "cf9q",
+          "supportReference": "",
+          "origWords": "παραιτοῦ",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/reject",
+          "wordPath": "bible/other/reject",
+          "twTitle": "reject, rejected, rejection",
+          "gatewayQuote": { "original": "παραιτοῦ", "aligned": "Reject" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "11",
+          "twId": "syjf",
+          "supportReference": "",
+          "origWords": "εἰδὼς",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/know",
+          "wordPath": "bible/other/know",
+          "twTitle": "know, knew, knowledge, known, unknown, distinguish",
+          "gatewayQuote": { "original": "εἰδὼς", "aligned": "knowing" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "11",
+          "twId": "sqgk",
+          "supportReference": "",
+          "origWords": "ἐξέστραπται",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/perverse",
+          "wordPath": "bible/other/perverse",
+          "twTitle": "perverse, perversion, pervert, depraved, malicious, devious, dishonest, distortion",
+          "gatewayQuote": {
+            "original": "ἐξέστραπται",
+            "aligned": "has turned from the right way"
+          }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "11",
+          "twId": "f74c",
+          "supportReference": "",
+          "origWords": "ἁμαρτάνει",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/sin",
+          "wordPath": "bible/kt/sin",
+          "twTitle": "sin, sinful, sinner, sinning",
+          "gatewayQuote": { "original": "ἁμαρτάνει", "aligned": "is sinning" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "12",
+          "twId": "adg4",
+          "supportReference": "",
+          "origWords": "Τυχικόν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/names/tychicus",
+          "wordPath": "bible/names/tychicus",
+          "twTitle": "Tychicus",
+          "gatewayQuote": { "original": "Τυχικόν", "aligned": "Tychicus" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "13",
+          "twId": "v462",
+          "supportReference": "",
+          "origWords": "νομικὸν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/law",
+          "wordPath": "bible/other/law",
+          "twTitle": "law, principle",
+          "gatewayQuote": { "original": "νομικὸν", "aligned": "lawyer" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "13",
+          "twId": "sy96",
+          "supportReference": "",
+          "origWords": "Ἀπολλῶν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/names/apollos",
+          "wordPath": "bible/names/apollos",
+          "twTitle": "Apollos",
+          "gatewayQuote": { "original": "Ἀπολλῶν", "aligned": "Apollos" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "14",
+          "twId": "m7z9",
+          "supportReference": "",
+          "origWords": "καλῶν",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/good",
+          "wordPath": "bible/kt/good",
+          "twTitle": "good, right, pleasant, better, best, goodness",
+          "gatewayQuote": { "original": "καλῶν", "aligned": "good" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "14",
+          "twId": "en8v",
+          "supportReference": "",
+          "origWords": "ἄκαρποι",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/other/fruit",
+          "wordPath": "bible/other/fruit",
+          "twTitle": "fruit, fruitful, unfruitful",
+          "gatewayQuote": { "original": "ἄκαρποι", "aligned": "unfruitful" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "15",
+          "twId": "xuej",
+          "supportReference": "",
+          "origWords": "φιλοῦντας",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/love",
+          "wordPath": "bible/kt/love",
+          "twTitle": "love, beloved",
+          "gatewayQuote": { "original": "φιλοῦντας", "aligned": "loving" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "15",
+          "twId": "b3pn",
+          "supportReference": "",
+          "origWords": "πίστει",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/faith",
+          "wordPath": "bible/kt/faith",
+          "twTitle": "faith",
+          "gatewayQuote": { "original": "πίστει", "aligned": "faith" }
+        },
+        {
+          "book": "",
+          "chapter": "3",
+          "verse": "15",
+          "twId": "stmk",
+          "supportReference": "",
+          "origWords": "ἡ χάρις",
+          "occurrence": "1",
+          "twLink": "rc://*/tw/dict/bible/kt/grace",
+          "wordPath": "bible/kt/grace",
+          "twTitle": "grace, gracious",
+          "gatewayQuote": { "original": "ἡ χάρις", "aligned": "Grace" }
+        }
+      ]
+    }
+  }
+}

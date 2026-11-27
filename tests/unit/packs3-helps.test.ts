@@ -1,0 +1,1096 @@
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { readFileSync, readdirSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { join } from "node:path";
+import { formatQuoteDisplay } from "@translation-helps/door43";
+import {
+  resetPacks3CachesForTests,
+  type Packs3Env,
+} from "../../src/packs3/catalogs";
+import { resetReadersForTests } from "../../src/packs3/readers";
+import { resetWarnOnceForTests } from "../../src/packs3/keys";
+import {
+  buildNotesAnswer,
+  notesFromPacks3,
+  wordLinksFromPacks3,
+  proofOfNoLink,
+  placeNotes,
+  placeLinks,
+  chosenRows,
+  restoreLinks,
+  helpsNeed,
+  tokenisedForTests,
+} from "../../src/packs3/adapters/helps";
+import { READER_BYTE_BUDGET } from "../../src/packs3/readers";
+import { answerFromPacks3 } from "../../src/packs3/answer";
+import { setVerifiedForTests } from "../../src/packs3/verified";
+import { injectFixtureProofs } from "./packs3-fixture-verified";
+
+const STAGING =
+  "78d2e6299a2de4d0:c2057cec32b948452849e7fcba6af323961a091ea82645eb297bb368e1c8d911";
+const DIR = join(__dirname, "..", "fixtures", "packs3");
+
+function env(extra: Record<string, unknown> = {}): Packs3Env {
+  const objects: Record<string, Uint8Array> = {};
+  for (const d of ["catalog", "seg"]) {
+    for (const f of readdirSync(join(DIR, "v3", d))) {
+      objects[`v3/${d}/${f}`] = new Uint8Array(
+        readFileSync(join(DIR, "v3", d, f)),
+      );
+    }
+  }
+  for (const [k, v] of Object.entries(extra))
+    objects[k] = new TextEncoder().encode(JSON.stringify(v));
+  const bucket = {
+    async get(key: string) {
+      const bytes = objects[key];
+      if (!bytes) return null;
+      return {
+        key,
+        etag: `e-${key}`,
+        size: bytes.length,
+        body: new Response(bytes).body,
+        arrayBuffer: async () => bytes.slice().buffer,
+        json: async () => JSON.parse(new TextDecoder().decode(bytes)),
+      };
+    },
+  };
+  return {
+    LANGUAGE_PACKS: bucket as unknown as R2Bucket,
+    PACKS_V3: "on",
+    PACKS_V3_TRUSTED_KEYS: STAGING,
+  };
+}
+
+type Row = Record<string, unknown>;
+type Live = {
+  chapters: Record<string, { source: unknown; notes: Row[]; wordLinks: Row[] }>;
+};
+// Today's answers of the API Worker, read 2026-11-12 (scripts/fetch-packs3-live.mjs): whole chapters.
+const live = (name: string): Live =>
+  JSON.parse(readFileSync(join(DIR, "live", `${name}.json`), "utf8"));
+const enTit = live("en-tit");
+const esTit = live("es-419-tit");
+const esRut = live("es-419-rut");
+
+const liveLinks = (l: Live, ch: string, verse?: string) =>
+  l.chapters[ch].wordLinks.filter((r) => !verse || r.verse === verse);
+const withoutBody = ({ note, noteSha, noteLinks, heading, ...row }: Row) => {
+  void note;
+  void noteSha;
+  void noteLinks;
+  void heading;
+  return row;
+};
+const indexLink = (r: Row) => ({
+  book: r.book,
+  chapter: r.chapter,
+  verse: r.verse,
+  twId: r.twId,
+  supportReference: r.supportReference,
+  origWords: formatQuoteDisplay(String(r.origWords)),
+  occurrence: r.occurrence,
+  twLink: r.twLink,
+  wordPath: r.wordPath,
+  twTitle: r.twTitle,
+});
+
+beforeEach(async () => {
+  resetPacks3CachesForTests();
+  resetReadersForTests();
+  resetWarnOnceForTests();
+  await injectFixtureProofs(env());
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+});
+
+describe("word links", () => {
+  it("en TIT 1:1: the first two rows field by field, and the count", async () => {
+    const got = (await wordLinksFromPacks3(env(), {
+      reference: "Tit 1:1",
+      language: "en",
+    })) as Row & { wordLinks: Row[] };
+    expect(got.wordLinks).toHaveLength(11);
+    expect(got.wordLinks.slice(0, 2)).toEqual([
+      {
+        book: "",
+        chapter: "1",
+        verse: "1",
+        twId: "trr8",
+        supportReference: "",
+        origWords: "Παῦλος",
+        occurrence: "1",
+        twLink: "rc://*/tw/dict/bible/names/paul",
+        wordPath: "bible/names/paul",
+        twTitle: "Paul, Saul",
+        gatewayQuote: { original: "Παῦλος", aligned: "Paul" },
+      },
+      {
+        book: "",
+        chapter: "1",
+        verse: "1",
+        twId: "zfgc",
+        supportReference: "",
+        origWords: "δοῦλος",
+        occurrence: "1",
+        twLink: "rc://*/tw/dict/bible/other/servant",
+        wordPath: "bible/other/servant",
+        twTitle: "servant, serve, maidservant, young man, young women",
+        gatewayQuote: { original: "δοῦλος", aligned: "a servant" },
+      },
+    ]);
+    expect(got).toEqual({
+      reference: "Tit 1:1",
+      language: "en",
+      book: "TIT",
+      chapter: "1",
+      verse: "1",
+      wordLinks: liveLinks(enTit, "1", "1"),
+      meta: { cache: "pack" },
+    });
+  });
+
+  it("every chapter of en and es-419 TIT equals the live rows, row by row", async () => {
+    for (const [lang, l] of [
+      ["en", enTit],
+      ["es-419", esTit],
+    ] as const) {
+      for (const ch of ["1", "2", "3"]) {
+        const got = (await wordLinksFromPacks3(env(), {
+          reference: `Tit ${ch}`,
+          language: lang,
+        })) as { wordLinks: Row[] };
+        expect(got.wordLinks, `${lang} ${ch}`).toEqual(liveLinks(l, ch));
+      }
+    }
+  });
+
+  it("a verse range keeps the rows that overlap it", async () => {
+    const got = (await wordLinksFromPacks3(env(), {
+      reference: "Tit 2:3-5",
+      language: "es-419",
+    })) as { verse: string; wordLinks: Row[] };
+    // The route echoes the first verse of the range.
+    expect(got.verse).toBe("3");
+    expect(got.wordLinks).toEqual(
+      liveLinks(esTit, "2").filter((r) =>
+        ["3", "4", "5"].includes(String(r.verse)),
+      ),
+    );
+    expect(got.wordLinks.length).toBeGreaterThan(0);
+  });
+
+  it("answers `es` with the resolved language, like the route", async () => {
+    const got = (await wordLinksFromPacks3(env(), {
+      reference: "Tit 1:1",
+      language: "es",
+    })) as { language: string; wordLinks: Row[] };
+    expect(got.language).toBe("es-419");
+    expect(got.wordLinks).toEqual(liveLinks(esTit, "1", "1"));
+  });
+
+  it("en TIT whole book with fields=index: the compact rows of the route, every one of them", async () => {
+    const got = (await wordLinksFromPacks3(env(), {
+      reference: "Tit",
+      language: "en",
+      fields: "index",
+    })) as Row & { wordLinks: Row[] };
+    const expected = ["1", "2", "3"].flatMap((ch) =>
+      liveLinks(enTit, ch).map(indexLink),
+    );
+    expect(got.wordLinks).toHaveLength(182);
+    expect(got).toEqual({
+      reference: "Tit",
+      language: "en",
+      book: "TIT",
+      chapter: "*",
+      verse: null,
+      wordLinks: expected,
+      meta: { cache: "pack" },
+    });
+  });
+
+  it("an Old Testament book (Hebrew original): every chapter of es-419 RUT equals the live rows, aligned words included", async () => {
+    for (const ch of ["1", "2", "3", "4"]) {
+      const got = (await wordLinksFromPacks3(env(), {
+        reference: `Rut ${ch}`,
+        language: "es-419",
+      })) as { wordLinks: Row[] } | undefined;
+      expect(got, `RUT ${ch}`).toBeDefined();
+      // The fixture's rows were read without aligned words; those are pinned below for RUT 3:1-2.
+      const withoutQuote = ({ gatewayQuote, ...r }: Row) => {
+        expect((gatewayQuote as Row).original).toBe(
+          formatQuoteDisplay(String(r.origWords)),
+        );
+        return r;
+      };
+      expect(got!.wordLinks.map(withoutQuote), `RUT ${ch}`).toEqual(
+        liveLinks(esRut, ch),
+      );
+    }
+    // GET /api/v1/word-links?reference=RUT+3&language=es-419, read 2026-11-15.
+    const got = (await wordLinksFromPacks3(env(), {
+      reference: "Rut 3:1-2",
+      language: "es-419",
+    })) as { wordLinks: Row[] };
+    expect(
+      got.wordLinks.map((r) => [
+        r.twId,
+        r.verse,
+        (r.gatewayQuote as { aligned: string }).aligned,
+      ]),
+    ).toEqual([
+      ["uy3u", "1", "un lugar de descanso"],
+      ["h2my", "2", "es Booz"],
+      ["rys6", "2", "jóvenes trabajadoras"],
+      ["z6m7", "2", "estará aventando"],
+      ["u6ct", "2", "en el patio de trillar"],
+      ["dass", "2", "la cebada"],
+    ]);
+  });
+
+  it("word links build the route's tokens only for the verses asked", async () => {
+    tokenisedForTests();
+    const got = await wordLinksFromPacks3(env(), {
+      reference: "Rut 3:1",
+      language: "es-419",
+    });
+    expect(got).toBeDefined();
+    expect(tokenisedForTests().sort()).toEqual(["orig 3:1", "text 3:1"]);
+  });
+
+  it("an Old Testament book answers fields=index (no aligned words in it)", async () => {
+    const got = (await wordLinksFromPacks3(env(), {
+      reference: "Rut",
+      language: "es-419",
+      fields: "index",
+    })) as { wordLinks: Row[] };
+    expect(got.wordLinks).toHaveLength(296);
+    expect(got.wordLinks[0]).toEqual(
+      indexLink(esRut.chapters["1"].wordLinks[0]),
+    );
+  });
+});
+
+describe("notes", () => {
+  const sha = (s: string) => createHash("sha1").update(s).digest("hex");
+
+  it("en TIT 1:1: every field but the body of the rows equals the route's; the counts match", async () => {
+    const built = await buildNotesAnswer(env(), {
+      reference: "Tit 1:1",
+      language: "en",
+    });
+    expect(built).toBeDefined();
+    const rows = (built!.answer as { notes: Row[] }).notes;
+    const want = enTit.chapters["1"].notes.filter(
+      (r) => r.chapter === "front" || r.verse === "intro" || r.verse === "1",
+    );
+    expect(rows).toHaveLength(6);
+    expect(want).toHaveLength(6);
+    expect(rows.map(withoutBody)).toEqual(want.map(withoutBody));
+    // The first two rows are the book and chapter introductions, as today.
+    expect(rows.slice(0, 2).map((r) => [r.chapter, r.verse, r.id])).toEqual([
+      ["front", "intro", "m2jl"],
+      ["1", "intro", "c7me"],
+    ]);
+    expect(rows[2]).toMatchObject({
+      book: "",
+      chapter: "1",
+      verse: "1",
+      id: "rtc9",
+      supportReference: "rc://*/ta/man/translate/figs-abstractnouns",
+      quote: "κατὰ πίστιν ἐκλεκτῶν Θεοῦ, καὶ ἐπίγνωσιν ἀληθείας",
+      occurrence: "1",
+      supportReferenceTitle: "Abstract Nouns",
+      gatewayQuote: {
+        original: "κατὰ πίστιν ἐκλεκτῶν Θεοῦ, καὶ ἐπίγνωσιν ἀληθείας",
+        aligned:
+          "for the faith of the chosen people of God and knowledge of the truth",
+      },
+    });
+    expect(built!.answer).toMatchObject({
+      reference: "Tit 1:1",
+      language: "en",
+      book: "TIT",
+      chapter: "1",
+      verse: "1",
+      source: {
+        owner: "unfoldingWord",
+        repo: "en_tn",
+        version: "v91",
+        language: "en",
+      },
+      meta: { cache: "pack" },
+    });
+  });
+
+  it("en TIT: every body, links included, is the route's (`../01/05.md`, `[[rc://*/ta/man/…]]` rebuilt)", async () => {
+    for (let c = 1; c <= 3; c++) {
+      const built = await buildNotesAnswer(env(), {
+        reference: `Tit ${c}`,
+        language: "en",
+      });
+      expect(built, `en ${c}`).toBeDefined();
+      const want = enTit.chapters[String(c)].notes;
+      const rows = (built!.answer as { notes: (Row & { note: string })[] })
+        .notes;
+      expect(rows.map((r) => r.id)).toEqual(want.map((r) => r.id));
+      rows.forEach((r, i) =>
+        expect(sha(r.note), `en ${r.id}`).toBe(want[i].noteSha),
+      );
+      expect(built!.exact).toBe(true);
+    }
+  });
+
+  it("rebuilds the links format 3 rewrote, and refuses a form it cannot rebuild", () => {
+    expect(
+      restoreLinks(
+        "in [1:5](ref:tit 1:5) and [Rom 3:23](ref:rom 3:23). (See: [[ta:translate/figs-you]] [[tw:kt/lord]])",
+        "TIT",
+      ),
+    ).toBe(
+      "in [1:5](../01/05.md) and [Rom 3:23](../../rom/03/23.md). (See: [[rc://*/ta/man/translate/figs-you]] [[rc://*/tw/dict/bible/kt/lord]])",
+    );
+    expect(restoreLinks("[Psalm 119](ref:psa 119:5)", "PSA")).toBe(
+      "[Psalm 119](../119/005.md)",
+    );
+    expect(restoreLinks("[x](ref:tit 1)", "TIT")).toBeUndefined();
+    expect(restoreLinks("[x](ta:translate/x)", "TIT")).toBeUndefined();
+    expect(restoreLinks("no links", "TIT")).toBe("no links");
+  });
+
+  it("the adapter answers en TIT 1:1 with the route's bodies", async () => {
+    const got = (await notesFromPacks3(env(), {
+      reference: "Tit 1:1",
+      language: "en",
+    })) as { notes: (Row & { note: string })[] };
+    const want = enTit.chapters["1"].notes.filter(
+      (r) => r.chapter === "front" || r.verse === "intro" || r.verse === "1",
+    );
+    expect(got.notes.map((r) => sha(r.note))).toEqual(
+      want.map((r) => r.noteSha),
+    );
+  });
+
+  it("placeNotes: one flagged row first in chapter 1 is the book introduction (3JN has no chapter introduction)", () => {
+    const row = (id: string, ref: string, isIntro: boolean) => {
+      const [c, v] = ref.split(":").map(Number);
+      return {
+        id,
+        ref,
+        from: 64000000 + c * 1000 + v,
+        to: 64000000 + c * 1000 + v,
+        cols: { note: "n", tags: "", quote: "", isIntro, occurrence: "0" },
+      };
+    };
+    const placed = placeNotes([row("a", "1:1", true), row("b", "1:1", false)]);
+    expect(placed?.map((p) => [p.chapter, p.verse, p.kind])).toEqual([
+      ["front", "intro", "front"],
+      ["1", "1", "verse"],
+    ]);
+  });
+
+  // en PSA: one row has the reference `5:1,3,8,12` (a verse list); it used to make every Psalm unanswerable.
+  it("placeNotes: a row whose reference is not c:v or c:a-b blocks only its chapter and the whole book", () => {
+    const row = (id: string, ref: string, from: number, to: number) => ({
+      id,
+      ref,
+      from,
+      to,
+      cols: {
+        note: "n",
+        tags: "",
+        quote: "x",
+        isIntro: false,
+        occurrence: "1",
+      },
+    });
+    const placed = placeNotes([
+      row("a", "4:1", 19004001, 19004001),
+      row("b", "5:1,3,8,12", 19005001, 19005012),
+      row("c", "5:2", 19005002, 19005002),
+    ] as never);
+    expect(placed?.map((p) => [p.chapter, p.verse, !!p.unplaced])).toEqual([
+      ["4", "1", false],
+      ["5", "1,3,8,12", true],
+      ["5", "2", false],
+    ]);
+    const q = (chapter: string, verseStart?: number) =>
+      ({ chapter, verseStart, verseEnd: verseStart }) as never;
+    expect(chosenRows(placed!, q("4"), true)?.map((p) => p.row.id)).toEqual([
+      "a",
+    ]);
+    expect(chosenRows(placed!, q("5"), true)).toBeUndefined();
+    expect(chosenRows(placed!, q("5", 2), true)).toBeUndefined();
+    expect(chosenRows(placed!, q("*"), true)).toBeUndefined();
+    // A row with no usable verse numbers still refuses the whole book.
+    expect(
+      placeNotes([row("d", "5:x", Number.NaN, Number.NaN)] as never),
+    ).toBeUndefined();
+  });
+
+  // en PSA word links: a superscription row is `3:front` (verse 0 in format 3); the route lists it as verse "front",
+  // in its chapter and in the whole book, never in a verse query, with aligned words "" (parseInt gives no verse).
+  it("placeLinks: a `c:front` row (Psalms superscription) is placed at verse front; a malformed one refuses the book", () => {
+    const row = (id: string, ref: string, verse: number) => ({
+      id,
+      ref,
+      from: 19003000 + verse,
+      to: 19003000 + verse,
+      cols: { origWords: "w", occurrence: "1", articlePath: "bible/kt/psalm" },
+      concept: "tw:kt/psalm",
+    });
+    const placed = placeLinks([row("a", "3:front", 0), row("b", "3:1", 1)]);
+    expect(placed?.map((p) => [p.row.id, p.chapter, p.verse])).toEqual([
+      ["a", "3", "front"],
+      ["b", "3", "1"],
+    ]);
+    expect(chosenRows(placed!, { chapter: "3" }, false)).toHaveLength(2);
+    expect(
+      chosenRows(placed!, { chapter: "3", verseStart: "1" }, false)?.map(
+        (p) => p.row.id,
+      ),
+    ).toEqual(["b"]);
+    expect(placeLinks([row("a", "3:front", 1)])).toBeUndefined();
+    expect(placeLinks([{ ...row("a", "4:front", 0) }])).toBeUndefined();
+  });
+
+  // en ZEC 6 has two flagged rows ("Introduction" and "General Notes"); the route lists both as `6:intro`.
+  it("placeNotes: a chapter may have more than one introduction row", () => {
+    const row = (id: string, ref: string, isIntro: boolean) => {
+      const [c, v] = ref.split(":").map(Number);
+      return {
+        id,
+        ref,
+        from: 38000000 + c * 1000 + v,
+        to: 38000000 + c * 1000 + v,
+        cols: { note: "n", tags: "", quote: "", isIntro, occurrence: "0" },
+      };
+    };
+    const placed = placeNotes([
+      row("a", "1:1", true),
+      row("b", "1:1", true),
+      row("c", "6:1", true),
+      row("d", "6:1", true),
+      row("e", "6:1", false),
+    ]);
+    expect(placed?.map((p) => [p.row.id, p.chapter, p.verse, p.kind])).toEqual([
+      ["a", "front", "intro", "front"],
+      ["b", "1", "intro", "chapter"],
+      ["c", "6", "intro", "chapter"],
+      ["d", "6", "intro", "chapter"],
+      ["e", "6", "1", "verse"],
+    ]);
+  });
+
+  it("a row with words the builder could not place (quoteMissing) is read, and only that row's chapter falls back", () => {
+    const base = {
+      id: "q",
+      ref: "27:8",
+      from: 40027008,
+      to: 40027008,
+      cols: {
+        note: "n",
+        tags: "",
+        quote: "x",
+        isIntro: false,
+        occurrence: "1",
+      },
+    };
+    const placed = placeNotes([
+      {
+        ...base,
+        ref: "1:1",
+        from: 40001001,
+        to: 40001001,
+        cols: { ...base.cols, isIntro: true },
+      },
+      {
+        ...base,
+        ref: "1:1",
+        from: 40001001,
+        to: 40001001,
+        cols: { ...base.cols, isIntro: true },
+      },
+      { ...base, quoteMissing: [[0, 40027008, "Ἀγρὸς", 2]] },
+    ] as never);
+    expect(placed).toHaveLength(3);
+    expect(placed![2].quoteMissing).toBe(true);
+  });
+
+  it("en TIT whole book with fields=index: counts, the front:intro row and every row", async () => {
+    const got = (await notesFromPacks3(env(), {
+      reference: "Tit",
+      language: "en",
+      fields: "index",
+    })) as Row & { notes: Row[] };
+    const seen = new Set<unknown>();
+    const expected = ["1", "2", "3"]
+      .flatMap((ch) => enTit.chapters[ch].notes)
+      .filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)))
+      .map((r) => ({
+        book: r.book,
+        chapter: r.chapter,
+        verse: r.verse,
+        id: r.id,
+        supportReference: r.supportReference,
+        supportReferenceTitle: r.supportReferenceTitle,
+        quote: r.quote ? formatQuoteDisplay(String(r.quote)) : r.quote,
+        occurrence: r.occurrence,
+        ...(r.heading ? { heading: r.heading } : {}),
+      }));
+    expect(got.notes).toHaveLength(206);
+    expect(got.notes[0]).toEqual({
+      book: "",
+      chapter: "front",
+      verse: "intro",
+      id: "m2jl",
+      supportReference: "",
+      supportReferenceTitle: null,
+      quote: "",
+      occurrence: "0",
+      heading: "Introduction to Titus",
+    });
+    expect(got).toEqual({
+      reference: "Tit",
+      language: "en",
+      book: "TIT",
+      chapter: "*",
+      verse: null,
+      notes: expected,
+      source: {
+        owner: "unfoldingWord",
+        repo: "en_tn",
+        version: "v91",
+        language: "en",
+      },
+      meta: { cache: "pack" },
+    });
+  });
+
+  it("es-419 RUT whole book with fields=index (Hebrew original): counts and rows equal the route's", async () => {
+    const got = (await notesFromPacks3(env(), {
+      reference: "Rut",
+      language: "es-419",
+      fields: "index",
+    })) as { notes: Row[]; source: unknown };
+    const seen = new Set<unknown>();
+    const expected = ["1", "2", "3", "4"]
+      .flatMap((ch) => esRut.chapters[ch].notes)
+      .filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
+    expect(got.notes).toHaveLength(272);
+    expect(got.notes.map((r) => r.id)).toEqual(expected.map((r) => r.id));
+    expect(got.notes.map((r) => r.supportReferenceTitle)).toEqual(
+      expected.map((r) => r.supportReferenceTitle),
+    );
+    expect(got.notes.map((r) => r.heading)).toEqual(
+      expected.map((r) => r.heading),
+    );
+    expect(got.source).toEqual({
+      owner: "es-419_gl",
+      repo: "es-419_tn",
+      version: "v66",
+      language: "es-419",
+    });
+  });
+
+  it("es-419 RUT 3:1-2 (Hebrew original): the aligned words of every row equal the route's", async () => {
+    const built = await buildNotesAnswer(env(), {
+      reference: "Rut 3:1-2",
+      language: "es-419",
+    });
+    expect(built).toBeDefined();
+    const rows = (built!.answer as { notes: Row[] }).notes;
+    // Today's answer of the API Worker (GET /api/v1/notes?reference=RUT+3&language=es-419, read 2026-11-15).
+    const want: Array<[string, string, string]> = [
+      ["f68r", "intro", ""],
+      ["t4y5", "intro", ""],
+      ["jdr3", "1", "Entonces Noemí … le dijo"],
+      ["r7ar", "1", "su suegra"],
+      ["f1uc", "1", "Hija mía"],
+      [
+        "nxr8",
+        "1",
+        "No debería yo buscar un lugar de descanso para ti que sea bueno para ti",
+      ],
+      ["uw2p", "1", "un lugar de descanso para ti"],
+      ["jdr4", "2", "Ahora"],
+      ["b4h8", "2", "no es Booz nuestro pariente"],
+      ["j31t", "2", "jóvenes trabajadoras tú has estado"],
+      ["nd8v", "2", "Mira"],
+      ["ms25", "2", "estará aventando"],
+    ];
+    expect(rows).toHaveLength(12);
+    expect(
+      rows.map((r) => [
+        r.id,
+        r.verse,
+        (r.gatewayQuote as { aligned: string }).aligned,
+      ]),
+    ).toEqual(want);
+  });
+
+  it("es-419 RUT 2:1: a quote the route's matcher cannot find in the Hebrew words (qere in a footnote) gives the route's empty words", async () => {
+    const built = await buildNotesAnswer(env(), {
+      reference: "Rut 2:1",
+      language: "es-419",
+    });
+    expect(built).toBeDefined();
+    const rows = (built!.answer as { notes: Row[] }).notes;
+    // GET /api/v1/notes?reference=RUT+2&language=es-419, read 2026-11-15: the quote has the qere מוֹדַ֣ע, the text the
+    // ketiv מידע (the qere is in a footnote the route does not read), so the route finds no words.
+    expect(
+      rows.map((r) => [
+        r.id,
+        r.verse,
+        (r.gatewayQuote as { aligned: string }).aligned,
+      ]),
+    ).toEqual([
+      ["f68r", "intro", ""],
+      ["ld2v", "intro", ""],
+      ["ab10", "1", ""],
+      ["t2sn", "1", ""],
+      ["b4q7", "1", "un hombre de gran fortuna"],
+      ["ab09", "1", "del clan de Elimelec"],
+    ]);
+  });
+
+  it("the reader need of a notes call: the book, plus its originals when aligned words are built", () => {
+    const probe = (sizes: Record<string, number>) => ({
+      unitOf: (cls: string, key: string) =>
+        `${cls}:${key}` in sizes ? `${cls}:${key}` : undefined,
+      size: (u: string) => sizes[u] ?? 0,
+    });
+    // staging en: book:psa 1097745 + orig:psa 418898 compressed bytes
+    const psa = probe({ "book:psa": 1097745, "orig:psa": 418898 });
+    expect(helpsNeed(psa, "psa", false)).toBe(1097745 + 418898);
+    expect(helpsNeed(psa, "psa", true)).toBe(1097745);
+    const rut = probe({ "book:rut": 900000, "orig:rut": 200000 });
+    expect(helpsNeed(rut, "rut", true)).toBeLessThan(READER_BYTE_BUDGET);
+    expect(helpsNeed(rut, "rut", false)).toBeGreaterThan(READER_BYTE_BUDGET);
+    // Word links build aligned words as notes do, Old Testament too: the book and its original.
+    expect(helpsNeed(psa, "psa", false, "links")).toBe(1097745 + 418898);
+    expect(helpsNeed(psa, "psa", true, "links")).toBe(1097745);
+    const tit = probe({ "book:tit": 1000, "orig:tit": 500 });
+    expect(helpsNeed(tit, "tit", false, "links")).toBe(1500);
+  });
+
+  it("notes build the route's tokens only for the verses asked, not the whole book", async () => {
+    tokenisedForTests();
+    const one = await buildNotesAnswer(env(), {
+      reference: "Rut 3:1-2",
+      language: "es-419",
+    });
+    expect(one).toBeDefined();
+    // Verses 1 and 2, in the Hebrew original and in the aligned text.
+    expect(tokenisedForTests().sort()).toEqual([
+      "orig 3:1",
+      "orig 3:2",
+      "text 3:1",
+      "text 3:2",
+    ]);
+    const chapter = await buildNotesAnswer(env(), {
+      reference: "Rut 3",
+      language: "es-419",
+    });
+    expect(chapter).toBeDefined();
+    const seen = tokenisedForTests();
+    expect(seen.every((k) => / 3:\d+$/.test(k))).toBe(true);
+    expect(seen.length).toBeLessThanOrEqual(2 * 18);
+  });
+
+  it("es-419 TIT 1:1: every verse row, aligned words included, equals the route's", async () => {
+    const built = await buildNotesAnswer(env(), {
+      reference: "Tit 1:1",
+      language: "es-419",
+    });
+    const rows = (built!.answer as { notes: Row[] }).notes;
+    const want = esTit.chapters["1"].notes.filter(
+      (r) => r.chapter === "front" || r.verse === "intro" || r.verse === "1",
+    );
+    expect(rows.map(withoutBody)).toEqual(want.map(withoutBody));
+    expect(
+      rows.filter((r) => (r.gatewayQuote as Row).aligned !== "").length,
+    ).toBeGreaterThan(3);
+  });
+});
+
+describe("fallbacks", () => {
+  it.each([
+    ["a book alone, no fields", { reference: "Tit", language: "en" }],
+    ["a range across chapters", { reference: "Tit 1:15-2:3", language: "en" }],
+    ["a language with no catalog", { reference: "Tit 1:1", language: "fr" }],
+    [
+      "a book the language does not list",
+      { reference: "Mat 5:1", language: "es-419" },
+    ],
+    [
+      "a reference that does not parse",
+      { reference: "nonsense", language: "en" },
+    ],
+    ["OBS", { reference: "OBS 3:5", language: "en" }],
+    ["no reference", { reference: "", language: "en" }],
+  ])("word links: undefined for %s", async (_n, params) => {
+    expect(await wordLinksFromPacks3(env(), params)).toBeUndefined();
+  });
+
+  it.each([
+    ["a book alone, no fields", { reference: "Tit", language: "en" }],
+    ["a range across chapters", { reference: "Tit 1:15-2:3", language: "en" }],
+    [
+      "a language with no catalog",
+      { reference: "Tit", language: "fr", fields: "index" },
+    ],
+    [
+      "a book the language does not list",
+      { reference: "Mat", language: "es-419", fields: "index" },
+    ],
+    ["OBS", { reference: "OBS", language: "en", fields: "index" }],
+  ])("notes: undefined for %s", async (_n, params) => {
+    expect(await notesFromPacks3(env(), params)).toBeUndefined();
+  });
+
+  // A range whose end equals its start (`Tit 1:1-1`) was never swept: it falls back, in both shapes.
+  it("an equal-end range falls back (notes, links)", async () => {
+    const at = (reference: string, fields?: string) => ({
+      reference,
+      language: "en",
+      ...(fields ? { fields } : {}),
+    });
+    for (const fields of [undefined, "index"]) {
+      expect(await notesFromPacks3(env(), at("Tit 1:1", fields))).toBeDefined();
+      expect(
+        await notesFromPacks3(env(), at("Tit 1:1-1", fields)),
+      ).toBeUndefined();
+      expect(
+        await wordLinksFromPacks3(env(), at("Tit 1:1-1", fields)),
+      ).toBeUndefined();
+    }
+  }, 60_000);
+
+  it("a verse or range needs its chapter's swept samples; a sampled exception falls back (notes, links)", async () => {
+    const at = (reference: string) => ({ reference, language: "en" });
+    const both = async (reference: string) => [
+      await notesFromPacks3(env(), at(reference)),
+      await wordLinksFromPacks3(env(), at(reference)),
+    ];
+    for (const r of ["Tit 1:1", "Tit 1:1-2", "Tit 1"])
+      for (const a of await both(r)) expect(a).toBeDefined();
+    const edit = (f: (e: Record<string, unknown>) => void) =>
+      injectFixtureProofs(env(), (t) => {
+        for (const [k, e] of Object.entries(t))
+          if (/\|(notes|links)$/.test(k)) f(e as Record<string, unknown>);
+      });
+    // chapter 1 has no sample data
+    await edit((e) => (e.samples = { TIT: "2-3:15" }));
+    for (const r of ["Tit 1:1", "Tit 1:1-2"])
+      for (const a of await both(r)) expect(a).toBeUndefined();
+    for (const a of await both("Tit 1")) expect(a).toBeDefined();
+    // an old entry without the field
+    await edit((e) => delete e.samples);
+    for (const a of await both("Tit 1:1")) expect(a).toBeUndefined();
+    // one sampled exception (a range) in chapter 1
+    await edit((e) => (e.exceptions = ["TIT 1:7-9"]));
+    for (const r of ["Tit 1:1", "Tit 1:1-2"])
+      for (const a of await both(r)) expect(a).toBeUndefined();
+    for (const a of await both("Tit 1")) expect(a).toBeDefined();
+    // the index shape reads its own samples: a default sample exception does not touch it
+    const idx = async (reference: string) => [
+      await notesFromPacks3(env(), { ...at(reference), fields: "index" }),
+      await wordLinksFromPacks3(env(), { ...at(reference), fields: "index" }),
+    ];
+    for (const r of ["Tit 1:1", "Tit 1:1-2", "Tit 1"])
+      for (const a of await idx(r)) expect(a).toBeDefined();
+    // a verse or range past the chapter's last verse (TIT 1 has 16) falls back, in both shapes
+    for (const a of [
+      ...(await both("Tit 1:15-17")),
+      ...(await idx("Tit 1:15-17")),
+    ])
+      expect(a).toBeUndefined();
+    // without index sample data (`indexSamples`) index verses and ranges fall back; the index chapter still serves
+    await edit((e) => delete e.indexSamples);
+    for (const r of ["Tit 1:1", "Tit 1:1-2"])
+      for (const a of await idx(r)) expect(a).toBeUndefined();
+    for (const a of await idx("Tit 1")) expect(a).toBeDefined();
+    for (const a of await both("Tit 1:1")) expect(a).toBeDefined();
+    // without `samples` at all
+    await edit((e) => delete e.samples);
+    for (const a of await idx("Tit 1:1")) expect(a).toBeUndefined();
+    // one index sample exception in chapter 1: index verses fall back, the default shape serves
+    await edit((e) => (e.exceptions = ["index:TIT 1:16"]));
+    for (const r of ["Tit 1:1", "Tit 1:1-2"])
+      for (const a of await idx(r)) expect(a).toBeUndefined();
+    for (const a of await idx("Tit 1")) expect(a).toBeDefined();
+    for (const a of await both("Tit 1:1")) expect(a).toBeDefined();
+  }, 60_000);
+
+  it("notes: undefined, warning once, when the notes resource has no proof", async () => {
+    await injectFixtureProofs(env(), (t) => {
+      for (const k of Object.keys(t)) if (k.includes("/en/tn|")) delete t[k];
+    });
+    try {
+      const params = { reference: "Tit", language: "en", fields: "index" };
+      expect(await notesFromPacks3(env(), params)).toBeUndefined();
+      expect(await notesFromPacks3(env(), params)).toBeUndefined();
+      const warns = (
+        console.warn as unknown as { mock: { calls: unknown[][] } }
+      ).mock.calls.filter(
+        (c) =>
+          (c[1] as { reason?: string } | undefined)?.reason ===
+          "unverified-resource",
+      );
+      expect(warns).toHaveLength(1);
+    } finally {
+      setVerifiedForTests(undefined);
+    }
+  });
+});
+
+describe("registered adapters", () => {
+  it("answers /api/v1/word-links and /api/v1/notes (fields=index) through answerFromPacks3", async () => {
+    const wl = (await answerFromPacks3(env(), "/api/v1/word-links", {
+      reference: "Tit 1:1",
+      language: "en",
+    })) as { meta: unknown; wordLinks: unknown[] } | undefined;
+    expect(wl?.meta).toEqual({ cache: "pack" });
+    expect(wl?.wordLinks).toHaveLength(11);
+    const n = (await answerFromPacks3(env(), "/api/v1/notes", {
+      reference: "Tit",
+      language: "en",
+      fields: "index",
+    })) as { notes: unknown[] } | undefined;
+    expect(n?.notes).toHaveLength(206);
+    // bodies with links are rebuilt (restoreLinks), so the default shape is answered too
+    const d = (await answerFromPacks3(env(), "/api/v1/notes", {
+      reference: "Tit 1:1",
+      language: "en",
+    })) as { notes: unknown[] } | undefined;
+    expect(d?.notes).toHaveLength(6);
+  });
+
+  it("a notes proof never serves word links: each kind is swept and proven on its own", async () => {
+    await injectFixtureProofs(env(), (t) => {
+      for (const k of Object.keys(t)) if (k.endsWith("|links")) delete t[k];
+    });
+    try {
+      resetReadersForTests();
+      expect(
+        await wordLinksFromPacks3(env(), {
+          reference: "Tit 1:1",
+          language: "en",
+        }),
+      ).toBeUndefined();
+      expect(
+        await notesFromPacks3(env(), { reference: "Tit 1:1", language: "en" }),
+      ).toBeDefined();
+    } finally {
+      setVerifiedForTests(undefined);
+    }
+  });
+});
+
+describe("fix round 1: shapes, quotes, books, references, texts", () => {
+  const view = { schema: 1, language: "en", book: "TIT", chapter: 1 };
+
+  it("the route answers from v1 views when the bucket has the chapter's view: no answer from format 3", async () => {
+    const e = env({ "v1/en/notes/TIT/1.json": view });
+    expect(
+      await notesFromPacks3(e, { reference: "Tit 1:1", language: "en" }),
+    ).toBeUndefined();
+    const w = env({ "v1/en/word-links/TIT/1.json": view });
+    expect(
+      await wordLinksFromPacks3(w, { reference: "Tit 1:1", language: "en" }),
+    ).toBeUndefined();
+    // A regional variant counts (es -> es-419), another chapter's view does not.
+    const v = env({
+      "v1/es-419/word-links/TIT/1.json": { ...view, language: "es-419" },
+    });
+    expect(
+      await wordLinksFromPacks3(v, { reference: "Tit 1:1", language: "es" }),
+    ).toBeUndefined();
+    const other = env({ "v1/en/word-links/TIT/2.json": view });
+    expect(
+      await wordLinksFromPacks3(other, {
+        reference: "Tit 1:1",
+        language: "en",
+      }),
+    ).toBeDefined();
+    // The views are not used for fields=index, so format 3 answers it.
+    expect(
+      await wordLinksFromPacks3(w, {
+        reference: "Tit",
+        language: "en",
+        fields: "index",
+      }),
+    ).toBeDefined();
+  });
+
+  it("answers have no `simple`: that field exists only in the views' shape", async () => {
+    const got = (await wordLinksFromPacks3(env(), {
+      reference: "Tit 1:1",
+      language: "en",
+    })) as { wordLinks: { gatewayQuote: Row }[] };
+    for (const r of got.wordLinks)
+      expect(r.gatewayQuote).not.toHaveProperty("simple");
+    expect(got).not.toHaveProperty("sources");
+  });
+
+  it("a note whose quote the builder could not place (es-419 TIT 1:6 'Connecting Statement:') has aligned \"\", as the route's", async () => {
+    // The route's matcher does not find such a quote either; the sweep proves it chapter by chapter.
+    const built = await buildNotesAnswer(env(), {
+      reference: "Tit 1",
+      language: "es-419",
+    });
+    const rows = (built!.answer as { notes: Row[] }).notes;
+    const want = esTit.chapters["1"].notes;
+    expect(rows.map(withoutBody)).toEqual(want.map(withoutBody));
+    expect(rows.find((r) => r.id === "wja4")?.gatewayQuote).toEqual({
+      original: "Connecting Statement:",
+      aligned: "",
+    });
+  });
+
+  it("only the chapters the sweep listed are answered; another book gives undefined and warns once", async () => {
+    await injectFixtureProofs(env(), (t) => {
+      for (const e of Object.values(t)) {
+        delete e.chapters?.TIT;
+        delete e.indexChapters?.TIT;
+        e.indexWholeBooks = e.indexWholeBooks?.filter((b) => b !== "TIT");
+      }
+    });
+    try {
+      const args = { reference: "Tit", language: "en", fields: "index" };
+      expect(await notesFromPacks3(env(), args)).toBeUndefined();
+      expect(await wordLinksFromPacks3(env(), args)).toBeUndefined();
+      expect(console.warn).toHaveBeenCalledWith(
+        "packs3 fallback",
+        expect.objectContaining({ reason: "unverified-resource" }),
+      );
+    } finally {
+      setVerifiedForTests(undefined);
+    }
+  });
+
+  it("fields=index is answered only from an index proof; a default-shape proof is not enough, nor is a default whole book", async () => {
+    await injectFixtureProofs(env(), (t) => {
+      for (const e of Object.values(t)) {
+        delete e.indexChapters;
+        delete e.indexWholeBooks;
+      }
+    });
+    try {
+      for (const reference of ["Tit", "Tit 1"]) {
+        const args = { reference, language: "en", fields: "index" };
+        expect(await notesFromPacks3(env(), args)).toBeUndefined();
+        expect(await wordLinksFromPacks3(env(), args)).toBeUndefined();
+      }
+      // the default shape of the whole book is not a route answer
+      expect(
+        await notesFromPacks3(env(), { reference: "Tit", language: "en" }),
+      ).toBeUndefined();
+    } finally {
+      setVerifiedForTests(undefined);
+    }
+  });
+
+  it("article titles are served only from article resources the proof lists at the catalog's release", async () => {
+    const args = { reference: "Tit", language: "en", fields: "index" };
+    const twl = (t: Record<string, any>) =>
+      Object.entries(t).filter(
+        ([k]) => k.startsWith("en|") && k.endsWith("|links"),
+      );
+    const tas = (t: Record<string, any>) =>
+      Object.entries(t).filter(
+        ([k]) => k.startsWith("en|") && k.endsWith("|notes"),
+      );
+    // the helper resource is missing from deps: no answer
+    await injectFixtureProofs(env(), (t) => {
+      for (const [, e] of [...twl(t), ...tas(t)]) e.deps = {};
+    });
+    try {
+      resetReadersForTests();
+      expect(await wordLinksFromPacks3(env(), args)).toBeUndefined();
+      expect(await notesFromPacks3(env(), args)).toBeUndefined();
+      expect(console.warn).toHaveBeenCalledWith(
+        "packs3 fallback",
+        expect.objectContaining({ reason: "unproven-article-resource" }),
+      );
+    } finally {
+      setVerifiedForTests(undefined);
+    }
+    // listed at another release: no answer
+    await injectFixtureProofs(env(), (t) => {
+      for (const [, e] of [...twl(t), ...tas(t)])
+        for (const k of Object.keys(e.deps)) e.deps[k] = "v0";
+    });
+    try {
+      resetReadersForTests();
+      expect(await wordLinksFromPacks3(env(), args)).toBeUndefined();
+      expect(await notesFromPacks3(env(), args)).toBeUndefined();
+    } finally {
+      setVerifiedForTests(undefined);
+    }
+    // listed at the catalog's release: served
+    await injectFixtureProofs(env());
+    resetReadersForTests();
+    expect(await wordLinksFromPacks3(env(), args)).toBeDefined();
+    expect(await notesFromPacks3(env(), args)).toBeDefined();
+  }, 20_000); // each loop pass re-injects the 182 KB proof table and rebuilds the catalogs: slow under a full run
+
+  it("a row without an article link is accepted only when nothing in it looks like a dropped reference", () => {
+    const cols = (note: string) => ({
+      note,
+      tags: "",
+      quote: "x",
+      isIntro: false,
+      occurrence: "1",
+    });
+    expect(proofOfNoLink(cols("Alternate translation: [a]"))).toBe(true);
+    expect(proofOfNoLink(cols("See rc://*/ta/man/translate/figs-x"))).toBe(
+      false,
+    );
+    expect(proofOfNoLink(cols("(See: translate/figs-metaphor)"))).toBe(false);
+    expect(proofOfNoLink(cols("(See: [[rc://*/ta/man/translate/x]])"))).toBe(
+      false,
+    );
+    // a body link format 3 rewrote is no dropped reference (en JHN 4:11 has supportReference "")
+    expect(
+      proofOfNoLink(cols("calls Jesus **Sir**. (See: [[tw:kt/lord]])")),
+    ).toBe(true);
+    expect(proofOfNoLink(cols("in [1:5](ref:tit 1:5)"))).toBe(true);
+    expect(proofOfNoLink({ ...cols("a"), extra: "ta" })).toBe(false);
+    expect(proofOfNoLink({ ...cols("a"), tags: "x" })).toBe(false);
+  });
+
+  it("the aligned text needs a passage proof and the original is a dep: otherwise no answer without fields=index", async () => {
+    const args = { reference: "Tit 1:1", language: "en" };
+    await injectFixtureProofs(env(), (t) => {
+      for (const k of Object.keys(t)) if (k.includes("/en/ult|")) delete t[k];
+    });
+    try {
+      expect(await wordLinksFromPacks3(env(), args)).toBeUndefined();
+      expect(
+        await wordLinksFromPacks3(env(), {
+          ...args,
+          reference: "Tit",
+          fields: "index",
+        }),
+      ).toBeDefined();
+    } finally {
+      setVerifiedForTests(undefined);
+    }
+    // A dep (the original) at another release than the catalog's: no proof of the links.
+    await injectFixtureProofs(env(), (t) => {
+      for (const [k, e] of Object.entries(t))
+        if (k.includes("/en/twl|"))
+          e.deps = { "common|unfoldingWord/el-x-koine/ugnt": "v0" };
+    });
+    try {
+      resetReadersForTests();
+      expect(await wordLinksFromPacks3(env(), args)).toBeUndefined();
+    } finally {
+      setVerifiedForTests(undefined);
+    }
+    await injectFixtureProofs(env());
+    expect(await wordLinksFromPacks3(env(), args)).toBeDefined();
+  });
+});

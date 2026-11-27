@@ -81,3 +81,4 @@ nul
 
 web/.dev.vars
 web/.dev.vars.bak
+**/sweep-cache/

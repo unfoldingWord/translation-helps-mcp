@@ -30,3 +30,4 @@
 *.ttf binary
 *.eot binary
 
+vendor/language-pack-client/* -text

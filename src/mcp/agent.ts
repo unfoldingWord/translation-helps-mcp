@@ -24,6 +24,15 @@ export interface Env {
   /** Base URL for the REST Data API worker (local dev when service binding is absent). */
   API_BASE_URL?: string;
   OPENAI_API_KEY?: string;
+  /** Format 3 reads (src/packs3). */
+  LANGUAGE_PACKS?: R2Bucket;
+  PACKS_V3?: string;
+  PACKS_V3_TRUSTED_KEYS?: string;
+  PACKS_V3_DEBUG?: string;
+  /** `off` | `only`, set per request from `x-th-packs3` when PACKS_V3_DEBUG is "on". */
+  PACKS3_MODE?: string;
+  /** Per-request format 3 outcomes, only when PACKS_V3_DEBUG is "on" (see stateless.ts). */
+  PACKS3_TRACE?: import("./apiClient.js").Packs3Trace;
   /**
    * Optional waitUntil from the request ExecutionContext. When set (chat/agent
    * Workers path, or the stateless MCP handler), background work like prefetch

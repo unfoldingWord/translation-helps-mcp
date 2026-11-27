@@ -1,0 +1,312 @@
+# Sweep differences: es-419 passage
+
+Swept 2026-11-16T13:15:09.749Z, API https://translation-helps-api-v2.unfoldingword.workers.dev, catalog 2128ef558b5dec55575096c52ad979d41242bef5ab576fe7d13c73b7f3a98b50+e47a3e63650cd4fb394034bfb71e5bf52806df055d83dd581f00ad147082f196.
+
+## es-419|es-419_gl/es-419/glt|v42|passage
+
+Items 802, exceptions 58 (differs 35, fallback adapter-undefined 36, api-error 417)
+
+Range windows 258, equal 119
+
+- RUT 1:1: differs
+  - $.versions[2].text: today `"1 וַ⁠יְהִ֗י בִּ⁠ימֵי֙ שְׁפֹ֣ט הַ⁠שֹּׁפְטִ֔ים וַ⁠יְהִ֥י רָעָ֖ב בָּ⁠אָ֑רֶץ וַ⁠יֵּ֨לֶךְ אִ֜ישׁ מִ⁠בֵּ֧ית לֶ֣חֶם\n יְהוּדָ֗ה לָ⁠גוּר֙ בִּ⁠שְׂדֵ` format 3 `"1 וַ⁠יְהִ֗י בִּ⁠ימֵי֙ שְׁפֹ֣ט הַ⁠שֹּׁפְטִ֔ים וַ⁠יְהִ֥י רָעָ֖ב בָּ⁠אָ֑רֶץ וַ⁠יֵּ֨לֶךְ אִ֜ישׁ מִ⁠בֵּ֧ית לֶ֣חֶם יְהוּדָ֗ה לָ⁠גוּר֙ בִּ⁠שְׂדֵ֣י`
+- RUT 1:2: differs
+  - $.versions[2].text: today `"2 וְ⁠שֵׁ֣ם הָ⁠אִ֣ישׁ אֱֽלִימֶ֡לֶךְ וְ⁠שֵׁם֩ אִשְׁתּ֨⁠וֹ נָעֳמִ֜י וְ⁠שֵׁ֥ם שְׁנֵֽי־בָנָ֣י⁠ו ׀ מַחְל֤וֹן וְ⁠כִלְיוֹן֙ אֶפְרָתִ֔ים מִ⁠בֵּ֥ית ל` format 3 `"2 וְ⁠שֵׁ֣ם הָ⁠אִ֣ישׁ אֱֽלִימֶ֡לֶךְ וְ⁠שֵׁם֩ אִשְׁתּ֨⁠וֹ נָעֳמִ֜י וְ⁠שֵׁ֥ם שְׁנֵֽי־בָנָ֣י⁠ו ׀ מַחְל֤וֹן וְ⁠כִלְיוֹן֙ אֶפְרָתִ֔ים מִ⁠בֵּ֥ית ל`
+- RUT 1:6: differs
+  - $.versions[2].text: today `"6 וַ⁠תָּ֤קָם הִיא֙ וְ⁠כַלֹּתֶ֔י⁠הָ וַ⁠תָּ֖שָׁב מִ⁠שְּׂדֵ֣י מוֹאָ֑ב כִּ֤י שָֽׁמְעָה֙ בִּ⁠שְׂדֵ֣ה מוֹאָ֔ב כִּֽי־פָקַ֤ד יְהוָה֙ אֶת־עַמּ֔⁠וֹ\n` format 3 `"6 וַ⁠תָּ֤קָם הִיא֙ וְ⁠כַלֹּתֶ֔י⁠הָ וַ⁠תָּ֖שָׁב מִ⁠שְּׂדֵ֣י מוֹאָ֑ב כִּ֤י שָֽׁמְעָה֙ בִּ⁠שְׂדֵ֣ה מוֹאָ֔ב כִּֽי־פָקַ֤ד יְהוָה֙ אֶת־עַמּ֔⁠וֹ ל`
+- RUT 1:8: fallback (adapter-undefined)
+- RUT 1:11: differs
+  - $.versions[0].text: today `"11 Pero Noemí dijo: \"¡Regresen, hijas mías! ¿Por qué irían conmigo? ¿Todavía (tengo) para mi\n hijos en mi vientre que puedan convertirse ` format 3 `"11 Pero Noemí dijo: \"¡Regresen, hijas mías! ¿Por qué irían conmigo? ¿Todavía (tengo) para mi hijos en mi vientre que puedan convertirse en`
+- RUT 1:19: differs
+  - $.versions[2].text: today `"19 וַ⁠תֵּלַ֣כְנָה שְׁתֵּי⁠הֶ֔ם עַד־בֹּאָ֖⁠נָה בֵּ֣ית לָ֑חֶם\n וַ⁠יְהִ֗י כְּ⁠בֹאָ֨⁠נָה֙ בֵּ֣ית לֶ֔חֶם\n וַ⁠תֵּהֹ֤ם כָּל־הָ⁠עִיר֙ עֲלֵי⁠הֶ֔ן ` format 3 `"19 וַ⁠תֵּלַ֣כְנָה שְׁתֵּי⁠הֶ֔ם עַד־בֹּאָ֖⁠נָה בֵּ֣ית לָ֑חֶם וַ⁠יְהִ֗י כְּ⁠בֹאָ֨⁠נָה֙ בֵּ֣ית לֶ֔חֶם וַ⁠תֵּהֹ֤ם כָּל־הָ⁠עִיר֙ עֲלֵי⁠הֶ֔ן וַ⁠ת`
+- RUT 1:20: differs
+  - $.versions[1].text: today `"20 Noemí les dijo: \"No deberían llamarme Noemí nunca más, porque significa 'mi deleite'. En cambio, llámenme Mara, que significa 'amarga'.` format 3 `"20 Noemí les dijo: \"No deberían llamarme Noemí nunca más, porque significa'mi deleite'. En cambio, llámenme Mara, que significa'amarga'. E`
+- RUT 1:22: differs
+  - $.versions[2].text: today `"22 וַ⁠תָּ֣שָׁב נָעֳמִ֗י וְ⁠ר֨וּת הַ⁠מּוֹאֲבִיָּ֤ה כַלָּתָ⁠הּ֙ עִמָּ֔⁠הּ הַ⁠שָּׁ֖בָה מִ⁠שְּׂדֵ֣י מוֹאָ֑ב וְ⁠הֵ֗מָּה בָּ֚אוּ בֵּ֣ית לֶ֔חֶם\n ` format 3 `"22 וַ⁠תָּ֣שָׁב נָעֳמִ֗י וְ⁠ר֨וּת הַ⁠מּוֹאֲבִיָּ֤ה כַלָּתָ⁠הּ֙ עִמָּ֔⁠הּ הַ⁠שָּׁ֖בָה מִ⁠שְּׂדֵ֣י מוֹאָ֑ב וְ⁠הֵ֗מָּה בָּ֚אוּ בֵּ֣ית לֶ֔חֶם בּ`
+- RUT 1:1-22: fallback (adapter-undefined)
+- RUT 2:1: fallback (adapter-undefined)
+- RUT 2:4: differs
+  - $.versions[1].text: today `"4 Entonces, Booz regresó de la ciudad. Él saludó a los segadores diciendo: \"!Que Jehová esté con ustedes!\" Ellos respondieron: \"¡Que Jeh` format 3 `"4 Entonces, Booz regresó de la ciudad. Él saludó a los segadores diciendo: \"! Que Jehová esté con ustedes!\" Ellos respondieron: \"¡Que Je`
+  - $.versions[2].text: today `"4 וְ⁠הִנֵּה־בֹ֗עַז בָּ֚א מִ⁠בֵּ֣ית לֶ֔חֶם\n וַ⁠יֹּ֥אמֶר לַ⁠קּוֹצְרִ֖ים יְהוָ֣ה עִמָּ⁠כֶ֑ם וַ⁠יֹּ֥אמְרוּ ל֖⁠וֹ יְבָרֶכְ⁠ךָ֥ יְהוָֽה׃"` format 3 `"4 וְ⁠הִנֵּה־בֹ֗עַז בָּ֚א מִ⁠בֵּ֣ית לֶ֔חֶם וַ⁠יֹּ֥אמֶר לַ⁠קּוֹצְרִ֖ים יְהוָ֣ה עִמָּ⁠כֶ֑ם וַ⁠יֹּ֥אמְרוּ ל֖⁠וֹ יְבָרֶכְ⁠ךָ֥ יְהוָֽה׃"`
+- RUT 2:1-23: fallback (adapter-undefined)
+- RUT 3:3: fallback (adapter-undefined)
+- RUT 3:4: fallback (adapter-undefined)
+- RUT 3:12: fallback (adapter-undefined)
+- RUT 3:14: fallback (adapter-undefined)
+- RUT 3:15: fallback (adapter-undefined)
+- RUT 3:1-18: fallback (adapter-undefined)
+- RUT 4:4: fallback (adapter-undefined)
+- RUT 4:5: fallback (adapter-undefined)
+- RUT 4:6: fallback (adapter-undefined)
+- RUT 4:10: differs
+  - $.versions[0].text: today `"10 Y Rut, la Moabita, la esposa de Mahlón, también estoy adquiriéndola para mí como esposa, para levantar el nombre del hombre muerto sobre` format 3 `"10 Y Rut, la Moabita, la esposa de Mahlón, también estoy adquiriéndola para mí como esposa, para levantar el nombre del hombre muerto sobre`
+- RUT 4:1-22: fallback (adapter-undefined)
+- NEH 1:1: fallback (adapter-undefined)
+- NEH 1:2: api-error
+- NEH 1:3: api-error
+- NEH 1:4: api-error
+- NEH 1:5: api-error
+- NEH 1:6: api-error
+- NEH 1:7: api-error
+- NEH 1:8: api-error
+- NEH 1:9: api-error
+- NEH 1:10: api-error
+- NEH 1:11: api-error
+- NEH 1:1-11: fallback (adapter-undefined)
+- NEH 2:1: api-error
+- NEH 2:2: api-error
+- NEH 2:3: api-error
+- NEH 2:4: api-error
+- NEH 2:5: api-error
+- NEH 2:6: api-error
+- NEH 2:7: api-error
+- NEH 2:8: api-error
+- NEH 2:9: api-error
+- NEH 2:10: api-error
+- NEH 2:11: api-error
+- NEH 2:12: api-error
+- NEH 2:13: api-error
+- NEH 2:14: api-error
+- NEH 2:15: api-error
+- NEH 2:16: api-error
+- NEH 2:17: api-error
+- NEH 2:18: api-error
+- NEH 2:19: api-error
+- NEH 2:20: api-error
+- NEH 2:1-20: api-error
+- NEH 3:1: api-error
+- NEH 3:2: api-error
+- NEH 3:3: api-error
+- NEH 3:4: api-error
+- NEH 3:5: api-error
+- NEH 3:6: api-error
+- NEH 3:7: api-error
+- NEH 3:8: api-error
+- NEH 3:9: api-error
+- NEH 3:10: api-error
+- NEH 3:11: api-error
+- NEH 3:12: api-error
+- NEH 3:13: api-error
+- NEH 3:14: api-error
+- NEH 3:15: api-error
+- NEH 3:16: api-error
+- NEH 3:17: api-error
+- NEH 3:18: api-error
+- NEH 3:19: api-error
+- NEH 3:20: api-error
+- NEH 3:21: api-error
+- NEH 3:22: api-error
+- NEH 3:23: api-error
+- NEH 3:24: api-error
+- NEH 3:25: api-error
+- NEH 3:26: api-error
+- NEH 3:27: api-error
+- NEH 3:28: api-error
+- NEH 3:29: api-error
+- NEH 3:30: api-error
+- NEH 3:31: api-error
+- NEH 3:32: api-error
+- NEH 3:1-32: api-error
+- NEH 4:1: api-error
+- NEH 4:2: api-error
+- NEH 4:3: api-error
+- NEH 4:4: api-error
+- NEH 4:5: api-error
+- NEH 4:6: api-error
+- NEH 4:7: api-error
+- NEH 4:8: api-error
+- NEH 4:9: api-error
+- NEH 4:10: api-error
+- NEH 4:11: api-error
+- NEH 4:12: api-error
+- NEH 4:13: api-error
+- NEH 4:14: api-error
+- NEH 4:15: api-error
+- NEH 4:16: api-error
+- NEH 4:17: api-error
+- NEH 4:18: api-error
+- NEH 4:19: api-error
+- NEH 4:20: api-error
+- NEH 4:21: api-error
+- NEH 4:22: api-error
+- NEH 4:23: api-error
+- NEH 4:1-23: api-error
+- NEH 5:1: api-error
+- NEH 5:2: api-error
+- NEH 5:3: api-error
+- NEH 5:4: api-error
+- NEH 5:5: api-error
+- NEH 5:6: api-error
+- NEH 5:7: api-error
+- NEH 5:8: api-error
+- NEH 5:9: api-error
+- NEH 5:10: api-error
+- NEH 5:11: api-error
+- NEH 5:12: api-error
+- NEH 5:13: api-error
+- NEH 5:14: api-error
+- NEH 5:15: api-error
+- NEH 5:16: api-error
+- NEH 5:17: api-error
+- NEH 5:18: api-error
+- NEH 5:19: api-error
+- NEH 5:1-19: api-error
+- NEH 6:1: api-error
+- NEH 6:2: api-error
+- NEH 6:3: api-error
+- NEH 6:4: api-error
+- NEH 6:5: api-error
+- NEH 6:6: api-error
+- NEH 6:7: api-error
+- NEH 6:8: api-error
+- NEH 6:9: api-error
+- NEH 6:10: api-error
+- NEH 6:11: api-error
+- NEH 6:12: api-error
+- NEH 6:13: api-error
+- NEH 6:14: api-error
+- NEH 6:15: api-error
+- NEH 6:16: api-error
+- NEH 6:17: api-error
+- NEH 6:18: api-error
+- NEH 6:19: api-error
+- NEH 6:1-19: api-error
+- NEH 7:1: api-error
+- NEH 7:2: api-error
+- NEH 7:3: api-error
+- NEH 7:4: api-error
+- NEH 7:5: api-error
+- NEH 7:6: api-error
+- NEH 7:7: api-error
+- NEH 7:8: api-error
+- NEH 7:9: api-error
+- NEH 7:10: api-error
+- NEH 7:11: api-error
+- NEH 7:12: api-error
+- NEH 7:13: api-error
+- NEH 7:14: api-error
+- NEH 7:15: api-error
+- NEH 7:16: api-error
+- NEH 7:17: api-error
+- NEH 7:18: api-error
+- NEH 7:19: api-error
+- NEH 7:20: api-error
+- NEH 7:21: api-error
+- NEH 7:22: api-error
+- NEH 7:23: api-error
+- NEH 7:24: api-error
+- NEH 7:25: api-error
+- NEH 7:26: api-error
+- NEH 7:27: api-error
+- NEH 7:28: api-error
+- NEH 7:29: api-error
+- NEH 7:30: api-error
+- NEH 7:31: api-error
+- NEH 7:32: api-error
+- NEH 7:33: api-error
+- NEH 7:34: api-error
+- NEH 7:35: api-error
+- NEH 7:36: api-error
+- NEH 7:37: api-error
+- NEH 7:38: api-error
+- NEH 7:39: api-error
+- NEH 7:40: api-error
+- NEH 7:41: api-error
+- NEH 7:42: api-error
+- NEH 7:43: api-error
+- NEH 7:44: api-error
+- NEH 7:45: api-error
+- NEH 7:46: api-error
+- NEH 7:47: api-error
+- and more (see the counts above)
+
+## es-419|es-419_gl/es-419/gst|v40|passage
+
+Items 206, exceptions 37 (differs 32, fallback adapter-undefined 16)
+
+Range windows 164, equal 69
+
+- RUT 1:1: differs
+  - $.versions[2].text: today `"1 וַ⁠יְהִ֗י בִּ⁠ימֵי֙ שְׁפֹ֣ט הַ⁠שֹּׁפְטִ֔ים וַ⁠יְהִ֥י רָעָ֖ב בָּ⁠אָ֑רֶץ וַ⁠יֵּ֨לֶךְ אִ֜ישׁ מִ⁠בֵּ֧ית לֶ֣חֶם\n יְהוּדָ֗ה לָ⁠גוּר֙ בִּ⁠שְׂדֵ` format 3 `"1 וַ⁠יְהִ֗י בִּ⁠ימֵי֙ שְׁפֹ֣ט הַ⁠שֹּׁפְטִ֔ים וַ⁠יְהִ֥י רָעָ֖ב בָּ⁠אָ֑רֶץ וַ⁠יֵּ֨לֶךְ אִ֜ישׁ מִ⁠בֵּ֧ית לֶ֣חֶם יְהוּדָ֗ה לָ⁠גוּר֙ בִּ⁠שְׂדֵ֣י`
+- RUT 1:2: differs
+  - $.versions[2].text: today `"2 וְ⁠שֵׁ֣ם הָ⁠אִ֣ישׁ אֱֽלִימֶ֡לֶךְ וְ⁠שֵׁם֩ אִשְׁתּ֨⁠וֹ נָעֳמִ֜י וְ⁠שֵׁ֥ם שְׁנֵֽי־בָנָ֣י⁠ו ׀ מַחְל֤וֹן וְ⁠כִלְיוֹן֙ אֶפְרָתִ֔ים מִ⁠בֵּ֥ית ל` format 3 `"2 וְ⁠שֵׁ֣ם הָ⁠אִ֣ישׁ אֱֽלִימֶ֡לֶךְ וְ⁠שֵׁם֩ אִשְׁתּ֨⁠וֹ נָעֳמִ֜י וְ⁠שֵׁ֥ם שְׁנֵֽי־בָנָ֣י⁠ו ׀ מַחְל֤וֹן וְ⁠כִלְיוֹן֙ אֶפְרָתִ֔ים מִ⁠בֵּ֥ית ל`
+- RUT 1:6: differs
+  - $.versions[2].text: today `"6 וַ⁠תָּ֤קָם הִיא֙ וְ⁠כַלֹּתֶ֔י⁠הָ וַ⁠תָּ֖שָׁב מִ⁠שְּׂדֵ֣י מוֹאָ֑ב כִּ֤י שָֽׁמְעָה֙ בִּ⁠שְׂדֵ֣ה מוֹאָ֔ב כִּֽי־פָקַ֤ד יְהוָה֙ אֶת־עַמּ֔⁠וֹ\n` format 3 `"6 וַ⁠תָּ֤קָם הִיא֙ וְ⁠כַלֹּתֶ֔י⁠הָ וַ⁠תָּ֖שָׁב מִ⁠שְּׂדֵ֣י מוֹאָ֑ב כִּ֤י שָֽׁמְעָה֙ בִּ⁠שְׂדֵ֣ה מוֹאָ֔ב כִּֽי־פָקַ֤ד יְהוָה֙ אֶת־עַמּ֔⁠וֹ ל`
+- RUT 1:8: fallback (adapter-undefined)
+- RUT 1:11: differs
+  - $.versions[0].text: today `"11 Pero Noemí dijo: \"¡Regresen, hijas mías! ¿Por qué irían conmigo? ¿Todavía (tengo) para mi\n hijos en mi vientre que puedan convertirse ` format 3 `"11 Pero Noemí dijo: \"¡Regresen, hijas mías! ¿Por qué irían conmigo? ¿Todavía (tengo) para mi hijos en mi vientre que puedan convertirse en`
+- RUT 1:19: differs
+  - $.versions[2].text: today `"19 וַ⁠תֵּלַ֣כְנָה שְׁתֵּי⁠הֶ֔ם עַד־בֹּאָ֖⁠נָה בֵּ֣ית לָ֑חֶם\n וַ⁠יְהִ֗י כְּ⁠בֹאָ֨⁠נָה֙ בֵּ֣ית לֶ֔חֶם\n וַ⁠תֵּהֹ֤ם כָּל־הָ⁠עִיר֙ עֲלֵי⁠הֶ֔ן ` format 3 `"19 וַ⁠תֵּלַ֣כְנָה שְׁתֵּי⁠הֶ֔ם עַד־בֹּאָ֖⁠נָה בֵּ֣ית לָ֑חֶם וַ⁠יְהִ֗י כְּ⁠בֹאָ֨⁠נָה֙ בֵּ֣ית לֶ֔חֶם וַ⁠תֵּהֹ֤ם כָּל־הָ⁠עִיר֙ עֲלֵי⁠הֶ֔ן וַ⁠ת`
+- RUT 1:20: differs
+  - $.versions[1].text: today `"20 Noemí les dijo: \"No deberían llamarme Noemí nunca más, porque significa 'mi deleite'. En cambio, llámenme Mara, que significa 'amarga'.` format 3 `"20 Noemí les dijo: \"No deberían llamarme Noemí nunca más, porque significa'mi deleite'. En cambio, llámenme Mara, que significa'amarga'. E`
+- RUT 1:22: differs
+  - $.versions[2].text: today `"22 וַ⁠תָּ֣שָׁב נָעֳמִ֗י וְ⁠ר֨וּת הַ⁠מּוֹאֲבִיָּ֤ה כַלָּתָ⁠הּ֙ עִמָּ֔⁠הּ הַ⁠שָּׁ֖בָה מִ⁠שְּׂדֵ֣י מוֹאָ֑ב וְ⁠הֵ֗מָּה בָּ֚אוּ בֵּ֣ית לֶ֔חֶם\n ` format 3 `"22 וַ⁠תָּ֣שָׁב נָעֳמִ֗י וְ⁠ר֨וּת הַ⁠מּוֹאֲבִיָּ֤ה כַלָּתָ⁠הּ֙ עִמָּ֔⁠הּ הַ⁠שָּׁ֖בָה מִ⁠שְּׂדֵ֣י מוֹאָ֑ב וְ⁠הֵ֗מָּה בָּ֚אוּ בֵּ֣ית לֶ֔חֶם בּ`
+- RUT 1:1-22: fallback (adapter-undefined)
+- RUT 2:1: fallback (adapter-undefined)
+- RUT 2:4: differs
+  - $.versions[1].text: today `"4 Entonces, Booz regresó de la ciudad. Él saludó a los segadores diciendo: \"!Que Jehová esté con ustedes!\" Ellos respondieron: \"¡Que Jeh` format 3 `"4 Entonces, Booz regresó de la ciudad. Él saludó a los segadores diciendo: \"! Que Jehová esté con ustedes!\" Ellos respondieron: \"¡Que Je`
+  - $.versions[2].text: today `"4 וְ⁠הִנֵּה־בֹ֗עַז בָּ֚א מִ⁠בֵּ֣ית לֶ֔חֶם\n וַ⁠יֹּ֥אמֶר לַ⁠קּוֹצְרִ֖ים יְהוָ֣ה עִמָּ⁠כֶ֑ם וַ⁠יֹּ֥אמְרוּ ל֖⁠וֹ יְבָרֶכְ⁠ךָ֥ יְהוָֽה׃"` format 3 `"4 וְ⁠הִנֵּה־בֹ֗עַז בָּ֚א מִ⁠בֵּ֣ית לֶ֔חֶם וַ⁠יֹּ֥אמֶר לַ⁠קּוֹצְרִ֖ים יְהוָ֣ה עִמָּ⁠כֶ֑ם וַ⁠יֹּ֥אמְרוּ ל֖⁠וֹ יְבָרֶכְ⁠ךָ֥ יְהוָֽה׃"`
+- RUT 2:1-23: fallback (adapter-undefined)
+- RUT 3:3: fallback (adapter-undefined)
+- RUT 3:4: fallback (adapter-undefined)
+- RUT 3:12: fallback (adapter-undefined)
+- RUT 3:14: fallback (adapter-undefined)
+- RUT 3:15: fallback (adapter-undefined)
+- RUT 3:1-18: fallback (adapter-undefined)
+- RUT 4:4: fallback (adapter-undefined)
+- RUT 4:5: fallback (adapter-undefined)
+- RUT 4:6: fallback (adapter-undefined)
+- RUT 4:10: differs
+  - $.versions[0].text: today `"10 Y Rut, la Moabita, la esposa de Mahlón, también estoy adquiriéndola para mí como esposa, para levantar el nombre del hombre muerto sobre` format 3 `"10 Y Rut, la Moabita, la esposa de Mahlón, también estoy adquiriéndola para mí como esposa, para levantar el nombre del hombre muerto sobre`
+- RUT 4:1-22: fallback (adapter-undefined)
+- JON 1:1: differs
+  - $.versions[2].text: today `"1 וַֽ⁠יְהִי֙ דְּבַר־יְהוָ֔ה\n אֶל־יוֹנָ֥ה בֶן־אֲמִתַּ֖י לֵ⁠אמֹֽר׃"` format 3 `"1 וַֽ⁠יְהִי֙ דְּבַר־יְהוָ֔ה אֶל־יוֹנָ֥ה בֶן־אֲמִתַּ֖י לֵ⁠אמֹֽר׃"`
+- JON 1:7: differs
+  - $.versions[2].text: today `"7 וַ⁠יֹּאמְר֞וּ אִ֣ישׁ אֶל־רֵעֵ֗⁠הוּ לְכוּ֙ וְ⁠נַפִּ֣ילָה גֽוֹרָל֔וֹת\n וְ⁠נֵ֣דְעָ֔ה בְּ⁠שֶׁ⁠לְּ⁠מִ֛י הָ⁠רָעָ֥ה הַ⁠זֹּ֖את לָ֑⁠נוּ וַ⁠יַּפִּ` format 3 `"7 וַ⁠יֹּאמְר֞וּ אִ֣ישׁ אֶל־רֵעֵ֗⁠הוּ לְכוּ֙ וְ⁠נַפִּ֣ילָה גֽוֹרָל֔וֹת וְ⁠נֵ֣דְעָ֔ה בְּ⁠שֶׁ⁠לְּ⁠מִ֛י הָ⁠רָעָ֥ה הַ⁠זֹּ֖את לָ֑⁠נוּ וַ⁠יַּפִּ֨ל`
+- JON 1:12: differs
+  - $.versions[0].text: today `"12 Y él les dijo: \"Levántenme y arrójenme al mar. Entonces el mar se calmará sobre\n ustedes, porque yo sé que esta gran tormenta está sob` format 3 `"12 Y él les dijo: \"Levántenme y arrójenme al mar. Entonces el mar se calmará sobre ustedes, porque yo sé que esta gran tormenta está sobre`
+- JON 1:16: fallback (adapter-undefined)
+- JON 1:17: differs
+  - $.versions[2].text: today `"17 1וַ⁠יְמַ֤ן יְהוָה֙ דָּ֣ג גָּד֔וֹל לִ⁠בְלֹ֖עַ אֶת־יוֹנָ֑ה וַ⁠יְהִ֤י יוֹנָה֙ בִּ⁠מְעֵ֣י הַ⁠דָּ֔ג שְׁלֹשָׁ֥ה יָמִ֖ים וּ⁠שְׁלֹשָׁ֥ה לֵילֽוֹת` format 3 `"17 וַ⁠יְמַ֤ן יְהוָה֙ דָּ֣ג גָּד֔וֹל לִ⁠בְלֹ֖עַ אֶת־יוֹנָ֑ה וַ⁠יְהִ֤י יוֹנָה֙ בִּ⁠מְעֵ֣י הַ⁠דָּ֔ג שְׁלֹשָׁ֥ה יָמִ֖ים וּ⁠שְׁלֹשָׁ֥ה לֵילֽוֹת׃`
+- JON 1:1-17: fallback (adapter-undefined)
+- JON 2:1: differs
+  - $.versions[2].text: today `"1 2וַ⁠יִּתְפַּלֵּ֣ל יוֹנָ֔ה אֶל־יְהוָ֖ה אֱלֹהָ֑י⁠ו מִ⁠מְּעֵ֖י הַ⁠דָּגָֽה׃"` format 3 `"1 וַ⁠יִּתְפַּלֵּ֣ל יוֹנָ֔ה אֶל־יְהוָ֖ה אֱלֹהָ֑י⁠ו מִ⁠מְּעֵ֖י הַ⁠דָּגָֽה׃"`
+- JON 2:2: differs
+  - $.versions[2].text: today `"2 3וַ⁠יֹּ֗אמֶר קָ֠רָאתִי מִ⁠צָּ֥רָה לִ֛⁠י אֶל־יְהוָ֖ה וַֽ⁠יַּעֲנֵ֑⁠נִי מִ⁠בֶּ֧טֶן שְׁא֛וֹל שִׁוַּ֖עְתִּי שָׁמַ֥עְתָּ קוֹלִֽ⁠י׃"` format 3 `"2 וַ⁠יֹּ֗אמֶר קָ֠רָאתִי מִ⁠צָּ֥רָה לִ֛⁠י אֶל־יְהוָ֖ה וַֽ⁠יַּעֲנֵ֑⁠נִי מִ⁠בֶּ֧טֶן שְׁא֛וֹל שִׁוַּ֖עְתִּי שָׁמַ֥עְתָּ קוֹלִֽ⁠י׃"`
+- JON 2:3: differs
+  - $.versions[2].text: today `"3 4וַ⁠תַּשְׁלִיכֵ֤⁠נִי מְצוּלָה֙ בִּ⁠לְבַ֣ב יַמִּ֔ים וְ⁠נָהָ֖ר יְסֹבְבֵ֑⁠נִי כָּל־מִשְׁבָּרֶ֥י⁠ךָ וְ⁠גַלֶּ֖י⁠ךָ עָלַ֥⁠י עָבָֽרוּ׃"` format 3 `"3 וַ⁠תַּשְׁלִיכֵ֤⁠נִי מְצוּלָה֙ בִּ⁠לְבַ֣ב יַמִּ֔ים וְ⁠נָהָ֖ר יְסֹבְבֵ֑⁠נִי כָּל־מִשְׁבָּרֶ֥י⁠ךָ וְ⁠גַלֶּ֖י⁠ךָ עָלַ֥⁠י עָבָֽרוּ׃"`
+- JON 2:4: differs
+  - $.versions[2].text: today `"4 5וַ⁠אֲנִ֣י אָמַ֔רְתִּי נִגְרַ֖שְׁתִּי מִ⁠נֶּ֣גֶד עֵינֶ֑י⁠ךָ אַ֚ךְ אוֹסִ֣יף לְ⁠הַבִּ֔יט אֶל־הֵיכַ֖ל קָדְשֶֽׁ⁠ךָ׃"` format 3 `"4 וַ⁠אֲנִ֣י אָמַ֔רְתִּי נִגְרַ֖שְׁתִּי מִ⁠נֶּ֣גֶד עֵינֶ֑י⁠ךָ אַ֚ךְ אוֹסִ֣יף לְ⁠הַבִּ֔יט אֶל־הֵיכַ֖ל קָדְשֶֽׁ⁠ךָ׃"`
+- JON 2:5: differs
+  - $.versions[2].text: today `"5 6אֲפָפ֤וּ⁠נִי מַ֨יִם֙ עַד־נֶ֔פֶשׁ תְּה֖וֹם יְסֹבְבֵ֑⁠נִי ס֖וּף חָב֥וּשׁ לְ⁠רֹאשִֽׁ⁠י׃"` format 3 `"5 אֲפָפ֤וּ⁠נִי מַ֨יִם֙ עַד־נֶ֔פֶשׁ תְּה֖וֹם יְסֹבְבֵ֑⁠נִי ס֖וּף חָב֥וּשׁ לְ⁠רֹאשִֽׁ⁠י׃"`
+- JON 2:6: differs
+  - $.versions[2].text: today `"6 7לְ⁠קִצְבֵ֤י הָרִים֙ יָרַ֔דְתִּי הָ⁠אָ֛רֶץ בְּרִחֶ֥י⁠הָ בַעֲדִ֖⁠י לְ⁠עוֹלָ֑ם וַ⁠תַּ֧עַל מִ⁠שַּׁ֛חַת חַיַּ֖⁠י יְהוָ֥ה אֱלֹהָֽ⁠י׃"` format 3 `"6 לְ⁠קִצְבֵ֤י הָרִים֙ יָרַ֔דְתִּי הָ⁠אָ֛רֶץ בְּרִחֶ֥י⁠הָ בַעֲדִ֖⁠י לְ⁠עוֹלָ֑ם וַ⁠תַּ֧עַל מִ⁠שַּׁ֛חַת חַיַּ֖⁠י יְהוָ֥ה אֱלֹהָֽ⁠י׃"`
+- JON 2:7: differs
+  - $.versions[2].text: today `"7 8בְּ⁠הִתְעַטֵּ֤ף עָלַ⁠י֙ נַפְשִׁ֔⁠י אֶת־יְהוָ֖ה זָכָ֑רְתִּי וַ⁠תָּב֤וֹא אֵלֶ֨י⁠ךָ֙ תְּפִלָּתִ֔⁠י אֶל־הֵיכַ֖ל קָדְשֶֽׁ⁠ךָ׃"` format 3 `"7 בְּ⁠הִתְעַטֵּ֤ף עָלַ⁠י֙ נַפְשִׁ֔⁠י אֶת־יְהוָ֖ה זָכָ֑רְתִּי וַ⁠תָּב֤וֹא אֵלֶ֨י⁠ךָ֙ תְּפִלָּתִ֔⁠י אֶל־הֵיכַ֖ל קָדְשֶֽׁ⁠ךָ׃"`
+- JON 2:8: differs
+  - $.versions[2].text: today `"8 9מְשַׁמְּרִ֖ים הַבְלֵי־שָׁ֑וְא חַסְדָּ֖⁠ם יַעֲזֹֽבוּ׃"` format 3 `"8 מְשַׁמְּרִ֖ים הַבְלֵי־שָׁ֑וְא חַסְדָּ֖⁠ם יַעֲזֹֽבוּ׃"`
+- JON 2:9: differs
+  - $.versions[2].text: today `"9 10וַ⁠אֲנִ֗י בְּ⁠ק֤וֹל תּוֹדָה֙ אֶזְבְּחָה־לָּ֔⁠ךְ אֲשֶׁ֥ר נָדַ֖רְתִּי אֲשַׁלֵּ֑מָה יְשׁוּעָ֖תָ⁠ה לַ⁠יהוָֽה׃ס"` format 3 `"9 וַ⁠אֲנִ֗י בְּ⁠ק֤וֹל תּוֹדָה֙ אֶזְבְּחָה־לָּ֔⁠ךְ אֲשֶׁ֥ר נָדַ֖רְתִּי אֲשַׁלֵּ֑מָה יְשׁוּעָ֖תָ⁠ה לַ⁠יהוָֽה׃ס"`
+- JON 2:10: differs
+  - $.versions[2].text: today `"10 11וַ⁠יֹּ֥אמֶר יְהוָ֖ה לַ⁠דָּ֑ג וַ⁠יָּקֵ֥א אֶת־יוֹנָ֖ה אֶל־הַ⁠יַּבָּשָֽׁה׃פ"` format 3 `"10 וַ⁠יֹּ֥אמֶר יְהוָ֖ה לַ⁠דָּ֑ג וַ⁠יָּקֵ֥א אֶת־יוֹנָ֖ה אֶל־הַ⁠יַּבָּשָֽׁה׃פ"`
+- JON 2:1-10: differs
+  - $.versions[2].text: today `"1 2וַ⁠יִּתְפַּלֵּ֣ל יוֹנָ֔ה אֶל־יְהוָ֖ה אֱלֹהָ֑י⁠ו מִ⁠מְּעֵ֖י הַ⁠דָּגָֽה׃ 2 3וַ⁠יֹּ֗אמֶר קָ֠רָאתִי מִ⁠צָּ֥רָה לִ֛⁠י אֶל־יְהוָ֖ה וַֽ⁠יַּעֲנֵ` format 3 `"1 וַ⁠יִּתְפַּלֵּ֣ל יוֹנָ֔ה אֶל־יְהוָ֖ה אֱלֹהָ֑י⁠ו מִ⁠מְּעֵ֖י הַ⁠דָּגָֽה׃ 2 וַ⁠יֹּ֗אמֶר קָ֠רָאתִי מִ⁠צָּ֥רָה לִ֛⁠י אֶל־יְהוָ֖ה וַֽ⁠יַּעֲנֵ֑⁠`
+- JON 3:1: differs
+  - $.versions[2].text: today `"1 וַ⁠יְהִ֧י דְבַר־יְהוָ֛ה\n אֶל־יוֹנָ֖ה שֵׁנִ֥ית לֵ⁠אמֹֽר׃"` format 3 `"1 וַ⁠יְהִ֧י דְבַר־יְהוָ֛ה אֶל־יוֹנָ֖ה שֵׁנִ֥ית לֵ⁠אמֹֽר׃"`
+- JON 3:3: differs
+  - $.versions[0].text: today `"3 Así que\n Jonás se levantó y fue a Nínive, conforme a la palabra de Jehová. Ahora, Nínive era una gran ciudad ante Dios, un viaje de tres` format 3 `"3 Así que Jonás se levantó y fue a Nínive, conforme a la palabra de Jehová. Ahora, Nínive era una gran ciudad ante Dios, un viaje de tres d`
+  - $.versions[2].text: today `"3 וַ⁠יָּ֣קָם יוֹנָ֗ה וַ⁠יֵּ֛לֶךְ אֶל־נִֽינְוֶ֖ה כִּ⁠דְבַ֣ר יְהוָ֑ה\n וְ⁠נִֽינְוֵ֗ה הָיְתָ֤ה עִיר־גְּדוֹלָה֙ לֵֽ⁠אלֹהִ֔ים מַהֲלַ֖ךְ שְׁלֹ֥שׁ` format 3 `"3 וַ⁠יָּ֣קָם יוֹנָ֗ה וַ⁠יֵּ֛לֶךְ אֶל־נִֽינְוֶ֖ה כִּ⁠דְבַ֣ר יְהוָ֑ה וְ⁠נִֽינְוֵ֗ה הָיְתָ֤ה עִיר־גְּדוֹלָה֙ לֵֽ⁠אלֹהִ֔ים מַהֲלַ֖ךְ שְׁלֹ֥שֶׁת`
+- JON 3:1-10: differs
+  - $.versions[0].text: today `"1 Y la palabra de Jehová vino por segunda vez a Jonás, diciendo: 2 \"Levántate, ve a Nínive, la gran ciudad, y proclama contra ella el mens` format 3 `"1 Y la palabra de Jehová vino por segunda vez a Jonás, diciendo: 2 \"Levántate, ve a Nínive, la gran ciudad, y proclama contra ella el mens`
+  - $.versions[2].text: today `"1 וַ⁠יְהִ֧י דְבַר־יְהוָ֛ה\n אֶל־יוֹנָ֖ה שֵׁנִ֥ית לֵ⁠אמֹֽר׃ 2 ק֛וּם לֵ֥ךְ אֶל־נִֽינְוֵ֖ה הָ⁠עִ֣יר הַ⁠גְּדוֹלָ֑ה וִּ⁠קְרָ֤א אֵלֶ֨י⁠הָ֙ אֶת־הַ` format 3 `"1 וַ⁠יְהִ֧י דְבַר־יְהוָ֛ה אֶל־יוֹנָ֖ה שֵׁנִ֥ית לֵ⁠אמֹֽר׃ 2 ק֛וּם לֵ֥ךְ אֶל־נִֽינְוֵ֖ה הָ⁠עִ֣יר הַ⁠גְּדוֹלָ֑ה וִּ⁠קְרָ֤א אֵלֶ֨י⁠הָ֙ אֶת־הַ⁠ק`
+- TIT 1:1-16: differs
+  - $.versions[2].text: today `"1 Παῦλος, δοῦλος Θεοῦ, ἀπόστολος δὲ Ἰησοῦ Χριστοῦ, κατὰ πίστιν ἐκλεκτῶν Θεοῦ, καὶ ἐπίγνωσιν ἀληθείας, τῆς κατ’ εὐσέβειαν 2 ἐπ’ ἐλπίδι ζωῆς ` format 3 `"1 Παῦλος, δοῦλος Θεοῦ, ἀπόστολος δὲ Ἰησοῦ Χριστοῦ, κατὰ πίστιν ἐκλεκτῶν Θεοῦ, καὶ ἐπίγνωσιν ἀληθείας, τῆς κατ’ εὐσέβειαν 2 ἐπ’ ἐλπίδι ζωῆς `
+- TIT 2:1-15: differs
+  - $.versions[2].text: today `"1 σὺ δὲ λάλει ἃ πρέπει τῇ ὑγιαινούσῃ διδασκαλίᾳ. 2 πρεσβύτας νηφαλίους εἶναι, σεμνούς, σώφρονας, ὑγιαίνοντας τῇ πίστει, τῇ ἀγάπῃ, τῇ ὑπομον` format 3 `"1 σὺ δὲ λάλει ἃ πρέπει τῇ ὑγιαινούσῃ διδασκαλίᾳ. 2 πρεσβύτας νηφαλίους εἶναι, σεμνούς, σώφρονας, ὑγιαίνοντας τῇ πίστει, τῇ ἀγάπῃ, τῇ ὑπομον`
+- TIT 3:1-15: differs
+  - $.versions[2].text: today `"1 ὑπομίμνῃσκε αὐτοὺς ἀρχαῖς, ἐξουσίαις, ὑποτάσσεσθαι, πειθαρχεῖν; πρὸς πᾶν ἔργον ἀγαθὸν ἑτοίμους εἶναι, 2 μηδένα βλασφημεῖν, ἀμάχους εἶναι,` format 3 `"1 ὑπομίμνῃσκε αὐτοὺς ἀρχαῖς, ἐξουσίαις, ὑποτάσσεσθαι, πειθαρχεῖν; πρὸς πᾶν ἔργον ἀγαθὸν ἑτοίμους εἶναι, 2 μηδένα βλασφημεῖν, ἀμάχους εἶναι,`
+- 3JN 1:15: differs
+  - $.versions[0].text: today `"15 Paz a ti. Losamigos te saludan. Saluda a los amigos por nombre."` format 3 `"15 Paz a ti. Los amigos te saludan. Saluda a los amigos por nombre."`
+- 3JN 1:1-15: differs
+  - $.versions[0].text: today `"1 El anciano al amado Gayo, el cual yo amo en verdad. 2 Amado, oro para que prosperes en todo y que estés saludable, así como prospera tu a` format 3 `"1 El anciano al amado Gayo, el cual yo amo en verdad. 2 Amado, oro para que prosperes en todo y que estés saludable, así como prospera tu a`
+  - $.versions[2].text: today `"1 ὁ πρεσβύτερος; Γαΐῳ τῷ ἀγαπητῷ, ὃν ἐγὼ ἀγαπῶ ἐν ἀληθείᾳ.\n 2 ἀγαπητέ, περὶ πάντων εὔχομαί σε εὐοδοῦσθαι καὶ ὑγιαίνειν, καθὼς εὐοδοῦταί σο` format 3 `"1 ὁ πρεσβύτερος; Γαΐῳ τῷ ἀγαπητῷ, ὃν ἐγὼ ἀγαπῶ ἐν ἀληθείᾳ. 2 ἀγαπητέ, περὶ πάντων εὔχομαί σε εὐοδοῦσθαι καὶ ὑγιαίνειν, καθὼς εὐοδοῦταί σου `
